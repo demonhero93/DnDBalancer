@@ -1,0 +1,1 @@
+"""Capa de datos para dnd5eapi.co."""
