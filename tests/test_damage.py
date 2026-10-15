@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from dnd_sim import Abilities, Attack, Combatant, DamageType, apply_damage_modifiers, simulate
+from dnd_sim import Monster, PlayerCharacter
 from dnd_sim.combat import run_combat
 from dnd_sim.data.loader import load_monster
 
@@ -12,9 +13,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / "ogre.json"
 
 
 def _target(resistances=(), vulnerabilities=(), immunities=()) -> Combatant:
-    return Combatant(
+    return Monster(
         name="Objetivo",
-        team="NPC",
         max_hp=20,
         ac=10,
         resistances=set(resistances),
@@ -51,7 +51,7 @@ def test_no_modifiers_unchanged():
 
 def test_strings_are_converted():
     # Combatant normaliza strings a DamageType.
-    t = Combatant(name="T", team="NPC", max_hp=10, ac=10, resistances={"fire"})
+    t = Monster(name="T", max_hp=10, ac=10, resistances={"fire"})
     assert DamageType.FIRE in t.resistances
     # Attack también acepta str.
     atk = Attack("Golpe", "1d8", damage_type="fire")
@@ -68,13 +68,13 @@ def test_invalid_damage_type_raises():
 def test_immune_target_takes_zero_damage(monkeypatch):
     """Con semilla fija, un inmune al tipo del ataque recibe 0 en cada impacto."""
     atk = Attack("Espada", "1d6", ability="str", damage_type="slashing")
-    attacker = Combatant(
-        name="Atacante", team="PJ", max_hp=20, ac=10,
+    attacker = PlayerCharacter(
+        name="Atacante", max_hp=20, ac=10,
         abilities=Abilities(str=16),
         attacks=[atk],
     )
-    target = Combatant(
-        name="Inmune", team="NPC", max_hp=20, ac=5,
+    target = Monster(
+        name="Inmune", max_hp=20, ac=5,
         immunities={"slashing"},
     )
     stats = simulate([attacker, target], n=20, seed=1)
@@ -85,27 +85,27 @@ def test_regression_guerrero_vs_ogro(monkeypatch):
     data = json.loads(FIXTURE.read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
 
-    guerrero = Combatant(
-        name="Guerrero", team="PJ", max_hp=28, ac=18, proficiency=2,
+    guerrero = PlayerCharacter(
+        name="Guerrero", max_hp=28, ac=18, proficiency=2,
         abilities=Abilities(str=16, dex=12, con=14, int=10, wis=12, cha=8),
         attacks=[Attack("Espada larga", "1d8", ability="str")],
     )
     ogro = load_monster("ogre")
 
     stats = simulate([guerrero, ogro], n=1000, seed=1)
-    assert stats["win_rate"]["PJ"] == pytest.approx(0.079, abs=1e-9)
-    assert stats["win_rate"]["NPC"] == pytest.approx(0.921, abs=1e-9)
-    assert stats["rounds_avg"] == pytest.approx(5.335, abs=1e-9)
-    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(0.742, abs=1e-9)
-    assert stats["hp_left_avg"]["Ogre"] == pytest.approx(30.663, abs=1e-9)
+    assert stats["win_rate"]["PJ"] == pytest.approx(0.108, abs=1e-9)
+    assert stats["win_rate"]["NPC"] == pytest.approx(0.892, abs=1e-9)
+    assert stats["rounds_avg"] == pytest.approx(5.881, abs=1e-9)
+    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(1.073, abs=1e-9)
+    assert stats["hp_left_avg"]["Ogre"] == pytest.approx(27.503, abs=1e-9)
 
 
 def test_attack_roll_log_modifier(monkeypatch, capsys):
     # Smoke: el motor no explota con modificadores y registra el modificador en el log.
-    a = Combatant(
-        name="A", team="PJ", max_hp=10, ac=5,
+    a = PlayerCharacter(
+        name="A", max_hp=10, ac=5,
         abilities=Abilities(str=16), attacks=[Attack("Golpe", "1d8", ability="str", damage_type="fire")],
     )
-    b = Combatant(name="B", team="NPC", max_hp=20, ac=5, vulnerabilities={"fire"})
+    b = Monster(name="B", max_hp=20, ac=5, vulnerabilities={"fire"})
     res = run_combat([a, b], random.Random(1), verbose=True)
     assert any("(vulnerable:" in line for line in res.log)

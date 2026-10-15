@@ -1,8 +1,25 @@
 """Tiradas de dados."""
+from __future__ import annotations
+
 import random
 import re
+from dataclasses import dataclass
+from enum import Enum
 
 _DICE_RE = re.compile(r"^\s*(\d+)d(\d+)\s*([+-]\s*\d+)?\s*$")
+
+
+class RollMode(Enum):
+    NORMAL = "normal"
+    ADVANTAGE = "advantage"
+    DISADVANTAGE = "disadvantage"
+
+
+@dataclass
+class D20Result:
+    value: int
+    rolls: list[int]
+    mode: RollMode
 
 
 def roll_dice(expr: str, rng: random.Random, crit: bool = False) -> int:
@@ -17,5 +34,24 @@ def roll_dice(expr: str, rng: random.Random, crit: bool = False) -> int:
     return sum(rng.randint(1, faces) for _ in range(n)) + bonus
 
 
+def roll_d20(rng: random.Random, mode: RollMode = RollMode.NORMAL) -> D20Result:
+    """Tira un d20 aplicando ventaja/desventaja.
+
+    NORMAL consume una sola llamada al RNG (compatibilidad con el código
+    anterior). VENTAJA/DESVENTAJA tiran dos dados y conservan el mayor/menor.
+    """
+    if mode == RollMode.NORMAL:
+        roll = rng.randint(1, 20)
+        return D20Result(value=roll, rolls=[roll], mode=mode)
+    first = rng.randint(1, 20)
+    second = rng.randint(1, 20)
+    if mode == RollMode.ADVANTAGE:
+        value = max(first, second)
+    else:
+        value = min(first, second)
+    return D20Result(value=value, rolls=[first, second], mode=mode)
+
+
 def d20(rng: random.Random) -> int:
-    return rng.randint(1, 20)
+    """Compatibilidad: devuelve solo el valor."""
+    return roll_d20(rng, RollMode.NORMAL).value

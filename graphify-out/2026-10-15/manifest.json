@@ -1,0 +1,134 @@
+{
+  ".vscode/settings.json": {
+    "mtime": 1792009746.846279,
+    "seen": 1792072703.0185587,
+    "ast_hash": "7c35e4ad712924d87267833a1ac8835a",
+    "semantic_hash": "7c35e4ad712924d87267833a1ac8835a"
+  },
+  "dnd_sim/__init__.py": {
+    "mtime": 1792075792.2366564,
+    "seen": 1792078255.5006576,
+    "ast_hash": "724ff12a383876cb047a3f6020e1e1cf",
+    "semantic_hash": "724ff12a383876cb047a3f6020e1e1cf"
+  },
+  "dnd_sim/abilities.py": {
+    "mtime": 1791998723.733126,
+    "seen": 1792072703.0185587,
+    "ast_hash": "8ba6b3d351a1a74a53d8eef0f3227827",
+    "semantic_hash": "8ba6b3d351a1a74a53d8eef0f3227827"
+  },
+  "dnd_sim/attack.py": {
+    "mtime": 1792074275.382872,
+    "seen": 1792078255.5006576,
+    "ast_hash": "7500273b115dc67ba91b940e2858ef84",
+    "semantic_hash": "7500273b115dc67ba91b940e2858ef84"
+  },
+  "dnd_sim/combat.py": {
+    "mtime": 1792075815.0610392,
+    "seen": 1792078255.5006576,
+    "ast_hash": "9a230821181f913a6c1f0d4dd056e968",
+    "semantic_hash": "9a230821181f913a6c1f0d4dd056e968"
+  },
+  "dnd_sim/combatant.py": {
+    "mtime": 1792075854.0384426,
+    "seen": 1792078255.5006576,
+    "ast_hash": "f36e1ce9d61b203e8c8352f067d66bf1",
+    "semantic_hash": "f36e1ce9d61b203e8c8352f067d66bf1"
+  },
+  "dnd_sim/damage.py": {
+    "mtime": 1792009544.7189295,
+    "seen": 1792072703.0185587,
+    "ast_hash": "e40f56780d11479882cc19e694c3ff69",
+    "semantic_hash": "e40f56780d11479882cc19e694c3ff69"
+  },
+  "dnd_sim/data/__init__.py": {
+    "mtime": 1792006912.40539,
+    "seen": 1792072703.0185587,
+    "ast_hash": "24e809f93bd3e1d03d4e0767ca2433e6",
+    "semantic_hash": "24e809f93bd3e1d03d4e0767ca2433e6"
+  },
+  "dnd_sim/data/api_client.py": {
+    "mtime": 1792075294.2203145,
+    "seen": 1792078255.5021663,
+    "ast_hash": "8df93c0eb93bb2508f052bdb7baba0d2",
+    "semantic_hash": "8df93c0eb93bb2508f052bdb7baba0d2"
+  },
+  "dnd_sim/data/loader.py": {
+    "mtime": 1792075797.7516286,
+    "seen": 1792078255.5021663,
+    "ast_hash": "7fbc275cd33876a4447cb0bf5a653f2a",
+    "semantic_hash": "7fbc275cd33876a4447cb0bf5a653f2a"
+  },
+  "dnd_sim/dice.py": {
+    "mtime": 1792074263.097196,
+    "seen": 1792078255.5021663,
+    "ast_hash": "6d8bcf9cb8670726c1c2d6e8c8432582",
+    "semantic_hash": "6d8bcf9cb8670726c1c2d6e8c8432582"
+  },
+  "dnd_sim/stats.py": {
+    "mtime": 1792001639.495764,
+    "seen": 1792072703.0185587,
+    "ast_hash": "81848827bb6315da150da05e61b1e985",
+    "semantic_hash": "81848827bb6315da150da05e61b1e985"
+  },
+  "main.py": {
+    "mtime": 1792077916.5281997,
+    "seen": 1792078255.5026762,
+    "ast_hash": "9941527235616c338ac64c7377d9277d",
+    "semantic_hash": "9941527235616c338ac64c7377d9277d"
+  },
+  "tests/fixtures/awakened-shrub.json": {
+    "mtime": 1792009479.196536,
+    "seen": 1792072703.0185587,
+    "ast_hash": "f7f4c89fe47e88a3f803985e2fc80494",
+    "semantic_hash": "f7f4c89fe47e88a3f803985e2fc80494"
+  },
+  "tests/fixtures/ogre.json": {
+    "mtime": 1792075257.6079502,
+    "seen": 1792078255.5026762,
+    "ast_hash": "6df711b24009a399e5e9b8c580f54b0a",
+    "semantic_hash": "6df711b24009a399e5e9b8c580f54b0a"
+  },
+  "tests/test_damage.py": {
+    "mtime": 1792075833.9801087,
+    "seen": 1792078255.5026762,
+    "ast_hash": "3d16dbeb0b85b6f0f4d8796131d63e36",
+    "semantic_hash": "3d16dbeb0b85b6f0f4d8796131d63e36"
+  },
+  "tests/test_loader.py": {
+    "mtime": 1792075836.361078,
+    "seen": 1792078255.5026762,
+    "ast_hash": "deb61c8bdff9a607b8373ab7d1fdd9d8",
+    "semantic_hash": "deb61c8bdff9a607b8373ab7d1fdd9d8"
+  },
+  "dnd_sim/actions.py": {
+    "mtime": 1792075855.5796328,
+    "seen": 1792078255.5006576,
+    "ast_hash": "de06f41ab14ef9dc0612bffa3abaaa15",
+    "semantic_hash": "de06f41ab14ef9dc0612bffa3abaaa15"
+  },
+  "dnd_sim/randomness.py": {
+    "mtime": 1792074260.910958,
+    "seen": 1792078255.5021663,
+    "ast_hash": "397a155ea7f91af3333d25f7b1604f44",
+    "semantic_hash": "397a155ea7f91af3333d25f7b1604f44"
+  },
+  "dnd_sim/tactics.py": {
+    "mtime": 1792074273.6945167,
+    "seen": 1792078255.5026762,
+    "ast_hash": "36a2b6b60ea0fbb6369572805e98de41",
+    "semantic_hash": "36a2b6b60ea0fbb6369572805e98de41"
+  },
+  "tests/fixtures/owlbear.json": {
+    "mtime": 1792075257.272928,
+    "seen": 1792078255.5026762,
+    "ast_hash": "10f485ed353587142ccb5c69948dc643",
+    "semantic_hash": "10f485ed353587142ccb5c69948dc643"
+  },
+  "tests/fixtures/veteran.json": {
+    "mtime": 1792075257.990965,
+    "seen": 1792078255.5026762,
+    "ast_hash": "eea599b605be5bbcbb1c221f4428b673",
+    "semantic_hash": "eea599b605be5bbcbb1c221f4428b673"
+  }
+}

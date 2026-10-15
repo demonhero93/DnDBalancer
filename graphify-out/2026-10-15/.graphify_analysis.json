@@ -1,0 +1,327 @@
+{
+  "communities": {
+    "0": [
+      "dnd_sim_actions_actiontype",
+      "dnd_sim_actions_py_enum",
+      "dnd_sim_actions_turnresources",
+      "dnd_sim_actions_turnresources_can_use",
+      "dnd_sim_actions_turnresources_spend",
+      "dnd_sim_actions_turnresources_use",
+      "dnd_sim_combat",
+      "dnd_sim_combat_combatresult",
+      "dnd_sim_combat_invoke_policy",
+      "dnd_sim_combat_py_random",
+      "dnd_sim_combat_rationale_1",
+      "dnd_sim_combat_roll_initiative",
+      "dnd_sim_combat_run_combat",
+      "dnd_sim_dice",
+      "dnd_sim_dice_d20",
+      "dnd_sim_dice_d20result",
+      "dnd_sim_dice_py_enum",
+      "dnd_sim_dice_py_random",
+      "dnd_sim_dice_rationale_26",
+      "dnd_sim_dice_rationale_38",
+      "dnd_sim_dice_rationale_56",
+      "dnd_sim_dice_roll_d20",
+      "dnd_sim_dice_roll_dice",
+      "dnd_sim_dice_rollmode",
+      "dnd_sim_init",
+      "dnd_sim_init_rationale_1",
+      "dnd_sim_randomness",
+      "dnd_sim_randomness_pick",
+      "dnd_sim_randomness_py_random",
+      "dnd_sim_randomness_rationale_1",
+      "dnd_sim_randomness_rationale_11",
+      "dnd_sim_tactics",
+      "dnd_sim_tactics_extract",
+      "dnd_sim_tactics_first_target_policy",
+      "dnd_sim_tactics_random_policy",
+      "dnd_sim_tactics_rationale_1",
+      "dnd_sim_tactics_rationale_30",
+      "dnd_sim_tactics_rationale_39",
+      "inspect",
+      "re",
+      "typing"
+    ],
+    "1": [
+      "any",
+      "dnd_sim_actions",
+      "dnd_sim_actions_attackaction",
+      "dnd_sim_actions_attackaction_execute",
+      "dnd_sim_actions_attackaction_post_init",
+      "dnd_sim_actions_combataction",
+      "dnd_sim_actions_combataction_can_use",
+      "dnd_sim_actions_combataction_execute",
+      "dnd_sim_actions_combatcontext",
+      "dnd_sim_actions_combatcontext_enemies",
+      "dnd_sim_actions_combatcontext_living_enemies",
+      "dnd_sim_actions_living_enemies",
+      "dnd_sim_actions_log",
+      "dnd_sim_actions_multiattackaction_execute",
+      "dnd_sim_actions_rationale_1",
+      "dnd_sim_actions_rationale_33",
+      "dnd_sim_actions_rationale_39",
+      "dnd_sim_actions_valid_targets",
+      "dnd_sim_actions_weaponattackaction",
+      "dnd_sim_actions_weaponattackaction_execute",
+      "dnd_sim_actions_weaponattackaction_init",
+      "dnd_sim_attack_attack",
+      "dnd_sim_combat_attack_roll",
+      "dnd_sim_combat_rationale_47",
+      "dnd_sim_combat_resolve_roll_mode",
+      "dnd_sim_combatant_combatant",
+      "dnd_sim_combatant_combatant_alive",
+      "dnd_sim_combatant_combatant_dmg_bonus",
+      "dnd_sim_combatant_combatant_is_ally_of",
+      "dnd_sim_combatant_combatant_is_hostile_to",
+      "dnd_sim_combatant_combatant_post_init",
+      "dnd_sim_combatant_combatant_reset",
+      "dnd_sim_combatant_combatant_team",
+      "dnd_sim_combatant_combatant_to_hit",
+      "dnd_sim_combatant_monster_post_init",
+      "dnd_sim_combatant_playercharacter_post_init",
+      "dnd_sim_combatant_valid_targets"
+    ],
+    "2": [
+      "dnd_sim_abilities_abilities",
+      "dnd_sim_actions_attackentry",
+      "dnd_sim_actions_multiattackaction",
+      "dnd_sim_actions_multiattackaction_init",
+      "dnd_sim_data_loader",
+      "dnd_sim_data_loader_armor_class_value",
+      "dnd_sim_data_loader_damage_type",
+      "dnd_sim_data_loader_extract_multiattack_alternatives",
+      "dnd_sim_data_loader_load_monster",
+      "dnd_sim_data_loader_norm_name",
+      "dnd_sim_data_loader_rationale_1",
+      "dnd_sim_data_loader_rationale_133",
+      "dnd_sim_data_loader_rationale_161",
+      "dnd_sim_data_loader_rationale_33",
+      "dnd_sim_data_loader_rationale_6",
+      "dnd_sim_data_loader_rationale_68",
+      "dnd_sim_data_loader_rationale_99",
+      "dnd_sim_data_loader_simple_damage_modifiers",
+      "pytest",
+      "tests_test_loader",
+      "tests_test_loader_load_fixture",
+      "tests_test_loader_ogre_data",
+      "tests_test_loader_test_armor_class_as_list",
+      "tests_test_loader_test_armor_class_as_number",
+      "tests_test_loader_test_armor_class_helper",
+      "tests_test_loader_test_load_monster_maps_ogre",
+      "tests_test_loader_test_load_monster_maps_owlbear_multiattack",
+      "tests_test_loader_test_monster_without_valid_attacks_raises",
+      "tests_test_loader_test_no_handcrafted_monsters_in_source",
+      "tests_test_loader_test_owlbear_multiattack_exact_counts",
+      "warnings"
+    ],
+    "3": [
+      "dnd_sim_data_api_client",
+      "dnd_sim_data_api_client_cache_path",
+      "dnd_sim_data_api_client_get_monster",
+      "dnd_sim_data_api_client_monsternotfounderror",
+      "dnd_sim_data_api_client_networkerror",
+      "dnd_sim_data_api_client_rationale_1",
+      "dnd_sim_data_api_client_rationale_20",
+      "dnd_sim_data_api_client_rationale_24",
+      "dnd_sim_data_api_client_rationale_40",
+      "json",
+      "path",
+      "pathlib",
+      "runtimeerror",
+      "tests_test_loader_test_cache_avoids_second_network",
+      "tests_test_loader_test_cache_avoids_second_network_enter",
+      "tests_test_loader_test_cache_avoids_second_network_exit",
+      "tests_test_loader_test_cache_avoids_second_network_fake_urlopen",
+      "tests_test_loader_test_cache_avoids_second_network_read",
+      "urllib_error",
+      "urllib_request",
+      "valueerror"
+    ],
+    "4": [
+      "dataclasses",
+      "dnd_sim_abilities",
+      "dnd_sim_abilities_abilities_mod",
+      "dnd_sim_abilities_ability_mod",
+      "dnd_sim_abilities_rationale_1",
+      "dnd_sim_attack",
+      "dnd_sim_attack_attack_post_init",
+      "dnd_sim_attack_rationale_1",
+      "dnd_sim_combatant",
+      "dnd_sim_combatant_combatanttype",
+      "dnd_sim_combatant_py_enum",
+      "dnd_sim_combatant_rationale_1",
+      "dnd_sim_damage",
+      "dnd_sim_damage_damagetype",
+      "dnd_sim_damage_parse_damage_type",
+      "dnd_sim_damage_rationale_1",
+      "dnd_sim_damage_rationale_28",
+      "enum",
+      "str"
+    ],
+    "5": [
+      "argparse",
+      "argumentparser",
+      "dnd_sim_combatant_playercharacter",
+      "dnd_sim_stats",
+      "dnd_sim_stats_print_report",
+      "dnd_sim_stats_rationale_1",
+      "dnd_sim_stats_simulate",
+      "main",
+      "main_build_parser",
+      "main_load_party",
+      "main_main",
+      "main_parse_monster_token",
+      "main_rationale_1",
+      "main_rationale_22",
+      "random",
+      "statistics",
+      "sys",
+      "tests_test_damage_test_regression_guerrero_vs_ogro"
+    ],
+    "6": [
+      "dnd_sim_combatant_monster",
+      "dnd_sim_damage_apply_damage_modifiers",
+      "dnd_sim_damage_rationale_46",
+      "tests_test_damage",
+      "tests_test_damage_rationale_69",
+      "tests_test_damage_target",
+      "tests_test_damage_test_attack_roll_log_modifier",
+      "tests_test_damage_test_immune_target_takes_zero_damage",
+      "tests_test_damage_test_immunity_zero",
+      "tests_test_damage_test_invalid_damage_type_raises",
+      "tests_test_damage_test_no_modifiers_unchanged",
+      "tests_test_damage_test_resistance_halves_damage_floor",
+      "tests_test_damage_test_resistance_then_vulnerability_same_type",
+      "tests_test_damage_test_strings_are_converted",
+      "tests_test_damage_test_vulnerability_doubles_damage"
+    ],
+    "7": [
+      "dnd_sim_data_init",
+      "dnd_sim_data_init_rationale_1"
+    ]
+  },
+  "cohesion": {
+    "0": 0.11341463414634147,
+    "1": 0.10810810810810811,
+    "2": 0.12688172043010754,
+    "3": 0.11904761904761904,
+    "4": 0.1695906432748538,
+    "5": 0.20915032679738563,
+    "6": 0.2857142857142857,
+    "7": 1.0
+  },
+  "gods": [
+    {
+      "id": "dnd_sim_combatant_combatant",
+      "label": "Combatant",
+      "degree": 28
+    },
+    {
+      "id": "dnd_sim_data_loader_load_monster",
+      "label": "load_monster()",
+      "degree": 26
+    },
+    {
+      "id": "dnd_sim_combat_run_combat",
+      "label": "run_combat()",
+      "degree": 23
+    },
+    {
+      "id": "dnd_sim_attack_attack",
+      "label": "Attack",
+      "degree": 17
+    },
+    {
+      "id": "dnd_sim_combat_attack_roll",
+      "label": "attack_roll()",
+      "degree": 16
+    },
+    {
+      "id": "dnd_sim_damage_apply_damage_modifiers",
+      "label": "apply_damage_modifiers()",
+      "degree": 14
+    },
+    {
+      "id": "dnd_sim_damage_damagetype",
+      "label": "DamageType",
+      "degree": 12
+    },
+    {
+      "id": "dnd_sim_abilities_abilities",
+      "label": "Abilities",
+      "degree": 12
+    },
+    {
+      "id": "dnd_sim_actions_combatcontext",
+      "label": "CombatContext",
+      "degree": 12
+    },
+    {
+      "id": "dnd_sim_combatant_playercharacter",
+      "label": "PlayerCharacter",
+      "degree": 12
+    }
+  ],
+  "surprises": [
+    {
+      "source": "main()",
+      "target": "Attack",
+      "source_files": [
+        "main.py",
+        "dnd_sim/attack.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "_load_fixture()",
+      "target": "Combatant",
+      "source_files": [
+        "tests/test_loader.py",
+        "dnd_sim/combatant.py"
+      ],
+      "confidence": "INFERRED",
+      "relation": "uses",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "test_invalid_damage_type_raises()",
+      "target": "DamageType",
+      "source_files": [
+        "tests/test_damage.py",
+        "dnd_sim/damage.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "main()",
+      "target": "Abilities",
+      "source_files": [
+        "main.py",
+        "dnd_sim/abilities.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "test_attack_roll_log_modifier()",
+      "target": "Abilities",
+      "source_files": [
+        "tests/test_damage.py",
+        "dnd_sim/abilities.py"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}

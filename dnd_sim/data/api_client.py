@@ -78,15 +78,18 @@ def get_monster(
             raise MonsterNotFoundError(
                 f"El monstruo {index!r} no existe en la API ({url})."
             ) from exc
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/monsters/{index}.json"
         raise NetworkError(
-            f"Error HTTP {exc.code} al pedir {url}: {exc.reason}"
+            f"Error HTTP {exc.code} al pedir {url}: {exc.reason}. {hint}"
         ) from exc
     except urllib.error.URLError as exc:
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/monsters/{index}.json"
         raise NetworkError(
-            f"Sin red o error de conexión al pedir {url}: {exc.reason}"
+            f"Sin red o error de conexión al pedir {url}: {exc.reason}. {hint}"
         ) from exc
     except TimeoutError as exc:
-        raise NetworkError(f"Timeout al pedir {url}.") from exc
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/monsters/{index}.json"
+        raise NetworkError(f"Timeout al pedir {url}. {hint}") from exc
 
     # 3) Guardar en caché para futuras ejecuciones.
     try:

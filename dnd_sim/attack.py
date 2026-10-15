@@ -1,8 +1,7 @@
 """Definición de un ataque."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .damage import DamageType, parse_damage_type
-
 
 @dataclass
 class Attack:
@@ -13,6 +12,8 @@ class Attack:
     attack_bonus: int | None = None  # fija el ataque (útil en fichas de monstruo)
     damage_bonus: int | None = None  # fija el bonus al daño; si None usa el mod
     damage_type: DamageType = DamageType.SLASHING
+    only_in_multiattack: bool = False  # si True, no se ofrece como acción suelta
+    save_riders: list = field(default_factory=list)  # daño con salvación adicional
 
     def __post_init__(self) -> None:
         # Permite construir Attack con un str como damage_type.

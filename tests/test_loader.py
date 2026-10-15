@@ -1,5 +1,12 @@
 import json
+import random
 from pathlib import Path
+
+import pytest
+
+from dnd_sim.actions import AttackEntry, MultiattackAction
+from dnd_sim.combat import run_combat
+from dnd_sim.combatant import Combatant, PlayerCharacter
 
 import pytest
 
@@ -98,3 +105,48 @@ def test_monster_without_valid_attacks_raises(monkeypatch):
 
     with pytest.raises(ValueError):
         load_monster("ogre")
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+def _load_fixture(monkeypatch, index: str) -> Combatant:
+    data = json.loads((FIXTURES / f"{index}.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda name: data)
+    return load_monster(index)
+
+
+def test_load_monster_maps_owlbear_multiattack(monkeypatch):
+    c = _load_fixture(monkeypatch, "owlbear")
+    assert isinstance(c.multiattack, MultiattackAction)
+    assert len(c.multiattack.options) == 1
+    assert [(e.attack_name, e.count) for e in c.multiattack.options[0]] == [
+        ("Beak", 1), ("Claws", 1)
+    ]
+    # Los ataques referenciados no compiten como acciones sueltas.
+    assert all(getattr(a, "only_in_multiattack", False) for a in c.attacks
+               if a.name in ("Beak", "Claws"))
+
+
+def test_owlbear_multiattack_exact_counts(monkeypatch):
+    owlbear = _load_fixture(monkeypatch, "owlbear")
+    # Un objetivo inmortal para que se ejecuten muchos ataques.
+    from dnd_sim.abilities import Abilities
+    objetivo = PlayerCharacter(name="Objetivo", max_hp=100000, ac=30,
+                              abilities=Abilities(), attacks=[])
+    res = run_combat([objetivo, owlbear], random.Random(3), verbose=True)
+    beak = sum(" con Beak:" in line for line in res.log)
+    claws = sum(" con Claws:" in line for line in res.log)
+    assert beak == claws
+    assert beak + claws > 0
+
+
+def test_no_handcrafted_monsters_in_source():
+    root = Path(__file__).resolve().parents[1]
+    files = list((root / "dnd_sim").rglob("*.py")) + [root / "main.py"]
+    forbidden = []
+    for path in files:
+        text = path.read_text(encoding="utf-8")
+        if 'team="NPC"' in text or "team='NPC'" in text:
+            forbidden.append(str(path))
+    assert not forbidden, f"Monstruos a mano en código fuente: {forbidden}"
