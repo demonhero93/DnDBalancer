@@ -68,6 +68,46 @@ DAMAGE_TAKEN: list = []
 DAMAGE_TAKEN_CALLBACKS = DAMAGE_TAKEN
 DAMAGE_TAKEN_REACTIONS = DAMAGE_TAKEN
 
+# Registro global del daño infligido. Lo activa el motor de combate durante
+# cada combate (DamageRecorder) para las estadísticas de daño medio.
+# None = no hay grabación activa.
+DAMAGE_DEALT: list | None = None
+
+
+class DamageRecorder:
+    """Captura el daño infligido mientras el contexto está activo.
+
+    Es el equivalente estadístico del registro de reacciones: el daño siempre
+    pasa por :func:`inflict_damage`, así que basta con engancharlo ahí.
+    """
+
+    def __init__(self) -> None:
+        self.records: list = []
+        self._previous: list | None = None
+
+    def __enter__(self) -> "DamageRecorder":
+        global DAMAGE_DEALT
+        self._previous = DAMAGE_DEALT
+        DAMAGE_DEALT = self.records
+        return self
+
+    def __exit__(self, *exc) -> bool:
+        global DAMAGE_DEALT
+        DAMAGE_DEALT = self._previous
+        return False
+
+
+def _notify_damage_dealt(source, target, amount, damage_type) -> None:
+    """Anota el daño infligido (solo hay coste si hay grabación activa)."""
+    if DAMAGE_DEALT is None:
+        return
+    DAMAGE_DEALT.append({
+        "source": source,
+        "target": target,
+        "amount": int(amount or 0),
+        "damage_type": damage_type,
+    })
+
 
 def _notify_damage_taken(target, amount, damage_type, source):
     # 1) Métodos del objetivo.
@@ -153,6 +193,7 @@ def inflict_damage(target: "Combatant", amount: int,
             dt = parse_damage_type(dt)
     except Exception:
         pass
+    _notify_damage_dealt(source, target, amt, dt)
     _notify_damage_taken(target, amt, dt, source)
     return amt
 

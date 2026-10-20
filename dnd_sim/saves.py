@@ -194,6 +194,107 @@ def _inflict_for_save(target: Any, amount: int, damage_type: Any,
     inflict_damage(target, amount, damage_type, source=source)
 
 
+@dataclass
+class SaveDamageOutcome:
+    """Resultado de aplicar un daño con salvación a un objetivo."""
+
+    save: SaveResult
+    rolled_damage: int
+    damage_after_save: int
+    final_damage: int
+    damage_type: Any = None
+
+
+def _mode_tag(save: SaveResult) -> str:
+    """ Sufijo de log con la tirada (ventaja/desventaja)."""
+    if save.mode == RollMode.ADVANTAGE:
+        return f" (ventaja: {save.rolls[0]}, {save.rolls[1]} -> {save.value - save.bonus})"
+    if save.mode == RollMode.DISADVANTAGE:
+        return f" (desventaja: {save.rolls[0]}, {save.rolls[1]} -> {save.value - save.bonus})"
+    return ""
+
+
+def _outcome_tag(save: SaveResult, on_success: str) -> str:
+    """Etiqueta de log del resultado de la salvación."""
+    if save.success and on_success == "half":
+        return "mitad"
+    if save.success and on_success == "none":
+        return "ninguno"
+    return "completo"
+
+
+def apply_save_damage(source: Any, target: Any, effect: SaveDamage,
+                       rolled_damage: int, ctx: Any, on_resolved=None) -> SaveDamageOutcome:
+    """Núcleo del daño con salvación: el daño **ya está tirado**.
+
+    Hace, en este orden: tirada de salvación propia del objetivo ->
+    aplicación de ``on_success`` (mitad/nada/completo) -> resistencias,
+    vulnerabilidades e inmunidades del objetivo -> ``inflict_damage``.
+
+    ``on_resolved`` es un callback opcional que recibe el
+    :class:`SaveDamageOutcome` justo antes de infligir el daño (permite
+    loguear con el daño final ya calculado).
+
+    No tira el daño: eso es responsabilidad de quien llama (así un área puede
+    compartir la misma tirada base entre varios objetivos).
+    """
+    eff = effect
+    if not isinstance(eff, SaveDamage):
+        eff = SaveDamage(
+            ability=getattr(effect, "ability", "dex"),
+            dc=getattr(effect, "dc", 0),
+            damage=getattr(effect, "damage", "0"),
+            damage_type=getattr(effect, "damage_type", "bludgeoning"),
+            on_success=getattr(effect, "on_success", "none"),
+        )
+
+    rng = getattr(ctx, "rng", None)
+    if rng is None and hasattr(ctx, "randint"):
+        rng = ctx
+
+    raw_damage = int(rolled_damage)
+
+    # 1. Tirar salvación (la del objetivo: ventaja/desventaja propias).
+    sr = saving_throw(target, eff.ability, int(eff.dc), rng)
+
+    # 2. Aplicar el éxito de la salvación.
+    if sr.success:
+        if eff.on_success == "half":
+            dmg_after_save = raw_damage // 2
+        else:
+            dmg_after_save = 0
+    else:
+        dmg_after_save = raw_damage
+
+    # 3. Aplicar modificadores del objetivo.
+    dt = eff.damage_type
+    try:
+        dt = parse_damage_type(dt)
+    except Exception:
+        pass
+    final = apply_damage_modifiers(int(dmg_after_save), dt, target)
+
+    outcome = SaveDamageOutcome(
+        save=sr,
+        rolled_damage=raw_damage,
+        damage_after_save=int(dmg_after_save),
+        final_damage=int(final),
+        damage_type=dt,
+    )
+
+    # 4. Log (antes de infligir, como en el flujo original).
+    if on_resolved is not None:
+        try:
+            on_resolved(outcome)
+        except Exception:
+            pass
+
+    # 5. Infligir daño por la función única.
+    _inflict_for_save(target, final, dt, source)
+
+    return outcome
+
+
 def resolve_save_damage(source: Any, target: Any, effect: SaveDamage,
                         ctx: Any) -> int:
     """Resuelve daño con salvación. Devuelve el daño final infligido.
@@ -221,49 +322,23 @@ def resolve_save_damage(source: Any, target: Any, effect: SaveDamage,
     # 1. Tirar daño completo UNA vez.
     raw_damage = roll_dice(str(eff.damage), rng)
 
-    # 2. Tirar salvación.
-    sr = saving_throw(target, eff.ability, int(eff.dc), rng)
-
-    # 3. Aplicar éxito.
-    if sr.success:
-        if eff.on_success == "half":
-            dmg_after_save = raw_damage // 2
-            outcome = "éxito, daño %d -> %d (mitad)" % (raw_damage, dmg_after_save)
-        else:
-            dmg_after_save = 0
-            outcome = "éxito, daño %d -> 0 (ninguno)" % raw_damage
-    else:
-        dmg_after_save = raw_damage
-        outcome = "fallo, daño %d" % raw_damage
-
-    # Log Rolls info
-    if verbose:
+    def _log_line_outcome(outcome: SaveDamageOutcome) -> None:
+        if not verbose:
+            return
+        sr = outcome.save
         roll_value = sr.total - sr.bonus
-        mode_tag = ""
-        if sr.mode == RollMode.ADVANTAGE:
-            mode_tag = f" (ventaja: {sr.rolls[0]}, {sr.rolls[1]} -> {roll_value})"
-        elif sr.mode == RollMode.DISADVANTAGE:
-            mode_tag = f" (desventaja: {sr.rolls[0]}, {sr.rolls[1]} -> {roll_value})"
-        outcome_tag = "mitad" if (sr.success and eff.on_success == "half") else (
-            "ninguno" if (sr.success and eff.on_success == "none") else "completo"
-        )
+        mode_tag = _mode_tag(sr)
+        outcome_tag = _outcome_tag(sr, eff.on_success)
         _log_line(ctx, f"  {getattr(source, 'name', source)} -> {getattr(target, 'name', target)}: "
                  f"salvación {sr.ability.upper()} {roll_value}{mode_tag}+{sr.bonus}={sr.total} "
                  f"vs CD {sr.dc}, {'éxito' if sr.success else 'fallo'}, "
-                 f"daño {raw_damage} -> {dmg_after_save} ({outcome_tag})")
+                 f"daño {outcome.rolled_damage} -> {outcome.damage_after_save} ({outcome_tag})")
 
-    # 4. Aplicar modificadores.
-    dt = eff.damage_type
-    try:
-        dt = parse_damage_type(dt)
-    except Exception:
-        pass
-    final = apply_damage_modifiers(int(dmg_after_save), dt, target)
+    # 2. Núcleo: salvación, modificadores del objetivo e infligir daño.
+    outcome = apply_save_damage(source, target, eff, raw_damage, ctx,
+                                on_resolved=_log_line_outcome)
 
-    # 5. Infligir daño por la función única.
-    _inflict_for_save(target, final, dt, source)
-
-    return int(final)
+    return int(outcome.final_damage)
 
 
 # Exportar normalize para uso interno también.
@@ -273,5 +348,7 @@ __all__ = [
     "SaveResult",
     "saving_throw",
     "SaveDamage",
+    "SaveDamageOutcome",
+    "apply_save_damage",
     "resolve_save_damage",
 ]

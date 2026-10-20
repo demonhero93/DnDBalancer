@@ -24,3 +24,31 @@ def pick(rng: random.Random, options):
     if len(seq) == 1:
         return seq[0]
     return seq[rng.randrange(len(seq))]
+
+
+def sample(rng: random.Random, options, k: int):
+    """Elige ``k`` elementos **distintos** de ``options`` sin reemplazo.
+
+    Se apoya en :func:`pick`, así que si queda una sola opción disponible no
+    se consume el RNG (misma convención que el resto del simulador).
+
+    Si ``k >= len(options)`` devuelve **todos** los elementos **sin consumir
+    el RNG** (no hace falta sortear nada).
+    """
+    pool = list(options)
+    total = len(pool)
+    count = int(k)
+    if count >= total:
+        return pool
+    if count <= 0:
+        return []
+    chosen = []
+    for _ in range(count):
+        item = pick(rng, pool)
+        chosen.append(item)
+        # Se elimina por identidad para no confundir objetos iguales.
+        for pos, candidate in enumerate(pool):
+            if candidate is item:
+                pool.pop(pos)
+                break
+    return chosen

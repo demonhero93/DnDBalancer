@@ -1,0 +1,15 @@
+{
+  "0": "test_area.py",
+  "1": "combat.py",
+  "2": "api_client.py",
+  "3": "test_usage.py",
+  "4": "dnd_sim/__init__.py",
+  "5": "combatant.py",
+  "6": "actions.py",
+  "8": "run_combat",
+  "9": "load_monster",
+  "10": "test_loader_actions.py",
+  "11": "multiattack_parser.py",
+  "12": "usage_parser.py",
+  "13": "loader.py"
+}

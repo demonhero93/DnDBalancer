@@ -28,7 +28,13 @@ def _extract(args, kwargs):
 
 def random_policy(*args, **kwargs):
     """Elige uniformemente entre las opciones disponibles (si hay una sola,
-    no consume el RNG gracias a :func:`pick`)."""
+    no consume el RNG gracias a :func:`pick`).
+
+    Las opciones ya vienen filtradas por ``can_use`` (turno y uso limitado),
+    así que una acción agotada (p. ej. un aliento descargado) nunca se elige.
+    Un dragón con Multiataque y Aliento **cargado** elige entre ambos con
+    ~50%: la política no es estratégica, es uniforme.
+    """
     ctx, choices, rng = _extract(args, kwargs)
     if not choices:
         return None

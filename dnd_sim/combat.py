@@ -1,7 +1,7 @@
 """Motor de combate: ataques, iniciativa y bucle de rondas."""
 import inspect
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 try:
     from .actions import (
@@ -14,10 +14,11 @@ try:
     )
     from .attack import Attack
     from .combatant import Combatant, CombatantType, valid_targets
-    from .damage import apply_damage_modifiers, inflict_damage
+    from .damage import DamageRecorder, apply_damage_modifiers, inflict_damage
     from .dice import RollMode, d20, roll_d20, roll_dice
     from .randomness import pick
     from .tactics import first_target_policy, random_policy
+    from .usage import begin_turn
 except ImportError:
     from actions import (
         ActionType,
@@ -29,10 +30,14 @@ except ImportError:
     )
     from attack import Attack
     from combatant import Combatant, CombatantType, valid_targets
-    from damage import apply_damage_modifiers, inflict_damage
+    from damage import DamageRecorder, apply_damage_modifiers, inflict_damage
     from dice import RollMode, d20, roll_d20, roll_dice
     from randomness import pick
     from tactics import first_target_policy, random_policy
+    try:
+        from usage import begin_turn
+    except ImportError:
+        from dnd_sim.usage import begin_turn
 
 
 @dataclass
@@ -41,6 +46,29 @@ class CombatResult:
     rounds: int
     survivors: dict[str, int]  # nombre -> hp restante
     log: list[str]
+    # Estadísticas: usos por nombre de acción y objetivos afectados por área.
+    action_uses: dict[str, int] = field(default_factory=dict)
+    area_targets_hit: list[int] = field(default_factory=list)
+    # Daño del combate por combatiente (nombre -> daño total).
+    damage_dealt: dict[str, int] = field(default_factory=dict)
+    damage_received: dict[str, int] = field(default_factory=dict)
+
+
+def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
+    """Reparte el daño registrado por combatiente (infligido y recibido)."""
+    dealt: dict[str, int] = {}
+    received: dict[str, int] = {}
+    for record in records or []:
+        amount = int(record.get("amount") or 0)
+        source = record.get("source")
+        target = record.get("target")
+        source_name = getattr(source, "name", None)
+        target_name = getattr(target, "name", None)
+        if source_name:
+            dealt[source_name] = dealt.get(source_name, 0) + amount
+        if target_name:
+            received[target_name] = received.get(target_name, 0) + amount
+    return dealt, received
 
 
 def resolve_roll_mode(attacker: Combatant, target: Combatant) -> RollMode:
@@ -166,6 +194,23 @@ def _invoke_policy(policy, ctx: CombatContext, candidates: list):
 def run_combat(combatants: list[Combatant], rng: random.Random,
                verbose: bool = False, max_rounds: int = 100,
                policy=None) -> CombatResult:
+    """Ejecuta un combate y devuelve el resultado con sus estadísticas.
+
+    El daño infligido se registra durante el combate (:class:`DamageRecorder`)
+    para poder informar del daño medio de cada combatiente.
+    """
+    with DamageRecorder() as recorder:
+        result = _run_combat(combatants, rng, verbose=verbose, max_rounds=max_rounds,
+                             policy=policy)
+    dealt, received = _summarize_damage(recorder.records)
+    result.damage_dealt = dealt
+    result.damage_received = received
+    return result
+
+
+def _run_combat(combatants: list[Combatant], rng: random.Random,
+                verbose: bool = False, max_rounds: int = 100,
+                policy=None) -> CombatResult:
     if policy is None:
         policy = random_policy
     for c in combatants:
@@ -174,6 +219,9 @@ def run_combat(combatants: list[Combatant], rng: random.Random,
 
     log: list[str] = []
     rnd = 0
+    # Estadísticas del combate (compartidas por todos los turnos).
+    action_uses: dict[str, int] = {}
+    area_targets_hit: list[int] = []
     while rnd < max_rounds:
         rnd += 1
         if verbose:
@@ -184,11 +232,14 @@ def run_combat(combatants: list[Combatant], rng: random.Random,
             enemies = valid_targets(actor, combatants=order)
             if not enemies:
                 break
-            resources = TurnResources()
             ctx = CombatContext(
                 rng=rng, actor=actor, combatants=order, round=rnd,
-                log=log if verbose else None, verbose=verbose, resources=resources,
+                log=log if verbose else None, verbose=verbose, resources=None,
+                action_uses=action_uses, area_targets_hit=area_targets_hit,
             )
+            # Inicio de turno: recursos nuevos y tiradas de recarga de las
+            # acciones descargadas del actor.
+            resources = begin_turn(actor, ctx)
             # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
             for action_type in (ActionType.ACTION, ActionType.BONUS_ACTION):
                 candidates = [
@@ -203,6 +254,13 @@ def run_combat(combatants: list[Combatant], rng: random.Random,
                     chosen = pick(rng, candidates)
                 chosen.execute(ctx)
                 resources.use(action_type)
+                # El uso limitado se gasta aquí (una vez, aunque el área
+                # afecte a pocos objetivos).
+                usage = getattr(chosen, "usage", None)
+                if usage is not None:
+                    usage.spend()
+                action_name = getattr(chosen, "name", "") or type(chosen).__name__
+                action_uses[action_name] = action_uses.get(action_name, 0) + 1
                 enemies = valid_targets(actor, combatants=order)
                 if not enemies:
                     break
@@ -223,4 +281,5 @@ def run_combat(combatants: list[Combatant], rng: random.Random,
         winner = "NPC"
     else:
         winner = "Empate"
-    return CombatResult(winner, rnd, {c.name: max(c.hp, 0) for c in order}, log)
+    return CombatResult(winner, rnd, {c.name: max(c.hp, 0) for c in order}, log,
+                        action_uses=action_uses, area_targets_hit=area_targets_hit)

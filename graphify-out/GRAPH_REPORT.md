@@ -1,96 +1,129 @@
-# Graph Report - DnDBalancer  (2026-10-15)
+# Graph Report - DnDBalancer  (2026-10-20)
 
 ## Corpus Check
-- cluster-only mode — file stats not available
+- 35 files · ~18,808 words
+- Verdict: corpus is large enough that graph structure adds value.
+- Unclassified: 2 file(s) not represented in the graph (top: (none) 1, .ini 1)
 
 ## Summary
-- 184 nodes · 521 edges · 8 communities (7 shown, 1 thin omitted)
-- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 33 edges (avg confidence: 0.9)
+- 427 nodes · 1304 edges · 14 communities (12 shown, 2 thin omitted)
+- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 101 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
+## Graph Freshness
+- Built from commit: `2b5d6b37`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
+
 ## Community Hubs (Navigation)
-- dnd_sim/__init__.py
-- Combatant
-- test_loader.py
+- test_area.py
+- combat.py
 - api_client.py
+- test_usage.py
+- dnd_sim/__init__.py
 - combatant.py
-- main.py
-- test_damage.py
+- actions.py
+- run_combat
+- load_monster
+- test_loader_actions.py
+- multiattack_parser.py
+- usage_parser.py
+- loader.py
 
 ## God Nodes (most connected - your core abstractions)
-1. `Combatant` - 28 edges
-2. `load_monster()` - 26 edges
-3. `run_combat()` - 23 edges
-4. `Attack` - 17 edges
-5. `attack_roll()` - 16 edges
-6. `apply_damage_modifiers()` - 14 edges
-7. `CombatContext` - 12 edges
-8. `Abilities` - 12 edges
-9. `DamageType` - 12 edges
-10. `PlayerCharacter` - 12 edges
+1. `load_monster()` - 41 edges
+2. `run_combat()` - 33 edges
+3. `Combatant` - 33 edges
+4. `ActionUsage` - 27 edges
+5. `UsageKind` - 24 edges
+6. `CombatContext` - 23 edges
+7. `Abilities` - 22 edges
+8. `PlayerCharacter` - 22 edges
+9. `SaveDamage` - 22 edges
+10. `AreaTargeting` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `main()` --uses--> `Attack`  [INFERRED]
-  main.py → dnd_sim/attack.py
-- `_load_fixture()` --uses--> `Combatant`  [INFERRED]
-  tests/test_loader.py → dnd_sim/combatant.py
-- `test_attack_roll_log_modifier()` --calls--> `Attack`  [EXTRACTED]
-  tests/test_damage.py → dnd_sim/attack.py
-- `test_immune_target_takes_zero_damage()` --calls--> `Attack`  [EXTRACTED]
-  tests/test_damage.py → dnd_sim/attack.py
-- `test_regression_guerrero_vs_ogro()` --calls--> `Attack`  [EXTRACTED]
-  tests/test_damage.py → dnd_sim/attack.py
+- `test_multiattack_del_owlbear_no_cambia()` --uses--> `AttackAction`  [INFERRED]
+  tests/test_multiattack.py → dnd_sim/actions.py
+- `test_load_monster_maps_owlbear_multiattack()` --uses--> `MultiattackAction`  [INFERRED]
+  tests/test_loader.py → dnd_sim/actions.py
+- `test_multiattack_de_la_quimera_se_parsea_desde_action_options()` --uses--> `MultiattackAction`  [INFERRED]
+  tests/test_multiattack.py → dnd_sim/actions.py
+- `test_aliento_mapeado_a_area_con_recarga()` --uses--> `AreaTargeting`  [INFERRED]
+  tests/test_loader_actions.py → dnd_sim/area.py
+- `_area_action()` --uses--> `AreaSaveAction`  [INFERRED]
+  tests/test_loader_actions.py → dnd_sim/area.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (8 total, 1 thin omitted)
+## Communities (14 total, 2 thin omitted)
 
-### Community 0 - "dnd_sim/__init__.py"
-Cohesion: 0.11
-Nodes (15): ActionType, TurnResources, CombatResult, _invoke_policy(), roll_initiative(), run_combat(), d20(), D20Result (+7 more)
+### Community 0 - "test_area.py"
+Cohesion: 0.10
+Nodes (28): ActionType, SaveAction, TurnResources, AreaSaveAction, AreaTargeting, select_area_targets(), build_save_action(), build_save_effect() (+20 more)
 
-### Community 1 - "Combatant"
-Cohesion: 0.11
-Nodes (12): AttackAction, CombatAction, CombatContext, _living_enemies(), _log(), _valid_targets(), WeaponAttackAction, Attack (+4 more)
+### Community 1 - "combat.py"
+Cohesion: 0.14
+Nodes (9): CombatResult, _invoke_policy(), roll_initiative(), _run_combat(), _summarize_damage(), DamageRecorder, _extract(), first_target_policy() (+1 more)
 
-### Community 2 - "test_loader.py"
-Cohesion: 0.13
-Nodes (18): Abilities, AttackEntry, MultiattackAction, _armor_class_value(), _damage_type(), _extract_multiattack_alternatives(), load_monster(), _norm_name() (+10 more)
-
-### Community 3 - "api_client.py"
+### Community 2 - "api_client.py"
 Cohesion: 0.12
 Nodes (5): _cache_path(), get_monster(), MonsterNotFoundError, NetworkError, test_cache_avoids_second_network()
 
-### Community 4 - "combatant.py"
-Cohesion: 0.17
-Nodes (4): ability_mod(), CombatantType, DamageType, parse_damage_type()
+### Community 3 - "test_usage.py"
+Cohesion: 0.08
+Nodes (26): ActionUsage, begin_turn(), _log_line(), UsageKind, _breath(), _eventos(), _FixedRandom, _load_fixture() (+18 more)
 
-### Community 5 - "main.py"
+### Community 4 - "dnd_sim/__init__.py"
+Cohesion: 0.08
+Nodes (28): ability_mod(), _log_target(), _log_line(), _valid_targets(), d20(), D20Result, roll_d20(), roll_dice() (+20 more)
+
+### Community 5 - "combatant.py"
+Cohesion: 0.08
+Nodes (21): Attack, attack_roll(), resolve_roll_mode(), Combatant, CombatantType, Monster, normalize_ability(), apply_damage_modifiers() (+13 more)
+
+### Community 6 - "actions.py"
+Cohesion: 0.11
+Nodes (8): CombatAction, CombatContext, _living_enemies(), _log(), MultiattackAction, _valid_targets(), WeaponAttackAction, valid_targets()
+
+### Community 8 - "run_combat"
+Cohesion: 0.09
+Nodes (29): Abilities, run_combat(), PlayerCharacter, print_report(), simulate(), build_parser(), _build_party(), _load_party() (+21 more)
+
+### Community 9 - "load_monster"
 Cohesion: 0.21
-Nodes (8): PlayerCharacter, print_report(), simulate(), build_parser(), _load_party(), main(), _parse_monster_token(), test_regression_guerrero_vs_ogro()
+Nodes (11): _armor_class_value(), load_monster(), _load_fixture(), _ogre_data(), test_armor_class_as_list(), test_armor_class_as_number(), test_armor_class_helper(), test_load_monster_maps_ogre() (+3 more)
 
-### Community 6 - "test_damage.py"
-Cohesion: 0.29
-Nodes (12): Monster, apply_damage_modifiers(), _target(), test_attack_roll_log_modifier(), test_immune_target_takes_zero_damage(), test_immunity_zero(), test_invalid_damage_type_raises(), test_no_modifiers_unchanged() (+4 more)
+### Community 10 - "test_loader_actions.py"
+Cohesion: 0.13
+Nodes (15): AttackAction, is_area_action(), _area_action(), _data(), _load(), _raw_action(), test_accion_con_dc_sin_dano_sigue_ignorada(), test_accion_con_usage_desconocido_se_omite() (+7 more)
+
+### Community 11 - "multiattack_parser.py"
+Cohesion: 0.18
+Nodes (6): AttackEntry, _extract_multiattack_alternatives(), extract_multiattack_alternatives(), _norm_name(), _opcion_a_entrada(), resolve_multiattack()
+
+### Community 12 - "usage_parser.py"
+Cohesion: 0.19
+Nodes (6): _simple_damage_modifiers(), parse_usage(), UnknownUsageError, _warn(), test_usage_parser_cada_tipo(), test_usage_parser_tipo_desconocido_avisa()
 
 ## Knowledge Gaps
-- **1 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `load_monster()` connect `test_loader.py` to `dnd_sim/__init__.py`, `Combatant`, `api_client.py`, `combatant.py`, `main.py`, `test_damage.py`?**
-  _High betweenness centrality (0.089) - this node is a cross-community bridge._
-- **Are the 10 inferred relationships involving `Combatant` (e.g. with `attack_roll()` and `resolve_roll_mode()`) actually correct?**
-  _`Combatant` has 10 INFERRED edges - model-reasoned connections that need verification._
-- **Should `dnd_sim/__init__.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.11341463414634147 - nodes in this community are weakly interconnected._
-- **Why does `Combatant` connect `Combatant` to `dnd_sim/__init__.py`, `test_loader.py`, `combatant.py`, `main.py`, `test_damage.py`?**
-  _High betweenness centrality (0.087) - this node is a cross-community bridge._
-- **Are the 5 inferred relationships involving `run_combat()` (e.g. with `ActionType` and `.use()`) actually correct?**
-  _`run_combat()` has 5 INFERRED edges - model-reasoned connections that need verification._
-- **Should `Combatant` be split into smaller, more focused modules?**
-  _Cohesion score 0.10810810810810811 - nodes in this community are weakly interconnected._
-- **Why does `get_monster()` connect `api_client.py` to `test_loader.py`?**
-  _High betweenness centrality (0.069) - this node is a cross-community bridge._
+- **Why does `load_monster()` connect `load_monster` to `test_area.py`, `api_client.py`, `test_usage.py`, `dnd_sim/__init__.py`, `combatant.py`, `actions.py`, `run_combat`, `test_loader_actions.py`, `multiattack_parser.py`, `usage_parser.py`, `loader.py`?**
+  _High betweenness centrality (0.085) - this node is a cross-community bridge._
+- **Are the 13 inferred relationships involving `Combatant` (e.g. with `attack_roll()` and `resolve_roll_mode()`) actually correct?**
+  _`Combatant` has 13 INFERRED edges - model-reasoned connections that need verification._
+- **Should `test_area.py` be split into smaller, more focused modules?**
+  _Cohesion score 0.10407239819004525 - nodes in this community are weakly interconnected._
+- **Why does `run_combat()` connect `run_combat` to `combat.py`, `test_usage.py`, `dnd_sim/__init__.py`, `combatant.py`, `actions.py`, `load_monster`?**
+  _High betweenness centrality (0.049) - this node is a cross-community bridge._
+- **Are the 3 inferred relationships involving `ActionUsage` (e.g. with `AttackAction` and `CombatAction`) actually correct?**
+  _`ActionUsage` has 3 INFERRED edges - model-reasoned connections that need verification._
+- **Should `combat.py` be split into smaller, more focused modules?**
+  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
+- **Why does `ActionUsage` connect `test_usage.py` to `test_area.py`, `dnd_sim/__init__.py`, `combatant.py`, `actions.py`, `test_loader_actions.py`, `usage_parser.py`?**
+  _High betweenness centrality (0.046) - this node is a cross-community bridge._

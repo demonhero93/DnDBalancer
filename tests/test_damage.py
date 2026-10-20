@@ -109,3 +109,48 @@ def test_attack_roll_log_modifier(monkeypatch, capsys):
     b = Monster(name="B", max_hp=20, ac=5, vulnerabilities={"fire"})
     res = run_combat([a, b], random.Random(1), verbose=True)
     assert any("(vulnerable:" in line for line in res.log)
+
+
+def _guerrero_y_ogro(monkeypatch):
+    data = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
+    guerrero = PlayerCharacter(
+        name="Guerrero", max_hp=28, ac=18, proficiency=2,
+        abilities=Abilities(str=16, dex=12, con=14, int=10, wis=12, cha=8),
+        attacks=[Attack("Espada larga", "1d8", ability="str")],
+    )
+    return guerrero, load_monster("ogre")
+
+
+def test_danio_medio_por_combatiente_y_equipo(monkeypatch):
+    guerrero, ogro = _guerrero_y_ogro(monkeypatch)
+    stats = simulate([guerrero, ogro], n=50, seed=1)
+
+    assert stats["teams"]["Guerrero"] == "PJ"
+    assert stats["teams"]["Ogre"] == "NPC"
+
+    # El ogre inflige y recibe daño; el PJ recibe (y a veces inflige).
+    assert stats["damage_dealt_avg"]["Ogre"] > 0
+    assert stats["damage_received_avg"]["Guerrero"] > 0
+    assert stats["damage_received_avg"]["Ogre"] > 0
+
+    # El daño infligido por el ogre es el que recibe el PJ (y viceversa).
+    assert stats["damage_dealt_avg"]["Ogre"] == pytest.approx(
+        stats["damage_received_avg"]["Guerrero"], rel=1e-9)
+
+
+def test_informe_final_con_apartados_de_pj_y_monstruros(monkeypatch, capsys):
+    from dnd_sim.stats import print_report
+
+    guerrero, ogro = _guerrero_y_ogro(monkeypatch)
+    stats = simulate([guerrero, ogro], n=20, seed=1)
+    print_report(stats)
+    salida = capsys.readouterr().out
+
+    assert "Daño medio de combate:" in salida
+    assert "PJ:" in salida
+    assert "Monstruos:" in salida
+    assert "Guerrero:" in salida
+    assert "Ogre:" in salida
+    # Los usos medios por combate se han sustituido por el daño medio.
+    assert "Usos medios por combate" not in salida

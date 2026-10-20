@@ -166,6 +166,15 @@ class Combatant:
 
     def reset(self) -> None:
         self.hp = self.max_hp
+        # Los usos limitados (usos por día, recargas) viven en las acciones,
+        # no en el combatiente: se reinician aquí.
+        for action in getattr(self, "actions", []) or []:
+            usage = getattr(action, "usage", None)
+            if usage is not None:
+                try:
+                    usage.reset()
+                except Exception:
+                    pass
 
     def is_hostile_to(self, other) -> bool:
         if other is self:

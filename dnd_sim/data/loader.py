@@ -14,6 +14,10 @@ try:
     from ..damage import DamageType
     from ..saves import SaveDamage, normalize_ability
     from .api_client import get_monster
+    from .multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
+    from .save_builder import (build_save_action, build_save_effect,
+                               damage_dice_of, damage_type_of)
+    from .usage_parser import UnknownUsageError, parse_usage
 except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
     try:
         from abilities import Abilities
@@ -23,6 +27,10 @@ except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
         from damage import DamageType
         from saves import SaveDamage, normalize_ability
         from api_client import get_monster
+        from multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
+        from save_builder import (build_save_action, build_save_effect,
+                                  damage_dice_of, damage_type_of)
+        from usage_parser import UnknownUsageError, parse_usage
     except ImportError:
         from dnd_sim.abilities import Abilities
         from dnd_sim.actions import ActionType, AttackEntry, MultiattackAction, SaveAction
@@ -31,6 +39,11 @@ except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
         from dnd_sim.damage import DamageType
         from dnd_sim.saves import SaveDamage, normalize_ability
         from dnd_sim.data.api_client import get_monster
+        from dnd_sim.data.multiattack_parser import (extract_multiattack_alternatives,
+                                                      resolve_multiattack)
+        from dnd_sim.data.save_builder import (build_save_action, build_save_effect,
+                                               damage_dice_of, damage_type_of)
+        from dnd_sim.data.usage_parser import UnknownUsageError, parse_usage
 
 
 def _armor_class_value(raw) -> int:
@@ -60,12 +73,8 @@ def _armor_class_value(raw) -> int:
 
 
 def _damage_type(entry: dict) -> str:
-    dt = entry.get("damage_type") or {}
-    if isinstance(dt, dict):
-        return str(dt.get("index") or dt.get("name") or "bludgeoning").lower()
-    if isinstance(dt, str):
-        return dt.lower()
-    return "bludgeoning"
+    """Alias del helper compartido (compatibilidad interna)."""
+    return damage_type_of(entry)
 
 
 def _simple_damage_modifiers(values) -> set:
@@ -100,37 +109,8 @@ def _norm_name(value: str) -> str:
 
 
 def _extract_multiattack_alternatives(raw_action: dict) -> list[list[dict]]:
-    """Obtiene la lista de alternativas (cada una = lista de dicts con action_name/count).
-
-    Soporta:
-    - Formato confirmado de la API: {"multiattack_type":"actions","actions":[{...}]}
-      -> una sola alternativa.
-    - Campos alternativos si aparecen en otras variantes: action_options / options.
-    """
-    # Alternativas explícitas.
-    for key in ("action_options", "options", "multiattack_options"):
-        opts = raw_action.get(key)
-        if isinstance(opts, (list, tuple)) and opts:
-            alternatives = []
-            for opt in opts:
-                if isinstance(opt, (list, tuple)):
-                    alternatives.append([{"action_name": e.get("action_name") or e.get("name"),
-                                         "count": e.get("count", 1)} for e in opt])
-                elif isinstance(opt, dict):
-                    acts = opt.get("actions") or opt.get("entries") or []
-                    alternatives.append([{"action_name": e.get("action_name") or e.get("name"),
-                                         "count": e.get("count", 1)} for e in acts])
-            if alternatives:
-                return alternatives
-
-    # Formato habitual: una alternativa con la lista de actions.
-    acts = raw_action.get("actions")
-    if isinstance(acts, (list, tuple)) and acts and all(isinstance(e, dict) for e in acts):
-        if any("action_name" in e or "name" in e for e in acts):
-            return [[{"action_name": e.get("action_name") or e.get("name"),
-                      "count": e.get("count", 1)} for e in acts]]
-
-    return []
+    """Alternativas del multiataque (delegado al parser de la API)."""
+    return extract_multiattack_alternatives(raw_action)
 
 
 def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
@@ -183,50 +163,20 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         damage_list = action.get("damage") or []
         dc_info = action.get("dc")
 
-        # Acciones de salvación propias (con dc + daño), posiblemente usage.
+        # Acciones de salvación propias (con dc + daño), con uso limitado
+        # opcional ("recharge on roll", "per day"...).
         if attack_bonus is None and isinstance(dc_info, dict) and damage_list:
-            if action.get("usage"):
-                warnings.warn(
-                    f"Acción {name!r} de {monster_name!r} tiene dc y usage "
-                    f"({action.get('usage')!r}): se omite. "
-                    f"# TODO: requiere control de usos.",
-                    stacklevel=2,
-                )
-                continue
-            first_damage = damage_list[0]
-            dice = (
-                first_damage.get("damage_dice")
-                or first_damage.get("damage")
-                or first_damage.get("dice")
-            )
-            if not dice:
-                continue
-            dc_type = dc_info.get("dc_type") or {}
-            dc_abbr = None
-            if isinstance(dc_type, dict):
-                dc_abbr = dc_type.get("index") or dc_type.get("name")
-            elif isinstance(dc_type, str):
-                dc_abbr = dc_type
-            ability = normalize_ability(dc_abbr) if dc_abbr else "dex"
-            success_type = str(dc_info.get("success_type") or "none").lower()
-            on_success = "half" if success_type == "half" else "none"
             try:
-                eff = SaveDamage(
-                    ability=ability,
-                    dc=int(dc_info.get("dc_value", 0)),
-                    damage=str(dice),
-                    damage_type=_damage_type(first_damage),
-                    on_success=on_success,
-                )
-                save_actions.append(
-                    SaveAction(
-                        name=action.get("name", "Salvación"),
-                        effect=eff,
-                        action_type=ActionType.ACTION,
-                    )
-                )
-            except Exception:
+                usage = parse_usage(action.get("usage"), monster_name, name)
+            except UnknownUsageError:
+                # Tipo de uso desconocido: se omite la acción (ya avisado).
                 continue
+            # TODO: con varias entradas de damage en un área se usa la primera.
+            eff = build_save_effect(dc_info, damage_list[0])
+            if eff is None:
+                continue
+            # De área (según el clasificador) o de objetivo único.
+            save_actions.append(build_save_action(action, eff, usage))
             continue
 
         # Acciones con dc sin daño (condiciones) -> se ignoran con TODO.
@@ -248,11 +198,7 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
 
         first_damage = main_candidates[0]
 
-        damage_dice = (
-            first_damage.get("damage_dice")
-            or first_damage.get("damage")
-            or first_damage.get("dice")
-        )
+        damage_dice = damage_dice_of(first_damage)
         if not damage_dice:
             continue
 
@@ -267,11 +213,7 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
             ability = normalize_ability(dc_abbr) if dc_abbr else "dex"
             success_type = str(dc_i.get("success_type") or "none").lower()
             on_success = "half" if success_type == "half" else "none"
-            dice_i = (
-                entry.get("damage_dice")
-                or entry.get("damage")
-                or entry.get("dice")
-            )
+            dice_i = damage_dice_of(entry)
             if not dice_i:
                 continue
             riders.append(
@@ -314,6 +256,12 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
                         pass
 
         # TODO: tipos de daño adicionales ignorados.
+        # Uso limitado opcional del ataque (p. ej. "recharge on roll").
+        try:
+            usage = parse_usage(action.get("usage"), monster_name, name)
+        except UnknownUsageError:
+            # Tipo de uso desconocido: se omite la acción (ya avisado).
+            continue
         atk = Attack(
             name=action.get("name", "Ataque"),
             damage=str(damage_dice),
@@ -323,6 +271,7 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
             damage_bonus=0,
             damage_type=_damage_type(first_damage),
             save_riders=riders,
+            usage=usage,
         )
         attacks.append(atk)
 
@@ -353,30 +302,10 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
 
         # Resolver action_name contra los ataques extraídos (tolerante a
         # mayúsculas/espacios). Error explícito si no coincide.
-        by_name = {_norm_name(a.name): a.name for a in attacks}
+        # Resolver las entradas contra los ataques y acciones del monstruo.
         try:
-            alternatives = []
-            for alt in alternatives_raw:
-                entries = []
-                for e in alt:
-                    raw_name = e.get("action_name") if isinstance(e, dict) else None
-                    count_raw = e.get("count", 1) if isinstance(e, dict) else 1
-                    if raw_name is None:
-                        raise ValueError("falta action_name")
-                    key = _norm_name(raw_name)
-                    if key not in by_name:
-                        # Acciones que no son ataques sueltos (p. ej.
-                        # Presencia aterradora) se ignoran en el Multiataque.
-                        # TODO: permitir acciones de salvación en multiataque.
-                        warnings.warn(
-                            f"Multiattack de {monster_name!r} referencia {raw_name!r}, "
-                            f"que no es un ataque válido; se ignora.",
-                            stacklevel=2,
-                        )
-                        continue
-                    entries.append(AttackEntry(by_name[key], int(count_raw)))
-                if entries:
-                    alternatives.append(entries)
+            alternatives = resolve_multiattack(alternatives_raw, attacks,
+                                               save_actions, monster_name)
         except (TypeError, ValueError) as exc:
             raise ValueError(
                 f"El Multiataque de {monster_name!r} es inválido: {exc}. "
@@ -384,13 +313,27 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
             ) from exc
 
         # Convención: los ataques referenciados dejan de competir como acciones
-        # sueltas; solo viven dentro del Multiataque.
-        referenced = {e.attack_name for alt in alternatives for e in alt}
+        # sueltas; solo viven dentro del Multiataque. Lo mismo con las
+        # acciones (p. ej. el Aliento de la quimera, que sustituye a un
+        # ataque dentro del multiataque).
+        referenced = {e.attack_name for alt in alternatives for e in alt
+                      if not getattr(e, "is_action", False)}
         for atk in attacks:
             if atk.name in referenced:
                 atk.only_in_multiattack = True
 
-        multiattack = MultiattackAction(options=alternatives)
+        referenced_actions = {e.attack_name for alt in alternatives for e in alt
+                              if getattr(e, "is_action", False)}
+        action_entries = {}
+        if referenced_actions:
+            action_entries = {getattr(a, "name", ""): a for a in save_actions
+                              if getattr(a, "name", "") in referenced_actions}
+            # No se ofrece como acción suelta (solo dentro del multiataque).
+            save_actions = [a for a in save_actions
+                            if getattr(a, "name", "") not in referenced_actions]
+
+        multiattack = MultiattackAction(options=alternatives,
+                                        action_entries=action_entries)
         break
 
     if combatant_type is None:

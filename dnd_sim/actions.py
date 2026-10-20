@@ -17,6 +17,14 @@ def _valid_targets(actor, ctx=None, combatants=None, enemies=None):
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Iterable
 
+try:
+    from .usage import ActionUsage, UsageKind
+except ImportError:  # pragma: no cover - ejecución como script suelto
+    try:
+        from usage import ActionUsage, UsageKind
+    except ImportError:
+        from dnd_sim.usage import ActionUsage, UsageKind
+
 if TYPE_CHECKING:
     from .combatant import Combatant
     from .attack import Attack
@@ -34,9 +42,16 @@ class CombatAction:
 
     name: str = ""
     action_type: ActionType = ActionType.ACTION
+    # Uso limitado opcional (dnd_sim.usage.ActionUsage). El estado de uso
+    # vive en la acción, nunca en el combatiente.
+    usage: ActionUsage | None = None
 
     def can_use(self, *args, **kwargs) -> bool:
         """Acepta (resources), (context) o ambos, de forma tolerante."""
+        # 1. Uso limitado: si la acción está agotada o descargada, no se usa.
+        usage = getattr(self, "usage", None)
+        if usage is not None and not usage.available:
+            return False
         resources = kwargs.get("resources")
         context = kwargs.get("context") or kwargs.get("ctx")
         for arg in args:
@@ -61,6 +76,9 @@ class CombatAction:
 class AttackEntry:
     attack_name: str
     count: int = 1
+    # True si la entrada es una acción del monstruo (p. ej. el Aliento de fuego
+    # de la quimera) y no un ataque suelto.
+    is_action: bool = False
 
 
 @dataclass
@@ -105,16 +123,21 @@ class CombatContext:
     verbose: bool = False
     resources: TurnResources | None = None
     available_actions: list = field(default_factory=list)
+    # Estadísticas del combate en curso (compartidas por todos los contextos).
+    action_uses: dict | None = None
+    area_targets_hit: list | None = None
 
     @property
     def enemies(self) -> list:
         return list(_valid_targets(self.actor, ctx=self))
 
     def living_enemies(self) -> list:
-        return [c for c in (self.combatants or []) if getattr(c, "team", None) != self.actor.team and getattr(c, "alive", False)]
+        # Única fuente de verdad: valid_targets (hostiles vivos).
+        return _living_enemies(self)
 
 
 def _living_enemies(ctx: CombatContext) -> list:
+    """Hostiles vivos del actor (alias de la fuente única ``valid_targets``)."""
     return list(_valid_targets(ctx.actor, ctx=ctx))
 
 
@@ -127,10 +150,15 @@ class AttackAction(CombatAction):
     attack: "Attack"
     action_type: ActionType = ActionType.ACTION
     name: str = ""
+    usage: ActionUsage | None = None
 
     def __post_init__(self):
         if not self.name:
             self.name = getattr(self.attack, "name", "Ataque")
+        if self.usage is None:
+            # El ataque puede traer su propio uso limitado (p. ej. un
+            # ataque con "recharge on roll" en la API).
+            self.usage = getattr(self.attack, "usage", None)
 
     def execute(self, context: CombatContext) -> None:
         # Resolución real la hace attack_roll vía motor; aquí solo consumimos.
@@ -151,11 +179,54 @@ class AttackAction(CombatAction):
 
 
 class MultiattackAction(CombatAction):
-    def __init__(self, options, action_type=ActionType.ACTION, name="Multiattack", combatant=None):
+    """Acción de multiataque: elige una alternativa y ejecuta sus entradas.
+
+    Una alternativa es una lista de entradas (ataques sueltos y/o acciones
+    como un aliento). Las alternativas que incluyen una acción con uso
+    limitado agotado (p. ej. un aliento descargado) no son viables: la ficha
+    dice "cuando su aliento está disponible puede usarlo en lugar de X".
+    """
+
+    def __init__(self, options, action_type=ActionType.ACTION, name="Multiattack",
+                 combatant=None, usage=None, action_entries=None):
         self.options = options
         self.action_type = action_type
         self.name = name
         self.combatant = combatant
+        self.usage = usage
+        # Acciones del monstruo incluidas en el multiataque (p. ej. el
+        # Aliento de fuego de la quimera): nombre -> acción.
+        self.action_entries = dict(action_entries or {})
+
+    def _accion_por_nombre(self, actor, name):
+        """Busca una acción del multiataque por nombre.
+
+        Primero las acciones que el propio multiataque referencia (pueden no
+        estar entre las acciones sueltas del combatiente) y después las del
+        combatiente, excluyendo el propio multiataque y los ataques sueltos
+        (que se resuelven aparte).
+        """
+        accion = self.action_entries.get(name)
+        if accion is not None:
+            return accion
+        for accion in getattr(actor, "actions", []) or []:
+            if accion is self:
+                continue
+            if isinstance(accion, AttackAction):
+                continue
+            if getattr(accion, "name", "") == name:
+                return accion
+        return None
+
+    def _entrada_viable(self, entry, actor) -> bool:
+        """¿Se puede usar esta entrada del multiataque ahora mismo?"""
+        if not getattr(entry, "is_action", False):
+            return True
+        accion = self._accion_por_nombre(actor, getattr(entry, "attack_name", ""))
+        if accion is None:
+            return False
+        usage = getattr(accion, "usage", None)
+        return usage is None or usage.available
 
     def execute(self, context: CombatContext) -> None:
         from .combat import attack_roll
@@ -167,10 +238,28 @@ class MultiattackAction(CombatAction):
         alternatives = self.options or []
         if not alternatives:
             return
-        chosen = pick(context.rng, alternatives)
+        viables = [alt for alt in alternatives
+                   if all(self._entrada_viable(e, actor) for e in alt)]
+        if not viables:
+            return
+        chosen = pick(context.rng, viables)
         for entry in chosen:
             attack_name = getattr(entry, "attack_name", None)
             count = getattr(entry, "count", 1) or 1
+            if getattr(entry, "is_action", False):
+                # Acción del monstruo (p. ej. aliento de área).
+                accion = self._accion_por_nombre(actor, attack_name)
+                if accion is None:
+                    continue
+                for _ in range(count):
+                    enemies = _living_enemies(context)
+                    if not enemies:
+                        return
+                    accion.execute(context)
+                    usage = getattr(accion, "usage", None)
+                    if usage is not None:
+                        usage.spend()
+                continue
             atk = attacks_by_name.get(attack_name)
             if atk is None:
                 raise ValueError(
@@ -190,9 +279,10 @@ class MultiattackAction(CombatAction):
 
 
 class WeaponAttackAction(CombatAction):
-    def __init__(self, name="Atacar", action_type=ActionType.ACTION):
+    def __init__(self, name="Atacar", action_type=ActionType.ACTION, usage=None):
         self.name = name
         self.action_type = action_type
+        self.usage = usage
 
     def execute(self, context: CombatContext) -> None:
         from .attack import Attack  # noqa: F401
@@ -227,6 +317,7 @@ class SaveAction(CombatAction):
     effect: Any = None
     action_type: ActionType = ActionType.ACTION
     name: str = "Salvación"
+    usage: ActionUsage | None = None
 
     def __post_init__(self) -> None:
         if not getattr(self, "name", ""):

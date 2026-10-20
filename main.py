@@ -42,6 +42,46 @@ def _load_party(specs: list[str]) -> list:
     return monsters
 
 
+# Plantillas de PJ (el grupo se elige con --party).
+PARTY_TEMPLATES = [
+    dict(name="Guerrero", max_hp=50, ac=18, proficiency=2,
+         abilities=dict(str=16, dex=12, con=14, int=10, wis=12, cha=8),
+         attacks=[("Espada larga", "1d8", "str")]),
+    dict(name="Pícaro", max_hp=50, ac=15, proficiency=2,
+         abilities=dict(str=10, dex=16, con=12, int=14, wis=10, cha=14),
+         attacks=[("Daga", "1d4", "dex")]),
+    dict(name="Monje", max_hp=50, ac=17, proficiency=2,
+         abilities=dict(str=12, dex=16, con=14, int=10, wis=14, cha=8),
+         attacks=[("Puño", "1d6", "dex")]),
+    dict(name="Clérigo", max_hp=50, ac=16, proficiency=2,
+         abilities=dict(str=14, dex=10, con=14, int=8, wis=16, cha=12),
+         attacks=[("Maza", "1d6", "str")]),
+]
+
+
+def _build_party(size: int) -> list:
+    """Construye el grupo de PJ a partir de las plantillas."""
+    if size < 1 or size > len(PARTY_TEMPLATES):
+        raise ValueError(
+            f"El grupo debe tener entre 1 y {len(PARTY_TEMPLATES)} personajes."
+        )
+    party = []
+    for template in PARTY_TEMPLATES[:size]:
+        ataques = [Attack(nombre, dado, ability=habilidad)
+                   for nombre, dado, habilidad in template["attacks"]]
+        party.append(
+            PlayerCharacter(
+                name=template["name"],
+                max_hp=template["max_hp"],
+                ac=template["ac"],
+                proficiency=template["proficiency"],
+                abilities=Abilities(**template["abilities"]),
+                attacks=ataques,
+            )
+        )
+    return party
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Simulador de combate D&D 5e")
     parser.add_argument(
@@ -53,35 +93,22 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Número de simulaciones (default: 1000).")
     parser.add_argument("--seed", type=int, default=1, help="Semilla RNG.")
     parser.add_argument("--verbose", action="store_true", help="Muestra el primer combate.")
+    parser.add_argument(
+        "--party", type=int, default=3,
+        help="Número de personajes jugador del grupo (1-4). Default: 3.",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
-    specs = args.monster if args.monster else ["giant-spider"]
+    specs = args.monster if args.monster else ["chimera"]
     monsters = _load_party(specs)
 
-    # El PJ sí se define aquí (personaje jugador).
-    guerrero = PlayerCharacter(
-        name="Guerrero", max_hp=28, ac=18, proficiency=2,
-        abilities=Abilities(str=16, dex=12, con=14, int=10, wis=12, cha=8),
-        attacks=[Attack("Espada larga", "1d8", ability="str")],
-    )
-    
-    picaro = PlayerCharacter(
-        name="Pícaro", max_hp=22, ac=15, proficiency=2,
-        abilities=Abilities(str=10, dex=16, con=12, int=14, wis=10, cha=14),
-        attacks=[Attack("Daga", "1d4", ability="dex")],
-    )
-    
-    monje = PlayerCharacter(
-        name="Monje", max_hp=24, ac=17, proficiency=2,
-        abilities=Abilities(str=12, dex=16, con=14, int=10, wis=14, cha=8),
-        attacks=[Attack("Puño", "1d6", ability="dex")],
-    )
-    
+    # Los PJ sí se definen aquí (personajes jugador).
+    party = _build_party(args.party)
 
-    combatants = [guerrero, picaro, monje] + monsters
+    combatants = party + monsters
 
     # Un combate de ejemplo con semilla fija para el log.
     res = run_combat(combatants, random.Random(args.seed), verbose=True)
