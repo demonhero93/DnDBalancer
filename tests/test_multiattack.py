@@ -133,8 +133,8 @@ def test_multiattack_del_dragon_sigue_igual(monkeypatch):
     dragon = _load(monkeypatch, "adult-red-dragon")
     alternativas = [[(e.attack_name, e.count) for e in alt]
                     for alt in dragon.multiattack.options]
-    # Mordida + 2 garras (la Presencia aterradora no es un ataque).
-    assert alternativas == [[("Bite", 1), ("Claw", 2)]]
+    # Presencia aterradora + mordida + 2 garras (como en la ficha).
+    assert alternativas == [[("Frightful Presence", 1), ("Bite", 1), ("Claw", 2)]]
     # El aliento del dragón sí es una acción aparte (no va en su multiataque).
     nombres = [getattr(a, "name", "") for a in dragon.actions]
     assert "Fire Breath" in nombres

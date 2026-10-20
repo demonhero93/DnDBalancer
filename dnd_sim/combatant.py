@@ -30,6 +30,38 @@ except Exception:
             def normalize_ability(value):
                 return str(value).strip().lower()
 
+try:
+    from .combat_state import CombatState
+    from .conditions import Condition, ConditionTracker
+except Exception:
+    try:
+        from dnd_sim.combat_state import CombatState
+        from dnd_sim.conditions import Condition, ConditionTracker
+    except Exception:
+        class CombatState:  # pragma: no cover - fallback mínimo
+            """Marcador de posición si no se puede importar el módulo real."""
+
+            def __init__(self):
+                self.at_range = False
+
+        class ConditionTracker:  # pragma: no cover - fallback mínimo
+            """Marcador de posición si no se puede importar el módulo real."""
+
+            def __init__(self):
+                self.instances = []
+
+            def active(self):
+                return set()
+
+            def has(self, condition):
+                return False
+
+            def clear(self):
+                self.instances.clear()
+
+        class Condition:  # pragma: no cover - fallback mínimo
+            INCAPACITATED = None
+
 class CombatantType(str, Enum):
     PLAYER = "PLAYER"
     NPC = "NPC"
@@ -89,6 +121,13 @@ class Combatant:
     multiattack: Any = None
     # Acciones adicionales/construidas (WeaponAttackAction, AttackAction...).
     actions: list[Any] = field(default_factory=list)
+    # Estado de condiciones (no forma parte del constructor público).
+    conditions: ConditionTracker = field(init=False, default_factory=ConditionTracker)
+    # Estado de combate (posición/cobertura; no forma parte del constructor).
+    state: CombatState = field(init=False, default_factory=CombatState)
+    # Ventaja/desventaja en pruebas de característica (por característica).
+    checks_with_advantage: set[str] = field(default_factory=set)
+    checks_with_disadvantage: set[str] = field(default_factory=set)
     hp: int = field(init=False)
     initiative: int = field(init=False, default=0)
 
@@ -166,6 +205,16 @@ class Combatant:
 
     def reset(self) -> None:
         self.hp = self.max_hp
+        # Las condiciones duran hasta el fin del combate: se limpian aquí.
+        try:
+            self.conditions.clear()
+        except Exception:
+            pass
+        # Todo el mundo empieza cuerpo a cuerpo.
+        try:
+            self.state.at_range = False
+        except Exception:
+            pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,
         # no en el combatiente: se reinician aquí.
         for action in getattr(self, "actions", []) or []:
@@ -175,6 +224,26 @@ class Combatant:
                     usage.reset()
                 except Exception:
                     pass
+
+    @property
+    def can_act(self) -> bool:
+        """¿Puede actuar? (incapacitado no puede usar acciones)"""
+        if not self.alive:
+            return False
+        try:
+            return not self.conditions.has(Condition.INCAPACITATED)
+        except Exception:
+            return True
+
+    @property
+    def can_react(self) -> bool:
+        """¿Puede reaccionar? (incapacitado no puede usar reacciones)"""
+        if not self.alive:
+            return False
+        try:
+            return not self.conditions.has(Condition.INCAPACITATED)
+        except Exception:
+            return True
 
     def is_hostile_to(self, other) -> bool:
         if other is self:

@@ -7,11 +7,23 @@ try:
     )
     from .area import AreaSaveAction, AreaTargeting, select_area_targets
     from .attack import Attack
+    from .checks import CheckResult, ability_check, ability_check_bonus
+    from .combat_state import CombatState
     from .combatant import (
         Combatant, CombatantType, Monster, PlayerCharacter, valid_targets,
     )
+    from .conditions import (
+        Condition, ConditionAction, ConditionEffect, ConditionInstance,
+        ConditionTracker, EXCLUDED_CONDITIONS, EscapeCheck, RepeatSave,
+        apply_condition, attempt_escapes, end_turn,
+    )
     from .damage import DamageType, apply_damage_modifiers, inflict_damage, parse_damage_type
     from .combat import CombatResult, resolve_roll_mode, run_combat, valid_targets
+    from .roll_modifiers import (
+        AttackModifiers, AttackRange, CheckModifiers, RANGED_COVER_AC_BONUS,
+        SaveModifiers, attack_modifiers, check_modifiers, effective_ac,
+        resolve_attack_range, save_modifiers,
+    )
     from .saves import (
         SaveDamage, SaveDamageOutcome, SaveResult, apply_save_damage,
         normalize_ability, resolve_save_damage, saving_throw,
@@ -33,11 +45,35 @@ except ImportError:
     except Exception:
         pass
     from attack import Attack
+    try:
+        from checks import CheckResult, ability_check, ability_check_bonus
+    except Exception:
+        pass
+    try:
+        from combat_state import CombatState
+    except Exception:
+        pass
     from combatant import (
         Combatant, CombatantType, Monster, PlayerCharacter, valid_targets,
     )
+    try:
+        from conditions import (
+            Condition, ConditionAction, ConditionEffect, ConditionInstance,
+            ConditionTracker, EXCLUDED_CONDITIONS, EscapeCheck, RepeatSave,
+            apply_condition, attempt_escapes, end_turn,
+        )
+    except Exception:
+        pass
     from damage import DamageType, apply_damage_modifiers, inflict_damage, parse_damage_type
     from combat import CombatResult, resolve_roll_mode, run_combat, valid_targets
+    try:
+        from roll_modifiers import (
+            AttackModifiers, AttackRange, CheckModifiers, RANGED_COVER_AC_BONUS,
+            SaveModifiers, attack_modifiers, check_modifiers, effective_ac,
+            resolve_attack_range, save_modifiers,
+        )
+    except Exception:
+        pass
     try:
         from saves import (
             SaveDamage, SaveDamageOutcome, SaveResult, apply_save_damage,
@@ -60,15 +96,20 @@ except ImportError:
 
 __all__ = [
     "Abilities", "ability_mod", "ActionType", "ActionUsage", "AreaSaveAction",
-    "AreaTargeting", "Attack", "AttackAction", "AttackEntry",
-    "CombatAction", "CombatContext", "Combatant", "CombatResult",
-    "D20Result", "DamageType", "MultiattackAction", "RollMode", "SaveAction",
-    "SaveDamage", "SaveDamageOutcome", "SaveResult", "TurnResources",
-    "UsageKind", "WeaponAttackAction",
-    "apply_damage_modifiers", "apply_save_damage", "begin_turn", "d20",
-    "first_target_policy", "inflict_damage", "normalize_ability",
+    "AreaTargeting", "Attack", "AttackAction", "AttackEntry", "AttackModifiers",
+    "AttackRange", "CheckModifiers", "CheckResult", "CombatAction",
+    "CombatContext", "Combatant", "CombatResult", "CombatState", "Condition",
+    "ConditionAction", "ConditionEffect", "ConditionInstance",
+    "ConditionTracker", "D20Result", "DamageType", "EXCLUDED_CONDITIONS",
+    "EscapeCheck", "MultiattackAction", "RANGED_COVER_AC_BONUS", "RepeatSave",
+    "RollMode", "SaveAction", "SaveDamage", "SaveDamageOutcome", "SaveModifiers",
+    "SaveResult", "TurnResources", "UsageKind", "WeaponAttackAction",
+    "ability_check", "ability_check_bonus", "apply_condition",
+    "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
+    "attempt_escapes", "begin_turn", "check_modifiers", "d20", "effective_ac",
+    "end_turn", "first_target_policy", "inflict_damage", "normalize_ability",
     "parse_damage_type", "pick", "print_report", "random_policy",
-    "resolve_roll_mode", "resolve_save_damage", "roll_d20", "roll_dice",
-    "run_combat", "sample", "saving_throw", "select_area_targets",
-    "simulate", "load_monster",
+    "resolve_attack_range", "resolve_roll_mode", "resolve_save_damage",
+    "roll_d20", "roll_dice", "run_combat", "sample", "save_modifiers",
+    "saving_throw", "select_area_targets", "simulate", "load_monster",
 ]

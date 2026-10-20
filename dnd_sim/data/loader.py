@@ -14,9 +14,10 @@ try:
     from ..damage import DamageType
     from ..saves import SaveDamage, normalize_ability
     from .api_client import get_monster
+    from .condition_parser import parse_condition_effects, parse_range_type
     from .multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
-    from .save_builder import (build_save_action, build_save_effect,
-                               damage_dice_of, damage_type_of)
+    from .save_builder import (build_condition_action, build_save_action,
+                               build_save_effect, damage_dice_of, damage_type_of)
     from .usage_parser import UnknownUsageError, parse_usage
 except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
     try:
@@ -27,9 +28,10 @@ except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
         from damage import DamageType
         from saves import SaveDamage, normalize_ability
         from api_client import get_monster
+        from condition_parser import parse_condition_effects, parse_range_type
         from multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
-        from save_builder import (build_save_action, build_save_effect,
-                                  damage_dice_of, damage_type_of)
+        from save_builder import (build_condition_action, build_save_action,
+                                  build_save_effect, damage_dice_of, damage_type_of)
         from usage_parser import UnknownUsageError, parse_usage
     except ImportError:
         from dnd_sim.abilities import Abilities
@@ -39,9 +41,12 @@ except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
         from dnd_sim.damage import DamageType
         from dnd_sim.saves import SaveDamage, normalize_ability
         from dnd_sim.data.api_client import get_monster
+        from dnd_sim.data.condition_parser import (parse_condition_effects,
+                                                   parse_range_type)
         from dnd_sim.data.multiattack_parser import (extract_multiattack_alternatives,
                                                       resolve_multiattack)
-        from dnd_sim.data.save_builder import (build_save_action, build_save_effect,
+        from dnd_sim.data.save_builder import (build_condition_action,
+                                               build_save_action, build_save_effect,
                                                damage_dice_of, damage_type_of)
         from dnd_sim.data.usage_parser import UnknownUsageError, parse_usage
 
@@ -179,9 +184,46 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
             save_actions.append(build_save_action(action, eff, usage))
             continue
 
-        # Acciones con dc sin daño (condiciones) -> se ignoran con TODO.
+        # Acciones con dc sin daño: si dejan una condición, son ConditionAction.
         if attack_bonus is None and isinstance(dc_info, dict) and not damage_list:
-            # TODO: condiciones (aturdido, paralizado...), Áreas de efecto.
+            try:
+                usage = parse_usage(action.get("usage"), monster_name, name)
+            except UnknownUsageError:
+                continue
+            efectos = parse_condition_effects(action, monster_name, dc_info)
+            if not efectos:
+                # Sin condición modelable: se ignora con TODO.
+                # TODO: condiciones sinanico (aturdido, paralizado...) ya se
+                # convierten en ConditionAction; aquí solo quedarían las que
+                # no dependen de una salvación.
+                continue
+            for efecto in efectos:
+                save_actions.append(build_condition_action(action, efecto, usage))
+            continue
+
+        # Ataques sin daño pero con condición (p. ej. la Telaraña): aplican
+        # la condición al impactar (no infligen daño).
+        if attack_bonus is not None and not damage_list:
+            efectos = parse_condition_effects(action, monster_name)
+            if not efectos:
+                continue
+            try:
+                usage = parse_usage(action.get("usage"), monster_name, name)
+            except UnknownUsageError:
+                continue
+            atk = Attack(
+                name=action.get("name", "Ataque"),
+                damage="0",
+                ability="str",
+                proficient=True,
+                attack_bonus=int(attack_bonus),
+                damage_bonus=0,
+                damage_type=_damage_type({"damage_type": {"index": "slashing"}}),
+                usage=usage,
+                range_type=parse_range_type(desc, monster_name, name),
+                condition_riders=efectos,
+            )
+            attacks.append(atk)
             continue
 
         if attack_bonus is None or not damage_list:
@@ -262,6 +304,9 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         except UnknownUsageError:
             # Tipo de uso desconocido: se omite la acción (ya avisado).
             continue
+        # Condiciones que aplica el ataque si impacta (p. ej. el derribo del
+        # lobo o la parálisis del ghoul).
+        condition_riders = parse_condition_effects(action, monster_name)
         atk = Attack(
             name=action.get("name", "Ataque"),
             damage=str(damage_dice),
@@ -272,6 +317,8 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
             damage_type=_damage_type(first_damage),
             save_riders=riders,
             usage=usage,
+            range_type=parse_range_type(desc, monster_name, name),
+            condition_riders=condition_riders,
         )
         attacks.append(atk)
 

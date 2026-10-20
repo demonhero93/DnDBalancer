@@ -87,6 +87,9 @@ class SaveResult:
     total: int
     success: bool
     mode: RollMode
+    # Fallo automático por condición (aturdido/paralizado/petrificado...):
+    # no se tiran dados.
+    auto_fail: bool = False
 
 
 def _resolve_mode_str(value: Any) -> RollMode:
@@ -106,28 +109,41 @@ def _resolve_mode_str(value: Any) -> RollMode:
     return RollMode.NORMAL
 
 
-def _saving_throw_mode(target: Any, ability: str) -> RollMode:
-    has_adv = ability in (getattr(target, "saves_with_advantage", set()) or set())
-    has_dis = ability in (getattr(target, "saves_with_disadvantage", set()) or set())
-    if has_adv and has_dis:
-        return RollMode.NORMAL
-    if has_adv:
-        return RollMode.ADVANTAGE
-    if has_dis:
-        return RollMode.DISADVANTAGE
-    return RollMode.NORMAL
-
-
 def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
                  mode: Any = None) -> SaveResult:
     """Tira una salvación de D&D 5e.
 
     Un 20 natural NO es éxito automático y un 1 natural NO es fallo
     automático: éxito si total >= dc.
+
+    Las condiciones pueden provocar un **fallo automático** (aturdido,
+    paralizado, inconsciente o petrificado fallan siempre FUE y DES): en ese
+    caso no se tiran dados y no se consume RNG.
     """
     ab = normalize_ability(ability)
+    try:
+        from .roll_modifiers import save_modifiers
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from roll_modifiers import save_modifiers
+        except ImportError:
+            from dnd_sim.roll_modifiers import save_modifiers
+    modifiers = save_modifiers(target, ab)
+
+    if modifiers.auto_fail:
+        return SaveResult(
+            ability=ab,
+            dc=int(dc),
+            rolls=[],
+            bonus=0,
+            total=0,
+            success=False,
+            mode=RollMode.NORMAL,
+            auto_fail=True,
+        )
+
     if mode is None:
-        mode = _saving_throw_mode(target, ab)
+        mode = modifiers.mode
     else:
         mode = _resolve_mode_str(mode)
     bonus = 0

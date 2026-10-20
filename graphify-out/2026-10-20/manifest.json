@@ -6,9 +6,9 @@
     "semantic_hash": "7c35e4ad712924d87267833a1ac8835a"
   },
   "dnd_sim/__init__.py": {
-    "mtime": 1792512779.933408,
-    "seen": 1792513237.495734,
-    "ast_hash": "9b8cc01ce00c0580f60fd0ef7a00040c",
+    "mtime": 1792516041.8477187,
+    "seen": 1792516401.1859002,
+    "ast_hash": "aa311c8b7b1c7266570f7c51a4b3d6a8",
     "semantic_hash": ""
   },
   "dnd_sim/abilities.py": {
@@ -18,27 +18,27 @@
     "semantic_hash": ""
   },
   "dnd_sim/attack.py": {
-    "mtime": 1792512691.0303788,
-    "seen": 1792513237.495734,
-    "ast_hash": "8fff8d0fe2f7d6c6b8d0cda7f9b1241e",
+    "mtime": 1792515745.859604,
+    "seen": 1792516401.1859002,
+    "ast_hash": "d36c110ea01d324e5a3f4d9acd3cdc65",
     "semantic_hash": ""
   },
   "dnd_sim/combat.py": {
-    "mtime": 1792513668.0760193,
-    "seen": 1792513784.9566665,
-    "ast_hash": "f6bede4ab7fbb8cda0c033ded9c7dc0a",
+    "mtime": 1792515874.9189918,
+    "seen": 1792516401.1859002,
+    "ast_hash": "aa016c1c67a8d571f45327499ea172eb",
     "semantic_hash": ""
   },
   "dnd_sim/combatant.py": {
-    "mtime": 1792512695.4301531,
-    "seen": 1792513237.495734,
-    "ast_hash": "eb84d3f09ffbce11a8be2d3ec3614f5c",
+    "mtime": 1792515766.3982804,
+    "seen": 1792516401.1859002,
+    "ast_hash": "cb8a6e581d0e58d081b8719269dc678d",
     "semantic_hash": ""
   },
   "dnd_sim/damage.py": {
-    "mtime": 1792513737.6525211,
-    "seen": 1792513784.9566665,
-    "ast_hash": "a2de26bb440bb1809cb4c9c6b15daedb",
+    "mtime": 1792515791.8865168,
+    "seen": 1792516401.1859002,
+    "ast_hash": "37a4ecc269876b43522ade181fdee94d",
     "semantic_hash": ""
   },
   "dnd_sim/data/__init__.py": {
@@ -54,9 +54,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/data/loader.py": {
-    "mtime": 1792514763.0677252,
-    "seen": 1792514814.0190525,
-    "ast_hash": "1bf7fc30ca2f52ea3533e86ad2255f57",
+    "mtime": 1792515945.0755785,
+    "seen": 1792516401.1859002,
+    "ast_hash": "b7468f60751aaa18350ed49cc5aae687",
     "semantic_hash": ""
   },
   "dnd_sim/dice.py": {
@@ -66,15 +66,15 @@
     "semantic_hash": ""
   },
   "dnd_sim/stats.py": {
-    "mtime": 1792513815.1039877,
-    "seen": 1792513830.6969328,
-    "ast_hash": "ad8a2231549e48013ec734a063ffb01d",
+    "mtime": 1792516032.1524687,
+    "seen": 1792516401.1859002,
+    "ast_hash": "4fd74308f5f5f73978502c905eca033e",
     "semantic_hash": ""
   },
   "main.py": {
-    "mtime": 1792513927.7302964,
-    "seen": 1792514814.0190525,
-    "ast_hash": "f4488157068b075669e35dd3ddd27217",
+    "mtime": 1792515057.1956816,
+    "seen": 1792516401.1859002,
+    "ast_hash": "1a477cf9f7aa5d7bb4aaea06c443e5fc",
     "semantic_hash": ""
   },
   "tests/fixtures/awakened-shrub.json": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/actions.py": {
-    "mtime": 1792514715.3776822,
-    "seen": 1792514814.0190525,
-    "ast_hash": "b2907ccb29a3ef09b5b4dd6a415dedba",
+    "mtime": 1792515865.1811762,
+    "seen": 1792516401.1859002,
+    "ast_hash": "5a2db8db4838f623a98103abc296edc8",
     "semantic_hash": ""
   },
   "dnd_sim/randomness.py": {
@@ -132,9 +132,9 @@
     "semantic_hash": "eea599b605be5bbcbb1c221f4428b673"
   },
   "dnd_sim/saves.py": {
-    "mtime": 1792512646.9755955,
-    "seen": 1792513237.495734,
-    "ast_hash": "317ad8b407c72f1a1d285e9c50cbf0c2",
+    "mtime": 1792516406.8433042,
+    "seen": 1792516447.3636568,
+    "ast_hash": "e9acd06940f37ce28ee87a4093e2eef3",
     "semantic_hash": ""
   },
   "dnd_sim/area.py": {
@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/data/save_builder.py": {
-    "mtime": 1792514735.6361573,
-    "seen": 1792514814.0190525,
-    "ast_hash": "c58f7e704f2111eca3d2f9d38b5f9c1e",
+    "mtime": 1792515935.8914077,
+    "seen": 1792516401.1859002,
+    "ast_hash": "d94267f685bd161eb6a837428dba9a99",
     "semantic_hash": ""
   },
   "dnd_sim/data/usage_parser.py": {
@@ -162,9 +162,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/usage.py": {
-    "mtime": 1792512623.3099284,
-    "seen": 1792513237.495734,
-    "ast_hash": "8f9665d3a663ce9b2ec61586e336a787",
+    "mtime": 1792515840.174579,
+    "seen": 1792516401.1859002,
+    "ast_hash": "f2822f102e7a7d8f6aa62fe2fca6f19f",
     "semantic_hash": ""
   },
   "tests/fixtures/adult-red-dragon.json": {
@@ -198,9 +198,51 @@
     "semantic_hash": ""
   },
   "tests/test_multiattack.py": {
-    "mtime": 1792514634.649959,
-    "seen": 1792514814.0190525,
-    "ast_hash": "e89da55c3b487ac3c091b0df983cf645",
+    "mtime": 1792515965.765781,
+    "seen": 1792516401.1859002,
+    "ast_hash": "6fb2cde6cc1038b9c8d8c3fc22cd63f0",
+    "semantic_hash": ""
+  },
+  "dnd_sim/data/multiattack_parser.py": {
+    "mtime": 1792514825.4714308,
+    "seen": 1792514894.51617,
+    "ast_hash": "49aed6d5d0059760dbe47ddab2b9289a",
+    "semantic_hash": ""
+  },
+  "dnd_sim/conditions.py": {
+    "mtime": 1792516363.5540016,
+    "seen": 1792516401.1859002,
+    "ast_hash": "945bce97fcef9c5aa2b71c308c6d6f24",
+    "semantic_hash": ""
+  },
+  "dnd_sim/data/condition_parser.py": {
+    "mtime": 1792516008.7230978,
+    "seen": 1792516401.1859002,
+    "ast_hash": "55bd59f2bc1f19b20dc7fa9e592dc9c9",
+    "semantic_hash": ""
+  },
+  "dnd_sim/roll_modifiers.py": {
+    "mtime": 1792515738.4111342,
+    "seen": 1792516401.1859002,
+    "ast_hash": "b65680a23bcc2c2f490db87b5b76e6b2",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/ghoul.json": {
+    "mtime": 1792515565.2971294,
+    "seen": 1792516401.1859002,
+    "ast_hash": "9b7ebaf8c5c483be6de351779ae67704",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/wolf.json": {
+    "mtime": 1792515564.969075,
+    "seen": 1792516401.1859002,
+    "ast_hash": "75ee4454ca0f6467af4a264d4a652837",
+    "semantic_hash": ""
+  },
+  "tests/test_conditions.py": {
+    "mtime": 1792516331.2892473,
+    "seen": 1792516401.1859002,
+    "ast_hash": "0bbc196561093a5f664e32348a55de75",
     "semantic_hash": ""
   }
 }

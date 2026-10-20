@@ -42,6 +42,24 @@ def parse_damage_type(value: str | DamageType) -> DamageType:
         raise ValueError(f"Tipo de daño inválido: {value!r}") from exc
 
 
+def _is_petrified(target: "Combatant") -> bool:
+    """¿Está el objetivo petrificado (resistencia a todo el daño)?"""
+    try:
+        from .conditions import Condition
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from conditions import Condition
+        except ImportError:
+            from dnd_sim.conditions import Condition
+    conditions = getattr(target, "conditions", None)
+    if conditions is None:
+        return False
+    try:
+        return bool(conditions.has(Condition.PETRIFIED))
+    except Exception:
+        return False
+
+
 def apply_damage_modifiers(amount: int, damage_type: str | DamageType, target: "Combatant") -> int:
     """Aplica inmunidad, resistencia y vulnerabilidad del objetivo (en ese orden)."""
     dt = parse_damage_type(damage_type)
@@ -49,7 +67,8 @@ def apply_damage_modifiers(amount: int, damage_type: str | DamageType, target: "
     if dt in getattr(target, "immunities", set()):
         return 0
     # 2. Resistencia -> mitad, redondeando hacia abajo (no se acumula).
-    if dt in getattr(target, "resistances", set()):
+    #    Un objetivo petrificado tiene resistencia a todo tipo de daño.
+    if dt in getattr(target, "resistances", set()) or _is_petrified(target):
         amount = amount // 2
     # 3. Vulnerabilidad -> doble.
     if dt in getattr(target, "vulnerabilities", set()):
@@ -110,6 +129,9 @@ def _notify_damage_dealt(source, target, amount, damage_type) -> None:
 
 
 def _notify_damage_taken(target, amount, damage_type, source):
+    # 0) Un combatiente incapacitado no puede reaccionar.
+    if not getattr(target, "can_react", True):
+        return
     # 1) Métodos del objetivo.
     for name in ("on_damage_taken", "damage_taken", "on_take_damage",
                  "react_damage_taken", "dmg_taken"):

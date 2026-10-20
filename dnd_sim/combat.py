@@ -2,6 +2,7 @@
 import inspect
 import random
 from dataclasses import dataclass, field
+from typing import Any
 
 try:
     from .actions import (
@@ -14,9 +15,14 @@ try:
     )
     from .attack import Attack
     from .combatant import Combatant, CombatantType, valid_targets
+    from .conditions import end_turn
     from .damage import DamageRecorder, apply_damage_modifiers, inflict_damage
     from .dice import RollMode, d20, roll_d20, roll_dice
     from .randomness import pick
+    from .roll_modifiers import (
+        AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
+        resolve_attack_range,
+    )
     from .tactics import first_target_policy, random_policy
     from .usage import begin_turn
 except ImportError:
@@ -35,6 +41,20 @@ except ImportError:
     from randomness import pick
     from tactics import first_target_policy, random_policy
     try:
+        from conditions import end_turn
+    except ImportError:
+        from dnd_sim.conditions import end_turn
+    try:
+        from roll_modifiers import (
+            AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
+            resolve_attack_range,
+        )
+    except ImportError:
+        from dnd_sim.roll_modifiers import (
+            AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
+            resolve_attack_range,
+        )
+    try:
         from usage import begin_turn
     except ImportError:
         from dnd_sim.usage import begin_turn
@@ -52,6 +72,13 @@ class CombatResult:
     # Daño del combate por combatiente (nombre -> daño total).
     damage_dealt: dict[str, int] = field(default_factory=dict)
     damage_received: dict[str, int] = field(default_factory=dict)
+    # Condiciones: veces aplicada cada una y turnos perdidos por incapacitación.
+    conditions_applied: dict[str, int] = field(default_factory=dict)
+    turns_lost_incapacitated: dict[str, int] = field(default_factory=dict)
+    # Escapes: intentos y éxitos por condición; ataques contra objetivos a distancia.
+    escape_attempts: dict[str, int] = field(default_factory=dict)
+    escape_successes: dict[str, int] = field(default_factory=dict)
+    attacks_vs_at_range: int = 0
 
 
 def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
@@ -71,8 +98,16 @@ def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
     return dealt, received
 
 
-def resolve_roll_mode(attacker: Combatant, target: Combatant) -> RollMode:
-    """Resuelve el modo de tirada por fuentes de ventaja/desventaja (regla 5e)."""
+def resolve_roll_mode(attacker: Combatant, target: Combatant,
+                      attack: Any = None, rng: Any = None) -> RollMode:
+    """Resuelve el modo de tirada por reglas (5e).
+
+    Fuente única: :func:`dnd_sim.roll_modifiers.attack_modifiers` (indicadores
+    estáticos + condiciones). Sin ``attack`` solo se aplican los indicadores
+    estáticos (compatibilidad).
+    """
+    if attack is not None:
+        return attack_modifiers(attacker, target, attack, rng).mode
     has_adv = bool(getattr(attacker, "attacks_with_advantage", False)) or bool(
         getattr(target, "grants_advantage_to_attackers", False)
     )
@@ -88,23 +123,74 @@ def resolve_roll_mode(attacker: Combatant, target: Combatant) -> RollMode:
     return RollMode.NORMAL
 
 
+def _mode_tag(mode: RollMode, result, reason: str = "") -> str:
+    """ Sufijo de log con el modo de tirada y su motivo."""
+    if mode == RollMode.ADVANTAGE:
+        tag = f" (ventaja: {result.rolls[0]}, {result.rolls[1]} -> {result.value}"
+        return f"{tag}; {reason})" if reason else f"{tag})"
+    if mode == RollMode.DISADVANTAGE:
+        tag = f" (desventaja: {result.rolls[0]}, {result.rolls[1]} -> {result.value}"
+        return f"{tag}; {reason})" if reason else f"{tag})"
+    if reason:
+        return f" ({reason})"
+    return ""
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
-                verbose: bool = False) -> None:
+                verbose: bool = False, ctx: Any = None) -> None:
+    """Resuelve un ataque.
+
+    Secuencia (documentada):
+
+    1. ``resolve_attack_range``: se decide el rango (un arma "cuerpo a
+       cuerpo o a distancia" se decide con ``pick`` en **cada** ataque, lo
+       que consume RNG).
+    2. Se actualiza ``attacker.state.at_range`` (un ataque a distancia deja
+       al atacante a distancia; uno cuerpo a cuerpo, cerca).
+    3. ``attack_modifiers`` con el rango ya resuelto.
+    4. Tirada del d20 con el modo obtenido.
+    5. Se compara contra la CA efectiva del objetivo (+2 si está a
+       distancia).
+    """
     if not attacker.is_hostile_to(target):
         raise ValueError(
             f"{attacker.name} no es hostil a {target.name}: no se permite fuego amigo."
         )
-    mode = resolve_roll_mode(attacker, target)
+    # (1) Rango resuelto.
+    rango = resolve_attack_range(atk, rng)
+    # (2) Estado de distancia del atacante.
+    _actualizar_distancia(attacker, rango, log)
+    # (3) Modificadores (el rango ya está decidido).
+    modifiers = attack_modifiers(attacker, target, atk, rango)
+    mode = modifiers.mode
+    # (4) Tirada.
     result = roll_d20(rng, mode)
     roll = result.value
     bonus = attacker.to_hit(atk)
     total = roll + bonus
     crit = roll == 20
-    hit = crit or (roll != 1 and total >= target.ac)
+    # (5) CA efectiva (cobertura a distancia).
+    ca_efectiva = effective_ac(target)
+    # Estadística: ataques recibidos por objetivos a distancia.
+    if getattr(getattr(target, "state", None), "at_range", False):
+        recibidos = getattr(ctx, "attacks_at_range", None) if ctx is not None else None
+        if recibidos is not None:
+            try:
+                recibidos.append(1)
+            except Exception:
+                pass
+    hit = crit or (roll != 1 and total >= ca_efectiva)
+    # Crítico automático (objetivo paralizado o inconsciente a cuerpo a cuerpo):
+    # el impacto es crítico aunque el d20 no sea 20; un 1 natural sigue fallando.
+    if hit and modifiers.auto_crit_on_hit:
+        crit = True
     log_enabled = log is not None
     if hit:
-        raw_dmg = max(0, roll_dice(atk.damage, rng, crit=crit) + attacker.dmg_bonus(atk))
+        raw_dmg = 0
+        if str(getattr(atk, "damage", "") or "").strip() not in ("", "0"):
+            # Un ataque sin daño (p. ej. la Telaraña) no tira dados.
+            raw_dmg = max(0, roll_dice(atk.damage, rng, crit=crit) + attacker.dmg_bonus(atk))
         dt = atk.damage_type
         if dt in target.immunities:
             dmg = 0
@@ -128,14 +214,12 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         _riders_to_run = list(getattr(atk, "save_riders", None) or [])
         _log_first = log_enabled
         if log_enabled:
-            mode_tag = ""
-            if mode == RollMode.ADVANTAGE:
-                mode_tag = f" (ventaja: {result.rolls[0]}, {result.rolls[1]} -> {result.value})"
-            elif mode == RollMode.DISADVANTAGE:
-                mode_tag = f" (desventaja: {result.rolls[0]}, {result.rolls[1]} -> {result.value})"
+            mode_tag = _mode_tag(mode, result, modifiers.reason())
             tag = " CRÍTICO" if crit else ""
+            ca_tag = (f" (+{RANGED_COVER_AC_BONUS} cobertura a distancia)"
+                      if getattr(getattr(target, "state", None), "at_range", False) else "")
             log.append(f"  {attacker.name} -> {target.name} con {atk.name}: "
-                       f"{roll}{mode_tag}+{bonus}={total} vs CA {target.ac}{tag}, "
+                       f"{roll}{mode_tag}+{bonus}={total} vs CA {ca_efectiva}{ca_tag}{tag}, "
                        f"{dmg} daño (HP {max(target.hp, 0)}/{target.max_hp}){mod_tag}")
         for _rider in _riders_to_run:
             try:
@@ -150,14 +234,82 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             _rctx.log = log if _log_first else None
             _rctx.verbose = _log_first
             _rsd(attacker, target, _rider, _rctx)
+        # Riders de condición (tras el daño y los riders de daño).
+        _apply_condition_riders(attacker, target, atk, rng, log if _log_first else None, ctx)
     elif log_enabled:
-        mode_tag = ""
-        if mode == RollMode.ADVANTAGE:
-            mode_tag = f" (ventaja: {result.rolls[0]}, {result.rolls[1]} -> {result.value})"
-        elif mode == RollMode.DISADVANTAGE:
-            mode_tag = f" (desventaja: {result.rolls[0]}, {result.rolls[1]} -> {result.value})"
+        mode_tag = _mode_tag(mode, result, modifiers.reason())
+        ca_tag = (f" (+{RANGED_COVER_AC_BONUS} cobertura a distancia)"
+                  if getattr(getattr(target, "state", None), "at_range", False) else "")
         log.append(f"  {attacker.name} -> {target.name} con {atk.name}: "
-                   f"{roll}{mode_tag}+{bonus}={total} vs CA {target.ac}, falla")
+                   f"{roll}{mode_tag}+{bonus}={total} vs CA {ca_efectiva}{ca_tag}, falla")
+
+
+def _actualizar_distancia(attacker, rango, log) -> None:
+    """El atacante queda a distancia tras un ataque a distancia (y al revés)."""
+    state = getattr(attacker, "state", None)
+    if state is None:
+        return
+    a_distancia = rango is AttackRange.RANGED
+    if getattr(state, "at_range", False) == a_distancia:
+        return
+    state.at_range = a_distancia
+    if log is not None:
+        nombre = getattr(attacker, "name", attacker)
+        log.append(f"  {nombre} {'pasa a distancia' if a_distancia else 'se acerca'}")
+
+
+def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
+    """Aplica las condiciones del ataque (si el objetivo falla la salvación)."""
+    riders = list(getattr(atk, "condition_riders", None) or [])
+    if not riders:
+        return
+    try:
+        from .conditions import RepeatSave, apply_condition
+    except ImportError:
+        try:
+            from conditions import RepeatSave, apply_condition
+        except ImportError:
+            from dnd_sim.conditions import RepeatSave, apply_condition
+    try:
+        from .saves import saving_throw
+    except ImportError:
+        try:
+            from saves import saving_throw
+        except ImportError:
+            from dnd_sim.saves import saving_throw
+
+    _ctx = ctx
+    if _ctx is None:
+        _ctx = type("RiderCtx", (), {})()
+        _ctx.rng = rng
+        _ctx.log = log
+        _ctx.verbose = log is not None
+        _ctx.conditions_applied = None
+
+    for rider in riders:
+        repeat = None
+        if rider.repeat_save:
+            repeat = RepeatSave(ability=rider.save_ability, dc=rider.dc)
+        if rider.save_ability is None:
+            # Sin salvación: la condición se aplica al impactar.
+            apply_condition(
+                target, rider.condition, _ctx,
+                source=attacker,
+                duration_rounds=rider.duration_rounds,
+                repeat_save=repeat,
+                escape=rider.escape,
+            )
+            continue
+        sr = saving_throw(target, rider.save_ability, rider.dc, rng)
+        if sr.success:
+            continue
+        apply_condition(
+            target, rider.condition, _ctx,
+            source=attacker,
+            duration_rounds=rider.duration_rounds,
+            repeat_save=repeat,
+            escape=rider.escape,
+        )
 
 
 def roll_initiative(combatants: list[Combatant], rng: random.Random) -> list[Combatant]:
@@ -222,6 +374,11 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
     # Estadísticas del combate (compartidas por todos los turnos).
     action_uses: dict[str, int] = {}
     area_targets_hit: list[int] = []
+    conditions_applied: dict[str, int] = {}
+    turns_lost_incapacitated: dict[str, int] = {}
+    escape_attempts: dict[str, int] = {}
+    escape_successes: dict[str, int] = {}
+    attacks_at_range: list[int] = []
     while rnd < max_rounds:
         rnd += 1
         if verbose:
@@ -236,34 +393,47 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                 rng=rng, actor=actor, combatants=order, round=rnd,
                 log=log if verbose else None, verbose=verbose, resources=None,
                 action_uses=action_uses, area_targets_hit=area_targets_hit,
+                conditions_applied=conditions_applied,
+                escape_attempts=escape_attempts, escape_successes=escape_successes,
+                attacks_at_range=attacks_at_range,
             )
             # Inicio de turno: recursos nuevos y tiradas de recarga de las
-            # acciones descargadas del actor.
+            # acciones descargadas del actor. Si está incapacitado, pierde
+            # el turno (sin política y sin consumir RNG).
             resources = begin_turn(actor, ctx)
-            # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
-            for action_type in (ActionType.ACTION, ActionType.BONUS_ACTION):
-                candidates = [
-                    a for a in getattr(actor, "actions", [])
-                    if getattr(a, "action_type", None) == action_type
-                    and a.can_use(resources, ctx)
-                ]
-                if not candidates:
-                    continue
-                chosen = _invoke_policy(policy, ctx, candidates)
-                if chosen is None:
-                    chosen = pick(rng, candidates)
-                chosen.execute(ctx)
-                resources.use(action_type)
-                # El uso limitado se gasta aquí (una vez, aunque el área
-                # afecte a pocos objetivos).
-                usage = getattr(chosen, "usage", None)
-                if usage is not None:
-                    usage.spend()
-                action_name = getattr(chosen, "name", "") or type(chosen).__name__
-                action_uses[action_name] = action_uses.get(action_name, 0) + 1
-                enemies = valid_targets(actor, combatants=order)
-                if not enemies:
-                    break
+            if not ctx.skip_turn:
+                # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
+                for action_type in (ActionType.ACTION, ActionType.BONUS_ACTION):
+                    candidates = [
+                        a for a in getattr(actor, "actions", [])
+                        if getattr(a, "action_type", None) == action_type
+                        and a.can_use(resources, ctx)
+                        and getattr(actor, "can_act", True)
+                    ]
+                    if not candidates:
+                        continue
+                    chosen = _invoke_policy(policy, ctx, candidates)
+                    if chosen is None:
+                        chosen = pick(rng, candidates)
+                    chosen.execute(ctx)
+                    resources.use(action_type)
+                    # El uso limitado se gasta aquí (una vez, aunque el área
+                    # afecte a pocos objetivos).
+                    usage = getattr(chosen, "usage", None)
+                    if usage is not None:
+                        usage.spend()
+                    action_name = getattr(chosen, "name", "") or type(chosen).__name__
+                    action_uses[action_name] = action_uses.get(action_name, 0) + 1
+                    enemies = valid_targets(actor, combatants=order)
+                    if not enemies:
+                        break
+            else:
+                # Turno perdido por incapacitación.
+                turns_lost_incapacitated[actor.name] = (
+                    turns_lost_incapacitated.get(actor.name, 0) + 1)
+            # Final del turno: salvaciones de repetición y duración de las
+            # condiciones del propio combatiente.
+            end_turn(actor, ctx)
             players_alive = any(c.alive and c.combatant_type == CombatantType.PLAYER for c in order)
             npcs_alive = any(c.alive and c.combatant_type == CombatantType.NPC for c in order)
             if not players_alive or not npcs_alive:
@@ -282,4 +452,9 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
     else:
         winner = "Empate"
     return CombatResult(winner, rnd, {c.name: max(c.hp, 0) for c in order}, log,
-                        action_uses=action_uses, area_targets_hit=area_targets_hit)
+                        action_uses=action_uses, area_targets_hit=area_targets_hit,
+                        conditions_applied=conditions_applied,
+                        turns_lost_incapacitated=turns_lost_incapacitated,
+                        escape_attempts=escape_attempts,
+                        escape_successes=escape_successes,
+                        attacks_vs_at_range=len(attacks_at_range))

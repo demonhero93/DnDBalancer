@@ -126,6 +126,12 @@ class CombatContext:
     # Estadísticas del combate en curso (compartidas por todos los contextos).
     action_uses: dict | None = None
     area_targets_hit: list | None = None
+    conditions_applied: dict | None = None
+    escape_attempts: dict | None = None
+    escape_successes: dict | None = None
+    attacks_at_range: list | None = None
+    # El motor marca aquí los turnos que se pierden por incapacitación.
+    skip_turn: bool = False
 
     @property
     def enemies(self) -> list:
@@ -175,7 +181,7 @@ class AttackAction(CombatAction):
         target = pick(context.rng, enemies)
         log = context.log if (context.log is not None) else None
         # Log solo si verbose; mantenemos compatibilidad: attack_roll decide.
-        attack_roll(actor, target, self.attack, context.rng, log)
+        attack_roll(actor, target, self.attack, context.rng, log, ctx=context)
 
 
 class MultiattackAction(CombatAction):
@@ -275,7 +281,7 @@ class MultiattackAction(CombatAction):
                     return
                 target = pick(context.rng, enemies)
                 log = context.log
-                attack_roll(actor, target, atk, context.rng, log)
+                attack_roll(actor, target, atk, context.rng, log, ctx=context)
 
 
 class WeaponAttackAction(CombatAction):
@@ -304,7 +310,7 @@ class WeaponAttackAction(CombatAction):
             weapon = pick(context.rng, weapons)
             target = pick(context.rng, enemies)
             log = context.log
-            attack_roll(actor, target, weapon, context.rng, log)
+            attack_roll(actor, target, weapon, context.rng, log, ctx=context)
 
 
 # Alias de coherencia por si algún código espera otro nombre.

@@ -7,7 +7,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 try:
-    from dnd_sim import Abilities, Attack, PlayerCharacter, load_monster, run_combat
+    from dnd_sim import Abilities, Attack, AttackRange, PlayerCharacter, load_monster, run_combat
     from dnd_sim.stats import print_report, simulate
 except ImportError:
     from abilities import Abilities
@@ -16,6 +16,10 @@ except ImportError:
     from data.loader import load_monster
     from combat import run_combat
     from stats import print_report, simulate
+    try:
+        from roll_modifiers import AttackRange
+    except ImportError:
+        from dnd_sim.roll_modifiers import AttackRange
 
 
 def _parse_monster_token(token: str):
@@ -43,19 +47,22 @@ def _load_party(specs: list[str]) -> list:
 
 
 # Plantillas de PJ (el grupo se elige con --party).
+# Los ataques pueden ser ("nombre", "dados", "característica", rango) para
+# marcar los que son a distancia (el arquero deja al atacante a distancia).
 PARTY_TEMPLATES = [
     dict(name="Guerrero", max_hp=50, ac=18, proficiency=2,
          abilities=dict(str=16, dex=12, con=14, int=10, wis=12, cha=8),
-         attacks=[("Espada larga", "1d8", "str")]),
+         attacks=[("Espada larga", "1d8", "str", "melee"),
+                  ("Arco corto", "1d6", "dex", "ranged")]),
     dict(name="Pícaro", max_hp=50, ac=15, proficiency=2,
          abilities=dict(str=10, dex=16, con=12, int=14, wis=10, cha=14),
-         attacks=[("Daga", "1d4", "dex")]),
+         attacks=[("Daga", "1d4", "dex", "melee")]),
     dict(name="Monje", max_hp=50, ac=17, proficiency=2,
          abilities=dict(str=12, dex=16, con=14, int=10, wis=14, cha=8),
-         attacks=[("Puño", "1d6", "dex")]),
+         attacks=[("Puño", "1d6", "dex", "melee")]),
     dict(name="Clérigo", max_hp=50, ac=16, proficiency=2,
          abilities=dict(str=14, dex=10, con=14, int=8, wis=16, cha=12),
-         attacks=[("Maza", "1d6", "str")]),
+         attacks=[("Maza", "1d6", "str", "melee")]),
 ]
 
 
@@ -67,8 +74,14 @@ def _build_party(size: int) -> list:
         )
     party = []
     for template in PARTY_TEMPLATES[:size]:
-        ataques = [Attack(nombre, dado, ability=habilidad)
-                   for nombre, dado, habilidad in template["attacks"]]
+        ataques = []
+        for datos in template["attacks"]:
+            nombre, dado, habilidad = datos[0], datos[1], datos[2]
+            rango = datos[3] if len(datos) > 3 else "melee"
+            ataques.append(
+                Attack(nombre, dado, ability=habilidad,
+                       range_type=AttackRange(rango))
+            )
         party.append(
             PlayerCharacter(
                 name=template["name"],

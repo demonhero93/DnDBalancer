@@ -82,6 +82,13 @@ def test_immune_target_takes_zero_damage(monkeypatch):
 
 
 def test_regression_guerrero_vs_ogro(monkeypatch):
+    """Regresión A.
+
+    **Cambió de forma legítima**: la jabalina del Ogro es un ataque "cuerpo a
+    cuerpo o a distancia" (MELEE_OR_RANGED) y ahora el rango se decide con
+    ``pick`` en **cada** ataque (consume RNG). Antes: PJ 0.108 / NPC 0.892,
+    5.881 rondas, 1.073 / 27.503.
+    """
     data = json.loads(FIXTURE.read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
 
@@ -93,11 +100,32 @@ def test_regression_guerrero_vs_ogro(monkeypatch):
     ogro = load_monster("ogre")
 
     stats = simulate([guerrero, ogro], n=1000, seed=1)
-    assert stats["win_rate"]["PJ"] == pytest.approx(0.108, abs=1e-9)
-    assert stats["win_rate"]["NPC"] == pytest.approx(0.892, abs=1e-9)
-    assert stats["rounds_avg"] == pytest.approx(5.881, abs=1e-9)
-    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(1.073, abs=1e-9)
-    assert stats["hp_left_avg"]["Ogre"] == pytest.approx(27.503, abs=1e-9)
+    assert stats["win_rate"]["PJ"] == pytest.approx(0.1, abs=1e-9)
+    assert stats["win_rate"]["NPC"] == pytest.approx(0.9, abs=1e-9)
+    assert stats["rounds_avg"] == pytest.approx(5.773, abs=1e-9)
+    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(0.898, abs=1e-9)
+    assert stats["hp_left_avg"]["Ogre"] == pytest.approx(28.781, abs=1e-9)
+
+
+def test_regression_guerrero_vs_owlbear(monkeypatch):
+    """Regresión B: el búho solo ataca cuerpo a cuerpo -> NO cambia."""
+    data = json.loads((Path(__file__).parent / "fixtures" / "owlbear.json")
+                      .read_text(encoding="utf-8"))
+    monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
+
+    guerrero = PlayerCharacter(
+        name="Guerrero", max_hp=28, ac=18, proficiency=2,
+        abilities=Abilities(str=16, dex=12, con=14, int=10, wis=12, cha=8),
+        attacks=[Attack("Espada larga", "1d8", ability="str")],
+    )
+    buho = load_monster("owlbear")
+
+    stats = simulate([guerrero, buho], n=1000, seed=1)
+    assert stats["win_rate"]["PJ"] == pytest.approx(0.002, abs=1e-9)
+    assert stats["win_rate"]["NPC"] == pytest.approx(0.998, abs=1e-9)
+    assert stats["rounds_avg"] == pytest.approx(2.924, abs=1e-9)
+    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(0.005, abs=1e-9)
+    assert stats["hp_left_avg"]["Owlbear"] == pytest.approx(46.64, abs=1e-9)
 
 
 def test_attack_roll_log_modifier(monkeypatch, capsys):

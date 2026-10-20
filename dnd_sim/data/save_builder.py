@@ -13,17 +13,20 @@ from __future__ import annotations
 try:
     from ..actions import ActionType, SaveAction
     from ..area import AreaSaveAction, AreaTargeting
+    from ..conditions import ConditionAction
     from ..saves import SaveDamage, normalize_ability
     from .area_classifier import is_area_action
 except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
         from actions import ActionType, SaveAction
         from area import AreaSaveAction, AreaTargeting
+        from conditions import ConditionAction
         from saves import SaveDamage, normalize_ability
         from area_classifier import is_area_action
     except ImportError:
         from dnd_sim.actions import ActionType, SaveAction
         from dnd_sim.area import AreaSaveAction, AreaTargeting
+        from dnd_sim.conditions import ConditionAction
         from dnd_sim.saves import SaveDamage, normalize_ability
         from dnd_sim.data.area_classifier import is_area_action
 
@@ -121,5 +124,25 @@ def build_save_action(action: dict, effect: SaveDamage, usage=None):
     )
 
 
+def build_condition_action(action: dict, effect, usage=None):
+    """Crea la acción de condición (``ConditionAction``) de la API.
+
+    Las acciones de área afectan a varios objetivos; las de objetivo único,
+    a uno solo (elegido al azar).
+    """
+    name = str(action.get("name") or "Condición")
+    if is_area_action(action):
+        targeting = AreaTargeting()
+    else:
+        targeting = AreaTargeting(min_targets=1, max_targets=1)
+    return ConditionAction(
+        name=name,
+        effect=effect,
+        targeting=targeting,
+        usage=usage,
+        action_type=ActionType.ACTION,
+    )
+
+
 __all__ = ["damage_type_of", "damage_dice_of", "damage_options",
-           "build_save_effect", "build_save_action"]
+           "build_save_effect", "build_save_action", "build_condition_action"]

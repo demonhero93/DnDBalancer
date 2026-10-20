@@ -46,6 +46,22 @@ def simulate(combatants: list[Combatant], n: int = 1000, seed: int | None = None
         c.name: statistics.mean(r.damage_received.get(c.name, 0) for r in results)
         for c in combatants
     }
+    # Condiciones: veces aplicada cada una y turnos perdidos por incapacitación.
+    conditions_applied: dict[str, int] = {}
+    turns_lost: dict[str, int] = {}
+    escape_attempts: dict[str, int] = {}
+    escape_successes: dict[str, int] = {}
+    attacks_at_range = 0
+    for r in results:
+        for name, count in (getattr(r, "conditions_applied", None) or {}).items():
+            conditions_applied[name] = conditions_applied.get(name, 0) + int(count)
+        for name, count in (getattr(r, "turns_lost_incapacitated", None) or {}).items():
+            turns_lost[name] = turns_lost.get(name, 0) + int(count)
+        for name, count in (getattr(r, "escape_attempts", None) or {}).items():
+            escape_attempts[name] = escape_attempts.get(name, 0) + int(count)
+        for name, count in (getattr(r, "escape_successes", None) or {}).items():
+            escape_successes[name] = escape_successes.get(name, 0) + int(count)
+        attacks_at_range += int(getattr(r, "attacks_vs_at_range", 0) or 0)
     return {
         "n": n,
         "win_rate": {t: sum(r.winner == t for r in results) / n for t in teams},
@@ -71,6 +87,13 @@ def simulate(combatants: list[Combatant], n: int = 1000, seed: int | None = None
         "damage_dealt_avg": damage_dealt_avg,
         "damage_received_avg": damage_received_avg,
         "teams": {c.name: c.team for c in combatants},
+        # Condiciones (media de aplicaciones por combate) y turnos perdidos.
+        "conditions_applied_avg": {name: total / n for name, total in conditions_applied.items()},
+        "turns_lost_incapacitated_avg": {name: total / n for name, total in turns_lost.items()},
+        # Escapes (intentos y aciertos por combate) y ataques a distancia.
+        "escape_attempts_avg": {name: total / n for name, total in escape_attempts.items()},
+        "escape_successes_avg": {name: total / n for name, total in escape_successes.items()},
+        "attacks_vs_at_range_avg": attacks_at_range / n,
     }
 
 
@@ -102,3 +125,23 @@ def print_report(stats: dict) -> None:
     if stats.get("area_uses_total"):
         print(f"Áreas por combate: {stats['area_uses_total'] / stats['n']:.2f} "
               f"| objetivos medios por área: {stats['area_targets_avg']:.2f}")
+
+    condiciones = stats.get("conditions_applied_avg") or {}
+    if condiciones:
+        print("Condiciones (media de aplicaciones por combate):")
+        for name, avg in sorted(condiciones.items(), key=lambda kv: (-kv[1], kv[0])):
+            print(f"  {name}: {avg:.2f}")
+    perdidos = stats.get("turns_lost_incapacitated_avg") or {}
+    if perdidos:
+        print("Turnos perdidos por incapacitación (media):")
+        for name, avg in sorted(perdidos.items(), key=lambda kv: (-kv[1], kv[0])):
+            print(f"  {name}: {avg:.2f}")
+
+    intentos = stats.get("escape_attempts_avg") or {}
+    if intentos:
+        print("Intentos de escape (media por combate):")
+        for name, avg in sorted(intentos.items(), key=lambda kv: (-kv[1], kv[0])):
+            exitos = (stats.get("escape_successes_avg") or {}).get(name, 0.0)
+            print(f"  {name}: {avg:.2f} intentos | {exitos:.2f} exitos")
+    if stats.get("attacks_vs_at_range_avg"):
+        print(f"Ataques contra objetivos a distancia: {stats['attacks_vs_at_range_avg']:.2f} por combate")

@@ -135,9 +135,14 @@ def _log_line(ctx, line: str) -> None:
 def begin_turn(actor, ctx):
     """Prepara el turno de ``actor``: reinicia los recursos y tira recargas.
 
-    1. Crea unos ``TurnResources`` nuevos y los deja en ``ctx.resources``.
-    2. Recorre ``actor.actions`` en orden y, para cada acción descargada de
-       tipo ``RECHARGE_ROLL``, tira su recarga.
+    Orden (documentado):
+
+    1. Se crean unos ``TurnResources`` nuevos (``ctx.resources``).
+    2. Tiradas de recarga de las acciones descargadas del actor.
+    3. ``attempt_escapes``: intentos de liberarse de los estados con prueba
+       de escape (automáticos, no son una elección).
+    4. Si el actor está incapacitado, se salta el turno (sin política y
+       sin consumir RNG).
 
     La tirada de recarga ocurre al inicio del turno propio del monstruo, así
     que la primera tirada de un aliento usado en el turno N es al inicio del
@@ -157,6 +162,7 @@ def begin_turn(actor, ctx):
     except Exception:
         pass
 
+    # (2) Recargas de las acciones descargadas.
     rng = getattr(ctx, "rng", None)
     for action in getattr(actor, "actions", []) or []:
         usage = getattr(action, "usage", None)
@@ -176,6 +182,29 @@ def begin_turn(actor, ctx):
             f"{actor_name}: recarga {name} ({usage.last_roll} en {usage.recharge_dice})"
             f" -> {resultado}",
         )
+
+    # (3) Intentos de escape (automáticos).
+    try:
+        from .conditions import attempt_escapes
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from conditions import attempt_escapes
+        except ImportError:
+            from dnd_sim.conditions import attempt_escapes
+    try:
+        attempt_escapes(actor, ctx)
+    except Exception:
+        pass
+
+    # (4) Un combatiente incapacitado pierde el turno entero.
+    if not getattr(actor, "can_act", True):
+        try:
+            ctx.skip_turn = True
+        except Exception:
+            pass
+        _log_line(ctx, f"{getattr(actor, 'name', actor)} está incapacitado y pierde su turno")
+        return resources
+
     return resources
 
 
