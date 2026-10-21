@@ -3,26 +3,18 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-
-
-def _valid_targets(actor, ctx=None, combatants=None, enemies=None):
-    try:
-        from .combatant import valid_targets as _vt
-    except ImportError:
-        try:
-            from combatant import valid_targets as _vt
-        except ImportError:
-            from dnd_sim.combatant import valid_targets as _vt
-    return _vt(actor, ctx=ctx, combatants=combatants, enemies=enemies)
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Iterable
 
 try:
+    from .targeting import valid_targets
     from .usage import ActionUsage, UsageKind
 except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
+        from targeting import valid_targets
         from usage import ActionUsage, UsageKind
     except ImportError:
+        from dnd_sim.targeting import valid_targets
         from dnd_sim.usage import ActionUsage, UsageKind
 
 if TYPE_CHECKING:
@@ -130,12 +122,16 @@ class CombatContext:
     escape_attempts: dict | None = None
     escape_successes: dict | None = None
     attacks_at_range: list | None = None
+    # Estadísticas legendarias del combate en curso (compartidas por todos
+    # los contextos): {"actions": {nombre: veces}, "points": int,
+    # "resistances": int}.
+    legendary_stats: dict | None = None
     # El motor marca aquí los turnos que se pierden por incapacitación.
     skip_turn: bool = False
 
     @property
     def enemies(self) -> list:
-        return list(_valid_targets(self.actor, ctx=self))
+        return list(valid_targets(self.actor, ctx=self))
 
     def living_enemies(self) -> list:
         # Única fuente de verdad: valid_targets (hostiles vivos).
@@ -144,7 +140,7 @@ class CombatContext:
 
 def _living_enemies(ctx: CombatContext) -> list:
     """Hostiles vivos del actor (alias de la fuente única ``valid_targets``)."""
-    return list(_valid_targets(ctx.actor, ctx=ctx))
+    return list(valid_targets(ctx.actor, ctx=ctx))
 
 
 def _log(ctx: CombatContext):
@@ -340,7 +336,7 @@ class SaveAction(CombatAction):
         from .randomness import pick as _pick
 
         actor = context.actor
-        targets = _valid_targets(actor, ctx=context)
+        targets = valid_targets(actor, ctx=context)
         living = [t for t in targets if getattr(t, "alive", False)]
         if not living:
             return

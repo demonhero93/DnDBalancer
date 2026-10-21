@@ -34,7 +34,8 @@ def _parse_monster_token(token: str):
     return index, count
 
 
-def _load_party(specs: list[str]) -> list:
+def _load_party(specs: list[str], legendary_p: float = 1.0,
+                resistance_p: float = 1.0) -> list:
     monsters: list[Combatant] = []
     for spec in specs:
         index, count = _parse_monster_token(spec)
@@ -42,6 +43,11 @@ def _load_party(specs: list[str]) -> list:
             monster = load_monster(index)
             if count > 1:
                 monster.name = f"{monster.name} {i}"
+            # Probabilidades de las acciones y la resistencia legendarias.
+            legendary = getattr(monster, "legendary", None)
+            if legendary is not None:
+                legendary.use_probability = legendary_p
+                legendary.resistance_probability = resistance_p
             monsters.append(monster)
     return monsters
 
@@ -110,13 +116,24 @@ def build_parser() -> argparse.ArgumentParser:
         "--party", type=int, default=3,
         help="Número de personajes jugador del grupo (1-4). Default: 3.",
     )
+    parser.add_argument(
+        "--legendary-p", type=float, default=1.0,
+        help="Probabilidad de que un monstruo legítimo use una acción "
+             "legendaria en cada disparo (0.0-1.0). Default: 1.0.",
+    )
+    parser.add_argument(
+        "--resistance-p", type=float, default=1.0,
+        help="Probabilidad de que un monstruo Legendary Resistance convierta "
+             "un fallo de salvación en éxito (0.0-1.0). Default: 1.0.",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
     specs = args.monster if args.monster else ["chimera"]
-    monsters = _load_party(specs)
+    monsters = _load_party(specs, legendary_p=args.legendary_p,
+                           resistance_p=args.resistance_p)
 
     # Los PJ sí se definen aquí (personajes jugador).
     party = _build_party(args.party)

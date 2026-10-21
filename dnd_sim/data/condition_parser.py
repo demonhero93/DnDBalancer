@@ -48,6 +48,7 @@ except ImportError:  # pragma: no cover - ejecución como script suelto
 # Condiciones del Enum y la palabra que las delata en el texto.
 CONDITION_KEYWORDS: dict[str, Condition] = {
     "blinded": Condition.BLINDED,
+    "charmed": Condition.CHARMED,
     "frightened": Condition.FRIGHTENED,
     "incapacitated": Condition.INCAPACITATED,
     "paralyzed": Condition.PARALYZED,
@@ -62,6 +63,18 @@ CONDITION_KEYWORDS: dict[str, Condition] = {
 # "saving throw or be <cond>" / "saving throw or become <cond>".
 SAVE_OR_CONDITION_RE = re.compile(
     r"saving throw or (?:be|become)\s+((?:knocked\s+)?[a-z]+)(?P<rest>[^.;]*)",
+    re.IGNORECASE,
+)
+# Patrones extra (opcionales, solo para las acciones legendarias):
+# - "saving throw against this magic or become frightened" (lich).
+SAVE_AGAINST_OR_CONDITION_RE = re.compile(
+    r"saving throw against [^.;]*?\bor (?:be|become)\s+((?:knocked\s+)?[a-z]+)(?P<rest>[^.;]*)",
+    re.IGNORECASE,
+)
+# - "saving throw or take 15 (2d6 + 8) bludgeoning damage and be knocked prone"
+#   (ala del dragón): la condición va **después** del daño.
+SAVE_OR_DAMAGE_AND_CONDITION_RE = re.compile(
+    r"saving throw or [^.;]*?\band (?:be|become)\s+((?:knocked\s+)?[a-z]+)(?P<rest>[^.;]*)",
     re.IGNORECASE,
 )
 # "DC 11 Strength saving throw".
@@ -152,7 +165,8 @@ def parse_range_type(desc: str, monster_name: str = "", action_name: str = "") -
 
 
 def parse_condition_effects(action: dict, monster_name: str = "",
-                            dc_info: dict | None = None) -> list[ConditionEffect]:
+                            dc_info: dict | None = None,
+                            allow_extra_patterns: bool = False) -> list[ConditionEffect]:
     """Efectos de condición de una acción de la API.
 
     Dos casos:
@@ -166,6 +180,11 @@ def parse_condition_effects(action: dict, monster_name: str = "",
 
     Las condiciones excluidas avisan y no se aplican. Las condiciones sin
     salida (ni salvación ni escape) también avisan y no se aplican.
+
+    ``allow_extra_patterns`` habilita dos patrones extra ("saving throw
+    against this magic or become X" y "saving throw or take ... damage and
+    be X"), que solo usan las acciones legendarias: con el valor por
+    defecto el comportamiento del loader normal no cambia.
     """
     desc = str(action.get("desc") or "")
     nombre = str(action.get("name") or "")
@@ -188,57 +207,62 @@ def parse_condition_effects(action: dict, monster_name: str = "",
     aplicadas: set[Condition] = set()
 
     # (a) Condiciones ligadas a un fallo de salvación.
-    for match in SAVE_OR_CONDITION_RE.finditer(desc):
-        condicion = _condition_from_phrase(match.group(1))
-        if condicion is None:
-            continue
-        frase = _sentence_with(desc, match.start())
-
-        # La CD y la característica: del campo `dc` si existe, si no del texto.
-        dc = 0
-        ability = "dex"
-        if isinstance(dc_info, dict) and dc_info:
-            dc = int(dc_info.get("dc_value", 0) or 0)
-            tipo = dc_info.get("dc_type") or {}
-            index = tipo.get("index") if isinstance(tipo, dict) else tipo
-            if index:
-                ability = str(index)
-        else:
-            dc_match = DC_SAVE_RE.search(frase)
-            if not dc_match:
+    patrones = [SAVE_OR_CONDITION_RE]
+    if allow_extra_patterns:
+        patrones.append(SAVE_AGAINST_OR_CONDITION_RE)
+        patrones.append(SAVE_OR_DAMAGE_AND_CONDITION_RE)
+    for patron in patrones:
+        for match in patron.finditer(desc):
+            condicion = _condition_from_phrase(match.group(1))
+            if condicion is None:
                 continue
-            dc = int(dc_match.group(1))
-            ability = dc_match.group(2)
-        try:
-            ability = normalize_ability(ability)
-        except Exception:
+            frase = _sentence_with(desc, match.start())
+
+            # La CD y la característica: del campo `dc` si existe, si no del texto.
+            dc = 0
             ability = "dex"
+            if isinstance(dc_info, dict) and dc_info:
+                dc = int(dc_info.get("dc_value", 0) or 0)
+                tipo = dc_info.get("dc_type") or {}
+                index = tipo.get("index") if isinstance(tipo, dict) else tipo
+                if index:
+                    ability = str(index)
+            else:
+                dc_match = DC_SAVE_RE.search(frase)
+                if not dc_match:
+                    continue
+                dc = int(dc_match.group(1))
+                ability = dc_match.group(2)
+            try:
+                ability = normalize_ability(ability)
+            except Exception:
+                ability = "dex"
 
-        # Duración.
-        resto = match.group("rest") or ""
-        if "knocked" in match.group(1).lower():
-            rondas, reconocida = KNOCKED_PRONE_ROUNDS, True
-        else:
-            rondas, reconocida = _duration_rounds(resto)
-        if not reconocida:
-            warnings.warn(
-                f"Duración no reconocida en la condición {condicion.value!r} de la "
-                f"acción {nombre!r} de {monster_name!r}: no se aplica. "
-                f"# TODO: no adivinar la duración.",
-                stacklevel=2,
-            )
-            continue
+            # Duración.
+            resto = match.group("rest") or ""
+            if "knocked" in match.group(1).lower():
+                rondas, reconocida = KNOCKED_PRONE_ROUNDS, True
+            else:
+                rondas, reconocida = _duration_rounds(resto)
+            if not reconocida:
+                warnings.warn(
+                    f"Duración no reconocida en la condición {condicion.value!r} de la "
+                    f"acción {nombre!r} de {monster_name!r}: no se aplica. "
+                    f"# TODO: no adivinar la duración.",
+                    stacklevel=2,
+                )
+                continue
 
-        repeat = bool(REPEAT_SAVE_RE.search(desc))
-        efectos.append(ConditionEffect(
-            condition=condicion,
-            save_ability=ability,
-            dc=dc,
-            duration_rounds=rondas,
-            repeat_save=repeat,
-            escape=escape,
-        ))
-        aplicadas.add(condicion)
+            repeat = bool(REPEAT_SAVE_RE.search(desc))
+            efectos.append(ConditionEffect(
+                condition=condicion,
+                save_ability=ability,
+                dc=dc,
+                duration_rounds=rondas,
+                repeat_save=repeat,
+                escape=escape,
+            ))
+            aplicadas.add(condicion)
 
     # (b) Condiciones sin salvación pero con prueba de escape.
     if escape is not None:

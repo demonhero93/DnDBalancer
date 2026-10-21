@@ -141,26 +141,41 @@ def test_multiattack_del_dragon_sigue_igual(monkeypatch):
 
 
 def test_el_dragon_hace_tres_ataques_por_turno(monkeypatch):
-    """El dragón tiene dos acciones: multiataque (3 golpes) o aliento."""
+    """El dragón tiene dos acciones: multiataque (3 golpes) o aliento.
+
+    Los ataques **legendarios** (el ataque de cola) van aparte: no cuentan
+    como parte del multiataque.
+    """
     dragon = _load(monkeypatch, "adult-red-dragon")
     jugador = _pj()
     res = run_combat([jugador, dragon], random.Random(3), verbose=True, max_rounds=10)
 
     rondas = {}
     ronda = None
+    en_legendaria = False
     for line in res.log:
         if line.startswith("-- Ronda"):
             ronda = line
-            rondas[ronda] = {"ataques": 0, "aliento": 0}
+            rondas[ronda] = {"ataques": 0, "aliento": 0, "legendarias": 0}
+            en_legendaria = False
+        elif line.startswith("[Legendaria]"):
+            en_legendaria = True
         elif "Adult Red Dragon ->" in line:
-            rondas[ronda]["ataques"] += 1
+            if en_legendaria:
+                rondas[ronda]["legendarias"] += 1
+                en_legendaria = False
+            else:
+                rondas[ronda]["ataques"] += 1
         elif "Adult Red Dragon usa Fire Breath" in line:
             rondas[ronda]["aliento"] += 1
+            en_legendaria = False
+        else:
+            en_legendaria = False
 
     assert rondas
     for ronda, cuenta in rondas.items():
         if cuenta["aliento"]:
-            # El turno se 소비ó en el aliento: no hay ataques ese turno.
+            # El turno se consumió en el aliento: no hay ataques ese turno.
             assert cuenta["ataques"] == 0, ronda
         else:
             assert cuenta["ataques"] == 3, ronda

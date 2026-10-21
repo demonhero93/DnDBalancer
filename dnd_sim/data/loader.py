@@ -8,13 +8,15 @@ import warnings
 
 try:
     from ..abilities import Abilities
-    from ..actions import ActionType, AttackEntry, MultiattackAction, SaveAction
+    from ..actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
     from ..attack import Attack
     from ..combatant import CombatantType, Monster
     from ..damage import DamageType
     from ..saves import SaveDamage, normalize_ability
     from .api_client import get_monster
     from .condition_parser import parse_condition_effects, parse_range_type
+    from .legendary_parser import parse_legendary
+    from .spell_parser import build_spell_actions
     from .multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
     from .save_builder import (build_condition_action, build_save_action,
                                build_save_effect, damage_dice_of, damage_type_of)
@@ -22,20 +24,22 @@ try:
 except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
     try:
         from abilities import Abilities
-        from actions import ActionType, AttackEntry, MultiattackAction, SaveAction
+        from actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
         from attack import Attack
         from combatant import CombatantType, Monster
         from damage import DamageType
         from saves import SaveDamage, normalize_ability
         from api_client import get_monster
         from condition_parser import parse_condition_effects, parse_range_type
+        from legendary_parser import parse_legendary
+        from spell_parser import build_spell_actions
         from multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
         from save_builder import (build_condition_action, build_save_action,
                                   build_save_effect, damage_dice_of, damage_type_of)
         from usage_parser import UnknownUsageError, parse_usage
     except ImportError:
         from dnd_sim.abilities import Abilities
-        from dnd_sim.actions import ActionType, AttackEntry, MultiattackAction, SaveAction
+        from dnd_sim.actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
         from dnd_sim.attack import Attack
         from dnd_sim.combatant import CombatantType, Monster
         from dnd_sim.damage import DamageType
@@ -43,6 +47,8 @@ except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
         from dnd_sim.data.api_client import get_monster
         from dnd_sim.data.condition_parser import (parse_condition_effects,
                                                    parse_range_type)
+        from dnd_sim.data.legendary_parser import parse_legendary
+        from dnd_sim.data.spell_parser import build_spell_actions
         from dnd_sim.data.multiattack_parser import (extract_multiattack_alternatives,
                                                       resolve_multiattack)
         from dnd_sim.data.save_builder import (build_condition_action,
@@ -392,6 +398,21 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
     # save_actions ya construidas pasan al Monster como actions adicionales.
     extra_actions = list(save_actions)
 
+    # Acciones legendarias: envuelven acciones **ya cargadas** del monstruo
+    # (los ataques, las acciones de salvación y las que viven dentro del
+    # multiataque), no copias.
+    legendary_candidates = [
+        AttackAction(atk, action_type=ActionType.ACTION) for atk in attacks
+    ] + list(save_actions)
+    if multiattack is not None:
+        legendary_candidates += list(
+            (getattr(multiattack, "action_entries", None) or {}).values()
+        )
+    legendary = parse_legendary(data, legendary_candidates)
+
+    # Hechizos: los cantrips del monstruo (a voluntad, sin slots).
+    extra_actions += build_spell_actions(data, monster_name)
+
     return Monster(
         name=monster_name,
         combatant_type=combatant_type,
@@ -406,4 +427,5 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         multiattack=multiattack,
         save_overrides=save_overrides,
         actions=extra_actions,
+        legendary=legendary,
     )

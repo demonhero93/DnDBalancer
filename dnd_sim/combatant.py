@@ -1,21 +1,24 @@
 """Personajes (PJ) y monstruos (NPC)."""
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 try:
     from .abilities import Abilities
     from .attack import Attack
     from .damage import DamageType, parse_damage_type
+    from .targeting import valid_targets  # noqa: F401  (reexport)
 except ImportError:
     try:
         from dnd_sim.abilities import Abilities
         from dnd_sim.attack import Attack
         from dnd_sim.damage import DamageType, parse_damage_type
+        from dnd_sim.targeting import valid_targets  # noqa: F401  (reexport)
     except ImportError:
         from abilities import Abilities
         from attack import Attack
         from damage import DamageType, parse_damage_type
+        from targeting import valid_targets  # noqa: F401  (reexport)
 
 
 try:
@@ -62,35 +65,23 @@ except Exception:
         class Condition:  # pragma: no cover - fallback mínimo
             INCAPACITATED = None
 
+if TYPE_CHECKING:  # pragma: no cover - solo para tipado
+    from .legendary import LegendaryState
+
+# ``valid_targets`` se reexporta aquí (API pública histórica): la fuente
+# única de verdad vive en :mod:`dnd_sim.targeting`.
+__all__ = [
+    "Combatant",
+    "CombatantType",
+    "Monster",
+    "PlayerCharacter",
+    "valid_targets",
+]
+
+
 class CombatantType(str, Enum):
     PLAYER = "PLAYER"
     NPC = "NPC"
-
-
-def valid_targets(actor, ctx=None, combatants=None, enemies=None):
-    if combatants is None:
-        if enemies is not None:
-            combatants = enemies
-        elif ctx is not None:
-            combatants = getattr(ctx, "combatants", None)
-            if combatants is None:
-                combatants = getattr(ctx, "enemies", None)
-        else:
-            combatants = None
-    if combatants is None:
-        return []
-    result = []
-    for c in combatants:
-        if c is actor:
-            continue
-        if not getattr(c, "alive", True):
-            continue
-        try:
-            if actor.is_hostile_to(c):
-                result.append(c)
-        except Exception:
-            pass
-    return result
 
 
 @dataclass
@@ -128,6 +119,9 @@ class Combatant:
     # Ventaja/desventaja en pruebas de característica (por característica).
     checks_with_advantage: set[str] = field(default_factory=set)
     checks_with_disadvantage: set[str] = field(default_factory=set)
+    # Estado legendario (acciones legendarias y resistencia legendaria).
+    # Único campo nuevo: lo rellena ``load_monster`` desde la API.
+    legendary: "LegendaryState | None" = None
     hp: int = field(init=False)
     initiative: int = field(init=False, default=0)
 
@@ -224,6 +218,13 @@ class Combatant:
                     usage.reset()
                 except Exception:
                     pass
+        # El estado legendario también se reinicia (puntos y resistencia).
+        legendary = getattr(self, "legendary", None)
+        if legendary is not None:
+            try:
+                legendary.reset()
+            except Exception:
+                pass
 
     @property
     def can_act(self) -> bool:
@@ -248,7 +249,35 @@ class Combatant:
     def is_hostile_to(self, other) -> bool:
         if other is self:
             return False
+        if self.is_charmed:
+            # Hechizado: los objetivos se invierten (ataca a los de su propio
+            # bando). El hechizador es su aliado.
+            charmer = self.charmed_by
+            if charmer is not None and other is charmer:
+                return False
+            return getattr(other, "combatant_type", None) == self.combatant_type
         return getattr(other, "combatant_type", None) != self.combatant_type
+
+    @property
+    def is_charmed(self) -> bool:
+        """¿Está hechizado (sus objetivos están invertidos)?"""
+        try:
+            from .conditions import Condition
+            return self.conditions.has(Condition.CHARMED)
+        except Exception:
+            return False
+
+    @property
+    def charmed_by(self):
+        """Combatiente que lo hechizó (si lo hay)."""
+        try:
+            from .conditions import Condition
+            for instance in list(self.conditions.instances):
+                if instance.condition is Condition.CHARMED:
+                    return instance.source
+        except Exception:
+            pass
+        return None
 
     def is_ally_of(self, other) -> bool:
         # Mismo tipo y objeto distinto. (TODO: reacciones sobre aliados.)

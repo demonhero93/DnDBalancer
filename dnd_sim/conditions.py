@@ -15,11 +15,14 @@ from typing import TYPE_CHECKING, Any
 
 try:
     from .actions import ActionType, CombatAction
+    from .targeting import valid_targets
 except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
         from actions import ActionType, CombatAction
+        from targeting import valid_targets
     except ImportError:
         from dnd_sim.actions import ActionType, CombatAction
+        from dnd_sim.targeting import valid_targets
 
 if TYPE_CHECKING:
     from .combatant import Combatant
@@ -29,7 +32,18 @@ class Condition(Enum):
     """Condiciones modeladas (catálogo cerrado)."""
 
     BLINDED = "blinded"
+    # Hechizado: mientras lo esté, sus objetivos se invierten (ataca a los
+    # de su propio bando).
+    CHARMED = "charmed"
+    # Concentración: solo se puede mantener una concentración por lanzador
+    # (lanzar otro hechizo concentrado termina la anterior).
+    CONCENTRATION = "concentration"
     FRIGHTENED = "frightened"
+    # Guiado: +1d4 a una prueba de característica (se consume al usarla).
+    GUIDED = "guided"
+    # Señalado: el objetivo otorga ventaja a quien lo ataque (Luz de hadas,
+    # Marca del cazador, Rayo guía).
+    MARKED = "marked"
     INCAPACITATED = "incapacitated"
     PARALYZED = "paralyzed"
     PETRIFIED = "petrified"
@@ -38,13 +52,14 @@ class Condition(Enum):
     RESTRAINED = "restrained"
     STUNNED = "stunned"
     UNCONSCIOUS = "unconscious"
+    # Marcado: ventaja en los ataques mientras dure (Hechizo verdadero).
+    TRUE_STRUCK = "true_struck"
 
 
 # Condiciones que NO se modelan, con el motivo (no son miembros del Enum).
 EXCLUDED_CONDITIONS: dict[str, str] = {
     "deafened": "sentidos: no se modelan (no afectan a tiradas).",
     "invisible": "ocultación: no se modela (no afecta a tiradas).",
-    "charmed": "no da ventaja ni desventaja por sí sola.",
     "grappled": "no da ventaja ni desventaja por sí sola.",
     "exhausted": "el agotamiento depende de la edición de reglas.",
 }
@@ -61,14 +76,19 @@ IMPLIED_CONDITIONS: dict[Condition, tuple[Condition, ...]] = {
 # Etiquetas en español para el log.
 CONDITION_LABELS: dict[Condition, str] = {
     Condition.BLINDED: "cegado",
+    Condition.CHARMED: "hechizado",
+    Condition.CONCENTRATION: "concentrado",
     Condition.FRIGHTENED: "aterrorizado",
+    Condition.GUIDED: "guiado",
     Condition.INCAPACITATED: "incapacitado",
+    Condition.MARKED: "señalado",
     Condition.PARALYZED: "paralizado",
     Condition.PETRIFIED: "petrificado",
     Condition.POISONED: "envenenado",
     Condition.PRONE: "derribado",
     Condition.RESTRAINED: "inmovilizado",
     Condition.STUNNED: "aturdido",
+    Condition.TRUE_STRUCK: "marcado",
     Condition.UNCONSCIOUS: "inconsciente",
 }
 
@@ -353,14 +373,15 @@ def end_turn(actor: Any, ctx: Any) -> None:
         # 1. Salvación de repetición.
         if instance.repeat_save is not None:
             try:
-                from .saves import saving_throw
+                from .saves import registrar_resistencia, saving_throw
             except ImportError:  # pragma: no cover - ejecución como script suelto
                 try:
-                    from saves import saving_throw
+                    from saves import registrar_resistencia, saving_throw
                 except ImportError:
-                    from dnd_sim.saves import saving_throw
+                    from dnd_sim.saves import registrar_resistencia, saving_throw
             sr = saving_throw(actor, instance.repeat_save.ability,
                               instance.repeat_save.dc, ctx.rng)
+            sr = registrar_resistencia(ctx, actor, sr)
             habilidad = instance.repeat_save.ability.upper()
             if sr.success:
                 tracker.remove_instance(instance)
@@ -412,13 +433,6 @@ class ConditionAction(CombatAction):
     def _seleccionar_objetivos(self, context) -> list:
         """Hostiles vivos: uno al azar, o varios si la acción es de área."""
         try:
-            from .combatant import valid_targets
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from combatant import valid_targets
-            except ImportError:
-                from dnd_sim.combatant import valid_targets
-        try:
             from .area import select_area_targets
         except ImportError:  # pragma: no cover - ejecución como script suelto
             try:
@@ -446,12 +460,12 @@ class ConditionAction(CombatAction):
 
     def execute(self, context) -> None:
         try:
-            from .saves import saving_throw
+            from .saves import registrar_resistencia, saving_throw
         except ImportError:  # pragma: no cover - ejecución como script suelto
             try:
-                from saves import saving_throw
+                from saves import registrar_resistencia, saving_throw
             except ImportError:
-                from dnd_sim.saves import saving_throw
+                from dnd_sim.saves import registrar_resistencia, saving_throw
 
         effect = self.effect
         if effect is None:
@@ -479,6 +493,7 @@ class ConditionAction(CombatAction):
                 )
                 continue
             sr = saving_throw(objetivo, effect.save_ability, effect.dc, context.rng)
+            sr = registrar_resistencia(context, objetivo, sr)
             if sr.success:
                 _log_line(context, f"  {getattr(objetivo, 'name', objetivo)}: "
                                    f"salvación {effect.save_ability.upper()} {sr.total} "

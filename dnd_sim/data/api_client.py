@@ -12,6 +12,8 @@ API_BASE_URL = f"https://www.dnd5eapi.co/api/{API_VERSION}"
 
 # Directorio de caché (relativo al directorio de trabajo).
 CACHE_DIR = Path("cache") / "monsters"
+# Caché de los hechizos (SRD 2014).
+SPELL_CACHE_DIR = Path("cache") / "spells"
 
 DEFAULT_TIMEOUT = 15
 
@@ -98,6 +100,67 @@ def get_monster(
             json.dump(data, fh, ensure_ascii=False, indent=2)
     except OSError:
         # Si no se puede escribir la caché, no fallar la función.
+        pass
+
+    return data
+
+
+def get_spell(
+    index: str,
+    force_refresh: bool = False,
+    refresh: bool | None = None,
+    force: bool | None = None,
+    timeout: int = DEFAULT_TIMEOUT,
+    cache_dir: Path | str | None = None,
+) -> dict:
+    """Descarga (o lee de caché) el JSON de un hechizo por su índice.
+
+    Igual que :func:`get_monster`, pero en la caché de hechizos
+    (``cache/spells``).
+    """
+    if refresh is not None:
+        force_refresh = bool(refresh)
+    if force is not None:
+        force_refresh = bool(force)
+
+    base = Path(cache_dir) if cache_dir is not None else SPELL_CACHE_DIR
+    path = base / f"{index}.json"
+
+    if not force_refresh and path.exists():
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    url = f"{API_BASE_URL}/spells/{index}"
+
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            raise MonsterNotFoundError(
+                f"El hechizo {index!r} no existe en la API ({url})."
+            ) from exc
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/spells/{index}.json"
+        raise NetworkError(
+            f"Error HTTP {exc.code} al pedir {url}: {exc.reason}. {hint}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/spells/{index}.json"
+        raise NetworkError(
+            f"Sin red o error de conexión al pedir {url}: {exc.reason}. {hint}"
+        ) from exc
+    except TimeoutError as exc:
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/spells/{index}.json"
+        raise NetworkError(f"Timeout al pedir {url}. {hint}") from exc
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False, indent=2)
+    except OSError:
         pass
 
     return data

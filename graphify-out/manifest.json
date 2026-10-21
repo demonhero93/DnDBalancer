@@ -6,9 +6,9 @@
     "semantic_hash": "7c35e4ad712924d87267833a1ac8835a"
   },
   "dnd_sim/__init__.py": {
-    "mtime": 1792520111.4212947,
-    "seen": 1792520270.5900805,
-    "ast_hash": "b674bf382b565a2a8b88bdec76b4d2ac",
+    "mtime": 1792606397.017818,
+    "seen": 1792606429.587524,
+    "ast_hash": "3d61401809a2668fdeff8df7a0146eb3",
     "semantic_hash": ""
   },
   "dnd_sim/abilities.py": {
@@ -24,15 +24,15 @@
     "semantic_hash": ""
   },
   "dnd_sim/combat.py": {
-    "mtime": 1792520147.5470045,
-    "seen": 1792520270.5900805,
-    "ast_hash": "a339cf56bf47b125481d65edef084e7e",
+    "mtime": 1792600390.0978785,
+    "seen": 1792601049.131594,
+    "ast_hash": "1d3014877330c8d8a48980a0c3c37c5d",
     "semantic_hash": ""
   },
   "dnd_sim/combatant.py": {
-    "mtime": 1792519905.9178846,
-    "seen": 1792520270.5900805,
-    "ast_hash": "574c3afb383b60f20dec692d67876ea2",
+    "mtime": 1792602374.301853,
+    "seen": 1792602931.437292,
+    "ast_hash": "ab49164d9b834f15f49b330a9688bfc3",
     "semantic_hash": ""
   },
   "dnd_sim/damage.py": {
@@ -48,15 +48,15 @@
     "semantic_hash": "24e809f93bd3e1d03d4e0767ca2433e6"
   },
   "dnd_sim/data/api_client.py": {
-    "mtime": 1792093784.2116816,
-    "seen": 1792511486.7111242,
-    "ast_hash": "a970bbfab5222b80359903de2f36aba0",
+    "mtime": 1792602568.4361913,
+    "seen": 1792602931.437292,
+    "ast_hash": "c7b653faadd47c3fe301b0a2cb571fb4",
     "semantic_hash": ""
   },
   "dnd_sim/data/loader.py": {
-    "mtime": 1792520005.5416133,
-    "seen": 1792520270.5900805,
-    "ast_hash": "5ee922aedd71cc18c6f8e3a530c53e73",
+    "mtime": 1792602591.5081663,
+    "seen": 1792602931.437292,
+    "ast_hash": "46196e24acbf3ac062a7b2966e9aa7a0",
     "semantic_hash": ""
   },
   "dnd_sim/dice.py": {
@@ -66,15 +66,15 @@
     "semantic_hash": ""
   },
   "dnd_sim/stats.py": {
-    "mtime": 1792520099.9982378,
-    "seen": 1792520270.5900805,
-    "ast_hash": "812780ab25c8086744a8cc739c94386f",
+    "mtime": 1792600488.299041,
+    "seen": 1792601049.131594,
+    "ast_hash": "b83cdf5729dee75078169cedd03991af",
     "semantic_hash": ""
   },
   "main.py": {
-    "mtime": 1792520136.7794735,
-    "seen": 1792520270.5900805,
-    "ast_hash": "a0bb1e9ea9e5a5e95b9be81b41d666ae",
+    "mtime": 1792600502.7846189,
+    "seen": 1792601049.131594,
+    "ast_hash": "8c93a7215633e12b4b687fae6d54d371",
     "semantic_hash": ""
   },
   "tests/fixtures/awakened-shrub.json": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/actions.py": {
-    "mtime": 1792519963.671769,
-    "seen": 1792520270.5900805,
-    "ast_hash": "d0cd076c3b5045e3a58c0a5d5af903a8",
+    "mtime": 1792599974.7449694,
+    "seen": 1792601049.131594,
+    "ast_hash": "05406fb532b6ec29612be35d8cdde7c8",
     "semantic_hash": ""
   },
   "dnd_sim/randomness.py": {
@@ -132,15 +132,15 @@
     "semantic_hash": "eea599b605be5bbcbb1c221f4428b673"
   },
   "dnd_sim/saves.py": {
-    "mtime": 1792516406.8433042,
-    "seen": 1792516447.3636568,
-    "ast_hash": "e9acd06940f37ce28ee87a4093e2eef3",
+    "mtime": 1792600382.726508,
+    "seen": 1792601049.131594,
+    "ast_hash": "9dee18259e250e3dc3dd99105f75f7c6",
     "semantic_hash": ""
   },
   "dnd_sim/area.py": {
-    "mtime": 1792512657.7628772,
-    "seen": 1792513237.495734,
-    "ast_hash": "d5aa5b2cf24521484a76b04ef20db107",
+    "mtime": 1792600002.5442321,
+    "seen": 1792601049.131594,
+    "ast_hash": "ff194101dbdd4af8ab7f2fc28df8b8c4",
     "semantic_hash": ""
   },
   "dnd_sim/data/area_classifier.py": {
@@ -150,9 +150,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/data/save_builder.py": {
-    "mtime": 1792515935.8914077,
-    "seen": 1792516401.1859002,
-    "ast_hash": "d94267f685bd161eb6a837428dba9a99",
+    "mtime": 1792600187.110209,
+    "seen": 1792601049.131594,
+    "ast_hash": "4152cbacb7265ce45135c18404520b15",
     "semantic_hash": ""
   },
   "dnd_sim/data/usage_parser.py": {
@@ -162,9 +162,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/usage.py": {
-    "mtime": 1792519913.8856795,
-    "seen": 1792520270.5900805,
-    "ast_hash": "c2b0307285f758684652992c1668f2a9",
+    "mtime": 1792600736.2781405,
+    "seen": 1792601049.131594,
+    "ast_hash": "2afd2cd6474b66f5b685005614b14d96",
     "semantic_hash": ""
   },
   "tests/fixtures/adult-red-dragon.json": {
@@ -198,9 +198,9 @@
     "semantic_hash": ""
   },
   "tests/test_multiattack.py": {
-    "mtime": 1792515965.765781,
-    "seen": 1792516401.1859002,
-    "ast_hash": "6fb2cde6cc1038b9c8d8c3fc22cd63f0",
+    "mtime": 1792600449.539862,
+    "seen": 1792601049.131594,
+    "ast_hash": "a32b35148a67b04522cf5a9550e7e5c9",
     "semantic_hash": ""
   },
   "dnd_sim/data/multiattack_parser.py": {
@@ -210,21 +210,21 @@
     "semantic_hash": ""
   },
   "dnd_sim/conditions.py": {
-    "mtime": 1792519891.0736215,
-    "seen": 1792520270.5900805,
-    "ast_hash": "dd93673130bcde572a168e6178ce1597",
+    "mtime": 1792606028.1080923,
+    "seen": 1792606429.587524,
+    "ast_hash": "aa644976488c08fb2c3c2dc0963d399e",
     "semantic_hash": ""
   },
   "dnd_sim/data/condition_parser.py": {
-    "mtime": 1792519995.922415,
-    "seen": 1792520270.5900805,
-    "ast_hash": "3cdec23df5bda27f617017b46192e896",
+    "mtime": 1792602627.9718058,
+    "seen": 1792602931.437292,
+    "ast_hash": "485a5a1b1cf1784f7e3c595004d0bd06",
     "semantic_hash": ""
   },
   "dnd_sim/roll_modifiers.py": {
-    "mtime": 1792519845.7596927,
-    "seen": 1792520270.5900805,
-    "ast_hash": "6f1b987a3c2944acde8f0838b73fc55a",
+    "mtime": 1792606028.1080923,
+    "seen": 1792606429.587524,
+    "ast_hash": "dc47c031df495562b041e46b0c2d85eb",
     "semantic_hash": ""
   },
   "tests/fixtures/ghoul.json": {
@@ -240,15 +240,15 @@
     "semantic_hash": ""
   },
   "tests/test_conditions.py": {
-    "mtime": 1792520058.4503658,
-    "seen": 1792520270.5900805,
-    "ast_hash": "c8c487bbd8e8adb462d9ead6ac8f4b32",
+    "mtime": 1792602692.4479036,
+    "seen": 1792602931.438293,
+    "ast_hash": "0c7e99dad4089a012c89c6d4ac1e915d",
     "semantic_hash": ""
   },
   "dnd_sim/checks.py": {
-    "mtime": 1792519822.8113358,
-    "seen": 1792520270.5900805,
-    "ast_hash": "6214e93deca3b85f95ac10d871d6d19a",
+    "mtime": 1792602685.1672618,
+    "seen": 1792602931.437292,
+    "ast_hash": "ce49b3af732c4880afda449ced463a08",
     "semantic_hash": ""
   },
   "dnd_sim/combat_state.py": {
@@ -279,6 +279,312 @@
     "mtime": 1792520250.3293922,
     "seen": 1792520270.5900805,
     "ast_hash": "af9cfca550e737b0c9ace1d076aba35d",
+    "semantic_hash": ""
+  },
+  "dnd_sim/data/legendary_parser.py": {
+    "mtime": 1792600302.015396,
+    "seen": 1792601049.131594,
+    "ast_hash": "ad8099f62735fb080270acc7e5462c8b",
+    "semantic_hash": ""
+  },
+  "dnd_sim/legendary.py": {
+    "mtime": 1792600941.1380162,
+    "seen": 1792601049.131594,
+    "ast_hash": "79b53c76abc3f8f8b56731e38255460c",
+    "semantic_hash": ""
+  },
+  "dnd_sim/targeting.py": {
+    "mtime": 1792599935.421693,
+    "seen": 1792601049.131594,
+    "ast_hash": "e39d569284b4541eb79239f9a90e4fc6",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/lich.json": {
+    "mtime": 1792599602.0044613,
+    "seen": 1792601049.131594,
+    "ast_hash": "d9d3e8f199e063b195d6af5c2b877e39",
+    "semantic_hash": ""
+  },
+  "tests/test_legendary.py": {
+    "mtime": 1792601234.003174,
+    "seen": 1792601327.6161728,
+    "ast_hash": "a96aac52c94281263000ff59836277c9",
+    "semantic_hash": ""
+  },
+  "dnd_sim/data/spell_parser.py": {
+    "mtime": 1792606365.6487134,
+    "seen": 1792606429.587524,
+    "ast_hash": "13741dc773bddce9bb0fec4dd3a030f9",
+    "semantic_hash": ""
+  },
+  "dnd_sim/spells.py": {
+    "mtime": 1792606140.6603549,
+    "seen": 1792606429.587524,
+    "ast_hash": "9f6d4f945d4dcd5610bdaf9fcf8d2d5f",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/charm-person.json": {
+    "mtime": 1792602259.7119503,
+    "seen": 1792602931.438293,
+    "ast_hash": "528dd7884bc3504e20d79fd3a596a718",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/cure-wounds.json": {
+    "mtime": 1792602120.5343368,
+    "seen": 1792602931.438293,
+    "ast_hash": "8855ba2177d4f061520f85e0216a8454",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/eldritch-blast.json": {
+    "mtime": 1792602120.149552,
+    "seen": 1792602931.438293,
+    "ast_hash": "26c67da11ac9b360012db614aa5005f5",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/fire-bolt.json": {
+    "mtime": 1792602120.0019913,
+    "seen": 1792602931.438293,
+    "ast_hash": "012850b2cb4cc0c83e711a99485861a2",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/guidance.json": {
+    "mtime": 1792602120.9223783,
+    "seen": 1792602931.438293,
+    "ast_hash": "be64dff0cef013832a61b0ee65153c54",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/haste.json": {
+    "mtime": 1792602786.400381,
+    "seen": 1792602931.438293,
+    "ast_hash": "04c360362b4ef3854afcb10d65d3edb8",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/mage-hand.json": {
+    "mtime": 1792602121.300605,
+    "seen": 1792602931.438293,
+    "ast_hash": "7da7f6c2d43596267dc81a7a93377a51",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/mending.json": {
+    "mtime": 1792602170.2850504,
+    "seen": 1792602931.438293,
+    "ast_hash": "19c5340f4d35ef84111f3a2b3c6fa919",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/prestidigitation.json": {
+    "mtime": 1792602121.4282467,
+    "seen": 1792602931.438293,
+    "ast_hash": "cc2a78b9ae42480a97f8b15227121b3e",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/ray-of-frost.json": {
+    "mtime": 1792602120.2773507,
+    "seen": 1792602931.438293,
+    "ast_hash": "e2f73bda57acdb6b9bcfa3085c3ec801",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/resistance.json": {
+    "mtime": 1792602170.5955575,
+    "seen": 1792602931.438293,
+    "ast_hash": "e6ae4c7abfa7055d2752800f312d8ee1",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/true-strike.json": {
+    "mtime": 1792602170.615886,
+    "seen": 1792602931.438293,
+    "ast_hash": "f15ff3cc5af8e116ab9f28de93624151",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/vicious-mockery.json": {
+    "mtime": 1792602120.4040017,
+    "seen": 1792602931.438293,
+    "ast_hash": "8c508a0f1e8396427dbb1cf07fa1a48b",
+    "semantic_hash": ""
+  },
+  "tests/test_spells.py": {
+    "mtime": 1792606365.649714,
+    "seen": 1792606429.587524,
+    "ast_hash": "f2d3b9e83a5c6c58346823aea6f4ea40",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/animal-friendship.json": {
+    "mtime": 1792605962.8564382,
+    "seen": 1792606429.587524,
+    "ast_hash": "d53ac9767d06bd77f13ffafc60e4d156",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/bane.json": {
+    "mtime": 1792605962.8401666,
+    "seen": 1792606429.587524,
+    "ast_hash": "3a9d2e041dfac5554e28c2e0852fc281",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/bless.json": {
+    "mtime": 1792605962.8446867,
+    "seen": 1792606429.587524,
+    "ast_hash": "56b39b1ce378213703f8d4e321dc6475",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/burning-hands.json": {
+    "mtime": 1792605962.8564382,
+    "seen": 1792606429.587524,
+    "ast_hash": "012872ff048325e6e80f28ea44a97de6",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/color-spray.json": {
+    "mtime": 1792605962.8467207,
+    "seen": 1792606429.587524,
+    "ast_hash": "a5ca98558d27afc13dbe52f2f4349e01",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/create-or-destroy-water.json": {
+    "mtime": 1792605963.158966,
+    "seen": 1792606429.587524,
+    "ast_hash": "ba77c79ac984818da3c196ab0b142dde",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/detect-magic.json": {
+    "mtime": 1792602121.823682,
+    "seen": 1792606429.587524,
+    "ast_hash": "6a757612deea13a7d1f2f794dd301485",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/disguise-self.json": {
+    "mtime": 1792605963.1820755,
+    "seen": 1792606429.587524,
+    "ast_hash": "0df077816f4b1e06b4c2dcf2e9758ddf",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/divine-favor.json": {
+    "mtime": 1792605963.1827514,
+    "seen": 1792606429.587524,
+    "ast_hash": "41a090b35eb2d0aff5075c1e28fcd0df",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/entangle.json": {
+    "mtime": 1792605963.1662776,
+    "seen": 1792606429.587524,
+    "ast_hash": "7c5d049ff0d8b0b9fe34333905bd4d61",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/expeditious-retreat.json": {
+    "mtime": 1792605963.17299,
+    "seen": 1792606429.587524,
+    "ast_hash": "a6cb97dc9372dcf9663aaec5f37b4b29",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/faerie-fire.json": {
+    "mtime": 1792605963.1951008,
+    "seen": 1792606429.587524,
+    "ast_hash": "a844c0a9b1372b379d427c9add0a1a9a",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/false-life.json": {
+    "mtime": 1792605963.4877825,
+    "seen": 1792606429.587524,
+    "ast_hash": "fd66511dec99317888993edcb7d045de",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/feather-fall.json": {
+    "mtime": 1792605963.4945016,
+    "seen": 1792606429.587524,
+    "ast_hash": "7119f1c10310f567afb0319867fc3f3d",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/goodberry.json": {
+    "mtime": 1792605963.5112095,
+    "seen": 1792606429.587524,
+    "ast_hash": "c5671a5ba21e22e0caab10dc3fe2e9e5",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/grease.json": {
+    "mtime": 1792605963.5072002,
+    "seen": 1792606429.587524,
+    "ast_hash": "47d9e36d1da683847800da381ffe61e5",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/guiding-bolt.json": {
+    "mtime": 1792605963.5132134,
+    "seen": 1792606429.587524,
+    "ast_hash": "c0facc2b1ec4ce939e17f17ac4dea72a",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/healing-word.json": {
+    "mtime": 1792602122.204887,
+    "seen": 1792606429.587524,
+    "ast_hash": "0f8f031077d0eefd6554c542c46849e9",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/hellish-rebuke.json": {
+    "mtime": 1792605963.8047123,
+    "seen": 1792606429.587524,
+    "ast_hash": "fb06ac3cfcdd40b0dae76904a5fba563",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/hideous-laughter.json": {
+    "mtime": 1792605963.8280654,
+    "seen": 1792606429.587524,
+    "ast_hash": "86dc33790d91d4171606e852100c479f",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/hunters-mark.json": {
+    "mtime": 1792605963.8174548,
+    "seen": 1792606429.587524,
+    "ast_hash": "9cdc1c055ceaddcdb9a37718a6ffff37",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/inflict-wounds.json": {
+    "mtime": 1792602258.3856654,
+    "seen": 1792606429.587524,
+    "ast_hash": "1a3b41e8dfe538decb55bb95303a7a0b",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/jump.json": {
+    "mtime": 1792605963.8393188,
+    "seen": 1792606429.587524,
+    "ast_hash": "008932eeb49a19e41b83f348b85300de",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/longstrider.json": {
+    "mtime": 1792605963.8393188,
+    "seen": 1792606429.587524,
+    "ast_hash": "c14710decf19aa039afad030c289aa55",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/magic-missile.json": {
+    "mtime": 1792602120.6611986,
+    "seen": 1792606429.587524,
+    "ast_hash": "411582924fb6ad485d98ff5865cae9c5",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/minor-illusion.json": {
+    "mtime": 1792602170.294944,
+    "seen": 1792606429.587524,
+    "ast_hash": "366ef91e73be02633a089a88b3691b6e",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/shield.json": {
+    "mtime": 1792602121.678998,
+    "seen": 1792606429.587524,
+    "ast_hash": "e5591cee8356ae0750c3ebdfa0cfc012",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/silent-image.json": {
+    "mtime": 1792605964.171273,
+    "seen": 1792606429.587524,
+    "ast_hash": "aa3ef0e84c4ea238c52611006827cf95",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/sleep.json": {
+    "mtime": 1792605964.1651044,
+    "seen": 1792606429.587524,
+    "ast_hash": "b0029b95359989b29dd3dde6a9da9606",
+    "semantic_hash": ""
+  },
+  "tests/fixtures/spells/thunderwave.json": {
+    "mtime": 1792602121.5537915,
+    "seen": 1792606429.587524,
+    "ast_hash": "eb5bf3acf66db72ff4f303c9fe7f8cc6",
     "semantic_hash": ""
   }
 }

@@ -18,6 +18,7 @@ try:
     from .conditions import end_turn
     from .damage import DamageRecorder, apply_damage_modifiers, inflict_damage
     from .dice import RollMode, d20, roll_d20, roll_dice
+    from .legendary import legendary_phase
     from .randomness import pick
     from .roll_modifiers import (
         AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
@@ -44,6 +45,10 @@ except ImportError:
         from conditions import end_turn
     except ImportError:
         from dnd_sim.conditions import end_turn
+    try:
+        from dnd_sim.legendary import legendary_phase
+    except ImportError:
+        from legendary import legendary_phase
     try:
         from roll_modifiers import (
             AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
@@ -79,6 +84,11 @@ class CombatResult:
     escape_attempts: dict[str, int] = field(default_factory=dict)
     escape_successes: dict[str, int] = field(default_factory=dict)
     attacks_vs_at_range: int = 0
+    # Leyenda: acciones legendarias usadas (nombre -> veces), puntos gastados
+    # y resistencias legendarias gastadas.
+    legendary_actions_used: dict[str, int] = field(default_factory=dict)
+    legendary_points_spent: int = 0
+    legendary_resistances_used: int = 0
 
 
 def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
@@ -271,12 +281,12 @@ def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
         except ImportError:
             from dnd_sim.conditions import RepeatSave, apply_condition
     try:
-        from .saves import saving_throw
+        from .saves import registrar_resistencia, saving_throw
     except ImportError:
         try:
-            from saves import saving_throw
+            from saves import registrar_resistencia, saving_throw
         except ImportError:
-            from dnd_sim.saves import saving_throw
+            from dnd_sim.saves import registrar_resistencia, saving_throw
 
     _ctx = ctx
     if _ctx is None:
@@ -301,6 +311,7 @@ def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
             )
             continue
         sr = saving_throw(target, rider.save_ability, rider.dc, rng)
+        sr = registrar_resistencia(_ctx, target, sr)
         if sr.success:
             continue
         apply_condition(
@@ -379,6 +390,8 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
     escape_attempts: dict[str, int] = {}
     escape_successes: dict[str, int] = {}
     attacks_at_range: list[int] = []
+    # Estadísticas legendarias (acciones usadas, puntos y resistencias).
+    legendary_stats: dict = {"actions": {}, "points": 0, "resistances": 0}
     while rnd < max_rounds:
         rnd += 1
         if verbose:
@@ -396,6 +409,7 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                 conditions_applied=conditions_applied,
                 escape_attempts=escape_attempts, escape_successes=escape_successes,
                 attacks_at_range=attacks_at_range,
+                legendary_stats=legendary_stats,
             )
             # Inicio de turno: recursos nuevos y tiradas de recarga de las
             # acciones descargadas del actor. Si está incapacitado, pierde
@@ -434,6 +448,9 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
             # Final del turno: salvaciones de repetición y duración de las
             # condiciones del propio combatiente.
             end_turn(actor, ctx)
+            # Fase legendaria: los demás monstruos legítimos pueden usar una
+            # acción legendaria tras el turno de este combatiente.
+            legendary_phase(actor, ctx)
             players_alive = any(c.alive and c.combatant_type == CombatantType.PLAYER for c in order)
             npcs_alive = any(c.alive and c.combatant_type == CombatantType.NPC for c in order)
             if not players_alive or not npcs_alive:
@@ -457,4 +474,7 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                         turns_lost_incapacitated=turns_lost_incapacitated,
                         escape_attempts=escape_attempts,
                         escape_successes=escape_successes,
-                        attacks_vs_at_range=len(attacks_at_range))
+                        attacks_vs_at_range=len(attacks_at_range),
+                        legendary_actions_used=legendary_stats["actions"],
+                        legendary_points_spent=int(legendary_stats["points"]),
+                        legendary_resistances_used=int(legendary_stats["resistances"]))

@@ -90,6 +90,8 @@ class SaveResult:
     # Fallo automático por condición (aturdido/paralizado/petrificado...):
     # no se tiran dados.
     auto_fail: bool = False
+    # True si el fallo se convirtió en éxito con la Resistencia legendaria.
+    legendary_resistance_used: bool = False
 
 
 def _resolve_mode_str(value: Any) -> RollMode:
@@ -119,6 +121,13 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     Las condiciones pueden provocar un **fallo automático** (aturdido,
     paralizado, inconsciente o petrificado fallan siempre FUE y DES): en ese
     caso no se tiran dados y no se consume RNG.
+
+    **Resistencia legendaria**: si la salvación falla (incluido el fallo
+    automático) y el objetivo tiene usos de resistencia legendaria, se puede
+    convertir el fallo en éxito (según ``resistance_probability``). El
+    resultado se marca con ``legendary_resistance_used``.
+
+    # TODO: la Resistencia mágica (ventaja contra hechizos) no se modela.
     """
     ab = normalize_ability(ability)
     try:
@@ -131,7 +140,7 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     modifiers = save_modifiers(target, ab)
 
     if modifiers.auto_fail:
-        return SaveResult(
+        return _con_resistencia_legendaria(target, SaveResult(
             ability=ab,
             dc=int(dc),
             rolls=[],
@@ -140,7 +149,7 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
             success=False,
             mode=RollMode.NORMAL,
             auto_fail=True,
-        )
+        ), rng)
 
     if mode is None:
         mode = modifiers.mode
@@ -154,7 +163,7 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     result = roll_d20(rng, mode)
     total = result.value + int(bonus)
     success = total >= int(dc)
-    return SaveResult(
+    return _con_resistencia_legendaria(target, SaveResult(
         ability=ab,
         dc=int(dc),
         rolls=list(result.rolls),
@@ -162,7 +171,46 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
         total=int(total),
         success=bool(success),
         mode=mode,
-    )
+    ), rng)
+
+
+def _con_resistencia_legendaria(target: Any, result: SaveResult,
+                                rng: random.Random) -> SaveResult:
+    """Punto único donde se aplica la Resistencia legendaria.
+
+    Import local (evita el ciclo ``saves`` -> ``legendary`` -> ``area`` ->
+    ``saves``).
+    """
+    try:
+        from .legendary import legendary_resistance
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from legendary import legendary_resistance
+        except ImportError:
+            from dnd_sim.legendary import legendary_resistance
+    try:
+        return legendary_resistance(target, result, rng)
+    except Exception:
+        return result
+
+
+def registrar_resistencia(ctx: Any, target: Any, result: SaveResult) -> SaveResult:
+    """Log y estadísticas si la Resistencia legendaria se ha gastado.
+
+    Se llama justo después de cada :func:`saving_throw` (el único sitio con
+    contexto de combate).
+    """
+    try:
+        from .legendary import registrar_resistencia_legendaria
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from legendary import registrar_resistencia_legendaria
+        except ImportError:
+            from dnd_sim.legendary import registrar_resistencia_legendaria
+    try:
+        return registrar_resistencia_legendaria(ctx, target, result)
+    except Exception:
+        return result
 
 
 # --- SaveDamage / resolve_save_damage ---------------------------------------
@@ -272,6 +320,7 @@ def apply_save_damage(source: Any, target: Any, effect: SaveDamage,
 
     # 1. Tirar salvación (la del objetivo: ventaja/desventaja propias).
     sr = saving_throw(target, eff.ability, int(eff.dc), rng)
+    sr = registrar_resistencia(ctx, target, sr)
 
     # 2. Aplicar el éxito de la salvación.
     if sr.success:
@@ -363,6 +412,7 @@ __all__ = [
     "normalize_ability",
     "SaveResult",
     "saving_throw",
+    "registrar_resistencia",
     "SaveDamage",
     "SaveDamageOutcome",
     "apply_save_damage",

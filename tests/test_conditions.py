@@ -1,6 +1,7 @@
 """Condiciones de D&D 5e: reglas de tirada, duración, estado y aplicación."""
 import json
 import random
+import warnings
 from collections import Counter
 from pathlib import Path
 
@@ -563,7 +564,24 @@ def test_la_accion_de_condicion_del_dragon_es_un_condition_action(monkeypatch):
 
 
 def test_una_condicion_excluida_avisa_y_no_se_aplica(monkeypatch):
-    """'charmed' está en EXCLUDED_CONDITIONS: avisa y no la aplica."""
+    """'grappled' está en EXCLUDED_CONDITIONS: avisa y no la aplica."""
+    data = _data("ogre")
+    data["actions"].append({
+        "name": "Mirada",
+        "desc": ("The ogre stares. Each creature must succeed on a DC 12 Wisdom "
+                 "saving throw or be grappled for 1 minute."),
+        "dc": {"dc_type": {"index": "wis"}, "dc_value": 12, "success_type": "none"},
+        "damage": [],
+        "actions": [],
+    })
+    with pytest.warns(UserWarning, match="grappled"):
+        monster = _load(monkeypatch, "ogre", data)
+    nombres = [getattr(a, "name", "") for a in monster.actions]
+    assert "Mirada" not in nombres
+
+
+def test_el_hechizado_ahora_si_se_aplica(monkeypatch):
+    """"charmed" ya no está excluida: se modela como condición."""
     data = _data("ogre")
     data["actions"].append({
         "name": "Mirada",
@@ -573,10 +591,14 @@ def test_una_condicion_excluida_avisa_y_no_se_aplica(monkeypatch):
         "damage": [],
         "actions": [],
     })
-    with pytest.warns(UserWarning, match="charmed"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
         monster = _load(monkeypatch, "ogre", data)
-    nombres = [getattr(a, "name", "") for a in monster.actions]
-    assert "Mirada" not in nombres
+    accion = next(a for a in monster.actions if getattr(a, "name", "") == "Mirada")
+    assert accion.effect.condition is Condition.CHARMED
+    assert accion.effect.save_ability == "wis"
+    assert accion.effect.dc == 12
+    assert accion.effect.duration_rounds == 10
 
 
 def test_una_duracion_no_reconocida_avisa_y_no_se_aplica(monkeypatch):

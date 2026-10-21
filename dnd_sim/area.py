@@ -25,29 +25,20 @@ try:
     from .dice import roll_dice
     from .randomness import pick, sample
     from .saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
+    from .targeting import valid_targets
 except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
         from actions import ActionType, CombatAction, CombatContext
         from dice import roll_dice
         from randomness import pick, sample
         from saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
+        from targeting import valid_targets
     except ImportError:
         from dnd_sim.actions import ActionType, CombatAction, CombatContext
         from dnd_sim.dice import roll_dice
         from dnd_sim.randomness import pick, sample
         from dnd_sim.saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
-
-
-def _valid_targets(actor, ctx) -> list:
-    """Objetivos hostiles vivos del actor (fuente única de verdad)."""
-    try:
-        from .combatant import valid_targets
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from combatant import valid_targets
-        except ImportError:
-            from dnd_sim.combatant import valid_targets
-    return list(valid_targets(actor, ctx=ctx))
+        from dnd_sim.targeting import valid_targets
 
 
 @dataclass
@@ -70,7 +61,7 @@ def select_area_targets(actor, ctx, targeting: AreaTargeting) -> list:
     2. ``k`` uniforme en ``[lo, hi]`` (no consume RNG si solo hay un valor).
     3. Muestreo sin reemplazo de ``k`` objetivos.
     """
-    pool = _valid_targets(actor, ctx)
+    pool = valid_targets(actor, ctx)
     if not pool:
         return []
     total = len(pool)
@@ -97,6 +88,9 @@ class AreaSaveAction(CombatAction):
 
     ``effect`` es un :class:`~dnd_sim.saves.SaveDamage`; ``targeting`` dice
     cuántos objetivos puede alcanzar; ``usage`` es opcional (usos limitados).
+    ``condition`` es opcional: un ``ConditionEffect`` que se aplica a cada
+    objetivo que **falle** la misma salvación (p. ej. el derribo del ala del
+    dragón: daño y condición comparten la tirada).
     """
 
     effect: Any = None
@@ -104,6 +98,8 @@ class AreaSaveAction(CombatAction):
     usage: Any = None
     action_type: ActionType = ActionType.ACTION
     name: str = "Área"
+    # Condición opcional que se aplica si el objetivo falla la salvación.
+    condition: Any = None
 
     def __post_init__(self) -> None:
         if not getattr(self, "name", ""):
@@ -131,7 +127,7 @@ class AreaSaveAction(CombatAction):
         if effect is None:
             return
 
-        pool = _valid_targets(actor, context)
+        pool = valid_targets(actor, context)
         targets = select_area_targets(actor, context, self.targeting)
 
         # Registro de la acción de área (para estadísticas).
@@ -165,8 +161,39 @@ class AreaSaveAction(CombatAction):
                           f"{outcome.damage_after_save} ({tag}), "
                           f"daño final {outcome.final_damage}")
 
-            apply_save_damage(actor, target, effect, raw_damage, context,
-                              on_resolved=_log_target)
+            outcome = apply_save_damage(actor, target, effect, raw_damage, context,
+                                        on_resolved=_log_target)
+            # Condición opcional: se aplica si el objetivo ha fallado la
+            # misma salvación que el daño (p. ej. daño + derribo).
+            if self.condition is not None and not outcome.save.success:
+                self._aplicar_condicion(target, context, actor)
+
+    def _aplicar_condicion(self, target, context, actor) -> None:
+        """Aplica la condición opcional al objetivo que falló la salvación.
+
+        La condición se modela con la misma mecánica que ``ConditionAction``:
+        si el efecto tiene ``repeat_save``, se crea la salvación de repetición
+        que el afectado podrá repetir al final de su turno.
+        """
+        efecto = self.condition
+        try:
+            from .conditions import RepeatSave, apply_condition
+        except ImportError:  # pragma: no cover - ejecución como script suelto
+            try:
+                from conditions import RepeatSave, apply_condition
+            except ImportError:
+                from dnd_sim.conditions import RepeatSave, apply_condition
+        repeat = None
+        if getattr(efecto, "repeat_save", False):
+            repeat = RepeatSave(ability=getattr(efecto, "save_ability", None) or "dex",
+                                dc=int(getattr(efecto, "dc", 0) or 0))
+        apply_condition(
+            target, efecto.condition, context,
+            source=actor,
+            duration_rounds=getattr(efecto, "duration_rounds", None),
+            repeat_save=repeat,
+            escape=getattr(efecto, "escape", None),
+        )
 
 
 __all__ = ["AreaTargeting", "AreaSaveAction", "select_area_targets"]

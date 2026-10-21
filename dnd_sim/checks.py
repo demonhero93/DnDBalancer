@@ -58,6 +58,37 @@ def ability_check_bonus(target: Any, ability: str) -> int:
         return 0
 
 
+def _guia(target: Any, rng: Any) -> int:
+    """Bonus de la guía (+1d4) y consumo del estado, si lo hay.
+
+    El hechizo de guía da +1d4 a **una** prueba de característica: al
+    usarla, la guía se consume (el hechizo termina).
+    """
+    try:
+        from .conditions import Condition
+        tracker = getattr(target, "conditions", None)
+        if tracker is None or not tracker.has(Condition.GUIDED):
+            return 0
+    except Exception:
+        return 0
+    total = 0
+    if rng is not None:
+        try:
+            total = int(rng.randint(1, 4))
+        except Exception:
+            total = 0
+    # La guía se consume: el hechizo termina tras la prueba.
+    try:
+        from .conditions import Condition
+        tracker = getattr(target, "conditions", None)
+        for instance in list(getattr(tracker, "instances", []) or []):
+            if instance.condition is Condition.GUIDED:
+                tracker.remove_instance(instance)
+    except Exception:
+        pass
+    return total
+
+
 def ability_check(target: Any, ability: str, dc: int, rng: random.Random,
                   mode: Any = None) -> CheckResult:
     """Tira una prueba de característica.
@@ -72,6 +103,8 @@ def ability_check(target: Any, ability: str, dc: int, rng: random.Random,
         text = str(mode).strip().lower()
         mode = RollMode(text) if text in {m.value for m in RollMode} else RollMode.NORMAL
     bonus = ability_check_bonus(target, ab)
+    # El hechizo de guía añade +1d4 a una prueba (y se consume).
+    bonus += _guia(target, rng)
     result = roll_d20(rng, mode)
     total = result.value + bonus
     success = total >= int(dc)

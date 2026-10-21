@@ -18,6 +18,10 @@ try:
         apply_condition, attempt_escapes, end_turn,
     )
     from .damage import DamageType, apply_damage_modifiers, inflict_damage, parse_damage_type
+    from .legendary import (
+        DEFAULT_LEGENDARY_POINTS, LegendaryAction, LegendaryState,
+        legendary_phase, legendary_resistance,
+    )
     from .combat import CombatResult, resolve_roll_mode, run_combat, valid_targets
     from .roll_modifiers import (
         AttackModifiers, AttackRange, CheckModifiers, RANGED_COVER_AC_BONUS,
@@ -28,12 +32,18 @@ try:
         SaveDamage, SaveDamageOutcome, SaveResult, apply_save_damage,
         normalize_ability, resolve_save_damage, saving_throw,
     )
+    from .spells import (
+        HealAction, HealEffect, Spell, SpellAction, SpellAttackAction,
+        SpellFixedDamageAction, SpellStateAction, Spellcasting, StateEffect,
+        spell_action,
+    )
     from .dice import D20Result, RollMode, roll_d20, roll_dice, d20
     from .randomness import pick, sample
     from .stats import simulate, print_report
     from .tactics import first_target_policy, random_policy
     from .usage import ActionUsage, UsageKind, begin_turn
     from .data.loader import load_monster
+    from .targeting import valid_targets
 except ImportError:
     from abilities import Abilities, ability_mod
     from actions import (
@@ -65,6 +75,13 @@ except ImportError:
     except Exception:
         pass
     from damage import DamageType, apply_damage_modifiers, inflict_damage, parse_damage_type
+    try:
+        from legendary import (
+            DEFAULT_LEGENDARY_POINTS, LegendaryAction, LegendaryState,
+            legendary_phase, legendary_resistance,
+        )
+    except Exception:
+        pass
     from combat import CombatResult, resolve_roll_mode, run_combat, valid_targets
     try:
         from roll_modifiers import (
@@ -81,6 +98,14 @@ except ImportError:
         )
     except Exception:
         pass
+    try:
+        from spells import (
+            HealAction, HealEffect, Spell, SpellAction, SpellAttackAction,
+            SpellFixedDamageAction, SpellStateAction, Spellcasting, StateEffect,
+            spell_action,
+        )
+    except Exception:
+        pass
     from dice import D20Result, RollMode, roll_d20, roll_dice, d20
     from randomness import pick, sample
     from stats import simulate, print_report
@@ -93,6 +118,10 @@ except ImportError:
         from data.loader import load_monster
     except ImportError:
         from loader import load_monster
+    try:
+        from targeting import valid_targets
+    except Exception:
+        pass
 
 __all__ = [
     "Abilities", "ability_mod", "ActionType", "ActionUsage", "AreaSaveAction",
@@ -112,4 +141,9 @@ __all__ = [
     "resolve_attack_range", "resolve_roll_mode", "resolve_save_damage",
     "roll_d20", "roll_dice", "run_combat", "sample", "save_modifiers",
     "saving_throw", "select_area_targets", "simulate", "load_monster",
+    "HealAction", "HealEffect", "Spell", "SpellAction", "SpellAttackAction",
+    "SpellFixedDamageAction", "SpellStateAction", "Spellcasting",
+    "StateEffect", "spell_action",
+    "DEFAULT_LEGENDARY_POINTS", "LegendaryAction", "LegendaryState",
+    "legendary_phase", "legendary_resistance",
 ]

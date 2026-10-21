@@ -137,7 +137,10 @@ def begin_turn(actor, ctx):
 
     Orden (documentado):
 
-    1. Se crean unos ``TurnResources`` nuevos (``ctx.resources``).
+    1. Se crean unos ``TurnResources`` nuevos (``ctx.resources``) y se
+       rellenan los **puntos legendarios** del actor hasta su máximo (los
+       puntos no usados se pierden: no se acumulan). Esto ocurre **aunque el
+       actor esté incapacitado**.
     2. Tiradas de recarga de las acciones descargadas del actor.
     3. ``attempt_escapes``: intentos de liberarse de los estados con prueba
        de escape (automáticos, no son una elección).
@@ -161,6 +164,14 @@ def begin_turn(actor, ctx):
         ctx.resources = resources
     except Exception:
         pass
+
+    # (1) Puntos legendarios: se rellenan hasta el máximo (no se acumulan).
+    legendary = getattr(actor, "legendary", None)
+    if legendary is not None:
+        try:
+            legendary.refill_points(getattr(ctx, "round", 0))
+        except Exception:
+            pass
 
     # (2) Recargas de las acciones descargadas.
     rng = getattr(ctx, "rng", None)

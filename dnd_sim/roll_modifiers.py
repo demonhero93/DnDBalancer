@@ -178,7 +178,11 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
     if getattr(target, "grants_disadvantage_to_attackers", False):
         mods.disadvantage_sources.append("efecto fijo del objetivo")
 
-    # 2. Condiciones del atacante: desventaja en sus ataques.
+    # 2. Hechizo verdadero: ventaja en los ataques mientras dure.
+    if Condition.TRUE_STRUCK in cond_atacante:
+        mods.advantage_sources.append("hechizo verdadero")
+
+    # 3. Condiciones del atacante: desventaja en sus ataques.
     if Condition.BLINDED in cond_atacante:
         mods.disadvantage_sources.append("atacante cegado")
     if Condition.FRIGHTENED in cond_atacante:
@@ -191,9 +195,11 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
     if Condition.RESTRAINED in cond_atacante:
         mods.disadvantage_sources.append("atacante inmovilizado")
 
-    # 3. Condiciones del objetivo.
+    # 4. Condiciones del objetivo.
     if Condition.BLINDED in cond_objetivo:
         mods.advantage_sources.append("objetivo cegado")
+    if Condition.MARKED in cond_objetivo:
+        mods.advantage_sources.append("objetivo señalado")
     if Condition.RESTRAINED in cond_objetivo:
         mods.advantage_sources.append("objetivo inmovilizado")
     if Condition.STUNNED in cond_objetivo:
@@ -210,7 +216,7 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
         else:
             mods.advantage_sources.append("objetivo derribado, cuerpo a cuerpo")
 
-    # 4. Crítico automático: contra un objetivo paralizado o inconsciente,
+    # 5. Crítico automático: contra un objetivo paralizado o inconsciente,
     #    todo ataque cuerpo a cuerpo que impacte es crítico.
     if rango is AttackRange.MELEE and (Condition.PARALYZED in cond_objetivo
                                        or Condition.UNCONSCIOUS in cond_objetivo):

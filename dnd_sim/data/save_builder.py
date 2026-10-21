@@ -103,8 +103,13 @@ def build_save_effect(dc_info: dict, damage_entry: dict) -> SaveDamage | None:
         return None
 
 
-def build_save_action(action: dict, effect: SaveDamage, usage=None):
-    """Crea la acción de la API: de área (clasificador) o de objetivo único."""
+def build_save_action(action: dict, effect: SaveDamage, usage=None, condition=None):
+    """Crea la acción de la API: de área (clasificador) o de objetivo único.
+
+    ``condition`` es opcional: un ``ConditionEffect`` que el objetivo recibe
+    si **falla** la misma salvación que el daño (solo tiene sentido en el
+    área: el ala del dragón, daño + derribo).
+    """
     name = str(action.get("name") or "Salvación")
     if is_area_action(action):
         # TODO: el área afecta a un número aleatorio de objetivos; la
@@ -115,6 +120,7 @@ def build_save_action(action: dict, effect: SaveDamage, usage=None):
             targeting=AreaTargeting(),
             usage=usage,
             action_type=ActionType.ACTION,
+            condition=condition,
         )
     return SaveAction(
         name=name,
