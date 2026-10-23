@@ -198,13 +198,19 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
         mods.disadvantage_sources.append("atacante derribado")
     if Condition.RESTRAINED in cond_atacante:
         mods.disadvantage_sources.append("atacante inmovilizado")
+    if Condition.INVISIBLE in cond_atacante:
+        # «An invisible creature has advantage on attack rolls against
+        # creatures that can't see it». Este ataque **sí** se resuelve con
+        # ventaja: en attack_roll la invisibilidad se quita después de
+        # calcular los modificadores (romperla es consecuencia de atacar).
+        mods.advantage_sources.append("atacante invisible")
 
     # 4. Condiciones del objetivo.
     if Condition.BLINDED in cond_objetivo:
         mods.advantage_sources.append("objetivo cegado")
     if Condition.INVISIBLE in cond_objetivo:
         # Adaptación al simulador: invisible = desventaja al ser atacado.
-        # TODO: el invisible también tiene ventaja en sus propios ataques.
+        # (La ventaja del propio invisible al atacar va en el bloque 3.)
         mods.disadvantage_sources.append("objetivo invisible")
     if Condition.MARKED in cond_objetivo:
         mods.advantage_sources.append("objetivo señalado")

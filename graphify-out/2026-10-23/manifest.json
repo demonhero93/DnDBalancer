@@ -18,15 +18,15 @@
     "semantic_hash": ""
   },
   "dnd_sim/attack.py": {
-    "mtime": 1792785363.792761,
-    "seen": 1792785904.6683793,
-    "ast_hash": "b3162c4f6c733fea7ee8ed14eddbb836",
+    "mtime": 1792788640.9664376,
+    "seen": 1792789271.847857,
+    "ast_hash": "0229091f53252ead35242b3cd343f5f3",
     "semantic_hash": ""
   },
   "dnd_sim/combat.py": {
-    "mtime": 1792787924.7716875,
-    "seen": 1792788138.7485933,
-    "ast_hash": "f0518e7948f294968f111b1779fc6bad",
+    "mtime": 1792790179.1039097,
+    "seen": 1792790317.9471655,
+    "ast_hash": "22e3be25b6f496200fee7c70e4aa2868",
     "semantic_hash": ""
   },
   "dnd_sim/combatant.py": {
@@ -54,9 +54,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/data/loader.py": {
-    "mtime": 1792786304.1354928,
-    "seen": 1792786522.6104598,
-    "ast_hash": "bd7daffac5d3b1c35ff347822307c99b",
+    "mtime": 1792788812.461035,
+    "seen": 1792789271.847857,
+    "ast_hash": "39bc67b1d08d7d4cd80439a7acae1885",
     "semantic_hash": ""
   },
   "dnd_sim/dice.py": {
@@ -222,9 +222,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/roll_modifiers.py": {
-    "mtime": 1792786280.5268633,
-    "seen": 1792786522.6104598,
-    "ast_hash": "f2edfb3369c55afb3956de44906ee580",
+    "mtime": 1792790159.8001924,
+    "seen": 1792790317.9471655,
+    "ast_hash": "3e1b0b1488f0b7ef2ab06c37998a3784",
     "semantic_hash": ""
   },
   "tests/fixtures/ghoul.json": {
@@ -672,9 +672,9 @@
     "semantic_hash": ""
   },
   "tests/test_invisibility.py": {
-    "mtime": 1792786402.1717362,
-    "seen": 1792786522.6104598,
-    "ast_hash": "4212bd1d9f3ae7aa0881d4360b458fb7",
+    "mtime": 1792790245.0873544,
+    "seen": 1792790317.9471655,
+    "ast_hash": "ec5887fb7b91078e4f0768ff60bb3a70",
     "semantic_hash": ""
   },
   "tests/fixtures/azer.json": {
@@ -687,6 +687,12 @@
     "mtime": 1792788021.1883428,
     "seen": 1792788138.7485933,
     "ast_hash": "148d948d9f5fb433afe55277d6da314c",
+    "semantic_hash": ""
+  },
+  "tests/test_extra_damage.py": {
+    "mtime": 1792789089.9882095,
+    "seen": 1792789271.847857,
+    "ast_hash": "41381936b3fe89565d82ddbf4f578501",
     "semantic_hash": ""
   }
 }

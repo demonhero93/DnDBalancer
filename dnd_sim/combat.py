@@ -202,7 +202,10 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
        que consume RNG).
     2. Se actualiza ``attacker.state.at_range`` (un ataque a distancia deja
        al atacante a distancia; uno cuerpo a cuerpo, cerca).
-    3. ``attack_modifiers`` con el rango ya resuelto.
+    3. ``attack_modifiers`` con el rango ya resuelto. Un atacante
+       invisible ataca con ventaja; por eso su invisibilidad se quita
+       justo **después** de calcular el modo («until it attacks»: este
+       ataque ya se resuelve con ventaja).
     4. Tirada del d20 con el modo obtenido.
     5. Se compara contra la CA efectiva del objetivo (+2 si está a
        distancia).
@@ -211,18 +214,20 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         raise ValueError(
             f"{attacker.name} no es hostil a {target.name}: no se permite fuego amigo."
         )
-    # (0) La invisibilidad termina cuando el invisible ataca («until it
-    # attacks»). # TODO: también al lanzar un hechizo o al usar Enlarge
-    # (el duergar declara ambas); hoy solo la rompe un ataque.
-    if remove_condition(attacker, Condition.INVISIBLE, None) and log is not None:
-        log.append(f"  {attacker.name} deja de estar invisible (ataca)")
     # (1) Rango resuelto.
     rango = resolve_attack_range(atk, rng)
     # (2) Estado de distancia del atacante.
     _actualizar_distancia(attacker, rango, log)
-    # (3) Modificadores (el rango ya está decidido).
+    # (3) Modificadores (el rango ya está decidido). Un atacante invisible
+    # ataca **con ventaja**, así que la invisibilidad se quita **después**
+    # de calcular el modo: «until it attacks» significa que este ataque ya
+    # se resuelve con ventaja y a partir de aquí deja de estar invisible
+    # (# TODO: también al lanzar un hechizo o al usar Enlarge; hoy solo la
+    # rompe un ataque).
     modifiers = attack_modifiers(attacker, target, atk, rango)
     mode = modifiers.mode
+    if remove_condition(attacker, Condition.INVISIBLE, None) and log is not None:
+        log.append(f"  {attacker.name} deja de estar invisible (ataca)")
     # (4) Tirada.
     result = roll_d20(rng, mode)
     roll = result.value

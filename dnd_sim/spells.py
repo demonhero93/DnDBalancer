@@ -66,20 +66,20 @@ from typing import Any
 
 try:
     from .actions import ActionType, CombatAction, CombatContext, TurnResources
-    from .conditions import Condition, apply_condition
+    from .conditions import Condition, apply_condition, remove_condition
     from .dice import roll_dice
     from .randomness import pick
     from .targeting import valid_targets
 except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
         from actions import ActionType, CombatAction, CombatContext, TurnResources
-        from conditions import Condition, apply_condition
+        from conditions import Condition, apply_condition, remove_condition
         from dice import roll_dice
         from randomness import pick
         from targeting import valid_targets
     except ImportError:
         from dnd_sim.actions import ActionType, CombatAction, CombatContext, TurnResources
-        from dnd_sim.conditions import Condition, apply_condition
+        from dnd_sim.conditions import Condition, apply_condition, remove_condition
         from dnd_sim.dice import roll_dice
         from dnd_sim.randomness import pick
         from dnd_sim.targeting import valid_targets
@@ -248,6 +248,34 @@ class Spell:
 # --- Acciones -------------------------------------------------------------- #
 
 
+def _romper_invisibilidad_al_lanzar(context: CombatContext) -> None:
+    """Lanzar un hechizo termina la propia invisibilidad del lanzador.
+
+    «[Invisibility] ends if the target attacks or casts a spell». El duergar
+    lo declara además para su Enlarge/Reduce. Se ejecuta al **principio** de
+    cada acción de hechizo, antes de que su efecto se resuelva: así el
+    hechizo Invisibility se re-aplica después (quien lo refresca sigue
+    invisible) pero Enlarge u otro hechizo dejan al lanzador visible.
+
+    Es idempotente: si el lanzador no estaba invisible no hace nada ni
+    registra nada en el log, por lo que llamarlo más de una vez (p. ej. un
+    ``SpellAction`` que envuelve a otra acción de hechizo) es inofensivo.
+    """
+    actor = getattr(context, "actor", None)
+    if actor is None:
+        return
+    # ctx=None para que remove_condition no registre por su cuenta: aquí se
+    # añade la línea con el **motivo** («lanza un hechizo»), igual que hace
+    # attack_roll con «(ataca)».
+    if remove_condition(actor, Condition.INVISIBLE, None):
+        log = getattr(context, "log", None)
+        if log is not None:
+            log.append(
+                f"  {getattr(actor, 'name', actor)} deja de estar invisible "
+                f"(lanza un hechizo)"
+            )
+
+
 @dataclass
 class SpellAttackAction(CombatAction):
     """Ataque de hechizo con uno o varios elementos.
@@ -264,6 +292,7 @@ class SpellAttackAction(CombatAction):
     usage: ActionUsage | None = None
 
     def execute(self, context: CombatContext) -> None:
+        _romper_invisibilidad_al_lanzar(context)
         try:
             from .combat import attack_roll
         except ImportError:  # pragma: no cover - ejecución como script suelto
@@ -302,6 +331,7 @@ class SpellFixedDamageAction(CombatAction):
     usage: ActionUsage | None = None
 
     def execute(self, context: CombatContext) -> None:
+        _romper_invisibilidad_al_lanzar(context)
         try:
             from .damage import inflict_damage
         except ImportError:  # pragma: no cover - ejecución como script suelto
@@ -369,6 +399,7 @@ class HealAction(CombatAction):
         return bool(self._aliados_heridos(context))
 
     def execute(self, context: CombatContext) -> None:
+        _romper_invisibilidad_al_lanzar(context)
         objetivo = None
         aliados = self._aliados_heridos(context)
         if aliados:
@@ -427,6 +458,7 @@ class SpellStateAction(CombatAction):
         return True
 
     def execute(self, context: CombatContext) -> None:
+        _romper_invisibilidad_al_lanzar(context)
         efecto = self.effect
         if efecto is None:
             return
@@ -496,6 +528,7 @@ class SpellAction(CombatAction):
             return False
 
     def execute(self, context: CombatContext) -> None:
+        _romper_invisibilidad_al_lanzar(context)
         if self.concentration:
             apply_concentration(context.actor, context, self.duration_rounds)
         if self.effect is not None:
