@@ -15,7 +15,7 @@ try:
     )
     from .attack import Attack
     from .combatant import Combatant, CombatantType, valid_targets
-    from .conditions import end_turn
+    from .conditions import Condition, end_turn, remove_condition
     from .damage import DamageRecorder, apply_damage_modifiers, inflict_damage
     from .dice import RollMode, d20, roll_d20, roll_dice
     from .legendary import legendary_phase
@@ -42,9 +42,9 @@ except ImportError:
     from randomness import pick
     from tactics import first_target_policy, random_policy
     try:
-        from conditions import end_turn
+        from conditions import Condition, end_turn, remove_condition
     except ImportError:
-        from dnd_sim.conditions import end_turn
+        from dnd_sim.conditions import Condition, end_turn, remove_condition
     try:
         from dnd_sim.legendary import legendary_phase
     except ImportError:
@@ -146,6 +146,50 @@ def _mode_tag(mode: RollMode, result, reason: str = "") -> str:
     return ""
 
 
+def _agrandado(combatant: Any) -> bool:
+    """¿Tiene activa la condición ENLARGED (agrandado)?"""
+    tracker = getattr(combatant, "conditions", None)
+    if tracker is None:
+        return False
+    try:
+        return tracker.has(Condition.ENLARGED)
+    except Exception:
+        return False
+
+
+def _dados_de_ataque(attacker: Any, atk: Any) -> str:
+    """Dados a tirar en ``attack_roll``.
+
+    Si el atacante está agrandado y el ataque declara su variante
+    agrandada (la ficha del duergar: «or 11 (2d8 + 2) ... while
+    enlarged»), se usan esos dados; si no, los normales.
+    """
+    dados = str(getattr(atk, "damage", "") or "")
+    variante = str(getattr(atk, "enlarged_damage", "") or "")
+    if variante and _agrandado(attacker):
+        return variante
+    return dados
+
+
+def _bonus_de_tamano(attacker: Any, atk: Any, rng: Any) -> int:
+    """+1d4 de las armas agrandadas por el hechizo Enlarge/Reduce.
+
+    El rasgo del duergar ya lleva sus dados duplicados en
+    ``enlarged_damage`` (no se suma dos veces). Los ataques de hechizo
+    usan la característica de lanzamiento, no Fuerza, así que no reciben
+    este bonus («attacks with them [weapons] deal 1d4 extra damage»).
+    """
+    if not _agrandado(attacker):
+        return 0
+    if getattr(atk, "enlarged_damage", None):
+        return 0
+    if str(getattr(atk, "ability", "") or "").strip().lower() != "str":
+        return 0
+    if not str(getattr(atk, "damage", "") or "").strip():
+        return 0
+    return roll_dice("1d4", rng)
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
                 verbose: bool = False, ctx: Any = None) -> None:
@@ -167,6 +211,11 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         raise ValueError(
             f"{attacker.name} no es hostil a {target.name}: no se permite fuego amigo."
         )
+    # (0) La invisibilidad termina cuando el invisible ataca («until it
+    # attacks»). # TODO: también al lanzar un hechizo o al usar Enlarge
+    # (el duergar declara ambas); hoy solo la rompe un ataque.
+    if remove_condition(attacker, Condition.INVISIBLE, None) and log is not None:
+        log.append(f"  {attacker.name} deja de estar invisible (ataca)")
     # (1) Rango resuelto.
     rango = resolve_attack_range(atk, rng)
     # (2) Estado de distancia del atacante.
@@ -199,8 +248,13 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     if hit:
         raw_dmg = 0
         if str(getattr(atk, "damage", "") or "").strip() not in ("", "0"):
-            # Un ataque sin daño (p. ej. la Telaraña) no tira dados.
-            raw_dmg = max(0, roll_dice(atk.damage, rng, crit=crit) + attacker.dmg_bonus(atk))
+            # Un ataque sin daño (p. ej. la Telaraña) no tira dados. Con la
+            # condición ENLARGED se usan los dados agrandados de la ficha
+            # (o se añade el +1d4 del hechizo Enlarge/Reduce).
+            dados = _dados_de_ataque(attacker, atk)
+            raw_dmg = max(0, roll_dice(dados, rng, crit=crit)
+                          + attacker.dmg_bonus(atk))
+            raw_dmg += _bonus_de_tamano(attacker, atk, rng)
         dt = atk.damage_type
         if dt in target.immunities:
             dmg = 0
@@ -220,7 +274,23 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             dmg = raw_dmg
             mod_tag = ""
         dmg = apply_damage_modifiers(raw_dmg, dt, target)
-        inflict_damage(target, dmg, dt, source=attacker)
+        inflict_damage(target, dmg, dt, source=attacker, ctx=ctx)
+        # Daño adicional del arma (p. ej. el 1d6 de fuego del Warhammer
+        # del azer o el ácido del mordisco de un dragón). Cada entrada
+        # tiene su propio tipo, así que resistencia/inmunidad/vulnerabilidad
+        # se resuelven por separado y se suman al total. Los dados extra
+        # también se duplican en crítico (como el daño principal).
+        extra_total = 0
+        extra_partes = []
+        for _extra in getattr(atk, "extra_damage", None) or []:
+            _raw_x = roll_dice(_extra.damage, rng, crit=crit)
+            _dmg_x = apply_damage_modifiers(_raw_x, _extra.damage_type, target)
+            if _dmg_x > 0:
+                inflict_damage(target, _dmg_x, _extra.damage_type,
+                               source=attacker, ctx=ctx)
+            extra_total += _dmg_x
+            extra_partes.append(f"{_dmg_x} {_extra.damage_type.value}")
+        extra_tag = (" + " + " + ".join(extra_partes)) if extra_partes else ""
         _riders_to_run = list(getattr(atk, "save_riders", None) or [])
         _log_first = log_enabled
         if log_enabled:
@@ -230,7 +300,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                       if getattr(getattr(target, "state", None), "at_range", False) else "")
             log.append(f"  {attacker.name} -> {target.name} con {atk.name}: "
                        f"{roll}{mode_tag}+{bonus}={total} vs CA {ca_efectiva}{ca_tag}{tag}, "
-                       f"{dmg} daño (HP {max(target.hp, 0)}/{target.max_hp}){mod_tag}")
+                       f"{dmg} daño{extra_tag} (HP {max(target.hp, 0)}/{target.max_hp}){mod_tag}")
         for _rider in _riders_to_run:
             try:
                 from .saves import resolve_save_damage as _rsd
@@ -246,6 +316,18 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             _rsd(attacker, target, _rider, _rctx)
         # Riders de condición (tras el daño y los riders de daño).
         _apply_condition_riders(attacker, target, atk, rng, log if _log_first else None, ctx)
+        # Reacción del objetivo golpeado (p. ej. Heated Body del azer): se
+        # ejecuta en cada impacto, aunque el daño haya sido 0 por inmunidad.
+        _trigger_after_being_hit(target, attacker, rango,
+                                 log if _log_first else None, ctx, rng)
+        # Efectos posteriores al impacto (p. ej. el enganche del cloaker):
+        # reciben los modificadores para poder ver si el ataque iba con
+        # ventaja (enganche a la cabeza).
+        for _efecto in getattr(atk, "on_hit_effects", None) or []:
+            _efecto.execute(attacker, target, ctx, modifiers)
+        # Reacción del objetivo al recibir daño (p. ej. Hellish Rebuke).
+        if dmg + extra_total > 0:
+            _reaccion_si_procede(target, ctx)
     elif log_enabled:
         mode_tag = _mode_tag(mode, result, modifiers.reason())
         ca_tag = (f" (+{RANGED_COVER_AC_BONUS} cobertura a distancia)"
@@ -321,6 +403,57 @@ def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
             repeat_save=repeat,
             escape=rider.escape,
         )
+
+
+def _trigger_after_being_hit(target: Any, attacker: Any, rango: Any,
+                             log: Any, ctx: Any, rng: Any = None) -> None:
+    """Dispara los rasgos de ``target`` que reaccionan a ser golpeado.
+
+    Hoy solo ``Heated Body`` (azer): daño de fuego a quien impacta cuerpo a
+    cuerpo. El hook se ejecuta tras el daño, en **cada** impacto (aunque el
+    daño haya sido 0 por inmunidad del objetivo), porque el trigger de la
+    ficha es el impacto, no el daño recibido.
+    """
+    traits = list(getattr(target, "traits", None) or [])
+    if not traits:
+        return
+    hookable = [t for t in traits if getattr(t, "after_being_hit", None)]
+    if not hookable:
+        return
+    _ctx = ctx
+    if _ctx is None:
+        _ctx = type("HitCtx", (), {})()
+        _ctx.rng = rng
+        _ctx.log = log
+        _ctx.verbose = log is not None
+    elif getattr(_ctx, "rng", None) is None:
+        _ctx.rng = rng
+    for trait in hookable:
+        try:
+            trait.after_being_hit(target, attacker, rango, ctx=_ctx)
+        except Exception:
+            continue
+
+
+def _reaccion_si_procede(target: Any, ctx: Any) -> None:
+    """Dispara la reacción de ``target`` si acaba de recibir daño (5e).
+
+    El import es perezoso para evitar ciclos (``spells`` importa ``combat``
+    dentro de sus funciones).
+    """
+    if target is None or ctx is None:
+        return
+    try:
+        from .spells import trigger_reaction
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from spells import trigger_reaction
+        except ImportError:
+            from dnd_sim.spells import trigger_reaction
+    try:
+        trigger_reaction(target, ctx)
+    except Exception:
+        pass
 
 
 def roll_initiative(combatants: list[Combatant], rng: random.Random) -> list[Combatant]:

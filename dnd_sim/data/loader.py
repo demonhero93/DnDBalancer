@@ -9,51 +9,72 @@ import warnings
 try:
     from ..abilities import Abilities
     from ..actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
-    from ..attack import Attack
+    from ..attack import Attack, ExtraDamage
+    from ..attach import Attach
+    from ..conditions import Condition
+    from ..dice import doblar_dados
+    from ..spells import SpellStateAction, StateEffect
     from ..combatant import CombatantType, Monster
     from ..damage import DamageType
     from ..saves import SaveDamage, normalize_ability
     from .api_client import get_monster
+    from .attach_parser import parse_attach_effects
     from .condition_parser import parse_condition_effects, parse_range_type
     from .legendary_parser import parse_legendary
     from .spell_parser import build_spell_actions
+    from .trait_parser import parse_traits
     from .multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
     from .save_builder import (build_condition_action, build_save_action,
-                               build_save_effect, damage_dice_of, damage_type_of)
+                               build_save_effect, damage_dice_of,
+                               damage_options, damage_type_of)
     from .usage_parser import UnknownUsageError, parse_usage
 except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
     try:
         from abilities import Abilities
         from actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
-        from attack import Attack
+        from attack import Attack, ExtraDamage
+        from attach import Attach
+        from conditions import Condition
+        from dice import doblar_dados
+        from spells import SpellStateAction, StateEffect
         from combatant import CombatantType, Monster
         from damage import DamageType
         from saves import SaveDamage, normalize_ability
         from api_client import get_monster
+        from attach_parser import parse_attach_effects
         from condition_parser import parse_condition_effects, parse_range_type
         from legendary_parser import parse_legendary
         from spell_parser import build_spell_actions
+        from trait_parser import parse_traits
         from multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
         from save_builder import (build_condition_action, build_save_action,
-                                  build_save_effect, damage_dice_of, damage_type_of)
+                                  build_save_effect, damage_dice_of,
+                                  damage_options, damage_type_of)
         from usage_parser import UnknownUsageError, parse_usage
     except ImportError:
         from dnd_sim.abilities import Abilities
         from dnd_sim.actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
-        from dnd_sim.attack import Attack
+        from dnd_sim.attack import Attack, ExtraDamage
+        from dnd_sim.attach import Attach
+        from dnd_sim.conditions import Condition
+        from dnd_sim.dice import doblar_dados
+        from dnd_sim.spells import SpellStateAction, StateEffect
         from dnd_sim.combatant import CombatantType, Monster
         from dnd_sim.damage import DamageType
         from dnd_sim.saves import SaveDamage, normalize_ability
         from dnd_sim.data.api_client import get_monster
+        from dnd_sim.data.attach_parser import parse_attach_effects
         from dnd_sim.data.condition_parser import (parse_condition_effects,
                                                    parse_range_type)
         from dnd_sim.data.legendary_parser import parse_legendary
         from dnd_sim.data.spell_parser import build_spell_actions
+        from dnd_sim.data.trait_parser import parse_traits
         from dnd_sim.data.multiattack_parser import (extract_multiattack_alternatives,
                                                       resolve_multiattack)
         from dnd_sim.data.save_builder import (build_condition_action,
                                                build_save_action, build_save_effect,
-                                               damage_dice_of, damage_type_of)
+                                               damage_dice_of, damage_options,
+                                               damage_type_of)
         from dnd_sim.data.usage_parser import UnknownUsageError, parse_usage
 
 
@@ -117,6 +138,22 @@ def _simple_damage_modifiers(values) -> set:
 
 def _norm_name(value: str) -> str:
     return "".join(str(value).lower().split())
+
+
+# Acciones de estado propias sin daño ni salvación (vocabulario cerrado):
+# nombre de la acción -> (condición, duración en rondas). Comparten la
+# máquina de los hechizos de estado (``SpellStateAction`` + ``StateEffect``)
+# y el estado con el hechizo homónimo (véase ``dnd_sim.data.spell_parser``:
+# SPELL_STATES). Duración ``None`` = hasta que ocurra un evento (la
+# invisibilidad termina cuando el invisible ataca:
+# ``dnd_sim.combat.attack_roll``).
+_STATE_BUFF_ACTIONS: dict[str, tuple[Condition, int | None]] = {
+    # «For 1 minute» = 10 rondas; la reversión al quedar incapacitado no
+    # se modela.
+    "enlarge": (Condition.ENLARGED, 10),
+    # «Until it attacks, casts a spell, or uses its Enlarge»: sin rondas.
+    "invisibility": (Condition.INVISIBLE, None),
+}
 
 
 def _extract_multiattack_alternatives(raw_action: dict) -> list[list[dict]]:
@@ -232,6 +269,26 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
             attacks.append(atk)
             continue
 
+        # Acciones de estado propias (p. ej. el Enlarge del duergar):
+        # aplican un estado al propio usuario durante un tiempo; vocabulario
+        # cerrado en _STATE_BUFF_ACTIONS.
+        if (attack_bonus is None and not damage_list
+                and not isinstance(dc_info, dict)):
+            estado = _STATE_BUFF_ACTIONS.get(_norm_name(name))
+            if estado is not None:
+                condicion, rondas = estado
+                try:
+                    usage = parse_usage(action.get("usage"), monster_name, name)
+                except UnknownUsageError:
+                    continue
+                save_actions.append(SpellStateAction(
+                    effect=StateEffect(condition=condicion,
+                                       duration_rounds=rondas, target="self"),
+                    name=name,
+                    usage=usage,
+                ))
+                continue
+
         if attack_bonus is None or not damage_list:
             # Salvaciones, aliento, etc.
             continue
@@ -249,6 +306,26 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         damage_dice = damage_dice_of(first_damage)
         if not damage_dice:
             continue
+
+        # Daño adicional del arma: las entradas sin DC que sobran tras la
+        # principal se acumulan a ella, cada una con su propio tipo (p. ej.
+        # el 1d6 de fuego del Warhammer del azer o el ácido del mordisco de
+        # un dragón). Se ignoran las que son opciones a elegir (p. ej. el
+        # «1d6 lightning or thunder» del djinni), que no son daño fijo.
+        extra_damage = []
+        for entry in main_candidates[1:]:
+            if damage_options(entry):
+                continue  # opción a elegir («o thunder»): no es daño fijo
+            dice_x = damage_dice_of(entry)
+            if not dice_x:
+                continue
+            try:
+                extra_damage.append(
+                    ExtraDamage(damage=str(dice_x),
+                                damage_type=_damage_type(entry))
+                )
+            except Exception:
+                continue
 
         # Construir riders estructurados.
         riders = []
@@ -313,6 +390,16 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         # Condiciones que aplica el ataque si impacta (p. ej. el derribo del
         # lobo o la parálisis del ghoul).
         condition_riders = parse_condition_effects(action, monster_name)
+        # Efectos posteriores al impacto (p. ej. el enganche del cloaker).
+        on_hit_effects = parse_attach_effects(action, monster_name)
+        if on_hit_effects:
+            # El texto del enganche («blinded ... while the cloaker is
+            # attached» + «detach ... by succeeding on a DC 16 Strength
+            # check») lo modela dnd_sim.attach entero: ceguera al
+            # engancharse a la cabeza y desenganche con prueba que gasta la
+            # acción. Los riders genéricos del parser lo duplicarían (otra
+            # ceguera en cada impacto y otra prueba de escape por turno).
+            condition_riders = []
         atk = Attack(
             name=action.get("name", "Ataque"),
             damage=str(damage_dice),
@@ -325,8 +412,23 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
             usage=usage,
             range_type=parse_range_type(desc, monster_name, name),
             condition_riders=condition_riders,
+            on_hit_effects=on_hit_effects,
+            extra_damage=extra_damage,
         )
         attacks.append(atk)
+
+    # Variante agrandada de los ataques («doubles its damage dice», el
+    # Enlarge del duergar): la propia ficha trae los dados duplicados
+    # («or 11 (2d8 + 2) ... while enlarged»), así que se calculan
+    # duplicando los dados normales en lugar de parsear prosa numérica.
+    if re.search(r"doubles its damage dice",
+                 " ".join(str(a.get("desc") or "")
+                          for a in data.get("actions") or []),
+                 re.I):
+        for atk in attacks:
+            dados = str(atk.damage or "").strip()
+            if "d" in dados.lower():
+                atk.enlarged_damage = doblar_dados(dados)
 
     if not attacks:
         raise ValueError(
@@ -410,8 +512,17 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         )
     legendary = parse_legendary(data, legendary_candidates)
 
-    # Hechizos: los cantrips del monstruo (a voluntad, sin slots).
+    # Hechizos del monstruo: cantrips (a voluntad) y hechizos con slot de
+    # todos los niveles (0-9); cada nivel comparte su propio pool de slots.
     extra_actions += build_spell_actions(data, monster_name)
+
+    # Rasgos especiales pasivos (Damage Transfer, Blood Frenzy...). Los no
+    # modelables (Limited Amphibiousness...) se ignoran sin aviso en el parser.
+    traits = parse_traits(data)
+    # Algunos rasgos no vienen en special_abilities sino en el propio ataque:
+    # el enganche vive en la descripción del Bite (cloaker) y añade su rasgo.
+    if any(getattr(a, "on_hit_effects", None) for a in attacks):
+        traits.append(Attach())
 
     return Monster(
         name=monster_name,
@@ -428,4 +539,5 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         save_overrides=save_overrides,
         actions=extra_actions,
         legendary=legendary,
+        traits=traits,
     )

@@ -7,6 +7,7 @@ try:
     )
     from .area import AreaSaveAction, AreaTargeting, select_area_targets
     from .attack import Attack
+    from .attach import Attach, AttachOnHitEffect, desenganchar, intentar_desenganche
     from .checks import CheckResult, ability_check, ability_check_bonus
     from .combat_state import CombatState
     from .combatant import (
@@ -37,6 +38,7 @@ try:
         SpellFixedDamageAction, SpellStateAction, Spellcasting, StateEffect,
         spell_action,
     )
+    from .traits import BloodFrenzy, DamageTransfer, Trait
     from .dice import D20Result, RollMode, roll_d20, roll_dice, d20
     from .randomness import pick, sample
     from .stats import simulate, print_report
@@ -55,6 +57,10 @@ except ImportError:
     except Exception:
         pass
     from attack import Attack
+    try:
+        from attach import Attach, AttachOnHitEffect, desenganchar, intentar_desenganche
+    except Exception:
+        pass
     try:
         from checks import CheckResult, ability_check, ability_check_bonus
     except Exception:
@@ -106,6 +112,10 @@ except ImportError:
         )
     except Exception:
         pass
+    try:
+        from traits import BloodFrenzy, DamageTransfer, Trait
+    except Exception:
+        pass
     from dice import D20Result, RollMode, roll_d20, roll_dice, d20
     from randomness import pick, sample
     from stats import simulate, print_report
@@ -126,17 +136,21 @@ except ImportError:
 __all__ = [
     "Abilities", "ability_mod", "ActionType", "ActionUsage", "AreaSaveAction",
     "AreaTargeting", "Attack", "AttackAction", "AttackEntry", "AttackModifiers",
-    "AttackRange", "CheckModifiers", "CheckResult", "CombatAction",
+    "AttackRange", "Attach", "AttachOnHitEffect", "BloodFrenzy", "CheckModifiers",
+    "CheckResult", "CombatAction",
     "CombatContext", "Combatant", "CombatResult", "CombatState", "Condition",
     "ConditionAction", "ConditionEffect", "ConditionInstance",
-    "ConditionTracker", "D20Result", "DamageType", "EXCLUDED_CONDITIONS",
+    "ConditionTracker", "D20Result", "DamageType", "DamageTransfer",
+    "EXCLUDED_CONDITIONS",
     "EscapeCheck", "MultiattackAction", "RANGED_COVER_AC_BONUS", "RepeatSave",
     "RollMode", "SaveAction", "SaveDamage", "SaveDamageOutcome", "SaveModifiers",
-    "SaveResult", "TurnResources", "UsageKind", "WeaponAttackAction",
+    "SaveResult", "Trait", "TurnResources", "UsageKind", "WeaponAttackAction",
     "ability_check", "ability_check_bonus", "apply_condition",
     "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
-    "attempt_escapes", "begin_turn", "check_modifiers", "d20", "effective_ac",
-    "end_turn", "first_target_policy", "inflict_damage", "normalize_ability",
+    "attempt_escapes", "begin_turn", "check_modifiers", "d20", "desenganchar",
+    "effective_ac",
+    "end_turn", "first_target_policy", "inflict_damage",
+    "intentar_desenganche", "normalize_ability",
     "parse_damage_type", "pick", "print_report", "random_policy",
     "resolve_attack_range", "resolve_roll_mode", "resolve_save_damage",
     "roll_d20", "roll_dice", "run_combat", "sample", "save_modifiers",

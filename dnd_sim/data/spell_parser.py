@@ -40,7 +40,9 @@ try:
     from ..actions import ActionType
     from ..conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
     from ..saves import normalize_ability
-    from ..spells import Spell, Spellcasting, StateEffect, duracion_en_rondas
+    from ..spells import (
+        Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas,
+    )
     from .area_classifier import is_area_action
     from .condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
     from .escape_parser import parse_escape
@@ -49,7 +51,9 @@ except ImportError:  # pragma: no cover - ejecución como script suelto
         from actions import ActionType
         from conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
         from saves import normalize_ability
-        from spells import Spell, Spellcasting, StateEffect, duracion_en_rondas
+        from spells import (
+            Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas,
+        )
         from area_classifier import is_area_action
         from condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
         from escape_parser import parse_escape
@@ -57,7 +61,9 @@ except ImportError:  # pragma: no cover - ejecución como script suelto
         from dnd_sim.actions import ActionType
         from dnd_sim.conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
         from dnd_sim.saves import normalize_ability
-        from dnd_sim.spells import Spell, Spellcasting, StateEffect, duracion_en_rondas
+        from dnd_sim.spells import (
+            Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas,
+        )
         from dnd_sim.data.area_classifier import is_area_action
         from dnd_sim.data.condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
         from dnd_sim.data.escape_parser import parse_escape
@@ -109,6 +115,10 @@ ELEMENT_RE = re.compile(
 SEPARATE_ELEMENTS_RE = re.compile(
     r"(?:attack roll for each|attack for each)", re.IGNORECASE)
 
+# La API no siempre trae ``attack_type`` (p. ej. Scorching Ray): si el texto
+# dice "ranged spell attack" / "melee spell attack" se trata como ataque.
+SPELL_ATTACK_RE = re.compile(r"\b(ranged|melee)\s+spell attack\b", re.IGNORECASE)
+
 # Hechizos que dejan un estado (vocabulario cerrado):
 # nombre -> (condición, objetivo "self" | "ally" | "enemy", ¿salvación?).
 SPELL_STATES: dict[str, tuple[str, str, bool]] = {
@@ -116,6 +126,11 @@ SPELL_STATES: dict[str, tuple[str, str, bool]] = {
     "true strike": ("true_struck", "self", False),
     "charm person": ("charmed", "enemy", True),
     "faerie fire": ("marked", "enemy", True),
+    # Enlarge/Reduce: se modela la variante Agrandar al propio lanzador
+    # (auto-aplicada, sin salvación); la salvación CON contra un objetivo
+    # no dispuesto no se modela. Comparte el estado ENLARGED con el rasgo
+    # del duergar (dnd_sim.data.loader._STATE_BUFF_ACTIONS).
+    "enlarge/reduce": ("enlarged", "self", False),
 }
 
 # Estado de "hechizado": "it is charmed by you until the spell ends".
@@ -141,7 +156,12 @@ def _warn(monster_name: str, spell_name: str, motivo: str) -> None:
 # --- Datos del lanzador ---------------------------------------------------- #
 
 def parse_spellcasting(monster_json: dict) -> Spellcasting | None:
-    """Datos de lanzamiento del monstruo (``special_abilities``)."""
+    """Datos de lanzamiento del monstruo (``special_abilities``).
+
+    El **modificador de característica** (``ability_mod``) se deriva del
+    bono de ataque de la API restando la competencia (la API solo da el
+    bono completo). Es el ``MOD`` de la curación: ``1d8 + MOD``.
+    """
     for ability in monster_json.get("special_abilities") or []:
         if not isinstance(ability, dict):
             continue
@@ -150,35 +170,31 @@ def parse_spellcasting(monster_json: dict) -> Spellcasting | None:
         data = ability.get("spellcasting") or {}
         ab = data.get("ability") or {}
         index = ab.get("index") if isinstance(ab, dict) else ab
+        modifier = data.get("modifier")
+        proficiency = monster_json.get("proficiency_bonus")
+        ability_mod = None
+        if modifier is not None and proficiency is not None:
+            try:
+                ability_mod = int(modifier) - int(proficiency)
+            except (TypeError, ValueError):
+                ability_mod = None
         return Spellcasting(
             ability=str(index or "int"),
             save_dc=int(data.get("dc") or 10),
-            attack_bonus=int(data.get("modifier") or 0),
+            attack_bonus=int(modifier or 0),
             level=int(data.get("level") or 5),
             slots=dict(data.get("slots") or {}),
             spells=list(data.get("spells") or []),
+            ability_mod=ability_mod,
         )
     return None
 
 
 # --- Utilidades de datos --------------------------------------------------- #
 
-def _dado_por_nivel(niveles: dict, nivel: int, modificador: int = 0) -> str:
-    """Dados según el nivel del lanzador (o del slot).
-
-    ``MOD`` se sustituye por el bonificador del lanzador.
-    """
-    if not isinstance(niveles, dict) or not niveles:
-        return ""
-    claves = sorted(int(k) for k in niveles)
-    elegido = None
-    for k in claves:
-        if k <= nivel:
-            elegido = niveles[str(k)]
-    if elegido is None:
-        elegido = niveles[str(claves[0])]
-    texto = str(elegido).replace("MOD", str(int(modificador)))
-    return texto.replace(" ", "")
+# La resolución de dados por nivel vive en el módulo de reglas
+# (``spells.dado_por_nivel``); aquí se conserva el alias interno.
+_dado_por_nivel = dado_por_nivel
 
 
 def _dados_de_dano(entries: list, nivel: int, slot: int = 0) -> str:
@@ -203,6 +219,24 @@ def _dados_de_dano(entries: list, nivel: int, slot: int = 0) -> str:
             if entry.get(key):
                 return str(entry[key]).replace(" ", "")
     return ""
+
+
+def _tabla_de_dano(entries: list) -> dict:
+    """Tabla cruda de escalado del daño (guardada en ``Spell.damage_table``).
+
+    Misma precedencia que :func:`_dados_de_dano`: primero
+    ``damage_at_character_level`` (cantrips: escalan con el lanzador) y
+    después ``damage_at_slot_level`` (hechizos con slot: escalan con el
+    slot, incluido el upcast).
+    """
+    for entry in entries or []:
+        if not isinstance(entry, dict):
+            continue
+        for key in ("damage_at_character_level", "damage_at_slot_level"):
+            tabla = entry.get(key)
+            if isinstance(tabla, dict) and tabla:
+                return dict(tabla)
+    return {}
 
 
 def _opciones_de_dano(entries: list) -> list[str]:
@@ -361,6 +395,9 @@ def parse_spell(raw: dict, monster_name: str = "",
 
     nivel = int(getattr(spellcasting, "level", 5) or 5)
     modificador = int(getattr(spellcasting, "attack_bonus", 0) or 0)
+    # MOD de la curación: modificador de característica si se conoce
+    # (la API solo da el bono de ataque completo).
+    mod_curacion = int(getattr(spellcasting, "heal_modifier", modificador) or 0)
     # El slot usado: los hechizos con slot escalan con el slot, no con el
     # nivel del lanzador.
     slot = int(spell.level or 0)
@@ -368,9 +405,21 @@ def parse_spell(raw: dict, monster_name: str = "",
     # cantrips y el del slot en los hechizos con slot.
     referencia = nivel if slot <= 0 else slot
     ataque = str(raw.get("attack_type") or "")
+    if not ataque:
+        # La API no trae attack_type en todos los hechizos (p. ej.
+        # Scorching Ray): si el texto dice "ranged/melee spell attack"
+        # se toma de ahí.
+        coincidencia = SPELL_ATTACK_RE.search(texto)
+        if coincidencia:
+            ataque = coincidencia.group(1).lower()
     dc_info = raw.get("dc")
     damage = raw.get("damage") or []
     heal_levels = raw.get("heal_at_slot_level")
+    # Tablas de escalado crudas: permiten reescalar daño/curación al hacer
+    # upcast (``spell_action(..., slot_level=N)``) sin volver a la API.
+    spell.damage_table = _tabla_de_dano(damage)
+    if isinstance(heal_levels, dict):
+        spell.heal_table = dict(heal_levels)
 
     # (4) Hechizos de estado (sin daño ni salvación): vocabulario cerrado.
     estado = SPELL_STATES.get(nombre.lower())
@@ -393,7 +442,7 @@ def parse_spell(raw: dict, monster_name: str = "",
             _warn(monster_name, nombre, "puntos de vida temporales: no se modelan")
             return None
         spell.kind = "heal"
-        spell.heal = _dado_por_nivel(heal_levels, slot, modificador)
+        spell.heal = _dado_por_nivel(heal_levels, slot, mod_curacion)
         if not spell.heal:
             _warn(monster_name, nombre, "curación sin dados reconocibles")
             return None
@@ -507,14 +556,18 @@ def parse_spell(raw: dict, monster_name: str = "",
 
 
 def build_spell_actions(monster_json: dict, monster_name: str = "",
-                        get_spell=None) -> list:
-    """Acciones de hechizo del monstruo (sus **cantrips** y los de nivel 1).
+                        get_spell=None,
+                        max_spell_level: int | None = None) -> list:
+    """Acciones de hechizo del monstruo: **todos sus hechizos** (0-9).
 
-    Los cantrips (nivel 0) se lanzan cuantas veces se quiera: no gastan slots
-    ni usos por día. Los hechizos de nivel 1 consumen un **slot** de nivel 1
-    (el pool se comparte entre todos los hechizos de ese nivel).
-
-    # TODO: los hechizos de nivel 2 o superior (y sus slots) no se cargan.
+    - Los **cantrips** (nivel 0) se lanzan cuantas veces se quiera: no
+      gastan slots ni usos por día (``usage = None``).
+    - Los hechizos de nivel 1 o superior comparten un **pool de slots por
+      nivel** (``ActionUsage`` compartido entre los hechizos de ese nivel);
+      el motor lo gasta al lanzar (``usage.spend()``) y ``Combatant.reset()``
+      lo restaura al empezar el combate.
+    - ``max_spell_level`` permite limitar el nivel cargado (None = todos,
+      la ficha manda). Útil para comparar balance con/sin hechizos altos.
 
     ``get_spell`` es la función que descarga el JSON del hechizo (por
     defecto :func:`dnd_sim.data.api_client.get_spell`).
@@ -544,24 +597,25 @@ def build_spell_actions(monster_json: dict, monster_name: str = "",
         return []
 
     # Un pool de slots por nivel (compartido por los hechizos de ese nivel).
+    # Los cantrips (nivel 0) no entran: son ilimitados.
     slots: dict[int, Any] = {}
     for nivel, usos in (spellcasting.slots or {}).items():
         try:
             cantidad = int(usos)
+            nivel_int = int(nivel)
         except (TypeError, ValueError):
             continue
-        if cantidad > 0:
-            slots[int(nivel)] = ActionUsage(kind=UsageKind.PER_DAY,
-                                             uses_max=cantidad,
-                                             uses_left=cantidad)
+        if cantidad > 0 and nivel_int > 0:
+            slots[nivel_int] = ActionUsage(kind=UsageKind.PER_DAY,
+                                            uses_max=cantidad,
+                                            uses_left=cantidad)
 
     acciones = []
     for entrada in spellcasting.spells:
         if not isinstance(entrada, dict):
             continue
         nivel = int(entrada.get("level") or 0)
-        if nivel > 1:
-            # TODO: hechizos con slot de nivel 2 o superior.
+        if max_spell_level is not None and nivel > max_spell_level:
             continue
         url = str(entrada.get("url") or "")
         indice = url.rsplit("/", 1)[-1] if url else str(entrada.get("name") or "")
@@ -581,7 +635,8 @@ def build_spell_actions(monster_json: dict, monster_name: str = "",
             continue
         accion = spell_action(spell, spellcasting)
         if accion is not None:
-            # Un hechizo con slot consume un slot de su nivel (pool común).
+            # Un hechizo con slot usa el pool de su nivel (compartido).
+            # (El slot se gasta al lanzar, no aquí.)
             accion.usage = slots.get(nivel)
             acciones.append(accion)
     return acciones

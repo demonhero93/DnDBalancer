@@ -120,8 +120,11 @@ class Combatant:
     checks_with_advantage: set[str] = field(default_factory=set)
     checks_with_disadvantage: set[str] = field(default_factory=set)
     # Estado legendario (acciones legendarias y resistencia legendaria).
-    # Único campo nuevo: lo rellena ``load_monster`` desde la API.
+    # Lo rellena ``load_monster`` desde la API.
     legendary: "LegendaryState | None" = None
+    # Rasgos especiales pasivos de la ficha (p. ej. Blood Frenzy del
+    # sahuagin). También los rellena ``load_monster`` (trait_parser).
+    traits: list[Any] = field(default_factory=list)
     hp: int = field(init=False)
     initiative: int = field(init=False, default=0)
 
@@ -204,9 +207,12 @@ class Combatant:
             self.conditions.clear()
         except Exception:
             pass
-        # Todo el mundo empieza cuerpo a cuerpo.
+        # Todo el mundo empieza cuerpo a cuerpo, con la reacción cargada y
+        # sin enganchar a nadie.
         try:
             self.state.at_range = False
+            self.state.reaction_used = False
+            self.state.attached_to = None
         except Exception:
             pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,

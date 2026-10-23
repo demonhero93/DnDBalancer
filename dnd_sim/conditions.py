@@ -38,6 +38,9 @@ class Condition(Enum):
     # Concentración: solo se puede mantener una concentración por lanzador
     # (lanzar otro hechizo concentrado termina la anterior).
     CONCENTRATION = "concentration"
+    # Agrandado: ventaja en pruebas y salvaciones de Fuerza (Enlarge del
+    # duergar y el hechizo Enlarge/Reduce); el daño crece según la fuente.
+    ENLARGED = "enlarged"
     FRIGHTENED = "frightened"
     # Guiado: +1d4 a una prueba de característica (se consume al usarla).
     GUIDED = "guided"
@@ -45,6 +48,9 @@ class Condition(Enum):
     # Marca del cazador, Rayo guía).
     MARKED = "marked"
     INCAPACITATED = "incapacitated"
+    # Invisible: adaptación al simulador, desventaja al ser atacado (el
+    # invisible no se ve; su ventaja propia al atacar aún no se modela).
+    INVISIBLE = "invisible"
     PARALYZED = "paralyzed"
     PETRIFIED = "petrified"
     POISONED = "poisoned"
@@ -59,7 +65,6 @@ class Condition(Enum):
 # Condiciones que NO se modelan, con el motivo (no son miembros del Enum).
 EXCLUDED_CONDITIONS: dict[str, str] = {
     "deafened": "sentidos: no se modelan (no afectan a tiradas).",
-    "invisible": "ocultación: no se modela (no afecta a tiradas).",
     "grappled": "no da ventaja ni desventaja por sí sola.",
     "exhausted": "el agotamiento depende de la edición de reglas.",
 }
@@ -78,9 +83,11 @@ CONDITION_LABELS: dict[Condition, str] = {
     Condition.BLINDED: "cegado",
     Condition.CHARMED: "hechizado",
     Condition.CONCENTRATION: "concentrado",
+    Condition.ENLARGED: "agrandado",
     Condition.FRIGHTENED: "aterrorizado",
     Condition.GUIDED: "guiado",
     Condition.INCAPACITATED: "incapacitado",
+    Condition.INVISIBLE: "invisible",
     Condition.MARKED: "señalado",
     Condition.PARALYZED: "paralizado",
     Condition.PETRIFIED: "petrificado",
@@ -257,6 +264,28 @@ def apply_condition(target: Any, condition: Any, ctx: Any, *,
         except Exception:
             pass
     return instance
+
+
+def remove_condition(target: Any, condition: Any, ctx: Any = None) -> bool:
+    """Elimina todas las instancias activas de una condición.
+
+    Devuelve True si había alguna. Es la salida de los estados que terminan
+    por un evento y no por el tiempo (p. ej. la invisibilidad del duergar:
+    «until it attacks»).
+    """
+    condition = _as_condition(condition)
+    tracker = getattr(target, "conditions", None)
+    if tracker is None:
+        return False
+    quitadas = False
+    for instance in list(tracker.instances):
+        if instance.condition is condition:
+            tracker.remove_instance(instance)
+            quitadas = True
+    if quitadas:
+        _log_line(ctx, f"{getattr(target, 'name', target)} deja de estar "
+                       f"{_label(condition)}")
+    return quitadas
 
 
 def _queda_accion(actor: Any, ctx: Any) -> bool:
@@ -515,5 +544,5 @@ __all__ = [
     "Condition", "EXCLUDED_CONDITIONS", "IMPLIED_CONDITIONS", "CONDITION_LABELS",
     "RepeatSave", "EscapeCheck", "ConditionInstance", "ConditionTracker",
     "ConditionEffect", "apply_condition", "attempt_escapes", "end_turn",
-    "ConditionAction",
+    "ConditionAction", "remove_condition",
 ]

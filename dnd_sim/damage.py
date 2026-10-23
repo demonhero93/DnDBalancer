@@ -200,8 +200,33 @@ def _notify_damage_taken(target, amount, damage_type, source):
 def inflict_damage(target: "Combatant", amount: int,
                    damage_type: Any = None, source: Any = None,
                    ctx: Any = None) -> int:
-    """Inflige daño final (ya modificado) al objetivo y dispara reacciones."""
-    amt = int(amount or 0)
+    """Inflige daño final (ya modificado) al objetivo y dispara reacciones.
+
+    Los rasgos del objetivo intervienen en dos fases (p. ej. el Damage
+    Transfer del cloaker, mientras está enganchado):
+
+    1. ``modify_incoming_damage``: ajustan la cantidad que baja de PV
+       (Damage Transfer: la mitad, redondeada hacia abajo). Reciben la
+       cantidad en curso y ``None`` significa "sin cambios"; no pueden
+       dejar el daño en negativo.
+    2. ``after_damage_taken``: con el daño original ya aplicado, hacen sus
+       efectos (Damage Transfer reparte la otra mitad a la criatura a la
+       que está enganchado, con una llamada anidada a esta función).
+
+    El daño transferido vuelve a pasar por estas fases en el otro
+    combatiente; los repartos hacia abajo por enteros hacen que eso termine
+    siempre.
+    """
+    original = int(amount or 0)
+    amt = original
+    if original > 0:
+        for rasgo in list(getattr(target, "traits", None) or []):
+            hook = getattr(rasgo, "modify_incoming_damage", None)
+            if hook is None:
+                continue
+            nuevo = hook(target, amt, damage_type, source, ctx)
+            if nuevo is not None:
+                amt = max(0, int(nuevo))
     try:
         target.hp -= amt
     except Exception:
@@ -217,6 +242,11 @@ def inflict_damage(target: "Combatant", amount: int,
         pass
     _notify_damage_dealt(source, target, amt, dt)
     _notify_damage_taken(target, amt, dt, source)
+    if original > 0:
+        for rasgo in list(getattr(target, "traits", None) or []):
+            hook = getattr(rasgo, "after_damage_taken", None)
+            if hook is not None:
+                hook(target, original, damage_type, source, ctx)
     return amt
 
 

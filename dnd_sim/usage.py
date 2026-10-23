@@ -141,10 +141,15 @@ def begin_turn(actor, ctx):
        rellenan los **puntos legendarios** del actor hasta su máximo (los
        puntos no usados se pierden: no se acumulan). Esto ocurre **aunque el
        actor esté incapacitado**.
-    2. Tiradas de recarga de las acciones descargadas del actor.
-    3. ``attempt_escapes``: intentos de liberarse de los estados con prueba
+    2. Se **recarga la reacción** del actor (5e: la reacción se recarga al
+       empezar tu turno): ``state.reaction_used = False``.
+    3. Tiradas de recarga de las acciones descargadas del actor.
+    4. ``attempt_escapes``: intentos de liberarse de los estados con prueba
        de escape (automáticos, no son una elección).
-    4. Si el actor está incapacitado, se salta el turno (sin política y
+    5. ``intentar_desenganche``: prueba de Fuerza CD 16 para soltarse del
+       enganche de otra criatura (p. ej. el cloaker). También automática y
+       con gasto de acción.
+    6. Si el actor está incapacitado, se salta el turno (sin política y
        sin consumir RNG).
 
     La tirada de recarga ocurre al inicio del turno propio del monstruo, así
@@ -173,7 +178,15 @@ def begin_turn(actor, ctx):
         except Exception:
             pass
 
-    # (2) Recargas de las acciones descargadas.
+    # (2) Recarga de la reacción al inicio del turno propio (5e).
+    state = getattr(actor, "state", None)
+    if state is not None:
+        try:
+            state.reaction_used = False
+        except Exception:
+            pass
+
+    # (3) Recargas de las acciones descargadas.
     rng = getattr(ctx, "rng", None)
     for action in getattr(actor, "actions", []) or []:
         usage = getattr(action, "usage", None)
@@ -194,7 +207,7 @@ def begin_turn(actor, ctx):
             f" -> {resultado}",
         )
 
-    # (3) Intentos de escape (automáticos).
+    # (4) Intentos de escape (automáticos).
     try:
         from .conditions import attempt_escapes
     except ImportError:  # pragma: no cover - ejecución como script suelto
@@ -207,7 +220,22 @@ def begin_turn(actor, ctx):
     except Exception:
         pass
 
-    # (4) Un combatiente incapacitado pierde el turno entero.
+    # (5) Intento de desenganche (automático): CD 16 de Fuerza para
+    #     soltarse del enganche de otra criatura (cloaker). Import local:
+    #     attach importa a actions, que importa este módulo (haría ciclo).
+    try:
+        from .attach import intentar_desenganche
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from attach import intentar_desenganche
+        except ImportError:
+            from dnd_sim.attach import intentar_desenganche
+    try:
+        intentar_desenganche(actor, ctx)
+    except Exception:
+        pass
+
+    # (6) Un combatiente incapacitado pierde el turno entero.
     if not getattr(actor, "can_act", True):
         try:
             ctx.skip_turn = True

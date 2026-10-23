@@ -4,6 +4,8 @@ Este módulo es la **única fuente** donde se decide el modo de una tirada:
 
 - Los cuatro indicadores estáticos que ya tenía ``Combatant``.
 - Las condiciones de atacante y objetivo.
+- Los rasgos especiales del atacante (``Combatant.traits``, véase
+  :mod:`dnd_sim.traits`: Blood Frenzy...).
 
 ``resolve_roll_mode`` (en :mod:`dnd_sim.combat`) y ``saving_throw`` (en
 :mod:`dnd_sim.saves`) delegan aquí.
@@ -165,7 +167,9 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
     mods = AttackModifiers()
     cond_atacante = _condiciones(attacker)
     cond_objetivo = _condiciones(target)
-    if rango is None:
+    if not isinstance(rango, AttackRange):
+        # Rango no resuelto (None o un valor ajeno, p. ej. el rng que
+        # resolve_roll_mode pasaba por compatibilidad): se usa el del ataque.
         rango = getattr(attack, "range_type", AttackRange.MELEE)
 
     # 1. Indicadores estáticos (efecto fijo).
@@ -198,6 +202,10 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
     # 4. Condiciones del objetivo.
     if Condition.BLINDED in cond_objetivo:
         mods.advantage_sources.append("objetivo cegado")
+    if Condition.INVISIBLE in cond_objetivo:
+        # Adaptación al simulador: invisible = desventaja al ser atacado.
+        # TODO: el invisible también tiene ventaja en sus propios ataques.
+        mods.disadvantage_sources.append("objetivo invisible")
     if Condition.MARKED in cond_objetivo:
         mods.advantage_sources.append("objetivo señalado")
     if Condition.RESTRAINED in cond_objetivo:
@@ -216,7 +224,14 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
         else:
             mods.advantage_sources.append("objetivo derribado, cuerpo a cuerpo")
 
-    # 5. Crítico automático: contra un objetivo paralizado o inconsciente,
+    # 5. Rasgos especiales del atacante (p. ej. Blood Frenzy del sahuagin):
+    #    cada rasgo decide por sí mismo si aplica (rango, objetivo herido...).
+    for rasgo in getattr(attacker, "traits", []) or []:
+        hook = getattr(rasgo, "modify_attack_modifiers", None)
+        if hook is not None:
+            hook(mods, attacker, target, rango)
+
+    # 6. Crítico automático: contra un objetivo paralizado o inconsciente,
     #    todo ataque cuerpo a cuerpo que impacte es crítico.
     if rango is AttackRange.MELEE and (Condition.PARALYZED in cond_objetivo
                                        or Condition.UNCONSCIOUS in cond_objetivo):
@@ -246,6 +261,10 @@ def save_modifiers(target: Any, ability: str) -> SaveModifiers:
         mods.disadvantage_sources.append("efecto fijo")
     if Condition.RESTRAINED in cond and str(ability).strip().lower() in ("dex", "dexterity"):
         mods.disadvantage_sources.append("inmovilizado")
+    # Agrandado (Enlarge del duergar / hechizo Enlarge): ventaja en FUE.
+    if (Condition.ENLARGED in cond
+            and str(ability).strip().lower() in ("str", "strength")):
+        mods.advantage_sources.append("agrandado")
 
     return mods
 
@@ -256,6 +275,7 @@ def check_modifiers(target: Any, ability: str) -> CheckModifiers:
     - POISONED y FRIGHTENED dan desventaja en toda prueba.
       (FRIGHTENED mantiene la suposición de que la fuente está siempre a
       la vista.)
+    - ENLARGED da ventaja en las pruebas de Fuerza.
     - Indicadores estáticos ``checks_with_advantage/disadvantage``.
     """
     mods = CheckModifiers()
@@ -266,6 +286,9 @@ def check_modifiers(target: Any, ability: str) -> CheckModifiers:
     if Condition.FRIGHTENED in cond:
         # TODO: línea de visión (se asume que la fuente está a la vista).
         mods.disadvantage_sources.append("aterrorizado")
+    if (Condition.ENLARGED in cond
+            and str(ability).strip().lower() in ("str", "strength")):
+        mods.advantage_sources.append("agrandado")
 
     ventaja = getattr(target, "checks_with_advantage", set()) or set()
     desventaja = getattr(target, "checks_with_disadvantage", set()) or set()

@@ -11,18 +11,23 @@ from pathlib import Path
 import pytest
 
 from dnd_sim import Abilities, Monster, PlayerCharacter
-from dnd_sim.actions import AttackAction, CombatContext, SaveAction, TurnResources
+from dnd_sim.actions import (
+    ActionType, AttackAction, CombatContext, SaveAction, TurnResources,
+)
 from dnd_sim.checks import ability_check
 from dnd_sim.area import AreaSaveAction
-from dnd_sim.combat import run_combat
+from dnd_sim.combat import attack_roll, run_combat
 from dnd_sim.conditions import Condition, apply_condition
 from dnd_sim.data.loader import load_monster
-from dnd_sim.data.spell_parser import parse_spell, parse_spellcasting
+from dnd_sim.data.spell_parser import (
+    build_spell_actions, parse_spell, parse_spellcasting,
+)
 from dnd_sim.roll_modifiers import AttackRange, attack_modifiers
 from dnd_sim.spells import (
-    HealAction, SpellAction, SpellAttackAction, SpellFixedDamageAction,
-    Spellcasting, spell_action,
+    HealAction, Spell, SpellAction, SpellAttackAction, SpellFixedDamageAction,
+    Spellcasting, spell_action, trigger_reaction,
 )
+from dnd_sim.usage import begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SPELLS = FIXTURES / "spells"
@@ -337,8 +342,10 @@ def test_los_hechizos_de_nivel_1_consumen_slots(monkeypatch):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         lich = load_monster("lich")
+    # Solo los hechizos de nivel 1 (cada nivel tiene su propio pool).
     con_slots = [a for a in lich.actions
-                 if getattr(a, "usage", None) is not None]
+                 if getattr(a, "usage", None) is not None
+                 and getattr(getattr(a, "spell", None), "level", None) == 1]
     assert con_slots, "el lich debe cargar hechizos de nivel 1"
     usages = {id(a.usage) for a in con_slots}
     assert len(usages) == 1, "el pool de slots es compartido"
@@ -359,7 +366,10 @@ def test_un_slot_gastado_impide_lanzar_mas_hechizos_de_nivel_1(monkeypatch):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         lich = load_monster("lich")
-    con_slots = [a for a in lich.actions if getattr(a, "usage", None) is not None]
+    con_slots = [a for a in lich.actions
+                 if getattr(a, "usage", None) is not None
+                 and getattr(getattr(a, "spell", None), "level", None) == 1]
+    assert con_slots
     pool = con_slots[0].usage
     for _ in range(pool.uses_max):
         pool.spend()
@@ -460,3 +470,274 @@ def test_un_cantrip_se_puede_lanzar_en_cada_turno(monkeypatch):
     lanzamientos = [l for l in res.log if "con Ray of Frost" in l]
     assert lanzamientos, "el lich debe lanzar su cantrip"
     assert len(lanzamientos) >= 2
+
+
+# --- Hechizos de nivel superior (2+) --------------------------------------- #
+
+HECHIZOS_TODOS_LOS_NIVELES = [
+    ("ray-of-frost", "Ray of Frost", 0),
+    ("magic-missile", "Magic Missile", 1),
+    ("thunderwave", "Thunderwave", 1),
+    ("scorching-ray", "Scorching Ray", 2),
+    ("delayed-blast-fireball", "Delayed Blast Fireball", 7),
+]
+
+
+def _monstruo_lanzador(spells, slots, modifier=12, dc=20, level=18,
+                       proficiency=6) -> dict:
+    """JSON de monstruo sintético con hechizos (para build_spell_actions)."""
+    return {
+        "name": "Lanzador",
+        "proficiency_bonus": proficiency,
+        "special_abilities": [{
+            "name": "Spellcasting",
+            "spellcasting": {
+                "ability": {"index": "int"},
+                "dc": dc,
+                "modifier": modifier,
+                "level": level,
+                "slots": slots,
+                "spells": [
+                    {"name": nombre, "level": nivel,
+                     "url": f"/api/2014/spells/{indice}"}
+                    for indice, nombre, nivel in spells
+                ],
+            },
+        }],
+    }
+
+
+def _desde_fixture(indice, **kwargs) -> dict:
+    return _spell_data(indice)
+
+
+def test_se_cargan_hechizos_de_todos_los_niveles_con_un_pool_por_nivel():
+    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES,
+                              {"1": 4, "2": 3, "7": 1})
+    acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture)
+    por_nombre = {a.name: a for a in acciones}
+    assert set(por_nombre) == {"Ray of Frost", "Magic Missile", "Thunderwave",
+                               "Scorching Ray", "Delayed Blast Fireball"}
+    # Los cantrips no gastan slots.
+    assert por_nombre["Ray of Frost"].usage is None
+    # Pool compartido entre los hechizos del mismo nivel...
+    assert por_nombre["Magic Missile"].usage is por_nombre["Thunderwave"].usage
+    assert por_nombre["Magic Missile"].usage.uses_max == 4
+    # ...y un pool distinto por nivel.
+    assert por_nombre["Scorching Ray"].usage.uses_max == 3
+    assert por_nombre["Delayed Blast Fireball"].usage.uses_max == 1
+    pools = {id(por_nombre[n].usage) for n in
+             ("Magic Missile", "Scorching Ray", "Delayed Blast Fireball")}
+    assert len(pools) == 3
+
+
+def test_gastar_un_slot_no_afecta_a_los_otros_niveles():
+    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES,
+                              {"1": 4, "2": 3, "7": 1})
+    acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture)
+    por_nombre = {a.name: a for a in acciones}
+    pool2 = por_nombre["Scorching Ray"].usage
+    for _ in range(pool2.uses_max):
+        pool2.spend()
+    # Nivel 2 agotado: sus hechizos no se pueden lanzar...
+    assert not por_nombre["Scorching Ray"].can_use()
+    # ...pero el nivel 1 y los cantrips siguen disponibles.
+    assert por_nombre["Magic Missile"].can_use()
+    assert por_nombre["Delayed Blast Fireball"].can_use()
+    assert por_nombre["Ray of Frost"].can_use()
+
+
+def test_max_spell_level_limita_el_nivel_cargado():
+    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES,
+                              {"1": 4, "2": 3, "7": 1})
+    acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture,
+                                   max_spell_level=1)
+    assert {a.name for a in acciones} == {"Ray of Frost", "Magic Missile",
+                                          "Thunderwave"}
+
+
+def test_un_ataque_de_hechizo_de_nivel_2_se_interpreta_desde_el_texto():
+    """Scorching Ray: la API no trae attack_type; el texto sí (3 rayos)."""
+    raw = _spell_data("scorching-ray")
+    spell = parse_spell(raw, "Test", _spellcasting(level=18))
+    assert spell.kind == "attack"
+    assert spell.level == 2
+    assert spell.attack_type == "ranged"
+    assert spell.damage == "2d6"       # por rayo, según el slot 2
+    assert spell.elements == 3         # "spell attack for each ray"
+
+    accion = spell_action(spell, _spellcasting(level=18))
+    assert isinstance(accion.effect, SpellAttackAction)
+    assert len(accion.effect.attacks) == 3
+
+
+def test_un_hechizo_de_nivel_7_carga_su_daño_de_slot():
+    raw = _spell_data("delayed-blast-fireball")
+    spell = parse_spell(raw, "Test", _spellcasting(level=18))
+    assert spell.kind == "save"
+    assert spell.level == 7
+    assert spell.damage == "12d6"      # daño del slot 7 (no del lanzador)
+    assert spell.area is True
+
+    accion = spell_action(spell, _spellcasting(level=18))
+    assert isinstance(accion.effect, AreaSaveAction)
+    assert accion.effect.effect.dc == 20
+    assert accion.effect.effect.damage == "12d6"
+
+
+def test_un_hechizo_de_nivel_2_con_concentracion_y_salvacion_repetida():
+    """Hold Person: condición con salvación, concentración y repite salvación."""
+    raw = _spell_data("hold-person")
+    spell = parse_spell(raw, "Test", _spellcasting(level=18))
+    assert spell.kind == "condition"
+    assert spell.level == 2
+    assert spell.concentration is True
+    assert spell.condition.condition is Condition.PARALYZED
+    assert spell.condition.save_ability == "wis"
+    assert spell.condition.repeat_save is True
+
+    accion = spell_action(spell, _spellcasting(level=18))
+    assert accion.concentration is True
+    assert accion.duration_rounds == 10       # "Concentration, 1 minute"
+
+
+def test_el_upcast_reescala_el_dano_y_la_curacion():
+    sc = Spellcasting(ability="int", save_dc=20, attack_bonus=12, level=18,
+                      ability_mod=6)
+    mm = parse_spell(_spell_data("magic-missile"), "Test", sc)
+    assert mm.damage == "3d4+3"
+    assert spell_action(mm, sc).effect.damage == "3d4+3"      # sin upcast
+    subido = spell_action(mm, sc, slot_level=3)
+    assert subido.effect.damage == "5d4+5"                    # slot 3
+    assert subido.spell.level == 1                            # sigue siendo 1
+
+    cw = parse_spell(_spell_data("cure-wounds"), "Test", sc)
+    assert cw.heal == "1d8+6"
+    assert spell_action(cw, sc).effect.effect.heal == "1d8+6"
+    cura3 = spell_action(cw, sc, slot_level=3)
+    assert cura3.effect.effect.heal == "3d8+6"
+
+    # Los cantrips escalan con el lanzador: upcast no les cambia nada.
+    rayo = parse_spell(_spell_data("ray-of-frost"), "Test", sc)
+    subido2 = spell_action(rayo, sc, slot_level=5)
+    assert subido2.effect.attack.damage == rayo.damage
+
+
+def test_la_curacion_usa_el_modificador_de_caracteristica_no_el_bono_completo():
+    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
+    sc = parse_spellcasting(data)
+    assert sc.attack_bonus == 12
+    assert sc.ability_mod == 5         # 12 = +5 INT + 7 competencia (CR 21)
+    assert sc.heal_modifier == 5
+    spell = parse_spell(_spell_data("cure-wounds"), "Test", sc)
+    assert spell.kind == "heal"
+    assert spell.heal == "1d8+5"       # no 1d8+12 (el bono incluye competencia)
+    # Sin dato de competencia se usa el bono de ataque (compatibilidad).
+    assert Spellcasting(attack_bonus=12).heal_modifier == 12
+
+
+def test_initialize_slots_usa_la_tabla_real_de_un_lanzador_completo():
+    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
+    sc_api = parse_spellcasting(data)
+    sc_local = Spellcasting()
+    sc_local.initialize_slots(sc_api.level)
+    esperado = {0: None}
+    esperado.update({int(k): v for k, v in sc_api.slots.items()})
+    assert sc_local.slots == esperado     # la tabla coincide con la API
+    bajo = Spellcasting()
+    bajo.initialize_slots(1)
+    assert bajo.slots == {0: None, 1: 2}  # nivel 1: solo dos de nivel 1
+
+
+def test_el_import_estrella_de_spells_no_falla():
+    exec("from dnd_sim.spells import *", {})   # no debe lanzar AttributeError
+
+
+# --- Acción bonus y reacciones --------------------------------------------- #
+
+def test_un_hechizo_de_accion_bonus_se_comprueba_en_su_fase():
+    """El efecto interno comparte el tipo de acción del hechizo (bug corregido)."""
+    spell = Spell(name="Llamas", level=1, kind="fixed", damage="1d6",
+                  damage_type="fire", action_type=ActionType.BONUS_ACTION)
+    accion = spell_action(spell, Spellcasting())
+    assert accion.action_type is ActionType.BONUS_ACTION
+    assert accion.effect.action_type is ActionType.BONUS_ACTION
+    # En la fase de acción bonus (acción ya gastada) sí está disponible...
+    assert accion.can_use(TurnResources(action_used=True))
+    # ...pero no si la acción bonus ya se ha usado.
+    assert not accion.can_use(TurnResources(bonus_action_used=True))
+    assert not accion.can_use(
+        TurnResources(action_used=True, bonus_action_used=True))
+
+
+def test_las_reacciones_se_disparan_al_recibir_dano_y_se_recargan():
+    raw = _spell_data("hellish-rebuke")
+    spell = parse_spell(raw, "Test", _spellcasting())
+    assert spell.action_type is ActionType.REACTION
+    accion = spell_action(spell, _spellcasting())
+    assert accion.effect.action_type is ActionType.REACTION
+
+    atacante = _pj("Atacante")
+    defensor = _npc("Defensor", hp=100)
+    defensor.actions = [accion]
+    log: list = []
+    ctx = CombatContext(rng=random.Random(9), actor=atacante,
+                        combatants=[atacante, defensor], round=1,
+                        log=log, verbose=True, resources=TurnResources(),
+                        action_uses={})
+
+    assert trigger_reaction(defensor, ctx) is True
+    assert defensor.state.reaction_used is True
+    assert any("reacciona con Hellish Rebuke" in linea for linea in log)
+    assert ctx.action_uses.get("Hellish Rebuke") == 1
+    # Una sola reacción hasta que empiece su turno.
+    assert trigger_reaction(defensor, ctx) is False
+    begin_turn(defensor, ctx)
+    assert defensor.state.reaction_used is False
+    assert trigger_reaction(defensor, ctx) is True
+
+
+def test_al_recibir_dano_en_un_ataque_se_dispara_la_reaccion():
+    raw = _spell_data("hellish-rebuke")
+    accion = spell_action(parse_spell(raw, "Test", _spellcasting()),
+                          _spellcasting())
+    atacante = _pj("Atacante")
+    defensor = _npc("Defensor", hp=200)
+    defensor.actions = [accion]
+    log: list = []
+    ctx = CombatContext(rng=random.Random(3), actor=atacante,
+                        combatants=[atacante, defensor], round=1,
+                        log=log, verbose=True, resources=TurnResources(),
+                        action_uses={})
+    from dnd_sim.attack import Attack
+
+    atk = Attack("Espada", "1d8", ability="str", attack_bonus=12,
+                 damage_bonus=0)
+    attack_roll(atacante, defensor, atk, ctx.rng, log, ctx=ctx)
+    assert defensor.state.reaction_used is True
+    assert any("reacciona con Hellish Rebuke" in linea for linea in log)
+
+
+def test_la_reaccion_gasta_el_slot_de_su_nivel():
+    data = _monstruo_lanzador([("hellish-rebuke", "Hellish Rebuke", 1)],
+                              {"1": 4})
+    acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture)
+    assert len(acciones) == 1
+    accion = acciones[0]
+    pool = accion.usage
+    assert pool.uses_max == 4
+
+    lanzador = _npc("Lanzador", hp=100)
+    lanzador.actions = [accion]
+    objetivo = _pj("Objetivo")
+    ctx = CombatContext(rng=random.Random(5), actor=lanzador,
+                        combatants=[lanzador, objetivo], round=1,
+                        log=[], verbose=True, resources=TurnResources(),
+                        action_uses={})
+    assert trigger_reaction(lanzador, ctx) is True
+    assert pool.uses_left == 3
+    # Sin slots no se puede reaccionar (el efecto se comprueba igual).
+    for _ in range(pool.uses_left):
+        pool.spend()
+    begin_turn(lanzador, ctx)
+    assert trigger_reaction(lanzador, ctx) is False

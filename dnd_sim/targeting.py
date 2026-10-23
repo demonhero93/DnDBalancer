@@ -18,8 +18,23 @@ from __future__ import annotations
 from typing import Any
 
 
+def _objetivo_enganche(actor: Any, atk: Any) -> Any:
+    """Criatura enganchada si ``atk`` queda restringido a ella (o ``None``).
+
+    Lee ``CombatState.attached_to`` del atacante y los ``on_hit_effects``
+    del ataque (duck-typing: este módulo no tiene dependencias).
+    """
+    enganchado = getattr(getattr(actor, "state", None), "attached_to", None)
+    if enganchado is None or not getattr(enganchado, "alive", True):
+        return None
+    for efecto in getattr(atk, "on_hit_effects", None) or []:
+        if getattr(efecto, "restringe_a_enganchado", False):
+            return enganchado
+    return None
+
+
 def valid_targets(actor: Any, ctx: Any = None, combatants: Any = None,
-                  enemies: Any = None) -> list:
+                  enemies: Any = None, atk: Any = None) -> list:
     """Objetivos hostiles vivos de ``actor``.
 
     Parámetros
@@ -33,6 +48,13 @@ def valid_targets(actor: Any, ctx: Any = None, combatants: Any = None,
         Lista explícita de combatientes (tiene prioridad sobre ``ctx``).
     enemies:
         Alias de ``combatants`` (compatibilidad).
+    atk:
+        Ataque concreto para el que se piden objetivos (opcional). Si el
+        actor está enganchado y el ataque lleva enganche (Bite del
+        cloaker), solo devuelve la criatura enganchada: «can make this
+        attack only against the target». Las acciones que no son ese ataque
+        (Moan, alientos, salvaciones, hechizos) no lo pasan y no se
+        restringen.
 
     No consume RNG.
     """
@@ -58,6 +80,13 @@ def valid_targets(actor: Any, ctx: Any = None, combatants: Any = None,
                 result.append(c)
         except Exception:
             pass
+    # Restricción de enganche (solo con un ataque concreto que la declare).
+    if atk is not None:
+        restringido = _objetivo_enganche(actor, atk)
+        if restringido is not None:
+            filtrado = [c for c in result if c is restringido]
+            if filtrado:
+                result = filtrado
     return result
 
 

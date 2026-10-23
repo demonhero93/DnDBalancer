@@ -138,9 +138,14 @@ class CombatContext:
         return _living_enemies(self)
 
 
-def _living_enemies(ctx: CombatContext) -> list:
-    """Hostiles vivos del actor (alias de la fuente única ``valid_targets``)."""
-    return list(valid_targets(ctx.actor, ctx=ctx))
+def _living_enemies(ctx: CombatContext, atk: Any = None) -> list:
+    """Hostiles vivos del actor (alias de la fuente única ``valid_targets``).
+
+    ``atk`` (opcional): ataque concreto que se va a resolver; si el actor
+    está enganchado y el ataque lo declara, los objetivos se reducen a la
+    criatura enganchada (véase :func:`dnd_sim.targeting.valid_targets`).
+    """
+    return list(valid_targets(ctx.actor, ctx=ctx, atk=atk))
 
 
 def _log(ctx: CombatContext):
@@ -168,7 +173,7 @@ class AttackAction(CombatAction):
         from .combat import attack_roll  # local para evitar ciclos
 
         actor = context.actor
-        enemies = _living_enemies(context)
+        enemies = _living_enemies(context, self.attack)
         if not enemies:
             return
         # Un ataque suelto: objetivo aleatorio.
@@ -268,7 +273,7 @@ class MultiattackAction(CombatAction):
                     f"El ataque {attack_name!r} no existe en {actor.name!r}.attacks"
                 )
             for _ in range(count):
-                enemies = _living_enemies(context)
+                enemies = _living_enemies(context, atk)
                 if not enemies:
                     return
                 # Si el combate ya terminó (un solo equipo vivo), paramos.

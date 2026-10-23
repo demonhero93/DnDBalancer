@@ -246,7 +246,7 @@ def _log_line(ctx: Any, line: str) -> None:
 
 
 def _inflict_for_save(target: Any, amount: int, damage_type: Any,
-                      source: Any) -> None:
+                      source: Any, ctx: Any = None) -> None:
     # Import local para evitar ciclos.
     try:
         from .damage import inflict_damage
@@ -255,7 +255,7 @@ def _inflict_for_save(target: Any, amount: int, damage_type: Any,
             from damage import inflict_damage
         except ImportError:
             from dnd_sim.damage import inflict_damage
-    inflict_damage(target, amount, damage_type, source=source)
+    inflict_damage(target, amount, damage_type, source=source, ctx=ctx)
 
 
 @dataclass
@@ -355,7 +355,7 @@ def apply_save_damage(source: Any, target: Any, effect: SaveDamage,
             pass
 
     # 5. Infligir daño por la función única.
-    _inflict_for_save(target, final, dt, source)
+    _inflict_for_save(target, final, dt, source, ctx)
 
     return outcome
 
@@ -403,7 +403,31 @@ def resolve_save_damage(source: Any, target: Any, effect: SaveDamage,
     outcome = apply_save_damage(source, target, eff, raw_damage, ctx,
                                 on_resolved=_log_line_outcome)
 
+    # 3. Reacción del objetivo al recibir daño (p. ej. Hellish Rebuke).
+    if int(outcome.final_damage) > 0:
+        _reaccion_si_procede(target, ctx)
+
     return int(outcome.final_damage)
+
+
+def _reaccion_si_procede(target: Any, ctx: Any) -> None:
+    """Dispara la reacción de ``target`` si acaba de recibir daño (5e).
+
+    Import perezoso de ``spells`` para evitar ciclos de importación.
+    """
+    if target is None or ctx is None:
+        return
+    try:
+        from .spells import trigger_reaction
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from spells import trigger_reaction
+        except ImportError:
+            from dnd_sim.spells import trigger_reaction
+    try:
+        trigger_reaction(target, ctx)
+    except Exception:
+        pass
 
 
 # Exportar normalize para uso interno también.

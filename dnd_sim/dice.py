@@ -34,6 +34,21 @@ def roll_dice(expr: str, rng: random.Random, crit: bool = False) -> int:
     return sum(rng.randint(1, faces) for _ in range(n)) + bonus
 
 
+_DICE_DOBLAR_RE = re.compile(r"(\d+)d(\d+)")
+
+
+def doblar_dados(expr: str) -> str:
+    """Duplica los dados de una expresión de daño («doubles its damage dice»).
+
+    «1d8+2» -> «2d8+2»: se duplican todos los términos «NdM», no el bonus
+    fijo. Si la expresión no contiene dados reconocibles, se devuelve tal
+    cual.
+    """
+    expr = str(expr or "").strip()
+    return _DICE_DOBLAR_RE.sub(
+        lambda m: f"{int(m.group(1)) * 2}d{m.group(2)}", expr)
+
+
 def roll_d20(rng: random.Random, mode: RollMode = RollMode.NORMAL) -> D20Result:
     """Tira un d20 aplicando ventaja/desventaja.
 
