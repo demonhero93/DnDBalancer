@@ -447,7 +447,7 @@ def test_un_incapacitado_pierde_el_turno_sin_consumir_rng():
 
 
 def test_la_politica_no_se_invoca_para_un_incapacitado(monkeypatch):
-    import dnd_sim.engine.combat as combat_mod
+    import dnd_sim.engine.combat.encounter as combat_mod
 
     pj = _pj()
     npc = Monster(name="Ogro", max_hp=100, ac=10, abilities=Abilities())

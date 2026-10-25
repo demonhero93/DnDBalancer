@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any
 
 from ..core.targeting import valid_targets
 

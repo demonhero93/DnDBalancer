@@ -1,0 +1,221 @@
+"""Bucle del combate: iniciativa, política de objetivo,
+turno a turno y resultado del encuentro."""
+
+from __future__ import annotations
+
+import inspect
+import random
+from dataclasses import dataclass, field
+
+from ...model.actions import ActionType, CombatContext
+from ...model.combatant import Combatant, CombatantType, valid_targets
+from ...rules.conditions import end_turn
+from ...rules.damage import DamageRecorder
+from ...core.dice import d20
+from ...rules.legendary import legendary_phase
+from ...core.randomness import pick
+from ..tactics import random_policy
+from ...rules.usage import begin_turn
+
+
+@dataclass
+class CombatResult:
+    winner: str
+    rounds: int
+    survivors: dict[str, int]  # nombre -> hp restante
+    log: list[str]
+    # Estadísticas: usos por nombre de acción y objetivos afectados por área.
+    action_uses: dict[str, int] = field(default_factory=dict)
+    area_targets_hit: list[int] = field(default_factory=list)
+    # Daño del combate por combatiente (nombre -> daño total).
+    damage_dealt: dict[str, int] = field(default_factory=dict)
+    damage_received: dict[str, int] = field(default_factory=dict)
+    # Condiciones: veces aplicada cada una y turnos perdidos por incapacitación.
+    conditions_applied: dict[str, int] = field(default_factory=dict)
+    turns_lost_incapacitated: dict[str, int] = field(default_factory=dict)
+    # Escapes: intentos y éxitos por condición; ataques contra objetivos a distancia.
+    escape_attempts: dict[str, int] = field(default_factory=dict)
+    escape_successes: dict[str, int] = field(default_factory=dict)
+    attacks_vs_at_range: int = 0
+    # Leyenda: acciones legendarias usadas (nombre -> veces), puntos gastados
+    # y resistencias legendarias gastadas.
+    legendary_actions_used: dict[str, int] = field(default_factory=dict)
+    legendary_points_spent: int = 0
+    legendary_resistances_used: int = 0
+
+
+def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
+    """Reparte el daño registrado por combatiente (infligido y recibido)."""
+    dealt: dict[str, int] = {}
+    received: dict[str, int] = {}
+    for record in records or []:
+        amount = int(record.get("amount") or 0)
+        source = record.get("source")
+        target = record.get("target")
+        source_name = getattr(source, "name", None)
+        target_name = getattr(target, "name", None)
+        if source_name:
+            dealt[source_name] = dealt.get(source_name, 0) + amount
+        if target_name:
+            received[target_name] = received.get(target_name, 0) + amount
+    return dealt, received
+
+
+def roll_initiative(combatants: list[Combatant], rng: random.Random) -> list[Combatant]:
+    for c in combatants:
+        c.initiative = d20(rng) + c.abilities.mod("dex")
+    return sorted(combatants, key=lambda c: (c.initiative, c.abilities.dex), reverse=True)
+
+
+def _invoke_policy(policy, ctx: CombatContext, candidates: list):
+    ctx.available_actions = list(candidates)
+    # Soporta policy(ctx) y policy(choices, rng) y variantes posicionales.
+    try:
+        sig = inspect.signature(policy)
+        params = list(sig.parameters.values())
+    except (TypeError, ValueError):
+        params = []
+    n_required = sum(1 for p in params if p.default is inspect.Parameter.empty and p.kind in (
+        inspect.Parameter.POSITIONAL_ONLY,
+        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+    ))
+    # Preferimos la convención más común del motor: policy(ctx).
+    if len(params) <= 1:
+        return policy(ctx)
+    # Si espera 2+ posicionales, intentamos pasar (candidates, rng).
+    try:
+        return policy(candidates, ctx.rng)
+    except TypeError:
+        try:
+            return policy(ctx, candidates)
+        except TypeError:
+            return policy(ctx)
+
+
+def run_combat(combatants: list[Combatant], rng: random.Random,
+               verbose: bool = False, max_rounds: int = 100,
+               policy=None) -> CombatResult:
+    """Ejecuta un combate y devuelve el resultado con sus estadísticas.
+
+    El daño infligido se registra durante el combate (:class:`DamageRecorder`)
+    para poder informar del daño medio de cada combatiente.
+    """
+    with DamageRecorder() as recorder:
+        result = _run_combat(combatants, rng, verbose=verbose, max_rounds=max_rounds,
+                             policy=policy)
+    dealt, received = _summarize_damage(recorder.records)
+    result.damage_dealt = dealt
+    result.damage_received = received
+    return result
+
+
+def _run_combat(combatants: list[Combatant], rng: random.Random,
+                verbose: bool = False, max_rounds: int = 100,
+                policy=None) -> CombatResult:
+    if policy is None:
+        policy = random_policy
+    for c in combatants:
+        c.reset()
+    order = roll_initiative(combatants, rng)
+
+    log: list[str] = []
+    rnd = 0
+    # Estadísticas del combate (compartidas por todos los turnos).
+    action_uses: dict[str, int] = {}
+    area_targets_hit: list[int] = []
+    conditions_applied: dict[str, int] = {}
+    turns_lost_incapacitated: dict[str, int] = {}
+    escape_attempts: dict[str, int] = {}
+    escape_successes: dict[str, int] = {}
+    attacks_at_range: list[int] = []
+    # Estadísticas legendarias (acciones usadas, puntos y resistencias).
+    legendary_stats: dict = {"actions": {}, "points": 0, "resistances": 0}
+    while rnd < max_rounds:
+        rnd += 1
+        if verbose:
+            log.append(f"-- Ronda {rnd} --")
+        for actor in order:
+            if not actor.alive:
+                continue
+            enemies = valid_targets(actor, combatants=order)
+            if not enemies:
+                break
+            ctx = CombatContext(
+                rng=rng, actor=actor, combatants=order, round=rnd,
+                log=log if verbose else None, verbose=verbose, resources=None,
+                action_uses=action_uses, area_targets_hit=area_targets_hit,
+                conditions_applied=conditions_applied,
+                escape_attempts=escape_attempts, escape_successes=escape_successes,
+                attacks_at_range=attacks_at_range,
+                legendary_stats=legendary_stats,
+            )
+            # Inicio de turno: recursos nuevos y tiradas de recarga de las
+            # acciones descargadas del actor. Si está incapacitado, pierde
+            # el turno (sin política y sin consumir RNG).
+            resources = begin_turn(actor, ctx)
+            if not ctx.skip_turn:
+                # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
+                for action_type in (ActionType.ACTION, ActionType.BONUS_ACTION):
+                    candidates = [
+                        a for a in getattr(actor, "actions", [])
+                        if getattr(a, "action_type", None) == action_type
+                        and a.can_use(resources, ctx)
+                        and getattr(actor, "can_act", True)
+                    ]
+                    if not candidates:
+                        continue
+                    chosen = _invoke_policy(policy, ctx, candidates)
+                    if chosen is None:
+                        chosen = pick(rng, candidates)
+                    chosen.execute(ctx)
+                    resources.use(action_type)
+                    # El uso limitado se gasta aquí (una vez, aunque el área
+                    # afecte a pocos objetivos).
+                    usage = getattr(chosen, "usage", None)
+                    if usage is not None:
+                        usage.spend()
+                    action_name = getattr(chosen, "name", "") or type(chosen).__name__
+                    action_uses[action_name] = action_uses.get(action_name, 0) + 1
+                    enemies = valid_targets(actor, combatants=order)
+                    if not enemies:
+                        break
+            else:
+                # Turno perdido. Solo cuenta como incapacitación si la
+                # criatura sigue viva: quien muere al empezar su turno
+                # (Regeneration) no «pierde» el turno, ya no está.
+                if actor.alive:
+                    turns_lost_incapacitated[actor.name] = (
+                        turns_lost_incapacitated.get(actor.name, 0) + 1)
+            # Final del turno: salvaciones de repetición y duración de las
+            # condiciones del propio combatiente.
+            end_turn(actor, ctx)
+            # Fase legendaria: los demás monstruos legítimos pueden usar una
+            # acción legendaria tras el turno de este combatiente.
+            legendary_phase(actor, ctx)
+            players_alive = any(c.alive and c.combatant_type == CombatantType.PLAYER for c in order)
+            npcs_alive = any(c.alive and c.combatant_type == CombatantType.NPC for c in order)
+            if not players_alive or not npcs_alive:
+                break
+        players_alive = any(c.alive and c.combatant_type == CombatantType.PLAYER for c in order)
+        npcs_alive = any(c.alive and c.combatant_type == CombatantType.NPC for c in order)
+        if not players_alive or not npcs_alive:
+            break
+
+    players_alive = any(c.alive and c.combatant_type == CombatantType.PLAYER for c in order)
+    npcs_alive = any(c.alive and c.combatant_type == CombatantType.NPC for c in order)
+    if players_alive and not npcs_alive:
+        winner = "PJ"
+    elif npcs_alive and not players_alive:
+        winner = "NPC"
+    else:
+        winner = "Empate"
+    return CombatResult(winner, rnd, {c.name: max(c.hp, 0) for c in order}, log,
+                        action_uses=action_uses, area_targets_hit=area_targets_hit,
+                        conditions_applied=conditions_applied,
+                        turns_lost_incapacitated=turns_lost_incapacitated,
+                        escape_attempts=escape_attempts,
+                        escape_successes=escape_successes,
+                        attacks_vs_at_range=len(attacks_at_range),
+                        legendary_actions_used=legendary_stats["actions"],
+                        legendary_points_spent=int(legendary_stats["points"]),
+                        legendary_resistances_used=int(legendary_stats["resistances"]))

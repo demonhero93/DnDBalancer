@@ -161,7 +161,7 @@ def test_el_primer_ataque_del_invisible_usa_ventaja_y_luego_pierde_la_invisibili
     ctx = _ctx(duergar, [duergar, objetivo])
     apply_condition(duergar, Condition.INVISIBLE, ctx, duration_rounds=None)
 
-    import dnd_sim.engine.combat as combat_mod
+    import dnd_sim.engine.combat.attack as combat_mod
     original = combat_mod.roll_d20
     modos = []
 
@@ -186,7 +186,7 @@ def test_el_segundo_ataque_del_duergar_ya_no_tiene_ventaja(monkeypatch):
     ctx = _ctx(duergar, [duergar, objetivo])
     apply_condition(duergar, Condition.INVISIBLE, ctx, duration_rounds=None)
 
-    import dnd_sim.engine.combat as combat_mod
+    import dnd_sim.engine.combat.attack as combat_mod
     original = combat_mod.roll_d20
     modos = []
 

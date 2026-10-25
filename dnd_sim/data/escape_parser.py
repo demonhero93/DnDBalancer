@@ -22,7 +22,6 @@ Vocabulario cerrado (con #: TODO de fragilidad: es texto libre).
 from __future__ import annotations
 
 import re
-import warnings
 
 from ..rules.conditions import EscapeCheck
 from ..rules.saves import normalize_ability

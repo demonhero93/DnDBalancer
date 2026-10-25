@@ -83,8 +83,8 @@ def _ataque(m, nombre):
 
 
 def _spy_roll_dice(monkeypatch) -> list:
-    """Sustituye ``dnd_sim.engine.combat.roll_dice`` por un espía que sí tira."""
-    import dnd_sim.engine.combat as combat
+    """Sustituye ``dnd_sim.engine.combat.attack.roll_dice`` por un espía que sí tira."""
+    import dnd_sim.engine.combat.attack as combat
     llamadas = []
     original = combat.roll_dice
 

@@ -1,9 +1,6 @@
 """Políticas de decisión para el combate (aleatoria pura)."""
 from __future__ import annotations
 
-import inspect
-from typing import Any
-
 from ..core.randomness import pick
 
 

@@ -111,7 +111,7 @@ def test_atacar_con_ventaja_y_no_pierde_la_invisibilidad(monkeypatch):
     ctx = _ctx(pixie, [pixie, objetivo])
     _accion(pixie, "Superior Invisibility").execute(ctx)
 
-    import dnd_sim.engine.combat as combat_mod
+    import dnd_sim.engine.combat.attack as combat_mod
     original = combat_mod.roll_d20
     modos = []
 

@@ -6,20 +6,9 @@ import sys
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-try:
-    from dnd_sim import Abilities, Attack, AttackRange, PlayerCharacter, load_monster, run_combat
-    from dnd_sim.engine.stats import print_report, simulate
-except ImportError:
-    from abilities import Abilities
-    from attack import Attack
-    from combatant import PlayerCharacter
-    from data.loader import load_monster
-    from combat import run_combat
-    from stats import print_report, simulate
-    try:
-        from roll_modifiers import AttackRange
-    except ImportError:
-        from dnd_sim.rules.roll_modifiers import AttackRange
+from dnd_sim import (Abilities, Attack, AttackRange, PlayerCharacter,
+                     load_monster, run_combat)
+from dnd_sim.engine.stats import print_report, simulate
 
 
 def _parse_monster_token(token: str):

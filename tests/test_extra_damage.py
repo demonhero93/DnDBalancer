@@ -77,7 +77,7 @@ def _espiar_inflict(monkeypatch):
         llamadas.append((target, amount, damage_type))
         return 0
 
-    monkeypatch.setattr("dnd_sim.engine.combat.inflict_damage", espia)
+    monkeypatch.setattr("dnd_sim.engine.combat.attack.inflict_damage", espia)
     return llamadas
 
 
@@ -207,7 +207,7 @@ def test_en_critico_roll_dice_recibe_crit_para_el_extra(monkeypatch):
     _espiar_inflict(monkeypatch)
     llamadas_dice = []
 
-    import dnd_sim.engine.combat as combat_mod
+    import dnd_sim.engine.combat.attack as combat_mod
     original = combat_mod.roll_dice
 
     def espia_dice(dados, rng=None, crit=False, **kw):

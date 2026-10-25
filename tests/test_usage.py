@@ -248,7 +248,7 @@ def test_aliento_se_usa_en_una_fraccion_plausible_de_turnos(monkeypatch):
 
 
 def test_politica_elige_el_aliento_aproximadamente_el_50_cuando_esta_cargado(monkeypatch):
-    import dnd_sim.engine.combat as combat_mod
+    import dnd_sim.engine.combat.encounter as combat_mod
 
     monster = _load_fixture(monkeypatch, "adult-red-dragon")
     jugador = _player()

@@ -86,7 +86,7 @@ def _ctx(actor, combatantes, semilla: int = 1) -> CombatContext:
 
 def _fijar_d20(monkeypatch, valor: int) -> None:
     """Fija la tirada del d20 (el resto del ataque ya es determinista)."""
-    import dnd_sim.engine.combat as combat_mod
+    import dnd_sim.engine.combat.attack as combat_mod
 
     def espia(rng, mode=RollMode.NORMAL, **kw):
         return D20Result(value=valor, rolls=[valor, valor], mode=mode)

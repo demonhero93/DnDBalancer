@@ -7,9 +7,7 @@ import warnings
 # TODO: Multiataque es una acción de texto libre que aún no se parsea.
 
 from ..core.abilities import Abilities
-from ..model.actions import (
-    ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
-)
+from ..model.actions import ActionType, AttackAction, MultiattackAction
 from ..model.attack import Attack, ExtraDamage
 from ..rules.attach import Attach
 from ..rules.conditions import Condition

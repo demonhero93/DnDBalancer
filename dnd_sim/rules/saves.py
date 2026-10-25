@@ -2,23 +2,16 @@
 from __future__ import annotations
 
 import random
-import re
-import warnings
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from dataclasses import dataclass
+from typing import Any, Literal
 
-from ..core.abilities import Abilities, ability_mod, normalize_ability
-from ..model.combatant import Combatant
-from .damage import DamageType, apply_damage_modifiers, parse_damage_type
+from ..core.abilities import normalize_ability
 from ..core.dice import RollMode, roll_d20, roll_dice
+from .damage import apply_damage_modifiers, parse_damage_type
 
-from ..core.randomness import pick
-
-from dataclasses import dataclass as _dc  # noqa: F401
-
-# ``normalize_ability`` se importa aquí desde :mod:`dnd_sim.core.abilities` (capa
-# core) porque ``combatant`` la necesita y este módulo ya importa a
-# ``combatant``: moverla evita el ciclo saves <-> combatant. Se reexporta en
+# ``normalize_ability`` vive en :mod:`dnd_sim.core.abilities` (capa core):
+# la necesita ``combatant`` y este módulo ya no importa a ``combatant``, así
+# que el ciclo saves <-> combatant no puede aparecer. Se reexporta aquí en
 # ``__all__`` para no romper la API pública histórica.
 
 
