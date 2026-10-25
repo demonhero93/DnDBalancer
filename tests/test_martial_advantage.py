@@ -147,7 +147,7 @@ def test_en_critico_los_dados_extra_llegan_con_crit(monkeypatch):
     rasgo = hobgoblin.traits[0]
     aliado = _aliado()
     objetivo = _pj()
-    import dnd_sim.rules.traits as traits_mod
+    import dnd_sim.rules.traits.offense as traits_mod
     original = traits_mod.roll_dice
     tiradas: list = []
 
