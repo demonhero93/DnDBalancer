@@ -133,6 +133,11 @@ class ConditionInstance:
     repeat_save: RepeatSave | None = None
     # Prueba de escape (si la hay).
     escape: EscapeCheck | None = None
+    # ¿Termina al atacar o al lanzar un hechizo? Es el caso de la
+    # invisibilidad estándar («until it attacks or casts a spell»); la
+    # Superior Invisibility de la pixie, que dura lo que su concentración,
+    # se aplica con False y por eso sobrevive a un ataque.
+    break_on_attack: bool = True
 
 
 @dataclass
@@ -226,11 +231,13 @@ def _as_condition(condition: Any) -> Condition:
 def apply_condition(target: Any, condition: Any, ctx: Any, *,
                     source: Any = None, duration_rounds: int | None = None,
                     repeat_save: RepeatSave | None = None,
-                    escape: EscapeCheck | None = None) -> ConditionInstance:
+                    escape: EscapeCheck | None = None,
+                    break_on_attack: bool = True) -> ConditionInstance:
     """Aplica una condición a un objetivo y la registra en el log.
 
     Si el objetivo ya tiene esa condición, se añade otra instancia (cada
-    fuente conserva su duración, su salvación de repetición y su escape).
+    fuente conserva su duración, su salvación de repetición, su escape y si
+    termina al atacar).
     """
     condition = _as_condition(condition)
     tracker = getattr(target, "conditions", None)
@@ -243,6 +250,7 @@ def apply_condition(target: Any, condition: Any, ctx: Any, *,
         remaining_rounds=duration_rounds,
         repeat_save=repeat_save,
         escape=escape,
+        break_on_attack=bool(break_on_attack),
     )
     tracker.add(instance)
 
@@ -268,9 +276,10 @@ def apply_condition(target: Any, condition: Any, ctx: Any, *,
 def remove_condition(target: Any, condition: Any, ctx: Any = None) -> bool:
     """Elimina todas las instancias activas de una condición.
 
-    Devuelve True si había alguna. Es la salida de los estados que terminan
-    por un evento y no por el tiempo (p. ej. la invisibilidad del duergar:
-    «until it attacks»).
+    Devuelve True si había alguna. Para la invisibilidad, que termina por
+    un evento y no por el tiempo («until it attacks»), la rutina concreta es
+    :func:`remove_invisibility_on_action`, que además distingue la que se
+    rompe de la que no.
     """
     condition = _as_condition(condition)
     tracker = getattr(target, "conditions", None)
@@ -284,6 +293,32 @@ def remove_condition(target: Any, condition: Any, ctx: Any = None) -> bool:
     if quitadas:
         _log_line(ctx, f"{getattr(target, 'name', target)} deja de estar "
                        f"{_label(condition)}")
+    return quitadas
+
+
+def remove_invisibility_on_action(target: Any) -> bool:
+    """Termina la invisibilidad **estándar** al atacar o al lanzar.
+
+    Quita solo las instancias con ``break_on_attack=True``, que es la
+    regla de la invisibilidad normal («[Invisibility] ends if the target
+    attacks or casts a spell»). La Superior Invisibility de la pixie, que
+    dura lo que su concentración, se aplica con ``False`` y por eso aquí no
+    se toca.
+
+    Devuelve True si se quitó alguna; no registra nada en el log: quien
+    llama añade la línea con su motivo («(ataca)» en
+    :func:`dnd_sim.combat.attack_roll`, «(lanza un hechizo)» en
+    ``_romper_invisibilidad_al_lanzar``), como ya hacía con
+    :func:`remove_condition`.
+    """
+    tracker = getattr(target, "conditions", None)
+    if tracker is None:
+        return False
+    quitadas = False
+    for instance in list(tracker.instances):
+        if instance.condition is Condition.INVISIBLE and instance.break_on_attack:
+            tracker.remove_instance(instance)
+            quitadas = True
     return quitadas
 
 
@@ -543,5 +578,5 @@ __all__ = [
     "Condition", "EXCLUDED_CONDITIONS", "IMPLIED_CONDITIONS", "CONDITION_LABELS",
     "RepeatSave", "EscapeCheck", "ConditionInstance", "ConditionTracker",
     "ConditionEffect", "apply_condition", "attempt_escapes", "end_turn",
-    "ConditionAction", "remove_condition",
+    "ConditionAction", "remove_condition", "remove_invisibility_on_action",
 ]

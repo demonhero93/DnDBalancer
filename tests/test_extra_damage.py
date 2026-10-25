@@ -66,10 +66,14 @@ def _warhammer(azer) -> Attack:
 
 def _espiar_inflict(monkeypatch):
     """Sustituye ``combat.inflict_damage`` por un espía que registra
-    (objetivo, cantidad, tipo) y no inflige nada."""
+    (objetivo, cantidad, tipo) y no inflige nada.
+
+    Acepta ``**kw`` porque la función real también recibe ``crit`` y
+    ``rng`` (los usan los rasgos que se salvan a 0 PV).
+    """
     llamadas = []
 
-    def espia(target, amount, damage_type=None, source=None, ctx=None):
+    def espia(target, amount, damage_type=None, source=None, ctx=None, **kw):
         llamadas.append((target, amount, damage_type))
         return 0
 

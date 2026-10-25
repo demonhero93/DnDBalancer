@@ -516,8 +516,10 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
     # todos los niveles (0-9); cada nivel comparte su propio pool de slots.
     extra_actions += build_spell_actions(data, monster_name)
 
-    # Rasgos especiales pasivos (Damage Transfer, Blood Frenzy...). Los no
-    # modelables (Limited Amphibiousness...) se ignoran sin aviso en el parser.
+    # Rasgos especiales pasivos (Damage Transfer, Blood Frenzy, Parry...).
+    # El parser mira special_abilities **y reactions** (la API deja Parry
+    # solo como reacción) y los no modelables (Limited Amphibiousness...)
+    # se ignoran sin aviso en el parser.
     traits = parse_traits(data)
     # Algunos rasgos no vienen en special_abilities sino en el propio ataque:
     # el enganche vive en la descripción del Bite (cloaker) y añade su rasgo.

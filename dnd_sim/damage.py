@@ -210,14 +210,49 @@ def _hooks(traits: Any, nombre: str) -> list:
     return hooks(traits, nombre)
 
 
+def _salvar_a_cero(target: "Combatant", amount: int, damage_type: Any,
+                   source: Any, crit: bool, ctx: Any, rng: Any) -> None:
+    """Aplica (si procede) el hook ``on_reduced_to_zero_hp`` del objetivo.
+
+    Se llama justo después de que el daño baje a 0 PV y **antes** de avisar
+    de que el daño ha llegado: una criatura que se salva sigue viva y, por
+    ejemplo, puede reaccionar. Solo cuenta si el daño la ha bajado desde PV
+    positivos (rematar a un cuerpo ya caído no revive a nadie).
+
+    El rasgo devuelve los PV con los que sigue en pie (1 en el caso de
+    Undead Fortitude) o ``None`` si muere; con más de un rasgo, gana el
+    primero que responda.
+    """
+    if int(amount or 0) <= 0:
+        return
+    traits = getattr(target, "traits", None)
+    if not traits:
+        return
+    hp_final = int(getattr(target, "hp", 0) or 0)
+    if hp_final > 0 or hp_final + int(amount) <= 0:
+        return  # no estaba a 0 el daño, o ya estaba caído
+    for rasgo in _hooks(traits, "on_reduced_to_zero_hp"):
+        nuevo = rasgo.on_reduced_to_zero_hp(target, amount, damage_type,
+                                            source, crit=crit, ctx=ctx,
+                                            rng=rng)
+        if nuevo is not None and int(nuevo) > 0:
+            target.hp = int(nuevo)
+            return
+
+
 def inflict_damage(target: "Combatant", amount: int,
                    damage_type: Any = None, source: Any = None,
-                   ctx: Any = None) -> int:
+                   ctx: Any = None, *, crit: bool = False,
+                   rng: Any = None) -> int:
     """Inflige daño final (ya modificado) al objetivo y dispara reacciones.
 
-    Los rasgos del objetivo intervienen en dos fases (p. ej. el Damage
+    Los rasgos del objetivo intervienen en tres momentos (p. ej. el Damage
     Transfer del cloaker, mientras está enganchado):
 
+    0. ``on_reduced_to_zero_hp``: si el daño deja a 0 PV, el rasgo puede
+       salvarla **al momento** con los PV que indique (Undead Fortitude
+       tira su salvación; Relentless tiene su umbral de daño). Se resuelve
+       antes de avisar del daño, así que quien se salva sigue viva.
     1. ``modify_incoming_damage``: ajustan la cantidad que baja de PV
        (Damage Transfer: la mitad, redondeada hacia abajo). Reciben la
        cantidad en curso y ``None`` significa "sin cambios"; no pueden
@@ -229,7 +264,14 @@ def inflict_damage(target: "Combatant", amount: int,
     El daño transferido vuelve a pasar por estas fases en el otro
     combatiente; los repartos hacia abajo por enteros hacen que eso termine
     siempre.
+
+    ``crit`` dice si el daño viene de un ataque crítico (Undead Fortitude
+    no se salva de un crítico) y ``rng`` es el generador con el que tirar;
+    si no llega se usa el del contexto y, si tampoco hay, el rasgo se
+    abstiene en lugar de inventar un resultado.
     """
+    if rng is None:
+        rng = getattr(ctx, "rng", None)
     original = int(amount or 0)
     amt = original
     traits = getattr(target, "traits", None)
@@ -252,6 +294,8 @@ def inflict_damage(target: "Combatant", amount: int,
             dt = parse_damage_type(dt)
     except Exception:
         pass
+    if original > 0:
+        _salvar_a_cero(target, amt, dt, source, crit, ctx, rng)
     _notify_damage_dealt(source, target, amt, dt)
     _notify_damage_taken(target, amt, dt, source)
     if original > 0 and traits:

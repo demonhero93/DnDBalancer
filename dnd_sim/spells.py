@@ -66,20 +66,23 @@ from typing import Any
 
 try:
     from .actions import ActionType, CombatAction, CombatContext, TurnResources
-    from .conditions import Condition, apply_condition, remove_condition
+    from .conditions import (Condition, apply_condition,
+                             remove_invisibility_on_action)
     from .dice import roll_dice
     from .randomness import pick
     from .targeting import valid_targets
 except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
         from actions import ActionType, CombatAction, CombatContext, TurnResources
-        from conditions import Condition, apply_condition, remove_condition
+        from conditions import (Condition, apply_condition,
+                                remove_invisibility_on_action)
         from dice import roll_dice
         from randomness import pick
         from targeting import valid_targets
     except ImportError:
         from dnd_sim.actions import ActionType, CombatAction, CombatContext, TurnResources
-        from dnd_sim.conditions import Condition, apply_condition, remove_condition
+        from dnd_sim.conditions import (Condition, apply_condition,
+                                        remove_invisibility_on_action)
         from dnd_sim.dice import roll_dice
         from dnd_sim.randomness import pick
         from dnd_sim.targeting import valid_targets
@@ -183,11 +186,15 @@ class StateEffect:
     """Estado que aplica un hechizo (sin salvación: el hechizo lo decide).
 
     ``target``: ``"self"`` (el lanzador) o ``"ally"`` (un aliado).
+    ``break_on_attack``: si el estado termina al atacar o al lanzar un
+    hechizo (la invisibilidad estándar). La Superior Invisibility de la
+    pixie, que dura lo que su concentración, lo pone a ``False``.
     """
 
     condition: Any = None
     duration_rounds: int | None = None
     target: str = "self"
+    break_on_attack: bool = True
 
 
 @dataclass
@@ -257,6 +264,10 @@ def _romper_invisibilidad_al_lanzar(context: CombatContext) -> None:
     hechizo Invisibility se re-aplica después (quien lo refresca sigue
     invisible) pero Enlarge u otro hechizo dejan al lanzador visible.
 
+    Solo quita la invisibilidad **estándar**
+    (:func:`dnd_sim.conditions.remove_invisibility_on_action`): la Superior
+    Invisibility de la pixie, que dura lo que su concentración, no se toca.
+
     Es idempotente: si el lanzador no estaba invisible no hace nada ni
     registra nada en el log, por lo que llamarlo más de una vez (p. ej. un
     ``SpellAction`` que envuelve a otra acción de hechizo) es inofensivo.
@@ -264,10 +275,9 @@ def _romper_invisibilidad_al_lanzar(context: CombatContext) -> None:
     actor = getattr(context, "actor", None)
     if actor is None:
         return
-    # ctx=None para que remove_condition no registre por su cuenta: aquí se
-    # añade la línea con el **motivo** («lanza un hechizo»), igual que hace
-    # attack_roll con «(ataca)».
-    if remove_condition(actor, Condition.INVISIBLE, None):
+    # No se pasa ctx: aquí se añade la línea con el **motivo** («lanza un
+    # hechizo»), igual que hace attack_roll con «(ataca)».
+    if remove_invisibility_on_action(actor):
         log = getattr(context, "log", None)
         if log is not None:
             log.append(
@@ -438,12 +448,27 @@ class HealAction(CombatAction):
                        f"+{cantidad} HP (HP {objetivo.hp}/{objetivo.max_hp})")
 
 
+def _tiene_estado(actor: Any, condition: Any) -> bool:
+    """¿Ya tiene ``actor`` la condición ``condition``? (sin excepciones)."""
+    if actor is None or condition is None:
+        return False
+    try:
+        return bool(actor.conditions.has(condition))
+    except Exception:
+        return False
+
+
 @dataclass
 class SpellStateAction(CombatAction):
     """Hechizo que deja un estado (guiado, marcado...).
 
     ``effect`` es un :class:`StateEffect`. El estado se aplica al lanzador
     (``target="self"``) o a un aliado (``target="ally"``).
+
+    Si el estado dura hasta un evento y el actor ya lo tiene, la acción no
+    se ofrece: re-aplicarlo no cambiaría nada y solo gastaría la acción
+    (véase :meth:`can_use`). Por eso la Superior Invisibility de la pixie
+    se ofrece una sola vez: una vez usada ya no se pierde.
     """
 
     effect: Any = None            # StateEffect
@@ -476,6 +501,15 @@ class SpellStateAction(CombatAction):
             return True
         if getattr(self.effect, "target", "self") == "ally":
             return bool(self._aliados(context))
+        # Un estado que dura hasta un evento (invisible: hasta atacar o
+        # lanzar) no se «refresca»: si el actor ya lo tiene, aplicarlo otra
+        # vez no cambiaría nada y solo gastaría la acción. Superior
+        # Invisibility es at-will, así que aquí es donde se evita el gasto.
+        condicion = getattr(self.effect, "condition", None)
+        if (condicion is not None
+                and getattr(self.effect, "duration_rounds", None) is None
+                and _tiene_estado(getattr(context, "actor", None), condicion)):
+            return False
         return True
 
     def execute(self, context: CombatContext) -> None:
@@ -494,6 +528,7 @@ class SpellStateAction(CombatAction):
                 objetivo, efecto.condition, context,
                 source=context.actor,
                 duration_rounds=getattr(efecto, "duration_rounds", None),
+                break_on_attack=getattr(efecto, "break_on_attack", True),
             )
         except Exception:
             pass

@@ -371,3 +371,27 @@ class Monster(Combatant):
     def __post_init__(self):
         object.__setattr__(self, "combatant_type", CombatantType.NPC)
         super().__post_init__()
+        self._anadir_acciones_de_rasgos()
+
+    def _anadir_acciones_de_rasgos(self) -> None:
+        """Añade las acciones que aporten los rasgos (hook ``extra_actions``).
+
+        Se ejecuta una vez, al construir el monstruo, y vale igual para una
+        ficha cargada de la API que para un monstruo montado a mano en un
+        test: Superior Invisibility no viene en el campo ``actions`` de la
+        ficha sino que la aporta su propio rasgo.
+        """
+        traits = getattr(self, "traits", None)
+        if not traits:
+            return
+        try:
+            from .traits import hooks
+        except ImportError:  # pragma: no cover - ejecución como script suelto
+            try:
+                from traits import hooks
+            except ImportError:
+                from dnd_sim.traits import hooks
+        for rasgo in hooks(traits, "extra_actions"):
+            extra = rasgo.extra_actions(self) or []
+            if extra:
+                self.actions.extend(extra)

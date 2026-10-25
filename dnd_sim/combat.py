@@ -15,7 +15,8 @@ try:
     )
     from .attack import Attack
     from .combatant import Combatant, CombatantType, valid_targets
-    from .conditions import Condition, end_turn, remove_condition
+    from .conditions import (Condition, end_turn,
+                             remove_invisibility_on_action)
     from .damage import DamageRecorder, apply_damage_modifiers, inflict_damage
     from .dice import RollMode, d20, roll_d20, roll_dice
     from .legendary import legendary_phase
@@ -42,9 +43,11 @@ except ImportError:
     from randomness import pick
     from tactics import first_target_policy, random_policy
     try:
-        from conditions import Condition, end_turn, remove_condition
+        from conditions import (Condition, end_turn,
+                                remove_invisibility_on_action)
     except ImportError:
-        from dnd_sim.conditions import Condition, end_turn, remove_condition
+        from dnd_sim.conditions import (Condition, end_turn,
+                                        remove_invisibility_on_action)
     try:
         from dnd_sim.legendary import legendary_phase
     except ImportError:
@@ -225,6 +228,37 @@ def _bonus_de_rasgos(attacker: Any, target: Any, rango: Any, crit: bool,
     return total
 
 
+def _bonus_defensivo(target: Any, attacker: Any, rango: Any, total: int,
+                     ca: int, ctx: Any, rng: Any) -> int:
+    """CA extra que los rasgos del defensor suman a **este** ataque.
+
+    Hoy solo Parry (hobgoblin warlord): el hook decide si le aplica (solo
+    cuerpo a cuerpo, con arma a la mano y si ve al atacante) y, como recibe
+    la tirada y la CA efectiva, gasta su reacción solo si con el bonificador
+    el golpe deja de entrar. Devuelve la suma de todos los rasgos que
+    aporten; el import de :mod:`dnd_sim.traits` es perezoso y solo se hace
+    si el defensor tiene rasgos (como en :func:`_bonus_de_rasgos`).
+    """
+    traits = getattr(target, "traits", None)
+    if not traits:
+        return 0
+    try:
+        from .traits import hooks
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from traits import hooks
+        except ImportError:
+            from dnd_sim.traits import hooks
+    total_bonus = 0
+    for rasgo in hooks(traits, "defensive_ac_bonus"):
+        bonus = int(rasgo.defensive_ac_bonus(target, attacker, rango,
+                                              total=total, ca=ca, ctx=ctx,
+                                              rng=rng) or 0)
+        if bonus > 0:
+            total_bonus += bonus
+    return total_bonus
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
                 verbose: bool = False, ctx: Any = None) -> None:
@@ -237,13 +271,16 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
        que consume RNG).
     2. Se actualiza ``attacker.state.at_range`` (un ataque a distancia deja
        al atacante a distancia; uno cuerpo a cuerpo, cerca).
-    3. ``attack_modifiers`` con el rango ya resuelto. Un atacante
-       invisible ataca con ventaja; por eso su invisibilidad se quita
-       justo **después** de calcular el modo («until it attacks»: este
-       ataque ya se resuelve con ventaja).
+    3. ``attack_modifiers`` con el rango ya resuelto: un atacante invisible
+       ataca con ventaja.
     4. Tirada del d20 con el modo obtenido.
-    5. Se compara contra la CA efectiva del objetivo (+2 si está a
-       distancia).
+    5. CA efectiva del objetivo (+2 si está a distancia) y comparación con
+       la tirada.
+    6. Si el ataque iba a entrar, los rasgos del defensor pueden subir su
+       CA **contra ese ataque** (Parry), que es cuando se les consulta.
+    7. La invisibilidad del atacante termina («until it attacks»): aquí, y
+       no antes, porque mientras exista el ataque sale con ventaja y el
+       defensor **no puede verlo** (Parry: «must see the attacker»).
     """
     if not attacker.is_hostile_to(target):
         raise ValueError(
@@ -254,16 +291,15 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     # (2) Estado de distancia del atacante.
     _actualizar_distancia(attacker, rango, log)
     # (3) Modificadores (el rango ya está decidido). Un atacante invisible
-    # ataca **con ventaja**, así que la invisibilidad se quita **después**
-    # de calcular el modo: «until it attacks» significa que este ataque ya
-    # se resuelve con ventaja y a partir de aquí deja de estar invisible
-    # (# TODO: también al lanzar un hechizo o al usar Enlarge; hoy solo la
-    # rompe un ataque).
+    # ataca **con ventaja**; la invisibilidad se quita **después** de
+    # resolver el golpe entero, no aquí: «until it attacks» significa que
+    # este ataque ya se resuelve con ventaja y con el atacante delante
+    # (Parry: «must see the attacker»), y a partir de aquí deja de estar
+    # invisible (# TODO: también al lanzar un hechizo o al usar Enlarge;
+    # hoy solo la rompe un ataque).
     modifiers = attack_modifiers(attacker, target, atk, rango, ctx=ctx,
                                  rng=rng)
     mode = modifiers.mode
-    if remove_condition(attacker, Condition.INVISIBLE, None) and log is not None:
-        log.append(f"  {attacker.name} deja de estar invisible (ataca)")
     # (4) Tirada.
     result = roll_d20(rng, mode)
     roll = result.value
@@ -280,11 +316,26 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 recibidos.append(1)
             except Exception:
                 pass
+    # (6) Bonificador de CA del defensor (Parry): solo se le pregunta si el
+    # ataque iba a entrar y no es crítico (un 20 natural acierta siempre,
+    # así que el rasgo no tendría nada que hacer). Como la tirada y la CA
+    # se le pasan, el rasgo solo gasta su reacción si con eso el golpe
+    # falla.
+    if roll != 1 and not crit and total >= ca_efectiva:
+        extra_ca = _bonus_defensivo(target, attacker, rango, total,
+                                    ca_efectiva, ctx, rng)
+        if extra_ca:
+            ca_efectiva += extra_ca
     hit = crit or (roll != 1 and total >= ca_efectiva)
-    # Crítico automático (objetivo paralizado o inconsciente a cuerpo a cuerpo):
-    # el impacto es crítico aunque el d20 no sea 20; un 1 natural sigue fallando.
+    # Crítico automático (objetivo paralizado o inconsciente a cuerpo a
+    # cuerpo): el impacto es crítico aunque el d20 no sea 20; un 1 natural
+    # sigue fallando.
     if hit and modifiers.auto_crit_on_hit:
         crit = True
+    # (7) Termina la invisibilidad del atacante («until it attacks»), ya
+    # resuelto el golpe: mientras existía no se le podía ver (Parry).
+    if remove_invisibility_on_action(attacker) and log is not None:
+        log.append(f"  {attacker.name} deja de estar invisible (ataca)")
     log_enabled = log is not None
     if hit:
         raw_dmg = 0
@@ -309,7 +360,11 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         # la etiqueta del log, que ahora se deriva del resultado real.
         dmg = apply_damage_modifiers(raw_dmg, dt, target)
         mod_tag = _tag_modificadores(raw_dmg, dmg, dt, target)
-        inflict_damage(target, dmg, dt, source=attacker, ctx=ctx)
+        # ``crit`` y ``rng`` viajan con el daño: los rasgos que se salvan a
+        # 0 PV (Undead Fortitude) necesitan saber si el golpe fue crítico y
+        # con qué tirar.
+        inflict_damage(target, dmg, dt, source=attacker, ctx=ctx,
+                       crit=crit, rng=rng)
         # Daño adicional del arma (p. ej. el 1d6 de fuego del Warhammer
         # del azer o el ácido del mordisco de un dragón). Cada entrada
         # tiene su propio tipo, así que resistencia/inmunidad/vulnerabilidad
@@ -324,7 +379,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             # quede en 0 por inmunidad): el registro de daño y las
             # reacciones ven el mismo flujo para los dos tipos.
             inflict_damage(target, _dmg_x, _extra.damage_type,
-                           source=attacker, ctx=ctx)
+                           source=attacker, ctx=ctx, crit=crit, rng=rng)
             extra_total += _dmg_x
             extra_partes.append(f"{_dmg_x} {_extra.damage_type.value}")
         extra_tag = (" + " + " + ".join(extra_partes)) if extra_partes else ""
