@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ...model.actions import ActionType, CombatAction
-from .actions import HealAction, SpellAction, SpellAttackAction, SpellFixedDamageAction, SpellStateAction
+from .actions import (HealAction, SpellAction, SpellAttackAction,
+                      SpellFixedDamageAction, SpellStateAction)
 from .effects import HealEffect
 
 

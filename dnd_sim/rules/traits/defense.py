@@ -17,6 +17,7 @@ from ...core.dice import roll_dice
 from ...core.log import log_line as _log_line
 from ..roll_modifiers import AttackRange
 
+
 @dataclass
 class DamageTransfer(Trait):
     """Damage Transfer (cloaker): el daño que recibe se parte en dos.

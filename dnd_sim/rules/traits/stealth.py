@@ -7,6 +7,7 @@ from typing import Any
 from .base import Trait
 from ..conditions import Condition
 
+
 @dataclass
 class SuperiorInvisibility(Trait):
     """Superior Invisibility (pixie): la acción de volverse invisible.

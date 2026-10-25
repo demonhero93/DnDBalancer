@@ -15,6 +15,7 @@ from ...core.dice import roll_dice
 from ...core.randomness import pick
 from ..roll_modifiers import AttackRange
 
+
 @dataclass
 class BloodFrenzy(Trait):
     """Blood Frenzy (sahuagin): ventaja cuerpo a cuerpo contra un herido.

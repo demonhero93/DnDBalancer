@@ -207,6 +207,7 @@ from .offense import (BloodFrenzy, MartialAdvantage, PackTactics,
 from .stealth import SuperiorInvisibility
 from .survival import Regeneration, Relentless, UndeadFortitude
 
+
 #: Registro de rasgos modelables: nombre en minúsculas -> clase.
 TRAIT_CLASSES: dict[str, type[Trait]] = {
     "blood frenzy": BloodFrenzy,

@@ -14,6 +14,7 @@ from ..damage import DamageType, parse_damage_type
 from ..usage import ActionUsage
 from ...core.log import log_line as _log_line
 
+
 @dataclass
 class Regeneration(Trait):
     """Regeneration (troll): recupera PV al inicio de su turno.
