@@ -3,19 +3,19 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from .abilities import Abilities, normalize_ability
+from ..core.abilities import Abilities, normalize_ability
 from .attack import Attack
-from .core.enums import DamageType, parse_damage_type
-from .targeting import valid_targets  # noqa: F401  (reexport)
+from ..core.enums import DamageType, parse_damage_type
+from ..core.targeting import valid_targets  # noqa: F401  (reexport)
 
-from .combat_state import CombatState
-from .conditions import Condition, ConditionTracker
+from ..core.combat_state import CombatState
+from ..rules.conditions import Condition, ConditionTracker
 
 if TYPE_CHECKING:  # pragma: no cover - solo para tipado
-    from .legendary import LegendaryState
+    from ..rules.legendary import LegendaryState
 
 # ``valid_targets`` se reexporta aquí (API pública histórica): la fuente
-# única de verdad vive en :mod:`dnd_sim.targeting`.
+# única de verdad vive en :mod:`dnd_sim.core.targeting`.
 __all__ = [
     "Combatant",
     "CombatantType",
@@ -150,7 +150,7 @@ class Combatant:
         traits = getattr(self, "traits", None)
         if not traits:
             return False
-        from .traits import hooks
+        from ..rules.traits import hooks
         try:
             return any(r.survives_at_zero_hp(self)
                        for r in hooks(traits, "survives_at_zero_hp"))
@@ -191,7 +191,7 @@ class Combatant:
         # Los rasgos con estado propio por combate (p. ej. Regeneration,
         # que guarda el bloqueo de ácido/fuego y su propia muerte) se
         # limpian aquí: ``simulate()`` reutiliza los mismos objetos.
-        from .traits import hooks
+        from ..rules.traits import hooks
         for rasgo in hooks(getattr(self, "traits", None), "reset"):
             try:
                 rasgo.reset()
@@ -234,7 +234,7 @@ class Combatant:
     def is_charmed(self) -> bool:
         """¿Está hechizado (sus objetivos están invertidos)?"""
         try:
-            from .conditions import Condition
+            from ..rules.conditions import Condition
             return self.conditions.has(Condition.CHARMED)
         except Exception:
             return False
@@ -243,7 +243,7 @@ class Combatant:
     def charmed_by(self):
         """Combatiente que lo hechizó (si lo hay)."""
         try:
-            from .conditions import Condition
+            from ..rules.conditions import Condition
             for instance in list(self.conditions.instances):
                 if instance.condition is Condition.CHARMED:
                     return instance.source
@@ -312,7 +312,7 @@ class Monster(Combatant):
         traits = getattr(self, "traits", None)
         if not traits:
             return
-        from .traits import hooks
+        from ..rules.traits import hooks
         for rasgo in hooks(traits, "extra_actions"):
             extra = rasgo.extra_actions(self) or []
             if extra:

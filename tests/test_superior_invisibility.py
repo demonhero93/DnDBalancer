@@ -15,15 +15,16 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, Monster, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack
-from dnd_sim.combat import attack_roll, run_combat
-from dnd_sim.conditions import (Condition, apply_condition,
-                                remove_invisibility_on_action)
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import attack_roll, run_combat
+from dnd_sim.rules.conditions import (
+    Condition, apply_condition, remove_invisibility_on_action
+)
 from dnd_sim.data.trait_parser import parse_traits
-from dnd_sim.dice import RollMode
-from dnd_sim.spells import SpellFixedDamageAction, SpellStateAction
-from dnd_sim.traits import SuperiorInvisibility
+from dnd_sim.core.dice import RollMode
+from dnd_sim.rules.spells import SpellFixedDamageAction, SpellStateAction
+from dnd_sim.rules.traits import SuperiorInvisibility
 
 # Texto real del SRD (la API no sirve «pixie»).
 PIXIE_SRD = (
@@ -110,7 +111,7 @@ def test_atacar_con_ventaja_y_no_pierde_la_invisibilidad(monkeypatch):
     ctx = _ctx(pixie, [pixie, objetivo])
     _accion(pixie, "Superior Invisibility").execute(ctx)
 
-    import dnd_sim.combat as combat_mod
+    import dnd_sim.engine.combat as combat_mod
     original = combat_mod.roll_d20
     modos = []
 

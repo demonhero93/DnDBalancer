@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .core.enums import DamageType, parse_damage_type  # noqa: F401  (reexport)
+from ..core.enums import DamageType, parse_damage_type  # noqa: F401  (reexport)
 
 if TYPE_CHECKING:
-    from .combatant import Combatant
+    from ..model.combatant import Combatant
 
 
 def _is_petrified(target: "Combatant") -> bool:

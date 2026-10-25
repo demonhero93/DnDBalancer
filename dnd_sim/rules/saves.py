@@ -7,16 +7,16 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
-from .abilities import Abilities, ability_mod, normalize_ability
-from .combatant import Combatant
+from ..core.abilities import Abilities, ability_mod, normalize_ability
+from ..model.combatant import Combatant
 from .damage import DamageType, apply_damage_modifiers, parse_damage_type
-from .dice import RollMode, roll_d20, roll_dice
+from ..core.dice import RollMode, roll_d20, roll_dice
 
-from .randomness import pick
+from ..core.randomness import pick
 
 from dataclasses import dataclass as _dc  # noqa: F401
 
-# ``normalize_ability`` se importa aquí desde :mod:`dnd_sim.abilities` (capa
+# ``normalize_ability`` se importa aquí desde :mod:`dnd_sim.core.abilities` (capa
 # core) porque ``combatant`` la necesita y este módulo ya importa a
 # ``combatant``: moverla evita el ciclo saves <-> combatant. Se reexporta en
 # ``__all__`` para no romper la API pública histórica.
@@ -76,7 +76,7 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     ``kind`` dice qué tipo de efecto provoca la salvación cuando quien lo
     conoce lo pasa (``"turn"`` = efecto que convierte no-muertos); lo
     reciben los hooks de rasgo vía
-    :func:`dnd_sim.roll_modifiers.save_modifiers`.
+    :func:`dnd_sim.rules.roll_modifiers.save_modifiers`.
 
     # TODO: la Resistencia mágica (ventaja contra hechizos) no se modela.
     """
@@ -168,7 +168,7 @@ def _as_combat_context(ctx: Any) -> Any:
     return ctx
 
 
-from .log import log_line as _log_line
+from ..core.log import log_line as _log_line
 
 
 def _inflict_for_save(target: Any, amount: int, damage_type: Any,

@@ -5,10 +5,10 @@ Este módulo es la **única fuente** donde se decide el modo de una tirada:
 - Los cuatro indicadores estáticos que ya tenía ``Combatant``.
 - Las condiciones de atacante y objetivo.
 - Los rasgos especiales del atacante (``Combatant.traits``, véase
-  :mod:`dnd_sim.traits`: Blood Frenzy...).
+  :mod:`dnd_sim.rules.traits`: Blood Frenzy...).
 
-``resolve_roll_mode`` (en :mod:`dnd_sim.combat`) y ``saving_throw`` (en
-:mod:`dnd_sim.saves`) delegan aquí.
+``resolve_roll_mode`` (en :mod:`dnd_sim.engine.combat`) y ``saving_throw`` (en
+:mod:`dnd_sim.rules.saves`) delegan aquí.
 
 Ninguna regla consume RNG salvo en dos casos, ambos documentados:
 
@@ -26,9 +26,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from .conditions import Condition
-from .core.enums import AttackRange  # noqa: F401  (reexport)
-from .dice import RollMode
-from .randomness import pick
+from ..core.enums import AttackRange  # noqa: F401  (reexport)
+from ..core.dice import RollMode
+from ..core.randomness import pick
 
 
 # Bonus de CA para atacar a un objetivo que está a distancia (cobertura
@@ -259,7 +259,7 @@ def save_modifiers(target: Any, ability: str,
 
     Además de condiciones e indicadores estáticos, consulta los hooks
     ``modify_save_modifiers`` de los rasgos del objetivo
-    (:mod:`dnd_sim.traits`).
+    (:mod:`dnd_sim.rules.traits`).
 
     ``kind`` identifica el tipo de efecto que provoca la salvación cuando
     quien la tira lo sabe (``"turn"`` = un efecto que convierte
@@ -310,7 +310,7 @@ def check_modifiers(target: Any, ability: str) -> CheckModifiers:
     - ENLARGED da ventaja en las pruebas de Fuerza.
     - Indicadores estáticos ``checks_with_advantage/disadvantage``.
     - Hooks ``modify_check_modifiers`` de los rasgos del objetivo
-      (:mod:`dnd_sim.traits`), con ``skill=None`` hasta que se modelen las
+      (:mod:`dnd_sim.rules.traits`), con ``skill=None`` hasta que se modelen las
       habilidades.
     """
     mods = CheckModifiers()

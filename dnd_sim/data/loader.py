@@ -6,16 +6,18 @@ import warnings
 
 # TODO: Multiataque es una acción de texto libre que aún no se parsea.
 
-from ..abilities import Abilities
-from ..actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
-from ..attack import Attack, ExtraDamage
-from ..attach import Attach
-from ..conditions import Condition
-from ..dice import doblar_dados
-from ..spells import SpellStateAction, StateEffect
-from ..combatant import CombatantType, Monster
-from ..damage import DamageType
-from ..saves import SaveDamage, normalize_ability
+from ..core.abilities import Abilities
+from ..model.actions import (
+    ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
+)
+from ..model.attack import Attack, ExtraDamage
+from ..rules.attach import Attach
+from ..rules.conditions import Condition
+from ..core.dice import doblar_dados
+from ..rules.spells import SpellStateAction, StateEffect
+from ..model.combatant import CombatantType, Monster
+from ..rules.damage import DamageType
+from ..rules.saves import SaveDamage, normalize_ability
 from .api_client import get_monster
 from .attach_parser import parse_attach_effects
 from .condition_parser import parse_condition_effects, parse_range_type
@@ -97,7 +99,7 @@ def _norm_name(value: str) -> str:
 # y el estado con el hechizo homónimo (véase ``dnd_sim.data.spell_parser``:
 # SPELL_STATES). Duración ``None`` = hasta que ocurra un evento (la
 # invisibilidad termina cuando el invisible ataca:
-# ``dnd_sim.combat.attack_roll``).
+# ``dnd_sim.engine.combat.attack_roll``).
 _STATE_BUFF_ACTIONS: dict[str, tuple[Condition, int | None]] = {
     # «For 1 minute» = 10 rondas; la reversión al quedar incapacitado no
     # se modela.
@@ -346,7 +348,7 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         if on_hit_effects:
             # El texto del enganche («blinded ... while the cloaker is
             # attached» + «detach ... by succeeding on a DC 16 Strength
-            # check») lo modela dnd_sim.attach entero: ceguera al
+            # check») lo modela dnd_sim.rules.attach entero: ceguera al
             # engancharse a la cabeza y desenganche con prueba que gasta la
             # acción. Los riders genéricos del parser lo duplicarían (otra
             # ceguera en cada impacto y otra prueba de escape por turno).

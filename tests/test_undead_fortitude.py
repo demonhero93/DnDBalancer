@@ -11,13 +11,13 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, Monster, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack
-from dnd_sim.combat import run_combat
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import run_combat
 from dnd_sim.data.loader import load_monster
 from dnd_sim.data.trait_parser import parse_traits
-from dnd_sim.damage import inflict_damage
-from dnd_sim.traits import UndeadFortitude
+from dnd_sim.rules.damage import inflict_damage
+from dnd_sim.rules.traits import UndeadFortitude
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -115,7 +115,7 @@ def test_queda_a_un_pv_y_lo_registra_en_el_log(monkeypatch):
 
 
 def test_la_cd_es_cinco_mas_el_danyo_recibido(monkeypatch):
-    import dnd_sim.saves as saves_mod
+    import dnd_sim.rules.saves as saves_mod
     original = saves_mod.saving_throw
     capturas = []
 

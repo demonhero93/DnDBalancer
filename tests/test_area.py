@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from dnd_sim.abilities import Abilities
-from dnd_sim.actions import ActionType, CombatContext, TurnResources
-from dnd_sim.area import AreaSaveAction, AreaTargeting, select_area_targets
-from dnd_sim.combatant import Monster, PlayerCharacter
-from dnd_sim.randomness import sample
-from dnd_sim.saves import SaveDamage, SaveResult
-from dnd_sim.dice import RollMode
+from dnd_sim.core.abilities import Abilities
+from dnd_sim.model.actions import ActionType, CombatContext, TurnResources
+from dnd_sim.rules.area import AreaSaveAction, AreaTargeting, select_area_targets
+from dnd_sim.model.combatant import Monster, PlayerCharacter
+from dnd_sim.core.randomness import sample
+from dnd_sim.rules.saves import SaveDamage, SaveResult
+from dnd_sim.core.dice import RollMode
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -160,7 +160,7 @@ def test_nunca_se_eligen_aliados_lanzador_ni_muertos():
 
 def _save_forzado(monkeypatch, exitos):
     """Fuerza el resultado de las salvaciones en orden."""
-    from dnd_sim import saves as saves_mod
+    from dnd_sim.rules import saves as saves_mod
 
     llamadas = {"n": 0}
 
@@ -178,7 +178,7 @@ def _save_forzado(monkeypatch, exitos):
 
 
 def test_el_dano_se_tira_una_sola_vez_y_se_comparte(monkeypatch):
-    import dnd_sim.area as area_mod
+    import dnd_sim.rules.area as area_mod
 
     pjs = [_pj("PJ0"), _pj("PJ1")]
     actor = _npc()
@@ -206,7 +206,7 @@ def test_el_dano_se_tira_una_sola_vez_y_se_comparte(monkeypatch):
 
 
 def test_la_resistencia_se_aplica_solo_a_quien_la_tiene(monkeypatch):
-    import dnd_sim.area as area_mod
+    import dnd_sim.rules.area as area_mod
 
     pjs = [_pj("PJ0"), _pj("PJ1", resistances={"fire"})]
     actor = _npc()
@@ -227,8 +227,8 @@ def test_la_resistencia_se_aplica_solo_a_quien_la_tiene(monkeypatch):
 
 
 def test_damage_taken_se_dispara_una_vez_por_objetivo(monkeypatch):
-    import dnd_sim.area as area_mod
-    import dnd_sim.damage as damage_mod
+    import dnd_sim.rules.area as area_mod
+    import dnd_sim.rules.damage as damage_mod
 
     pjs = [_pj("PJ0"), _pj("PJ1")]
     actor = _npc()

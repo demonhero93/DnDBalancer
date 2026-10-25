@@ -27,9 +27,9 @@ from __future__ import annotations
 import re
 import warnings
 
-from ..conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
-from ..roll_modifiers import AttackRange
-from ..saves import normalize_ability
+from ..rules.conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
+from ..rules.roll_modifiers import AttackRange
+from ..rules.saves import normalize_ability
 from .escape_parser import parse_escape
 
 

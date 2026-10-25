@@ -11,14 +11,14 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, Monster, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack
-from dnd_sim.combat import run_combat
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import run_combat
 from dnd_sim.data.loader import load_monster
 from dnd_sim.data.trait_parser import parse_traits
-from dnd_sim.damage import inflict_damage
-from dnd_sim.traits import Relentless
-from dnd_sim.usage import UsageKind
+from dnd_sim.rules.damage import inflict_damage
+from dnd_sim.rules.traits import Relentless
+from dnd_sim.rules.usage import UsageKind
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import warnings
 
-from ..usage import ActionUsage, UsageKind
+from ..rules.usage import ActionUsage, UsageKind
 
 
 class UnknownUsageError(ValueError):

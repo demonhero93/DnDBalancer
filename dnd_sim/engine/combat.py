@@ -4,28 +4,21 @@ import random
 from dataclasses import dataclass, field
 from typing import Any
 
-from .actions import (
-    ActionType,
-    AttackAction,
-    CombatContext,
-    MultiattackAction,
-    TurnResources,
-    WeaponAttackAction,
+from ..model.actions import (
+    ActionType, AttackAction, CombatContext, MultiattackAction, TurnResources, WeaponAttackAction
 )
-from .attack import Attack
-from .combatant import Combatant, CombatantType, valid_targets
-from .conditions import (Condition, end_turn,
-                         remove_invisibility_on_action)
-from .damage import DamageRecorder, apply_damage_modifiers, inflict_damage
-from .dice import RollMode, d20, roll_d20, roll_dice
-from .legendary import legendary_phase
-from .randomness import pick
-from .roll_modifiers import (
-    AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
-    resolve_attack_range,
+from ..model.attack import Attack
+from ..model.combatant import Combatant, CombatantType, valid_targets
+from ..rules.conditions import Condition, end_turn, remove_invisibility_on_action
+from ..rules.damage import DamageRecorder, apply_damage_modifiers, inflict_damage
+from ..core.dice import RollMode, d20, roll_d20, roll_dice
+from ..rules.legendary import legendary_phase
+from ..core.randomness import pick
+from ..rules.roll_modifiers import (
+    AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac, resolve_attack_range
 )
 from .tactics import first_target_policy, random_policy
-from .usage import begin_turn
+from ..rules.usage import begin_turn
 
 
 @dataclass
@@ -75,7 +68,7 @@ def resolve_roll_mode(attacker: Combatant, target: Combatant,
                       attack: Any = None, rng: Any = None) -> RollMode:
     """Resuelve el modo de tirada por reglas (5e).
 
-    Fuente única: :func:`dnd_sim.roll_modifiers.attack_modifiers` (indicadores
+    Fuente única: :func:`dnd_sim.rules.roll_modifiers.attack_modifiers` (indicadores
     estáticos + condiciones). Sin ``attack`` solo se aplican los indicadores
     estáticos (compatibilidad).
     """
@@ -160,13 +153,13 @@ def _bonus_de_rasgos(attacker: Any, target: Any, rango: Any, crit: bool,
     Hoy solo Martial Advantage (hobgoblin): el hook decide si le aplica (su
     condición es de posición, resuelta al azar si el atacante tiene
     aliados) y tira sus dados. Devuelve la suma de todos los rasgos que
-    aporten; el import de :mod:`dnd_sim.traits` es perezoso y solo se hace
+    aporten; el import de :mod:`dnd_sim.rules.traits` es perezoso y solo se hace
     si el atacante tiene rasgos.
     """
     traits = getattr(attacker, "traits", None)
     if not traits:
         return 0
-    from .traits import hooks
+    from ..rules.traits import hooks
     total = 0
     for rasgo in hooks(traits, "extra_attack_damage"):
         bonus = int(rasgo.extra_attack_damage(attacker, target, rango,
@@ -190,13 +183,13 @@ def _bonus_defensivo(target: Any, attacker: Any, rango: Any, total: int,
     cuerpo a cuerpo, con arma a la mano y si ve al atacante) y, como recibe
     la tirada y la CA efectiva, gasta su reacción solo si con el bonificador
     el golpe deja de entrar. Devuelve la suma de todos los rasgos que
-    aporten; el import de :mod:`dnd_sim.traits` es perezoso y solo se hace
+    aporten; el import de :mod:`dnd_sim.rules.traits` es perezoso y solo se hace
     si el defensor tiene rasgos (como en :func:`_bonus_de_rasgos`).
     """
     traits = getattr(target, "traits", None)
     if not traits:
         return 0
-    from .traits import hooks
+    from ..rules.traits import hooks
     total_bonus = 0
     for rasgo in hooks(traits, "defensive_ac_bonus"):
         bonus = int(rasgo.defensive_ac_bonus(target, attacker, rango,
@@ -343,7 +336,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         if _riders_to_run:
             # Import perezoso **una vez**, fuera del bucle: si no, se repite
             # por cada rider del ataque.
-            from .saves import resolve_save_damage as _rsd
+            from ..rules.saves import resolve_save_damage as _rsd
         for _rider in _riders_to_run:
             _rctx = type("RiderCtx", (), {})()
             _rctx.rng = rng
@@ -375,7 +368,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
 def _tag_modificadores(raw: int, final: int, dt: Any, target: Any) -> str:
     """Etiqueta del log con lo que han hecho inmunidad/resistencia/vulnerabilidad.
 
-    Se deriva del resultado de :func:`dnd_sim.damage.apply_damage_modifiers`
+    Se deriva del resultado de :func:`dnd_sim.rules.damage.apply_damage_modifiers`
     (así el log también refleja la resistencia de estar petrificado, que la
     regla reimplementada en ``attack_roll`` no contemplaba). Sin daño que
     modificar no hay etiqueta.
@@ -417,8 +410,8 @@ def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
     riders = list(getattr(atk, "condition_riders", None) or [])
     if not riders:
         return
-    from .conditions import RepeatSave, apply_condition
-    from .saves import registrar_resistencia, saving_throw
+    from ..rules.conditions import RepeatSave, apply_condition
+    from ..rules.saves import registrar_resistencia, saving_throw
 
     _ctx = ctx
     if _ctx is None:
@@ -463,12 +456,12 @@ def _trigger_after_being_hit(target: Any, attacker: Any, rango: Any,
     cuerpo. El hook se ejecuta tras el daño, en **cada** impacto (aunque el
     daño haya sido 0 por inmunidad del objetivo), porque el trigger de la
     ficha es el impacto, no el daño recibido. Solo se piden los rasgos que
-    sobrescriben el hook (:func:`dnd_sim.traits.hooks`).
+    sobrescriben el hook (:func:`dnd_sim.rules.traits.hooks`).
     """
     traits = getattr(target, "traits", None)
     if not traits:
         return
-    from .traits import hooks
+    from ..rules.traits import hooks
     hookable = hooks(traits, "after_being_hit")
     if not hookable:
         return
@@ -492,7 +485,7 @@ def _reaccion_si_procede(target: Any, ctx: Any) -> None:
     """
     if target is None or ctx is None:
         return
-    from .spells import trigger_reaction
+    from ..rules.spells import trigger_reaction
     try:
         trigger_reaction(target, ctx)
     except Exception:

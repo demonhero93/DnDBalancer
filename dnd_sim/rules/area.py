@@ -20,11 +20,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .actions import ActionType, CombatAction, CombatContext
-from .dice import roll_dice
-from .randomness import pick, sample
+from ..model.actions import ActionType, CombatAction, CombatContext
+from ..core.dice import roll_dice
+from ..core.randomness import pick, sample
 from .saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
-from .targeting import valid_targets
+from ..core.targeting import valid_targets
 
 
 @dataclass
@@ -58,14 +58,14 @@ def select_area_targets(actor, ctx, targeting: AreaTargeting) -> list:
     return sample(ctx.rng, pool, k)
 
 
-from .log import log_line as _log_line
+from ..core.log import log_line as _log_line
 
 
 @dataclass
 class AreaSaveAction(CombatAction):
     """Acción de área con daño y salvación (alientos, ácidos, conos...).
 
-    ``effect`` es un :class:`~dnd_sim.saves.SaveDamage`; ``targeting`` dice
+    ``effect`` es un :class:`~dnd_sim.rules.saves.SaveDamage`; ``targeting`` dice
     cuántos objetivos puede alcanzar; ``usage`` es opcional (usos limitados).
     ``condition`` es opcional: un ``ConditionEffect`` que se aplica a cada
     objetivo que **falle** la misma salvación (p. ej. el derribo del ala del

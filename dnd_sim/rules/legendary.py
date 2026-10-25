@@ -26,8 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .randomness import pick
-from .targeting import valid_targets
+from ..core.randomness import pick
+from ..core.targeting import valid_targets
 
 # Número de puntos legendarios por ronda (3 en la SRD 2014).
 # TODO: la API no lo da estructurado; si algún monstruo difiere, habría que
@@ -91,7 +91,7 @@ class LegendaryState:
 # --- Fase legendaria -------------------------------------------------------- #
 
 
-from .log import log_line as _log_line
+from ..core.log import log_line as _log_line
 
 
 def _equipos_vivos(combatants: list) -> set:
@@ -118,7 +118,7 @@ def _contexto_de(owner: Any, ctx: Any) -> Any:
     recursos de turno (``resources=None``): la acción legendaria no gasta ni
     la acción, ni la acción adicional, ni la reacción del dueño.
     """
-    from .actions import CombatContext
+    from ..model.actions import CombatContext
     try:
         return CombatContext(
             rng=ctx.rng,
@@ -327,7 +327,7 @@ def legendary_resistance(target: Any, result: Any, rng: Any) -> Any:
 def registrar_resistencia_legendaria(ctx: Any, target: Any, result: Any) -> Any:
     """Log y estadísticas si la Resistencia legendaria se ha gastado.
 
-    Se llama justo después de cada :func:`dnd_sim.saves.saving_throw` (el
+    Se llama justo después de cada :func:`dnd_sim.rules.saves.saving_throw` (el
     único sitio donde hay contexto de combate).
     """
     if not getattr(result, "legendary_resistance_used", False):

@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from dnd_sim.actions import AttackEntry, MultiattackAction
-from dnd_sim.combat import run_combat
-from dnd_sim.combatant import Combatant, PlayerCharacter
+from dnd_sim.model.actions import AttackEntry, MultiattackAction
+from dnd_sim.engine.combat import run_combat
+from dnd_sim.model.combatant import Combatant, PlayerCharacter
 
 import pytest
 
@@ -131,7 +131,7 @@ def test_load_monster_maps_owlbear_multiattack(monkeypatch):
 def test_owlbear_multiattack_exact_counts(monkeypatch):
     owlbear = _load_fixture(monkeypatch, "owlbear")
     # Un objetivo inmortal para que se ejecuten muchos ataques.
-    from dnd_sim.abilities import Abilities
+    from dnd_sim.core.abilities import Abilities
     objetivo = PlayerCharacter(name="Objetivo", max_hp=100000, ac=30,
                               abilities=Abilities(), attacks=[])
     res = run_combat([objetivo, owlbear], random.Random(3), verbose=True)

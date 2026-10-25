@@ -15,17 +15,18 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack
-from dnd_sim.combat import attack_roll, run_combat
-from dnd_sim.combatant import Monster
-from dnd_sim.conditions import (CONDITION_LABELS, EXCLUDED_CONDITIONS,
-                                Condition, apply_condition)
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import attack_roll, run_combat
+from dnd_sim.model.combatant import Monster
+from dnd_sim.rules.conditions import (
+    CONDITION_LABELS, EXCLUDED_CONDITIONS, Condition, apply_condition
+)
 from dnd_sim.data.loader import load_monster
-from dnd_sim.dice import RollMode
-from dnd_sim.roll_modifiers import attack_modifiers
-from dnd_sim.spells import SpellFixedDamageAction, SpellStateAction
-from dnd_sim.usage import UsageKind
+from dnd_sim.core.dice import RollMode
+from dnd_sim.rules.roll_modifiers import attack_modifiers
+from dnd_sim.rules.spells import SpellFixedDamageAction, SpellStateAction
+from dnd_sim.rules.usage import UsageKind
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -160,7 +161,7 @@ def test_el_primer_ataque_del_invisible_usa_ventaja_y_luego_pierde_la_invisibili
     ctx = _ctx(duergar, [duergar, objetivo])
     apply_condition(duergar, Condition.INVISIBLE, ctx, duration_rounds=None)
 
-    import dnd_sim.combat as combat_mod
+    import dnd_sim.engine.combat as combat_mod
     original = combat_mod.roll_d20
     modos = []
 
@@ -185,7 +186,7 @@ def test_el_segundo_ataque_del_duergar_ya_no_tiene_ventaja(monkeypatch):
     ctx = _ctx(duergar, [duergar, objetivo])
     apply_condition(duergar, Condition.INVISIBLE, ctx, duration_rounds=None)
 
-    import dnd_sim.combat as combat_mod
+    import dnd_sim.engine.combat as combat_mod
     original = combat_mod.roll_d20
     modos = []
 

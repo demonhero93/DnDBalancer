@@ -11,14 +11,14 @@ from dnd_sim import (
     PlayerCharacter, RollMode, apply_condition, ability_check, attack_modifiers,
     effective_ac, load_monster, resolve_attack_range,
 )
-from dnd_sim.actions import ActionType, CombatContext, TurnResources
-from dnd_sim.checks import ability_check_bonus
-from dnd_sim.combat import attack_roll, run_combat
-from dnd_sim.conditions import ConditionInstance, attempt_escapes
+from dnd_sim.model.actions import ActionType, CombatContext, TurnResources
+from dnd_sim.rules.checks import ability_check_bonus
+from dnd_sim.engine.combat import attack_roll, run_combat
+from dnd_sim.rules.conditions import ConditionInstance, attempt_escapes
 from dnd_sim.data.escape_parser import parse_escape
-from dnd_sim.roll_modifiers import AttackRange, check_modifiers
-from dnd_sim.stats import simulate
-from dnd_sim.usage import begin_turn
+from dnd_sim.rules.roll_modifiers import AttackRange, check_modifiers
+from dnd_sim.engine.stats import simulate
+from dnd_sim.rules.usage import begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -139,7 +139,7 @@ def test_sin_autoexito_ni_autofallo_en_pruebas():
     def _bonus(target, ability):
         return -30
 
-    import dnd_sim.checks as checks_mod
+    import dnd_sim.rules.checks as checks_mod
     monkey = checks_mod.ability_check_bonus
     checks_mod.ability_check_bonus = _bonus
     try:
@@ -230,7 +230,7 @@ def test_el_escape_se_intenta_al_inicio_del_turno(monkeypatch):
 
 
 def test_escape_con_exito_elimina_la_condicion(monkeypatch):
-    import dnd_sim.checks as checks_mod
+    import dnd_sim.rules.checks as checks_mod
 
     objetivo = _pj("Objetivo")
     escape = EscapeCheck(abilities=("str",), dc=12, consumes_action=False)
@@ -248,7 +248,7 @@ def test_escape_con_exito_elimina_la_condicion(monkeypatch):
 
 
 def test_escape_con_fallo_la_condicion_sigue(monkeypatch):
-    import dnd_sim.checks as checks_mod
+    import dnd_sim.rules.checks as checks_mod
 
     objetivo = _pj("Objetivo")
     escape = EscapeCheck(abilities=("str",), dc=12, consumes_action=False)
@@ -266,7 +266,7 @@ def test_escape_con_fallo_la_condicion_sigue(monkeypatch):
 
 def _check_fijo(exito: bool):
     """Devuelve una función ability_check con el resultado forzado."""
-    from dnd_sim.checks import CheckResult
+    from dnd_sim.rules.checks import CheckResult
 
     def _fake(target, ability, dc, rng, mode=None):
         return CheckResult(ability=ability, dc=dc, rolls=[10], bonus=0,
@@ -539,7 +539,7 @@ def test_la_telaraña_deja_a_la_araña_a_distancia(monkeypatch):
 
 
 def test_la_cobertura_no_cambia_las_salvaciones():
-    from dnd_sim.saves import saving_throw
+    from dnd_sim.rules.saves import saving_throw
 
     objetivo = _pj("Objetivo", ac=15)
     objetivo.state.at_range = True

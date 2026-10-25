@@ -11,18 +11,19 @@ from dnd_sim import (
     Abilities, Attack, Condition, ConditionTracker, Monster, PlayerCharacter,
     RollMode, apply_condition, attack_modifiers, load_monster,
 )
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.area import AreaTargeting
-from dnd_sim.combat import attack_roll, run_combat
-from dnd_sim.conditions import (
-    ConditionAction, ConditionEffect, ConditionInstance, EXCLUDED_CONDITIONS,
-    RepeatSave, end_turn,
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.rules.area import AreaTargeting
+from dnd_sim.engine.combat import attack_roll, run_combat
+from dnd_sim.rules.conditions import (
+    ConditionAction, ConditionEffect, ConditionInstance, EXCLUDED_CONDITIONS, RepeatSave, end_turn
 )
-from dnd_sim.damage import apply_damage_modifiers
+from dnd_sim.rules.damage import apply_damage_modifiers
 from dnd_sim.data.condition_parser import parse_condition_effects, parse_range_type
-from dnd_sim.roll_modifiers import AttackRange, resolve_attack_range, save_modifiers
-from dnd_sim.saves import saving_throw
-from dnd_sim.stats import simulate
+from dnd_sim.rules.roll_modifiers import (
+    AttackRange, resolve_attack_range, save_modifiers
+)
+from dnd_sim.rules.saves import saving_throw
+from dnd_sim.engine.stats import simulate
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -436,7 +437,7 @@ def test_un_incapacitado_pierde_el_turno_sin_consumir_rng():
     npc = Monster(name="Ogro", max_hp=100, ac=10, abilities=Abilities())
     apply_condition(pj, Condition.STUNNED, _ctx())
     ctx = _ctx(actor=pj, combatants=[pj, npc], rng=random.Random(4))
-    from dnd_sim.usage import begin_turn
+    from dnd_sim.rules.usage import begin_turn
     rng = ctx.rng
     estado = rng.getstate()
     begin_turn(pj, ctx)
@@ -446,7 +447,7 @@ def test_un_incapacitado_pierde_el_turno_sin_consumir_rng():
 
 
 def test_la_politica_no_se_invoca_para_un_incapacitado(monkeypatch):
-    import dnd_sim.combat as combat_mod
+    import dnd_sim.engine.combat as combat_mod
 
     pj = _pj()
     npc = Monster(name="Ogro", max_hp=100, ac=10, abilities=Abilities())
@@ -463,7 +464,7 @@ def test_la_politica_no_se_invoca_para_un_incapacitado(monkeypatch):
 
 
 def test_una_reaccion_no_se_dispara_en_un_combatiente_incapacitado(monkeypatch):
-    import dnd_sim.damage as damage_mod
+    import dnd_sim.rules.damage as damage_mod
 
     pj = _pj()
     recibidos = []

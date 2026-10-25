@@ -6,14 +6,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Iterable
 
-from .targeting import valid_targets
+from ..core.targeting import valid_targets
 
 if TYPE_CHECKING:
     from .combatant import Combatant
     from .attack import Attack
     # Solo en anotaciones: traer ``usage`` a nivel de módulo convertiría
     # model -> rules en una dependencia de importación real.
-    from .usage import ActionUsage, UsageKind
+    from ..rules.usage import ActionUsage, UsageKind
 
 
 class ActionType(Enum):
@@ -28,7 +28,7 @@ class CombatAction:
 
     name: str = ""
     action_type: ActionType = ActionType.ACTION
-    # Uso limitado opcional (dnd_sim.usage.ActionUsage). El estado de uso
+    # Uso limitado opcional (dnd_sim.rules.usage.ActionUsage). El estado de uso
     # vive en la acción, nunca en el combatiente.
     usage: ActionUsage | None = None
 
@@ -137,7 +137,7 @@ def _living_enemies(ctx: CombatContext, atk: Any = None) -> list:
 
     ``atk`` (opcional): ataque concreto que se va a resolver; si el actor
     está enganchado y el ataque lo declara, los objetivos se reducen a la
-    criatura enganchada (véase :func:`dnd_sim.targeting.valid_targets`).
+    criatura enganchada (véase :func:`dnd_sim.core.targeting.valid_targets`).
     """
     return list(valid_targets(ctx.actor, ctx=ctx, atk=atk))
 
@@ -164,14 +164,14 @@ class AttackAction(CombatAction):
     def execute(self, context: CombatContext) -> None:
         # Resolución real la hace attack_roll vía motor; aquí solo consumimos.
         # (Se espera que el motor invoque attack_roll por cada ataque.)
-        from .combat import attack_roll  # local para evitar ciclos
+        from ..engine.combat import attack_roll  # local para evitar ciclos
 
         actor = context.actor
         enemies = _living_enemies(context, self.attack)
         if not enemies:
             return
         # Un ataque suelto: objetivo aleatorio.
-        from .randomness import pick
+        from ..core.randomness import pick
 
         target = pick(context.rng, enemies)
         log = context.log if (context.log is not None) else None
@@ -230,8 +230,8 @@ class MultiattackAction(CombatAction):
         return usage is None or usage.available
 
     def execute(self, context: CombatContext) -> None:
-        from .combat import attack_roll
-        from .randomness import pick
+        from ..engine.combat import attack_roll
+        from ..core.randomness import pick
 
         actor = context.actor
         attacks_by_name = {getattr(a, "name", ""): a for a in getattr(actor, "attacks", [])}
@@ -287,8 +287,8 @@ class WeaponAttackAction(CombatAction):
 
     def execute(self, context: CombatContext) -> None:
         from .attack import Attack  # noqa: F401
-        from .combat import attack_roll
-        from .randomness import pick
+        from ..engine.combat import attack_roll
+        from ..core.randomness import pick
 
         actor = context.actor
         weapons = list(getattr(actor, "weapons", []) or [])
@@ -325,8 +325,8 @@ class SaveAction(CombatAction):
             self.name = "Salvación"
 
     def execute(self, context: CombatContext) -> None:
-        from .saves import resolve_save_damage, SaveDamage
-        from .randomness import pick as _pick
+        from ..rules.saves import resolve_save_damage, SaveDamage
+        from ..core.randomness import pick as _pick
 
         actor = context.actor
         targets = valid_targets(actor, ctx=context)

@@ -9,18 +9,19 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, PlayerCharacter
-from dnd_sim.actions import ActionType, CombatContext, TurnResources
-from dnd_sim.attach import (Attach, AttachOnHitEffect, desenganchar,
-                            enganchador_de, intentar_desenganche)
-from dnd_sim.attack import Attack
-from dnd_sim.combat import attack_roll, run_combat
-from dnd_sim.combatant import Monster
-from dnd_sim.conditions import Condition, apply_condition
+from dnd_sim.model.actions import ActionType, CombatContext, TurnResources
+from dnd_sim.rules.attach import (
+    Attach, AttachOnHitEffect, desenganchar, enganchador_de, intentar_desenganche
+)
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import attack_roll, run_combat
+from dnd_sim.model.combatant import Monster
+from dnd_sim.rules.conditions import Condition, apply_condition
 from dnd_sim.data.loader import load_monster
-from dnd_sim.damage import DamageType, inflict_damage
-from dnd_sim.roll_modifiers import AttackRange, attack_modifiers
-from dnd_sim.targeting import valid_targets
-from dnd_sim.traits import DamageTransfer
+from dnd_sim.rules.damage import DamageType, inflict_damage
+from dnd_sim.rules.roll_modifiers import AttackRange, attack_modifiers
+from dnd_sim.core.targeting import valid_targets
+from dnd_sim.rules.traits import DamageTransfer
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -82,7 +83,7 @@ def test_el_cloaker_carga_su_enganche_y_su_damage_transfer(monkeypatch):
     ]
     assert cloaker.traits[0].name == "Damage Transfer"
     # El enganche lo declara el Bite (no el Tail) y sin riders genéricos:
-    # dnd_sim.attach es el único dueño de la ceguera y el desenganche.
+    # dnd_sim.rules.attach es el único dueño de la ceguera y el desenganche.
     bite = _bite(cloaker)
     assert len(bite.on_hit_effects) == 1
     assert isinstance(bite.on_hit_effects[0], AttachOnHitEffect)

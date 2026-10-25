@@ -64,12 +64,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .actions import ActionType, CombatAction, CombatContext, TurnResources
+from ..model.actions import ActionType, CombatAction, CombatContext, TurnResources
 from .conditions import (Condition, apply_condition,
                          remove_invisibility_on_action)
-from .dice import roll_dice
-from .randomness import pick
-from .targeting import valid_targets
+from ..core.dice import roll_dice
+from ..core.randomness import pick
+from ..core.targeting import valid_targets
 
 from .usage import ActionUsage
 
@@ -243,7 +243,7 @@ def _romper_invisibilidad_al_lanzar(context: CombatContext) -> None:
     invisible) pero Enlarge u otro hechizo dejan al lanzador visible.
 
     Solo quita la invisibilidad **estándar**
-    (:func:`dnd_sim.conditions.remove_invisibility_on_action`): la Superior
+    (:func:`dnd_sim.rules.conditions.remove_invisibility_on_action`): la Superior
     Invisibility de la pixie, que dura lo que su concentración, no se toca.
 
     Es idempotente: si el lanzador no estaba invisible no hace nada ni
@@ -281,7 +281,7 @@ class SpellAttackAction(CombatAction):
 
     def execute(self, context: CombatContext) -> None:
         _romper_invisibilidad_al_lanzar(context)
-        from .combat import attack_roll
+        from ..engine.combat import attack_roll
         ataques = self.attacks
         if self.damage_options:
             # Varias opciones de daño: se elige una al azar al lanzar.
@@ -303,7 +303,7 @@ class SpellFixedDamageAction(CombatAction):
     salvación (p. ej. el Proyectil Mágico).
 
     El objetivo se elige al azar entre los hostiles vivos y el daño pasa por
-    :func:`dnd_sim.damage.apply_damage_modifiers` igual que el de un ataque
+    :func:`dnd_sim.rules.damage.apply_damage_modifiers` igual que el de un ataque
     (un inmune al tipo de daño no pierde PV).
     """
 
@@ -318,7 +318,7 @@ class SpellFixedDamageAction(CombatAction):
         _romper_invisibilidad_al_lanzar(context)
         from .damage import (apply_damage_modifiers, inflict_damage,
                              parse_damage_type)
-        from .combat import _tag_modificadores
+        from ..engine.combat import _tag_modificadores
         alcanzados = []
         for _ in range(max(1, int(self.elements or 1))):
             targets = valid_targets(context.actor, ctx=context)
@@ -607,9 +607,9 @@ def spell_action(spell: Spell, spellcasting: Spellcasting | None = None,
     """
     if spell is None:
         return None
-    from .actions import AttackAction, SaveAction
+    from ..model.actions import AttackAction, SaveAction
     from .area import AreaSaveAction, AreaTargeting
-    from .attack import Attack
+    from ..model.attack import Attack
     from .conditions import ConditionAction
     from .roll_modifiers import AttackRange
     from .saves import SaveDamage
@@ -760,7 +760,7 @@ def trigger_reaction(victim: Any, ctx: Any) -> bool:
 
     Aproximación de las reglas 5e: **una reacción por turno propio**. El
     indicador ``state.reaction_used`` se pone a ``False`` al inicio del turno
-    (:func:`dnd_sim.usage.begin_turn`) y se marca (antes de ejecutar) al
+    (:func:`dnd_sim.rules.usage.begin_turn`) y se marca (antes de ejecutar) al
     usar la reacción, así que las cadenas de reacciones terminan siempre.
 
     Solo actúa si el combate sigue vivo (más de un bando), ``victim`` está

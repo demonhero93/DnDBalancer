@@ -17,7 +17,7 @@ import random
 from dataclasses import dataclass
 from enum import Enum
 
-from .dice import roll_dice
+from ..core.dice import roll_dice
 
 
 class UsageKind(Enum):
@@ -115,7 +115,7 @@ class ActionUsage:
         return False
 
 
-from .log import log_line as _log_line
+from ..core.log import log_line as _log_line
 
 
 def begin_turn(actor, ctx):
@@ -145,7 +145,7 @@ def begin_turn(actor, ctx):
     que la primera tirada de un aliento usado en el turno N es al inicio del
     turno N+1 (nunca en el mismo turno en que se usó).
     """
-    from .actions import TurnResources
+    from ..model.actions import TurnResources
 
     resources = TurnResources()
     try:

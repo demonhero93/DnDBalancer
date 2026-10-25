@@ -12,11 +12,11 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack, ExtraDamage
-from dnd_sim.combat import attack_roll
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack, ExtraDamage
+from dnd_sim.engine.combat import attack_roll
 from dnd_sim.data.loader import load_monster
-from dnd_sim.damage import DamageRecorder, DamageType
+from dnd_sim.rules.damage import DamageRecorder, DamageType
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -77,7 +77,7 @@ def _espiar_inflict(monkeypatch):
         llamadas.append((target, amount, damage_type))
         return 0
 
-    monkeypatch.setattr("dnd_sim.combat.inflict_damage", espia)
+    monkeypatch.setattr("dnd_sim.engine.combat.inflict_damage", espia)
     return llamadas
 
 
@@ -207,7 +207,7 @@ def test_en_critico_roll_dice_recibe_crit_para_el_extra(monkeypatch):
     _espiar_inflict(monkeypatch)
     llamadas_dice = []
 
-    import dnd_sim.combat as combat_mod
+    import dnd_sim.engine.combat as combat_mod
     original = combat_mod.roll_dice
 
     def espia_dice(dados, rng=None, crit=False, **kw):

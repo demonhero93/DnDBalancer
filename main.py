@@ -8,7 +8,7 @@ if hasattr(sys.stdout, "reconfigure"):
 
 try:
     from dnd_sim import Abilities, Attack, AttackRange, PlayerCharacter, load_monster, run_combat
-    from dnd_sim.stats import print_report, simulate
+    from dnd_sim.engine.stats import print_report, simulate
 except ImportError:
     from abilities import Abilities
     from attack import Attack
@@ -19,7 +19,7 @@ except ImportError:
     try:
         from roll_modifiers import AttackRange
     except ImportError:
-        from dnd_sim.roll_modifiers import AttackRange
+        from dnd_sim.rules.roll_modifiers import AttackRange
 
 
 def _parse_monster_token(token: str):

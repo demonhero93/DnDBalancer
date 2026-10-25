@@ -11,24 +11,23 @@ from pathlib import Path
 import pytest
 
 from dnd_sim import Abilities, Monster, PlayerCharacter
-from dnd_sim.actions import (
-    ActionType, AttackAction, CombatContext, SaveAction, TurnResources,
+from dnd_sim.model.actions import (
+    ActionType, AttackAction, CombatContext, SaveAction, TurnResources
 )
-from dnd_sim.checks import ability_check
-from dnd_sim.area import AreaSaveAction
-from dnd_sim.combat import attack_roll, run_combat
-from dnd_sim.conditions import Condition, apply_condition
+from dnd_sim.rules.checks import ability_check
+from dnd_sim.rules.area import AreaSaveAction
+from dnd_sim.engine.combat import attack_roll, run_combat
+from dnd_sim.rules.conditions import Condition, apply_condition
 from dnd_sim.data.loader import load_monster
 from dnd_sim.data.spell_parser import (
     build_spell_actions, parse_spell, parse_spellcasting,
 )
-from dnd_sim.damage import DamageType
-from dnd_sim.roll_modifiers import AttackRange, attack_modifiers
-from dnd_sim.spells import (
-    HealAction, Spell, SpellAction, SpellAttackAction, SpellFixedDamageAction,
-    Spellcasting, spell_action, trigger_reaction,
+from dnd_sim.rules.damage import DamageType
+from dnd_sim.rules.roll_modifiers import AttackRange, attack_modifiers
+from dnd_sim.rules.spells import (
+    HealAction, Spell, SpellAction, SpellAttackAction, SpellFixedDamageAction, Spellcasting, spell_action, trigger_reaction
 )
-from dnd_sim.usage import begin_turn
+from dnd_sim.rules.usage import begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SPELLS = FIXTURES / "spells"
@@ -216,7 +215,7 @@ def test_los_hechizos_con_concentracion_crean_el_estado():
 
 
 def test_solo_se_mantiene_una_concentracion():
-    from dnd_sim.spells import apply_concentration
+    from dnd_sim.rules.spells import apply_concentration
     lanzador = _npc()
     ctx = _ctx(lanzador, [lanzador])
     apply_concentration(lanzador, ctx, 10)
@@ -232,7 +231,7 @@ def test_el_hechizo_verdadero_da_ventaja_en_los_ataques():
     lanzador = _npc()
     objetivo = _pj("Objetivo")
     ctx = _ctx(lanzador, [lanzador, objetivo])
-    from dnd_sim.attack import Attack
+    from dnd_sim.model.attack import Attack
     ataque = Attack("Golpe", "1d6", ability="str", attack_bonus=5, damage_bonus=0)
     antes = attack_modifiers(lanzador, objetivo, ataque).mode
     apply_condition(lanzador, Condition.TRUE_STRUCK, ctx)
@@ -276,7 +275,7 @@ def test_el_hechizo_de_hechizar_deja_el_estado_hechizado():
 
 def test_el_tiempo_de_casteo_marca_el_tipo_de_accion():
     """1 action -> acción; 1 bonus action -> acción bonus; 1 reaction -> reacción."""
-    from dnd_sim.actions import ActionType
+    from dnd_sim.model.actions import ActionType
     esperado = {
         "burning-hands": ActionType.ACTION,
         "healing-word": ActionType.BONUS_ACTION,
@@ -426,7 +425,7 @@ def test_la_luz_de_hadas_senala_al_objetivo():
     atacante = _npc()
     objetivo = _pj("Objetivo")
     ctx = _ctx(atacante, [atacante, objetivo])
-    from dnd_sim.attack import Attack
+    from dnd_sim.model.attack import Attack
     ataque = Attack("Golpe", "1d6", ability="str", attack_bonus=5, damage_bonus=0)
     assert attack_modifiers(atacante, objetivo, ataque).mode.value == "normal"
     apply_condition(objetivo, Condition.MARKED, ctx)
@@ -435,7 +434,7 @@ def test_la_luz_de_hadas_senala_al_objetivo():
 
 def test_el_hechizado_invierte_los_objetivos_de_ataque():
     """Un combatiente hechizado ataca a los de su propio bando."""
-    from dnd_sim.targeting import valid_targets
+    from dnd_sim.core.targeting import valid_targets
 
     heroe = _pj("Guerrero")
     dragon = Monster(name="Dragón", max_hp=100, ac=15,
@@ -451,7 +450,7 @@ def test_el_hechizado_invierte_los_objetivos_de_ataque():
 
 
 def test_el_hechizado_ataca_a_los_de_su_propio_bando():
-    from dnd_sim.targeting import valid_targets
+    from dnd_sim.core.targeting import valid_targets
 
     heroe = _pj("Guerrero")
     mago = Monster(name="Mago", max_hp=100, ac=15, abilities=Abilities(), attacks=[])
@@ -679,7 +678,7 @@ def test_initialize_slots_usa_la_tabla_real_de_un_lanzador_completo():
 
 
 def test_el_import_estrella_de_spells_no_falla():
-    exec("from dnd_sim.spells import *", {})   # no debe lanzar AttributeError
+    exec("from dnd_sim.rules.spells import *", {})   # no debe lanzar AttributeError
 
 
 # --- Acción bonus y reacciones --------------------------------------------- #
@@ -738,7 +737,7 @@ def test_al_recibir_dano_en_un_ataque_se_dispara_la_reaccion():
                         combatants=[atacante, defensor], round=1,
                         log=log, verbose=True, resources=TurnResources(),
                         action_uses={})
-    from dnd_sim.attack import Attack
+    from dnd_sim.model.attack import Attack
 
     atk = Attack("Espada", "1d8", ability="str", attack_bonus=12,
                  damage_bonus=0)

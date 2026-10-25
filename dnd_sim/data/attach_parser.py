@@ -2,13 +2,13 @@
 
 El enganche no es una acción ni un rasgo de ``special_abilities``: vive en
 la descripción del propio ataque («the cloaker attaches to it»). Aquí solo
-se decide si el ataque lo trae; las reglas están en :mod:`dnd_sim.attach`.
+se decide si el ataque lo trae; las reglas están en :mod:`dnd_sim.rules.attach`.
 """
 from __future__ import annotations
 
 import re
 
-from ..attach import AttachOnHitEffect
+from ..rules.attach import AttachOnHitEffect
 
 #: «the cloaker attaches to it» / «and attaches the target»...
 ATTACH_RE = re.compile(r"\battach(?:es|ed|ing)?\b", re.I)

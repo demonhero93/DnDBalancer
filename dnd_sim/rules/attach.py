@@ -7,13 +7,13 @@ Modela el texto del ataque **Bite** del cloaker (SRD 2014):
 - «If the cloaker has advantage against the target, the cloaker attaches to
   the target's head, and the target is blinded and unable to breathe while
   the cloaker is attached.» — la ceguera sí se modela
-  (:class:`dnd_sim.conditions.Condition` ``BLINDED``, puesta por el
+  (:class:`dnd_sim.rules.conditions.Condition` ``BLINDED``, puesta por el
   enganchador y retirada al desenganchar); «unable to breathe» queda como
   TODO (el motor no simula asfixia).
 - «While attached, the cloaker can make this attack only against the target
   and has advantage on the attack roll.» — la ventaja la aporta el rasgo
   :class:`Attach` (via ``Combatant.traits``) y la restricción de objetivo
-  la aplica :func:`dnd_sim.targeting.valid_targets` cuando recibe el
+  la aplica :func:`dnd_sim.core.targeting.valid_targets` cuando recibe el
   ``atk`` concreto.
 - «The cloaker can detach itself by spending 5 feet of its movement.» —
   # TODO: el movimiento no se modela, así que el que engancha no se suelta
@@ -21,10 +21,10 @@ Modela el texto del ataque **Bite** del cloaker (SRD 2014):
 - «A creature, including the target, can take its action to detach the
   cloaker by succeeding on a DC 16 Strength check.» —
   :func:`intentar_desenganche`, automática al inicio del turno como
-  :func:`dnd_sim.conditions.attempt_escapes` (gasta la acción acierte o
+  :func:`dnd_sim.rules.conditions.attempt_escapes` (gasta la acción acierte o
   falle).
 
-El estado vive en :class:`dnd_sim.combat_state.CombatState`:
+El estado vive en :class:`dnd_sim.core.combat_state.CombatState`:
 ``attached_to`` solo lo guarda el que engancha; la criatura enganchada no
 guarda referencia (la búsqueda inversa es :func:`enganchador_de`).
 """
@@ -33,16 +33,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .actions import ActionType
+from ..model.actions import ActionType
 from .conditions import Condition, apply_condition
-from .dice import RollMode
+from ..core.dice import RollMode
 from .traits import Trait
 
 #: CD de la prueba de Fuerza para desengancharse (ficha del cloaker).
 DC_DESENGANCHE = 16
 
 
-from .log import log_line as _log_line
+from ..core.log import log_line as _log_line
 
 
 def _ya_cegado_por(target: Any, enganchador: Any) -> bool:
@@ -62,7 +62,7 @@ class Attach(Trait):
 
     «While attached, the cloaker ... has advantage on the attack roll.» La
     otra parte de la regla (el ataque enganchado solo puede ir contra esa
-    criatura) la aplica :func:`dnd_sim.targeting.valid_targets` con el
+    criatura) la aplica :func:`dnd_sim.core.targeting.valid_targets` con el
     ``atk`` concreto.
     """
 
@@ -80,7 +80,7 @@ class Attach(Trait):
 class AttachOnHitEffect:
     """Si el ataque impacta, el atacante se engancha al objetivo.
 
-    Lo ejecuta ``attack_roll`` (:mod:`dnd_sim.combat`) tras el daño con la
+    Lo ejecuta ``attack_roll`` (:mod:`dnd_sim.engine.combat`) tras el daño con la
     firma ``execute(attacker, target, ctx, modifiers)``; los modificadores
     hacen falta para el enganche a la cabeza (solo aplica si el ataque iba
     con ventaja).
@@ -172,7 +172,7 @@ def intentar_desenganche(actor: Any, ctx: Any) -> None:
     """Prueba de Fuerza CD 16 para desengancharse (automática, gasta acción).
 
     Se llama al inicio del turno del afectado, junto a
-    :func:`dnd_sim.conditions.attempt_escapes` y con su misma filosofía:
+    :func:`dnd_sim.rules.conditions.attempt_escapes` y con su misma filosofía:
 
     - solo quien está enganchado por otro intenta algo (el que engancha se
       suelta solo con su movimiento: TODO de la ficha),

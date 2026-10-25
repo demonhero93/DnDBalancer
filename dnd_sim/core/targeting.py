@@ -2,13 +2,13 @@
 
 Todo el simulador elige objetivos con :func:`valid_targets`:
 
-- acciones (``dnd_sim.actions``),
-- áreas (``dnd_sim.area``),
-- condiciones (``dnd_sim.conditions``),
-- acciones legendarias (``dnd_sim.legendary``).
+- acciones (``dnd_sim.model.actions``),
+- áreas (``dnd_sim.rules.area``),
+- condiciones (``dnd_sim.rules.conditions``),
+- acciones legendarias (``dnd_sim.rules.legendary``).
 
 Vive en un módulo **sin dependencias** para que todos esos módulos puedan
-importarla sin ciclos de importación. ``dnd_sim.combatant`` la reexporta
+importarla sin ciclos de importación. ``dnd_sim.model.combatant`` la reexporta
 como ``valid_targets`` (API pública histórica).
 
 Reglas: nunca el propio actor, nunca los aliados, nunca los muertos.

@@ -3,19 +3,19 @@
 La ficha (fixture real de la API) dice tres cosas: recupera 10 PV al
 inicio de su turno, no lo hace si ha recibido ácido o fuego, y muere solo
 si empieza su turno con 0 PV sin poder regenerarse. Cada frase es un hook
-distinto de :mod:`dnd_sim.traits`.
+distinto de :mod:`dnd_sim.rules.traits`.
 """
 import json
 import random
 from pathlib import Path
 
 from dnd_sim import Abilities, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack
-from dnd_sim.combat import run_combat
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import run_combat
 from dnd_sim.data.loader import load_monster
-from dnd_sim.damage import inflict_damage
-from dnd_sim.usage import begin_turn
+from dnd_sim.rules.damage import inflict_damage
+from dnd_sim.rules.usage import begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

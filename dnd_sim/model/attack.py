@@ -2,7 +2,7 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from .core.enums import AttackRange, DamageType, parse_damage_type
+from ..core.enums import AttackRange, DamageType, parse_damage_type
 
 
 @dataclass
@@ -43,10 +43,10 @@ class Attack:
     usage: Any = None
     # Tipo de alcance (melee / a distancia / ambos), por defecto cuerpo a cuerpo.
     range_type: AttackRange = AttackRange.MELEE
-    # Condiciones que aplica si el ataque impacta (dnd_sim.conditions).
+    # Condiciones que aplica si el ataque impacta (dnd_sim.rules.conditions).
     condition_riders: list = field(default_factory=list)  # daño con salvación adicional
     # Efectos que ocurren si el ataque impacta (p. ej. el enganche del
-    # cloaker; véase dnd_sim.attach). Los ejecuta ``attack_roll`` tras el
+    # cloaker; véase dnd_sim.rules.attach). Los ejecuta ``attack_roll`` tras el
     # daño con la firma: execute(attacker, target, ctx, modifiers).
     on_hit_effects: list = field(default_factory=list)
     # Daño con los dados agrandados («doubles its damage dice», el Enlarge

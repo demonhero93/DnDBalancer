@@ -11,11 +11,11 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, Monster, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.combat import attack_roll, run_combat
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.engine.combat import attack_roll, run_combat
 from dnd_sim.data.loader import load_monster
-from dnd_sim.damage import DamageType
-from dnd_sim.roll_modifiers import AttackRange
+from dnd_sim.rules.damage import DamageType
+from dnd_sim.rules.roll_modifiers import AttackRange
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -147,7 +147,7 @@ def test_en_critico_los_dados_extra_llegan_con_crit(monkeypatch):
     rasgo = hobgoblin.traits[0]
     aliado = _aliado()
     objetivo = _pj()
-    import dnd_sim.traits as traits_mod
+    import dnd_sim.rules.traits as traits_mod
     original = traits_mod.roll_dice
     tiradas: list = []
 

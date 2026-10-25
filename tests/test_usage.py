@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
-from dnd_sim.abilities import Abilities
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.area import AreaSaveAction
-from dnd_sim.combat import run_combat
-from dnd_sim.combatant import PlayerCharacter
+from dnd_sim.core.abilities import Abilities
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.rules.area import AreaSaveAction
+from dnd_sim.engine.combat import run_combat
+from dnd_sim.model.combatant import PlayerCharacter
 from dnd_sim.data.loader import load_monster
-from dnd_sim.usage import ActionUsage, UsageKind, begin_turn
+from dnd_sim.rules.usage import ActionUsage, UsageKind, begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -248,7 +248,7 @@ def test_aliento_se_usa_en_una_fraccion_plausible_de_turnos(monkeypatch):
 
 
 def test_politica_elige_el_aliento_aproximadamente_el_50_cuando_esta_cargado(monkeypatch):
-    import dnd_sim.combat as combat_mod
+    import dnd_sim.engine.combat as combat_mod
 
     monster = _load_fixture(monkeypatch, "adult-red-dragon")
     jugador = _player()

@@ -7,7 +7,7 @@ import pytest
 
 from dnd_sim import Abilities, Attack, Combatant, DamageType, apply_damage_modifiers, simulate
 from dnd_sim import Monster, PlayerCharacter
-from dnd_sim.combat import run_combat
+from dnd_sim.engine.combat import run_combat
 from dnd_sim.data.loader import load_monster
 
 FIXTURE = Path(__file__).parent / "fixtures" / "ogre.json"
@@ -142,7 +142,7 @@ def test_attack_roll_log_modifier(monkeypatch, capsys):
 
 def test_etiqueta_de_modificadores_se_deriva_del_dano_final():
     """El tag del log no reimplementa la regla: sale del resultado real."""
-    from dnd_sim.combat import _tag_modificadores
+    from dnd_sim.engine.combat import _tag_modificadores
 
     assert _tag_modificadores(7, 3, "bludgeoning",
                               _target(resistances={"bludgeoning"})) \
@@ -161,8 +161,8 @@ def test_un_petrificado_resiste_y_el_log_lo_dice():
     """Petrificado resiste todo el daño; la regla vive en
     apply_damage_modifiers y el log la refleja (el bloque duplicado de
     attack_roll no contemplaba el petrificado)."""
-    from dnd_sim.combat import attack_roll
-    from dnd_sim.conditions import Condition, apply_condition
+    from dnd_sim.engine.combat import attack_roll
+    from dnd_sim.rules.conditions import Condition, apply_condition
 
     atacante = PlayerCharacter(
         name="A", max_hp=10, ac=5, abilities=Abilities(str=16),
@@ -212,7 +212,7 @@ def test_danio_medio_por_combatiente_y_equipo(monkeypatch):
 
 
 def test_informe_final_con_apartados_de_pj_y_monstruros(monkeypatch, capsys):
-    from dnd_sim.stats import print_report
+    from dnd_sim.engine.stats import print_report
 
     guerrero, ogro = _guerrero_y_ogro(monkeypatch)
     stats = simulate([guerrero, ogro], n=20, seed=1)

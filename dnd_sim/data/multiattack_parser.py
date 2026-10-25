@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import warnings
 
-from ..actions import AttackEntry
+from ..model.actions import AttackEntry
 
 
 def _norm_name(value: str) -> str:

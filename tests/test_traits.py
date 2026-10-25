@@ -2,7 +2,7 @@
 
 Los rasgos se parsean de ``special_abilities`` (fixture real de la API) y se
 aplican en la única fuente del modo de tirada:
-:func:`dnd_sim.roll_modifiers.attack_modifiers`.
+:func:`dnd_sim.rules.roll_modifiers.attack_modifiers`.
 """
 import json
 import random
@@ -11,19 +11,20 @@ from pathlib import Path
 import pytest
 
 from dnd_sim import Abilities, Monster, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack
-from dnd_sim.combat import attack_roll, run_combat
-from dnd_sim.conditions import Condition, apply_condition
-from dnd_sim.checks import ability_check
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import attack_roll, run_combat
+from dnd_sim.rules.conditions import Condition, apply_condition
+from dnd_sim.rules.checks import ability_check
 from dnd_sim.data.loader import load_monster
 from dnd_sim.data.trait_parser import parse_traits
-from dnd_sim.dice import RollMode
-from dnd_sim.roll_modifiers import (AttackRange, attack_modifiers,
-                                    check_modifiers, save_modifiers)
-from dnd_sim.saves import saving_throw
-from dnd_sim.traits import HOOK_NAMES, BloodFrenzy, Trait, hooks
-from dnd_sim.usage import begin_turn
+from dnd_sim.core.dice import RollMode
+from dnd_sim.rules.roll_modifiers import (
+    AttackRange, attack_modifiers, check_modifiers, save_modifiers
+)
+from dnd_sim.rules.saves import saving_throw
+from dnd_sim.rules.traits import HOOK_NAMES, BloodFrenzy, Trait, hooks
+from dnd_sim.rules.usage import begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

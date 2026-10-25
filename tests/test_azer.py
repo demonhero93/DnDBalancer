@@ -1,7 +1,7 @@
 """Heated Body (azer): daño de fuego a quien lo golpea cuerpo a cuerpo.
 
 El rasgo se parsea de ``special_abilities`` (fixture real de la API) y su
-hook ``after_being_hit`` se dispara en :func:`dnd_sim.combat.attack_roll`
+hook ``after_being_hit`` se dispara en :func:`dnd_sim.engine.combat.attack_roll`
 tras el daño, en cada impacto (aunque el daño sea 0 por inmunidad), porque
 el trigger de la ficha es el impacto, no el daño recibido.
 """
@@ -10,13 +10,13 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, Monster, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack
-from dnd_sim.combat import attack_roll
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import attack_roll
 from dnd_sim.data.loader import load_monster
-from dnd_sim.damage import DamageType
-from dnd_sim.roll_modifiers import AttackRange
-from dnd_sim.traits import HeatedBody
+from dnd_sim.rules.damage import DamageType
+from dnd_sim.rules.roll_modifiers import AttackRange
+from dnd_sim.rules.traits import HeatedBody
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -115,7 +115,7 @@ def test_impacto_aunque_el_atacante_es_inmune_al_fuego(monkeypatch):
     # El trigger es el impacto, no el daño: aunque el atacante sea inmune
     # al fuego, el hook se dispara (el daño de la represalia es 0 y no le
     # baja PV por ese motivo). aislando la llamada de fuego con un espía.
-    import dnd_sim.traits as traits_mod
+    import dnd_sim.rules.traits as traits_mod
     azer = _azer(monkeypatch)
     azero_inmune = _pj()
     azero_inmune.immunities = {DamageType.FIRE}
@@ -157,7 +157,7 @@ def _rasgo(azer: Monster) -> HeatedBody:
 
 def test_un_atacante_inmune_al_fuego_no_recibe_dano_de_la_represalia(monkeypatch):
     """«takes ... fire damage»: quien es inmune al fuego no baja PV."""
-    import dnd_sim.traits as traits_mod
+    import dnd_sim.rules.traits as traits_mod
     azer = _azer(monkeypatch)
     inmune = _pj()
     inmune.immunities = {DamageType.FIRE}
@@ -173,7 +173,7 @@ def test_un_atacante_inmune_al_fuego_no_recibe_dano_de_la_represalia(monkeypatch
 
 
 def test_un_atacante_resistente_al_fuego_recibe_la_mitad(monkeypatch):
-    import dnd_sim.traits as traits_mod
+    import dnd_sim.rules.traits as traits_mod
     azer = _azer(monkeypatch)
     resistente = _pj()
     resistente.resistances = {DamageType.FIRE}
@@ -188,7 +188,7 @@ def test_un_atacante_resistente_al_fuego_recibe_la_mitad(monkeypatch):
 
 
 def test_sin_resistencias_la_represalia_deja_el_dano_de_la_ficha(monkeypatch):
-    import dnd_sim.traits as traits_mod
+    import dnd_sim.rules.traits as traits_mod
     azer = _azer(monkeypatch)
     pj = _pj()
     monkeypatch.setattr(traits_mod, "roll_dice", lambda expr, rng: 9)

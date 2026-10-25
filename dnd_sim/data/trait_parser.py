@@ -3,7 +3,7 @@
 La ficha trae rasgos de todo tipo: de combate (Blood Frenzy), de
 exploración (Limited Amphibiousness), de flavor (Shark Telepathy) o que ya
 gestiona otro módulo (Spellcasting, Legendary Resistance). Solo se devuelven
-los registrados en :data:`dnd_sim.traits.TRAIT_CLASSES`; el resto se
+los registrados en :data:`dnd_sim.rules.traits.TRAIT_CLASSES`; el resto se
 **ignoran sin aviso**: no cambian un combate y avisar de ellos solo añade
 ruido (los que sí cambian uno ya tienen su aviso en su propio módulo).
 
@@ -24,7 +24,7 @@ from __future__ import annotations
 from dataclasses import fields
 from typing import Any
 
-from ..traits import TRAIT_CLASSES, Trait
+from ..rules.traits import TRAIT_CLASSES, Trait
 from .usage_parser import UnknownUsageError, parse_usage
 
 
@@ -71,7 +71,7 @@ def parse_traits(monster_json: dict) -> list[Trait]:
     Cada entrada reconocida se construye con su nombre tal cual viene en la
     API y su descripción (de referencia). Si la clase declara un campo
     ``usage`` (Relentless), también recibe el uso limitado de la ficha ya
-    convertido en :class:`dnd_sim.usage.ActionUsage`. Las entradas
+    convertido en :class:`dnd_sim.rules.usage.ActionUsage`. Las entradas
     desconocidas o malformadas se omiten.
     """
     traits: list[Trait] = []

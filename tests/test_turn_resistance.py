@@ -12,9 +12,9 @@ from pathlib import Path
 
 from dnd_sim import Abilities, PlayerCharacter
 from dnd_sim.data.loader import load_monster
-from dnd_sim.dice import RollMode
-from dnd_sim.roll_modifiers import save_modifiers
-from dnd_sim.saves import saving_throw
+from dnd_sim.core.dice import RollMode
+from dnd_sim.rules.roll_modifiers import save_modifiers
+from dnd_sim.rules.saves import saving_throw
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

@@ -24,8 +24,8 @@ from __future__ import annotations
 import re
 import warnings
 
-from ..conditions import EscapeCheck
-from ..saves import normalize_ability
+from ..rules.conditions import EscapeCheck
+from ..rules.saves import normalize_ability
 
 
 # "DC 12 Strength check" (prueba explícita con característica).

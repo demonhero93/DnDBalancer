@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from dnd_sim.actions import AttackAction, MultiattackAction
-from dnd_sim.combat import run_combat
-from dnd_sim.combatant import PlayerCharacter
+from dnd_sim.model.actions import AttackAction, MultiattackAction
+from dnd_sim.engine.combat import run_combat
+from dnd_sim.model.combatant import PlayerCharacter
 from dnd_sim.data.loader import load_monster
-from dnd_sim.usage import UsageKind
+from dnd_sim.rules.usage import UsageKind
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -26,7 +26,7 @@ def _load(monkeypatch, index: str):
 
 
 def _pj(name: str = "Guerrero", hp: int = 900) -> PlayerCharacter:
-    from dnd_sim.abilities import Abilities
+    from dnd_sim.core.abilities import Abilities
     return PlayerCharacter(
         name=name, max_hp=hp, ac=15, proficiency=2,
         abilities=Abilities(str=14, dex=14, con=14, int=10, wis=10, cha=10),
@@ -184,7 +184,7 @@ def test_el_dragon_hace_tres_ataques_por_turno(monkeypatch):
 # --- El búho: formato "actions" con dos ataques --------------------------- #
 
 def test_multiattack_del_owlbear_no_cambia(monkeypatch):
-    from dnd_sim.actions import AttackEntry
+    from dnd_sim.model.actions import AttackEntry
 
     owlbear = _load(monkeypatch, "owlbear")
     entradas = [[(e.attack_name, e.count) for e in alt]

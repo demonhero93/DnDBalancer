@@ -2,7 +2,7 @@
 
 Catálogo cerrado de condiciones (las que afectan a tiradas, acciones y daño).
 El estado vive en :class:`ConditionTracker` (uno por combatiente); las reglas
-de tiradas viven en :mod:`dnd_sim.roll_modifiers`.
+de tiradas viven en :mod:`dnd_sim.rules.roll_modifiers`.
 
 Ninguna mecánica de este módulo consume RNG por sí sola: solo las
 salvaciones de repetición del final de turno (y solo si existen).
@@ -13,11 +13,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from .actions import ActionType, CombatAction
-from .targeting import valid_targets
+from ..model.actions import ActionType, CombatAction
+from ..core.targeting import valid_targets
 
 if TYPE_CHECKING:
-    from .combatant import Combatant
+    from ..model.combatant import Combatant
 
 
 class Condition(Enum):
@@ -195,7 +195,7 @@ class ConditionEffect:
             )
 
 
-from .log import log_line as _log_line
+from ..core.log import log_line as _log_line
 
 
 def _label(condition: Condition) -> str:
@@ -293,7 +293,7 @@ def remove_invisibility_on_action(target: Any) -> bool:
 
     Devuelve True si se quitó alguna; no registra nada en el log: quien
     llama añade la línea con su motivo («(ataca)» en
-    :func:`dnd_sim.combat.attack_roll`, «(lanza un hechizo)» en
+    :func:`dnd_sim.engine.combat.attack_roll`, «(lanza un hechizo)» en
     ``_romper_invisibilidad_al_lanzar``), como ya hacía con
     :func:`remove_condition`.
     """
@@ -344,7 +344,7 @@ def attempt_escapes(actor: Any, ctx: Any) -> None:
         return  # incapacitado: no intenta escapar
 
     from .checks import ability_check
-    from .randomness import pick
+    from ..core.randomness import pick
 
     rng = getattr(ctx, "rng", None)
     nombre = getattr(actor, "name", actor)
@@ -458,7 +458,7 @@ class ConditionAction(CombatAction):
     def _seleccionar_objetivos(self, context) -> list:
         """Hostiles vivos: uno al azar, o varios si la acción es de área."""
         from .area import select_area_targets
-        from .randomness import pick
+        from ..core.randomness import pick
 
         actor = context.actor
         pool = list(valid_targets(actor, ctx=context))

@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from dnd_sim.actions import AttackAction
-from dnd_sim.area import AreaSaveAction
-from dnd_sim.area import AreaTargeting
-from dnd_sim.combatant import PlayerCharacter
+from dnd_sim.model.actions import AttackAction
+from dnd_sim.rules.area import AreaSaveAction
+from dnd_sim.rules.area import AreaTargeting
+from dnd_sim.model.combatant import PlayerCharacter
 from dnd_sim.data.area_classifier import is_area_action
 from dnd_sim.data.loader import load_monster
 from dnd_sim.data.usage_parser import UnknownUsageError, parse_usage
-from dnd_sim.stats import simulate
-from dnd_sim.usage import ActionUsage, UsageKind
+from dnd_sim.engine.stats import simulate
+from dnd_sim.rules.usage import ActionUsage, UsageKind
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

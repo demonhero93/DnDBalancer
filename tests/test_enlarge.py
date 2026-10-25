@@ -16,17 +16,19 @@ import random
 from pathlib import Path
 
 from dnd_sim import Abilities, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.attack import Attack
-from dnd_sim.combat import attack_roll, run_combat
-from dnd_sim.combatant import Monster
-from dnd_sim.conditions import Condition, apply_condition, end_turn
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.attack import Attack
+from dnd_sim.engine.combat import attack_roll, run_combat
+from dnd_sim.model.combatant import Monster
+from dnd_sim.rules.conditions import Condition, apply_condition, end_turn
 from dnd_sim.data.loader import load_monster
 from dnd_sim.data.spell_parser import build_spell_actions, parse_spell
-from dnd_sim.dice import doblar_dados
-from dnd_sim.roll_modifiers import check_modifiers, save_modifiers
-from dnd_sim.spells import SpellAction, SpellStateAction, Spellcasting, spell_action
-from dnd_sim.usage import UsageKind
+from dnd_sim.core.dice import doblar_dados
+from dnd_sim.rules.roll_modifiers import check_modifiers, save_modifiers
+from dnd_sim.rules.spells import (
+    SpellAction, SpellStateAction, Spellcasting, spell_action
+)
+from dnd_sim.rules.usage import UsageKind
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SPELLS = FIXTURES / "spells"
@@ -81,8 +83,8 @@ def _ataque(m, nombre):
 
 
 def _spy_roll_dice(monkeypatch) -> list:
-    """Sustituye ``dnd_sim.combat.roll_dice`` por un espía que sí tira."""
-    import dnd_sim.combat as combat
+    """Sustituye ``dnd_sim.engine.combat.roll_dice`` por un espía que sí tira."""
+    import dnd_sim.engine.combat as combat
     llamadas = []
     original = combat.roll_dice
 

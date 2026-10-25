@@ -27,7 +27,7 @@ Rasgos implementados:
 
 - **Blood Frenzy** (sahuagin): ventaja en los ataques **cuerpo a cuerpo**
   contra criaturas que no tienen todos sus PV. El hook se ejecuta en
-  :func:`dnd_sim.roll_modifiers.attack_modifiers` (la única fuente del modo
+  :func:`dnd_sim.rules.roll_modifiers.attack_modifiers` (la única fuente del modo
   de tirada), así que convive correctamente con los indicadores estáticos y
   las condiciones: si hay ventaja y desventaja a la vez se anulan.
 - **Pack Tactics** (lobo) y **Martial Advantage** (hobgoblin): la condición
@@ -40,7 +40,7 @@ Rasgos implementados:
 - **Parry** (hobgoblin warlord, gladiador, caballero, noble, erinyes,
   marilith): +N de CA contra **un ataque cuerpo a cuerpo que iba a entrar**.
   El hook ``defensive_ac_bonus`` se le pregunta en
-  :func:`dnd_sim.combat.attack_roll` solo en ese caso, recibe la tirada y
+  :func:`dnd_sim.engine.combat.attack_roll` solo en ese caso, recibe la tirada y
   la CA para no gastar la reacción en un golpe que igual entra, y consume
   la reacción del combatiente (``state.reaction_used``), que se recarga en
   su propio turno.
@@ -48,11 +48,11 @@ Rasgos implementados:
   recibe se parte en dos: él baja la mitad (redondeada hacia abajo) y la
   criatura enganchada se lleva la otra mitad, que además pasa por sus
   **propios** modificadores (resistencia/inmunidad/vulnerabilidad). Los
-  hooks viven en :func:`dnd_sim.damage.inflict_damage` (fases 1 y 2); el
-  enganche en sí lo modela :mod:`dnd_sim.attach`.
+  hooks viven en :func:`dnd_sim.rules.damage.inflict_damage` (fases 1 y 2); el
+  enganche en sí lo modela :mod:`dnd_sim.rules.attach`.
 - **Heated Body** (azer): quien lo golpea cuerpo a cuerpo recibe 1d10 de
   daño de fuego. El trigger es el **impacto**, así que el hook vive en
-  :func:`dnd_sim.combat.attack_roll` (``after_being_hit``) y se activa
+  :func:`dnd_sim.engine.combat.attack_roll` (``after_being_hit``) y se activa
   aunque el daño sea 0 por inmunidad.
 - **Regeneration** (troll): recupera 10 PV al inicio de su turno salvo que
   haya recibido daño de ácido o fuego desde su turno anterior, y a 0 PV no
@@ -75,26 +75,26 @@ Rasgos implementados:
 - **Undead Fortitude** (zombi, zombi ogro): salvación de CON al caer a 0
   PV (DC 5 + daño recibido, salvo que sea radiante o venga de un crítico)
   para quedar a 1 PV. Consumidora del mismo hook ``on_reduced_to_zero_hp``
-  que Relentless, pero tirando con :func:`dnd_sim.saves.saving_throw`.
+  que Relentless, pero tirando con :func:`dnd_sim.rules.saves.saving_throw`.
 
 Catálogo de hooks (un único punto de despacho: :func:`hooks`)
 
 ============================  ======================================================
 Hook                          Dónde se dispara
 ============================  ======================================================
-``modify_attack_modifiers``   :func:`dnd_sim.roll_modifiers.attack_modifiers`
-``modify_save_modifiers``     :func:`dnd_sim.roll_modifiers.save_modifiers`
-``modify_check_modifiers``    :func:`dnd_sim.roll_modifiers.check_modifiers`
-``modify_incoming_damage``    :func:`dnd_sim.damage.inflict_damage` (fase 1)
-``after_damage_taken``        :func:`dnd_sim.damage.inflict_damage` (fase 2)
-``after_being_hit``           :func:`dnd_sim.combat.attack_roll`
-``extra_attack_damage``       :func:`dnd_sim.combat.attack_roll`
-``defensive_ac_bonus``        :func:`dnd_sim.combat.attack_roll` (si iba a entrar)
-``on_turn_start``             :func:`dnd_sim.usage.begin_turn`
-``survives_at_zero_hp``       :attr:`dnd_sim.combatant.Combatant.alive`
-``on_reduced_to_zero_hp``     :func:`dnd_sim.damage.inflict_damage` (al bajar a 0)
-``extra_actions``             :class:`dnd_sim.combatant.Monster` (al construirse)
-``reset``                     :meth:`dnd_sim.combatant.Combatant.reset`
+``modify_attack_modifiers``   :func:`dnd_sim.rules.roll_modifiers.attack_modifiers`
+``modify_save_modifiers``     :func:`dnd_sim.rules.roll_modifiers.save_modifiers`
+``modify_check_modifiers``    :func:`dnd_sim.rules.roll_modifiers.check_modifiers`
+``modify_incoming_damage``    :func:`dnd_sim.rules.damage.inflict_damage` (fase 1)
+``after_damage_taken``        :func:`dnd_sim.rules.damage.inflict_damage` (fase 2)
+``after_being_hit``           :func:`dnd_sim.engine.combat.attack_roll`
+``extra_attack_damage``       :func:`dnd_sim.engine.combat.attack_roll`
+``defensive_ac_bonus``        :func:`dnd_sim.engine.combat.attack_roll` (si iba a entrar)
+``on_turn_start``             :func:`dnd_sim.rules.usage.begin_turn`
+``survives_at_zero_hp``       :attr:`dnd_sim.model.combatant.Combatant.alive`
+``on_reduced_to_zero_hp``     :func:`dnd_sim.rules.damage.inflict_damage` (al bajar a 0)
+``extra_actions``             :class:`dnd_sim.model.combatant.Monster` (al construirse)
+``reset``                     :meth:`dnd_sim.model.combatant.Combatant.reset`
 ============================  ======================================================
 
 Cómo añadir un rasgo nuevo (p. ej. Web Sense):
@@ -205,13 +205,13 @@ from typing import Any
 from .conditions import Condition
 from .damage import (DamageType, apply_damage_modifiers, inflict_damage,
                      parse_damage_type)
-from .dice import roll_dice
-from .randomness import pick
+from ..core.dice import roll_dice
+from ..core.randomness import pick
 from .roll_modifiers import AttackRange
 from .usage import ActionUsage
 
 
-from .log import log_line as _log_line
+from ..core.log import log_line as _log_line
 
 
 @dataclass
@@ -227,7 +227,7 @@ class Trait:
                                 rng: Any = None) -> None:
         """Hook: añade ventaja/desventaja a ``mods`` si el rasgo aplica.
 
-        ``mods`` es un :class:`dnd_sim.roll_modifiers.AttackModifiers` y
+        ``mods`` es un :class:`dnd_sim.rules.roll_modifiers.AttackModifiers` y
         ``rango`` el rango ya resuelto del ataque. ``ctx`` es el contexto
         del combate (con ``combatants``: la única información de posición
         que hay) y ``rng`` el generador, para los rasgos cuya condición no
@@ -237,7 +237,7 @@ class Trait:
         """
         return None
 
-    # --- Daño recibido (fases de dnd_sim.damage.inflict_damage) ------------
+    # --- Daño recibido (fases de dnd_sim.rules.damage.inflict_damage) ------------
     def modify_incoming_damage(self, target: Any, amount: int,
                                damage_type: Any, source: Any,
                                ctx: Any = None) -> int | None:
@@ -257,7 +257,7 @@ class Trait:
         """
         return None
 
-    # --- Al ser golpeado (hook de dnd_sim.combat.attack_roll) ---------------
+    # --- Al ser golpeado (hook de dnd_sim.engine.combat.attack_roll) ---------------
     def after_being_hit(self, target: Any, attacker: Any, rango: Any,
                         ctx: Any = None) -> None:
         """Hook: reacción cuando ``attacker`` **impacta** a ``target``.
@@ -277,7 +277,7 @@ class Trait:
         **antes** de la inmunidad/resistencia/vulnerabilidad del objetivo y
         con el tipo de daño del propio ataque; ``crit`` indica si el golpe
         es crítico para que los dados extra se dupliquen como el resto.
-        Se dispara en :func:`dnd_sim.combat.attack_roll`.
+        Se dispara en :func:`dnd_sim.engine.combat.attack_roll`.
         """
         return 0
 
@@ -286,12 +286,12 @@ class Trait:
                               ability: str, kind: str | None = None) -> None:
         """Hook: ventaja/desventaja en la salvación ``ability`` de ``target``.
 
-        ``mods`` es un :class:`dnd_sim.roll_modifiers.SaveModifiers` y
+        ``mods`` es un :class:`dnd_sim.rules.roll_modifiers.SaveModifiers` y
         ``ability`` la característica ya normalizada (``"str"``...).
         ``kind`` dice qué tipo de efecto provoca la salvación cuando quien
         la tira lo sabe: hoy solo ``"turn"`` (un efecto que convierte
         no-muertos, p. ej. Turn Undead) y todavía no lo pasa nadie
-        (# TODO). Se ejecuta en :func:`dnd_sim.roll_modifiers.save_modifiers`.
+        (# TODO). Se ejecuta en :func:`dnd_sim.rules.roll_modifiers.save_modifiers`.
         Por defecto no hace nada.
         """
         return None
@@ -301,7 +301,7 @@ class Trait:
                                skill: str | None = None) -> None:
         """Hook: ventaja/desventaja en la prueba ``ability`` de ``target``.
 
-        ``mods`` es un :class:`dnd_sim.roll_modifiers.CheckModifiers`.
+        ``mods`` es un :class:`dnd_sim.rules.roll_modifiers.CheckModifiers`.
         ``skill`` es la habilidad asociada si la hubiera (``"perception"``);
         # TODO: las habilidades aún no se modelan, así que hoy siempre es
         ``None``: un rasgo limitado a una habilidad (Keen Senses) no puede
@@ -313,7 +313,7 @@ class Trait:
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         """Hook: efecto pasivo al inicio del turno propio de ``actor``.
 
-        Se ejecuta en :func:`dnd_sim.usage.begin_turn`, con los recursos ya
+        Se ejecuta en :func:`dnd_sim.rules.usage.begin_turn`, con los recursos ya
         cargados y **antes de comprobar si el actor está incapacitado**
         (es un efecto automático, no una acción). Por defecto no hace nada.
         """
@@ -323,7 +323,7 @@ class Trait:
     def survives_at_zero_hp(self, owner: Any) -> bool:
         """Hook: ¿sigue vivo ``owner`` aunque tenga 0 PV (o menos)?
 
-        Lo consulta :attr:`dnd_sim.combatant.Combatant.alive` justo cuando
+        Lo consulta :attr:`dnd_sim.model.combatant.Combatant.alive` justo cuando
         los PV llegan a 0: un rasgo que responda ``True`` (Regeneration)
         mantiene a la criatura en pie hasta que **su propio** turno decida
         si se recupera o muere. Si nadie responde, 0 PV sigue significando
@@ -341,7 +341,7 @@ class Trait:
         **diferida** cuando se pregunta si sigue vivo (Regeneration decide
         en su propio turno), esta se resuelve **al instante**, al aplicar el
         daño (Undead Fortitude tira su salvación; Relentless mira su umbral
-        de daño). Vive en :func:`dnd_sim.damage.inflict_damage`, que solo
+        de daño). Vive en :func:`dnd_sim.rules.damage.inflict_damage`, que solo
         la llama si el daño lo ha bajado desde PV positivos.
 
         ``amount`` es el daño que lo ha dejado a 0, ``crit`` si ese daño
@@ -357,7 +357,7 @@ class Trait:
         """Hook: acciones que el rasgo añade al combatiente.
 
         Se ejecuta una sola vez, al construir el monstruo
-        (:class:`dnd_sim.combatant.Monster`). Lo usa Superior Invisibility,
+        (:class:`dnd_sim.model.combatant.Monster`). Lo usa Superior Invisibility,
         que la ficha trae como acción de la criatura y no como rasgo
         pasivo: el rasgo sabe montarla y se la añade a ``owner.actions``.
         Devuelve la lista de acciones (vacía = ninguna). Por defecto
@@ -376,7 +376,7 @@ class Trait:
         ``ca`` la CA efectiva **sin** el bonificador, para que el rasgo
         decida si compensa: una reacción (Parry) solo se gasta si con el
         bonificador el golpe deja de entrar. Devuelve los puntos de CA
-        (0 = nada). Se dispara en :func:`dnd_sim.combat.attack_roll`.
+        (0 = nada). Se dispara en :func:`dnd_sim.engine.combat.attack_roll`.
         Por defecto no hace nada.
         """
         return 0
@@ -385,7 +385,7 @@ class Trait:
     def reset(self) -> None:
         """Hook: borra el estado propio del rasgo al empezar un combate.
 
-        Se llama desde :meth:`dnd_sim.combatant.Combatant.reset` (los
+        Se llama desde :meth:`dnd_sim.model.combatant.Combatant.reset` (los
         mismos objetos se reutilizan en ``simulate()``, así que el estado
         por combate se limpia aquí). Por defecto no hace nada.
         """
@@ -508,7 +508,7 @@ class DamageTransfer(Trait):
     «While attached to a creature, the cloaker takes only half the damage
     dealt to it (rounded down), and that creature takes the other half.»
     (SRD 2014). Solo aplica mientras el portador esté enganchado: el
-    enganche y su desenganche los modela :mod:`dnd_sim.attach`. La otra
+    enganche y su desenganche los modela :mod:`dnd_sim.rules.attach`. La otra
     mitad es daño normal para el receptor, así que su inmunidad,
     resistencia o vulnerabilidad también cuenta.
     """
@@ -545,7 +545,7 @@ class DamageTransfer(Trait):
             dt = parse_damage_type(damage_type)
         except Exception:
             dt = None
-        from .combat import _tag_modificadores as _tag
+        from ..engine.combat import _tag_modificadores as _tag
         final = mitad if dt is None else apply_damage_modifiers(mitad, dt, otro)
         tag = "" if dt is None else _tag(mitad, final, dt, otro)
         inflict_damage(otro, final, dt, source=source, ctx=ctx)
@@ -564,12 +564,12 @@ class HeatedBody(Trait):
     «A creature that touches the azer or hits it with a melee attack while
     within 5 ft. of it takes 5 (1d10) fire damage.» (SRD 2014). El trigger
     es el **impacto** (no el daño recibido), así que el hook vive en
-    :func:`dnd_sim.combat.attack_roll` y se activa aunque el daño sea 0
+    :func:`dnd_sim.engine.combat.attack_roll` y se activa aunque el daño sea 0
     (p. ej. por inmunidad). El toque se modela como ataque cuerpo a cuerpo
     (el alcance del motor no distingue «toque» de «cuerpo a cuerpo»).
 
     Como todo daño, la represalia pasa por
-    :func:`dnd_sim.damage.apply_damage_modifiers`: a quien es **inmune** le
+    :func:`dnd_sim.rules.damage.apply_damage_modifiers`: a quien es **inmune** le
     llega 0 (se sigue registrando el impacto, como en el daño principal) y
     a quien resiste, la mitad.
     """
@@ -851,7 +851,7 @@ class Relentless(Trait):
     El umbral sale de la descripción y cambia por ficha (7 el jabalí, 10 el
     gigante, 14 el hombre lobo). La ficha lo trae con ``usage`` de tipo
     «recharge after rest»: ``parse_traits`` se lo pasa ya convertido en
-    :class:`dnd_sim.usage.ActionUsage` y, como no se modelan descansos,
+    :class:`dnd_sim.rules.usage.ActionUsage` y, como no se modelan descansos,
     equivale a un **uso por combate** (lo restaura ``reset()``, igual que
     los usos de las acciones).
 
@@ -895,7 +895,7 @@ def _es_radiante(damage_type: Any) -> bool:
 
 
 def _guardar_salvacion(owner: Any, ability: str, dc: int, rng: Any):
-    """Tira una salvación con import perezoso de :mod:`dnd_sim.saves`.
+    """Tira una salvación con import perezoso de :mod:`dnd_sim.rules.saves`.
 
     El import va dentro de la función (patrón del repo) para no abrir el
     ciclo ``saves`` -> ``traits``.
@@ -915,7 +915,7 @@ class UndeadFortitude(Trait):
 
     Es la primera consumidora del hook ``on_reduced_to_zero_hp``: se
     resuelve **al aplicar el daño** (no en el turno) y pasa por
-    :func:`dnd_sim.saves.saving_throw` de siempre, así que las condiciones
+    :func:`dnd_sim.rules.saves.saving_throw` de siempre, así que las condiciones
     y las ventajas de rasgo también cuentan en la tirada.
 
     La DC base (5) sale de la descripción y se le suma el daño recibido.
@@ -959,12 +959,12 @@ class SuperiorInvisibility(Trait):
     if concentrating on a spell).» (SRD 2014) A diferencia del hechizo
     Invisibility, **no** termina al atacar ni al lanzar un hechizo: por eso
     la condición se aplica con ``break_on_attack=False``
-    (:class:`dnd_sim.conditions.ConditionInstance`) y solo la quitan el
+    (:class:`dnd_sim.rules.conditions.ConditionInstance`) y solo la quitan el
     reset y el final del combate.
 
     La ficha la trae como acción de la criatura y el motor solo construye
     acciones desde el campo ``actions`` de la ficha: por eso el rasgo la
-    aporta con el hook ``extra_actions``, que :class:`dnd_sim.combatant.Monster`
+    aporta con el hook ``extra_actions``, que :class:`dnd_sim.model.combatant.Monster`
     consulta una sola vez al construirse. Es una acción a voluntad; una vez
     invisible ya no se pierde, así que ``SpellStateAction.can_use`` deja de
     ofrecerla (no hay nada que refrescar).

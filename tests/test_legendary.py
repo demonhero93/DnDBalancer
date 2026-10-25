@@ -11,18 +11,18 @@ from pathlib import Path
 import pytest
 
 from dnd_sim import Abilities, Condition, Monster, PlayerCharacter
-from dnd_sim.actions import CombatContext, TurnResources
-from dnd_sim.area import AreaSaveAction
-from dnd_sim.combat import run_combat
-from dnd_sim.conditions import ConditionAction, apply_condition
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.rules.area import AreaSaveAction
+from dnd_sim.engine.combat import run_combat
+from dnd_sim.rules.conditions import ConditionAction, apply_condition
 from dnd_sim.data.legendary_parser import COST_PATTERN, TEXT_SAVE_PATTERN, parse_legendary
 from dnd_sim.data.loader import load_monster
-from dnd_sim.legendary import (
-    DEFAULT_LEGENDARY_POINTS, LegendaryAction, LegendaryState, legendary_phase,
+from dnd_sim.rules.legendary import (
+    DEFAULT_LEGENDARY_POINTS, LegendaryAction, LegendaryState, legendary_phase
 )
-from dnd_sim.saves import SaveDamage, saving_throw
-from dnd_sim.stats import simulate
-from dnd_sim.usage import begin_turn
+from dnd_sim.rules.saves import SaveDamage, saving_throw
+from dnd_sim.engine.stats import simulate
+from dnd_sim.rules.usage import begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -388,7 +388,7 @@ def test_la_fase_ocurre_despues_del_end_turn(monkeypatch):
     jugador = _pj()
     log = []
     ctx = _contexto(jugador, [jugador, dragon], log=log)
-    from dnd_sim.conditions import end_turn
+    from dnd_sim.rules.conditions import end_turn
     _turno_del_dueno(dragon, ctx)
     end_turn(jugador, ctx)
     legendary_phase(jugador, ctx)
@@ -464,8 +464,8 @@ def test_el_cantrip_del_lich_se_omite_con_aviso(monkeypatch):
 
 def test_el_coste_por_defecto_es_uno_y_el_nombre_queda_limpio():
     """Sin sufijo de coste: coste 1 y nombre tal cual."""
-    from dnd_sim.actions import AttackAction
-    from dnd_sim.attack import Attack
+    from dnd_sim.model.actions import AttackAction
+    from dnd_sim.model.attack import Attack
     acciones = [AttackAction(Attack("Golpe", "1d6"))]
     state = parse_legendary({"name": "Mago", "legendary_actions": [
         {"name": "Ataque", "desc": "The mage makes a Golpe attack.", "damage": []},
@@ -576,10 +576,10 @@ def test_la_resistencia_convierte_fallos_automaticos(monkeypatch):
 def test_la_resistencia_funciona_en_todas_las_rutas(monkeypatch):
     """Ataque con rider, SaveAction, AreaSaveAction, ConditionAction y
     salvaciones de repetición de ``end_turn``."""
-    from dnd_sim.actions import SaveAction
-    from dnd_sim.attack import Attack
-    from dnd_sim.combat import attack_roll
-    from dnd_sim.conditions import ConditionEffect, end_turn
+    from dnd_sim.model.actions import SaveAction
+    from dnd_sim.model.attack import Attack
+    from dnd_sim.engine.combat import attack_roll
+    from dnd_sim.rules.conditions import ConditionEffect, end_turn
 
     dragon = _load(monkeypatch, "adult-red-dragon")
     dragon.save_overrides["dex"] = -30   # falla cualquier CD de DES
@@ -623,7 +623,7 @@ def test_la_resistencia_funciona_en_todas_las_rutas(monkeypatch):
     assert dragon.legendary.resistance_left == usos - 3
 
     # 5. Salvación de repetición al final del turno.
-    from dnd_sim.conditions import RepeatSave
+    from dnd_sim.rules.conditions import RepeatSave
     apply_condition(dragon, Condition.PARALYZED, ctx,
                     repeat_save=RepeatSave(ability="dex", dc=30))
     end_turn(dragon, ctx)
@@ -631,7 +631,7 @@ def test_la_resistencia_funciona_en_todas_las_rutas(monkeypatch):
 
 
 def test_la_resistencia_no_afecta_a_las_pruebas_de_caracteristica(monkeypatch):
-    from dnd_sim.checks import ability_check
+    from dnd_sim.rules.checks import ability_check
     dragon = _load(monkeypatch, "adult-red-dragon")
     dragon.abilities = Abilities(str=1)
     usos = dragon.legendary.resistance_left
@@ -641,8 +641,8 @@ def test_la_resistencia_no_afecta_a_las_pruebas_de_caracteristica(monkeypatch):
 
 
 def test_la_resistencia_no_afecta_a_las_tiradas_de_ataque(monkeypatch):
-    from dnd_sim.attack import Attack
-    from dnd_sim.combat import attack_roll
+    from dnd_sim.model.attack import Attack
+    from dnd_sim.engine.combat import attack_roll
     dragon = _load(monkeypatch, "adult-red-dragon")
     jugador = _pj(ac=100)
     usos = dragon.legendary.resistance_left
@@ -695,9 +695,9 @@ def test_un_pj_con_ataque_con_rider_no_aplica_la_condicion_mientras_queden_usos(
     dragon.legendary.resistance_max = 1
     dragon.save_overrides["dex"] = -30
     jugador = _pj()
-    from dnd_sim.attack import Attack
-    from dnd_sim.combat import attack_roll
-    from dnd_sim.conditions import ConditionEffect
+    from dnd_sim.model.attack import Attack
+    from dnd_sim.engine.combat import attack_roll
+    from dnd_sim.rules.conditions import ConditionEffect
     atk = Attack(
         "Golpe", "1d6", ability="str", attack_bonus=10, damage_bonus=0,
         condition_riders=[ConditionEffect(condition=Condition.PRONE,

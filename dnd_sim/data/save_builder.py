@@ -10,10 +10,10 @@ orqueste. Formato real usado por dnd5eapi.co (SRD 2014):
 """
 from __future__ import annotations
 
-from ..actions import ActionType, SaveAction
-from ..area import AreaSaveAction, AreaTargeting
-from ..conditions import ConditionAction
-from ..saves import SaveDamage, normalize_ability
+from ..model.actions import ActionType, SaveAction
+from ..rules.area import AreaSaveAction, AreaTargeting
+from ..rules.conditions import ConditionAction
+from ..rules.saves import SaveDamage, normalize_ability
 from .area_classifier import is_area_action
 
 

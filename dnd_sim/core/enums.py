@@ -6,7 +6,7 @@ los **defaults de sus campos**, y si vivieran en ``rules`` eso abriría un
 ciclo model -> rules -> model.
 
 Sus módulos de origen (``damage`` y ``roll_modifiers``) los reexportan, de
-modo que la API pública histórica (``from dnd_sim.damage import
+modo que la API pública histórica (``from dnd_sim.rules.damage import
 DamageType``) sigue funcionando sin cambios.
 """
 from __future__ import annotations

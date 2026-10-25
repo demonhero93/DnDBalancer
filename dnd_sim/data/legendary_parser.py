@@ -47,9 +47,9 @@ import re
 import warnings
 from typing import Any
 
-from ..actions import ActionType, AttackAction
-from ..attack import Attack
-from ..legendary import LegendaryAction, LegendaryState
+from ..model.actions import ActionType, AttackAction
+from ..model.attack import Attack
+from ..rules.legendary import LegendaryAction, LegendaryState
 from .area_classifier import is_area_action
 from .condition_parser import parse_condition_effects, parse_range_type
 from .save_builder import (build_condition_action, build_save_action,
@@ -253,7 +253,7 @@ def _por_texto(entry: dict, monster_name: str) -> Any:
         return None
     entry = _con_nombre_limpio(entry)
     dc = int(match.group(1))
-    from ..saves import normalize_ability
+    from ..rules.saves import normalize_ability
     try:
         ability = normalize_ability(match.group(2))
     except Exception:

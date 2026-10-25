@@ -3,7 +3,7 @@ import random
 import statistics
 
 from .combat import run_combat
-from .combatant import Combatant
+from ..model.combatant import Combatant
 
 
 def simulate(combatants: list[Combatant], n: int = 1000, seed: int | None = None) -> dict:

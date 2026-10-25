@@ -14,7 +14,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Any
 
-from .dice import RollMode, roll_d20
+from ..core.dice import RollMode, roll_d20
 from .roll_modifiers import check_modifiers
 
 from .saves import normalize_ability

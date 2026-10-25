@@ -36,11 +36,11 @@ import re
 import warnings
 from typing import Any
 
-from ..actions import ActionType
-from ..conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
-from ..saves import normalize_ability
-from ..spells import (
-    Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas,
+from ..model.actions import ActionType
+from ..rules.conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
+from ..rules.saves import normalize_ability
+from ..rules.spells import (
+    Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas
 )
 from .area_classifier import is_area_action
 from .condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
@@ -550,9 +550,9 @@ def build_spell_actions(monster_json: dict, monster_name: str = "",
     ``get_spell`` es la función que descarga el JSON del hechizo (por
     defecto :func:`dnd_sim.data.api_client.get_spell`).
     """
-    from ..spells import spell_action
+    from ..rules.spells import spell_action
 
-    from ..usage import ActionUsage, UsageKind
+    from ..rules.usage import ActionUsage, UsageKind
 
     if get_spell is None:
         from .api_client import get_spell as _get
