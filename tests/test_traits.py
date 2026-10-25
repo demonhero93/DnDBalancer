@@ -8,14 +8,22 @@ import json
 import random
 from pathlib import Path
 
+import pytest
+
 from dnd_sim import Abilities, Monster, PlayerCharacter
+from dnd_sim.actions import CombatContext, TurnResources
 from dnd_sim.attack import Attack
 from dnd_sim.combat import attack_roll, run_combat
+from dnd_sim.conditions import Condition, apply_condition
+from dnd_sim.checks import ability_check
 from dnd_sim.data.loader import load_monster
 from dnd_sim.data.trait_parser import parse_traits
 from dnd_sim.dice import RollMode
-from dnd_sim.roll_modifiers import AttackRange, attack_modifiers
-from dnd_sim.traits import BloodFrenzy, Trait
+from dnd_sim.roll_modifiers import (AttackRange, attack_modifiers,
+                                    check_modifiers, save_modifiers)
+from dnd_sim.saves import saving_throw
+from dnd_sim.traits import HOOK_NAMES, BloodFrenzy, Trait, hooks
+from dnd_sim.usage import begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -38,6 +46,12 @@ def _pj(name: str = "Guerrero", hp: int = 30) -> PlayerCharacter:
         abilities=Abilities(str=16, dex=12, con=14, int=10, wis=12, cha=8),
         attacks=[],
     )
+
+
+def _ctx(actor, combatantes, rng=None) -> CombatContext:
+    return CombatContext(rng=rng or random.Random(1), actor=actor,
+                         combatants=list(combatantes), round=1,
+                         log=[], verbose=True, resources=TurnResources())
 
 
 def _ataque_melee() -> Attack:
@@ -69,10 +83,13 @@ def test_un_monstruo_sin_rasgos_modelables_no_tiene_traits(monkeypatch):
     assert load_monster("ogre").traits == []
 
 
-def test_parse_traits_ignora_lo_gestionado_por_otro_parser():
-    # El lich solo trae Spellcasting y Legendary Resistance: ya los gestionan
-    # spell_parser y legendary_parser, aquí no deben aparecer.
-    assert parse_traits(_datos("lich")) == []
+def test_parse_traits_solo_registra_lo_modelable():
+    # Del lich solo se modela Turn Resistance: Spellcasting, Legendary
+    # Resistance y Rejuvenation ya los gestiona otro parser (o no cambian
+    # un combate).
+    assert [type(t).__name__ for t in parse_traits(_datos("lich"))] == [
+        "TurnResistance",
+    ]
 
 
 def test_parse_traits_ignora_entradas_malformadas():
@@ -156,3 +173,112 @@ def test_blood_frenzy_actua_durante_el_combate_completo(monkeypatch):
     assert any("Blood Frenzy" in linea for linea in res.log), \
         "el sahuagin debe atacar con ventaja a un objetivo herido"
     assert objetivo.hp < 100, "el sahuagin debe llegar a herir al objetivo"
+
+
+# --- Despacho único de hooks (traits.hooks) --------------------------------- #
+
+def test_hooks_solo_devuelve_los_que_sobrescriben_el_hook():
+    base = Trait(name="Base")
+    # Lista vacía/sin rasgos: nada que despachar.
+    assert hooks(None, "modify_attack_modifiers") == []
+    assert hooks([], "modify_attack_modifiers") == []
+    # La implementación por defecto de Trait es no-op: no se llama nunca.
+    assert hooks([base], "modify_attack_modifiers") == []
+    activos = hooks([base, BloodFrenzy(name="Blood Frenzy")],
+                    "modify_attack_modifiers")
+    assert [type(t).__name__ for t in activos] == ["BloodFrenzy"]
+
+
+def test_hooks_con_un_nombre_fuera_del_catalogo_lanza_error():
+    # Un typo se detecta en la primera llamada, no a mitad de un combate.
+    with pytest.raises(ValueError, match="Hook de rasgo desconocido"):
+        hooks([BloodFrenzy(name="Blood Frenzy")], "modify_attack_modifierr")
+
+
+def test_el_catalogo_cubre_hooks_que_los_rasgos_aun_no_usan():
+    base = Trait(name="Base")
+    for nombre in HOOK_NAMES:
+        assert callable(getattr(Trait, nombre)), nombre
+        assert hooks([base], nombre) == [], nombre
+
+
+# --- Hooks nuevos: salvaciones, pruebas e inicio de turno ------------------- #
+
+class _RasgoDeSalvacion(Trait):
+    """Rasgo de prueba: ventaja en cualquier salvación."""
+
+    def modify_save_modifiers(self, mods, target, ability, kind=None):
+        mods.advantage_sources.append("rasgo de salvación")
+
+
+class _RasgoDePrueba(Trait):
+    """Rasgo de prueba: ventaja en cualquier prueba de característica."""
+
+    def modify_check_modifiers(self, mods, target, ability, skill=None):
+        mods.advantage_sources.append("rasgo de prueba")
+
+
+def test_el_hook_de_salvaciones_alimenta_save_modifiers():
+    pj = _pj()
+    pj.traits = [_RasgoDeSalvacion(name="Prueba")]
+    assert save_modifiers(pj, "dex").mode is RollMode.ADVANTAGE
+    assert saving_throw(pj, "dex", 30, random.Random(1)).mode is RollMode.ADVANTAGE
+    # Sin rasgo, la salvación sigue normal.
+    assert save_modifiers(_pj(), "dex").mode is RollMode.NORMAL
+
+
+def test_el_tipo_de_efecto_kind_llega_a_los_rasgos():
+    """``saving_throw`` marca el tipo de efecto (p. ej. 'turn') para los
+    rasgos: es por donde se cuela Turn Resistance en una salvación."""
+    vistos: list = []
+
+    class RasgoDeSalvacion(Trait):
+        def modify_save_modifiers(self, mods, target, ability, kind=None):
+            vistos.append(kind)
+
+    pj = _pj()
+    pj.traits = [RasgoDeSalvacion(name="Prueba")]
+    saving_throw(pj, "dex", 12, random.Random(1))
+    saving_throw(pj, "dex", 12, random.Random(1), kind="turn")
+    assert vistos == [None, "turn"]
+    # Un combatiente sin rasgos aguanta el parámetro sin más.
+    assert saving_throw(_pj(), "wis", 12, random.Random(1),
+                        kind="turn").mode is RollMode.NORMAL
+
+
+def test_el_hook_de_pruebas_alimenta_check_modifiers():
+    pj = _pj()
+    pj.traits = [_RasgoDePrueba(name="Prueba")]
+    assert check_modifiers(pj, "wis").mode is RollMode.ADVANTAGE
+    assert ability_check(pj, "wis", 40, random.Random(2)).mode is RollMode.ADVANTAGE
+    assert check_modifiers(_pj(), "wis").mode is RollMode.NORMAL
+
+
+def test_on_turn_start_se_dispara_al_inicio_del_turno():
+    llamadas: list = []
+
+    class RasgoDeTurno(Trait):
+        def on_turn_start(self, actor, ctx=None):
+            llamadas.append(actor)
+
+    pj = _pj()
+    pj.traits = [RasgoDeTurno(name="Prueba")]
+    begin_turn(pj, _ctx(pj, [pj]))
+    assert llamadas == [pj]
+
+
+def test_on_turn_start_tambien_se_dispara_estando_incapacitado():
+    """Es un efecto automático de la ficha, no una acción."""
+    llamadas: list = []
+
+    class RasgoDeTurno(Trait):
+        def on_turn_start(self, actor, ctx=None):
+            llamadas.append(actor)
+
+    pj = _pj()
+    pj.traits = [RasgoDeTurno(name="Prueba")]
+    ctx = _ctx(pj, [pj])
+    apply_condition(pj, Condition.INCAPACITATED, ctx)
+    begin_turn(pj, ctx)
+    assert llamadas == [pj]
+    assert any("incapacitado" in l for l in ctx.log)

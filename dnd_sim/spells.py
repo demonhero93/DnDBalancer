@@ -320,7 +320,9 @@ class SpellFixedDamageAction(CombatAction):
     """Daño automático: acierta siempre y sin tirada de ataque ni de
     salvación (p. ej. el Proyectil Mágico).
 
-    El objetivo se elige al azar entre los hostiles vivos.
+    El objetivo se elige al azar entre los hostiles vivos y el daño pasa por
+    :func:`dnd_sim.damage.apply_damage_modifiers` igual que el de un ataque
+    (un inmune al tipo de daño no pierde PV).
     """
 
     damage: str = "1d4"
@@ -333,27 +335,46 @@ class SpellFixedDamageAction(CombatAction):
     def execute(self, context: CombatContext) -> None:
         _romper_invisibilidad_al_lanzar(context)
         try:
-            from .damage import inflict_damage
+            from .damage import (apply_damage_modifiers, inflict_damage,
+                                 parse_damage_type)
         except ImportError:  # pragma: no cover - ejecución como script suelto
             try:
-                from damage import inflict_damage
+                from damage import (apply_damage_modifiers, inflict_damage,
+                                    parse_damage_type)
             except ImportError:
-                from dnd_sim.damage import inflict_damage
+                from dnd_sim.damage import (apply_damage_modifiers,
+                                            inflict_damage,
+                                            parse_damage_type)
+        try:
+            from .combat import _tag_modificadores
+        except ImportError:  # pragma: no cover - ejecución como script suelto
+            try:
+                from combat import _tag_modificadores
+            except ImportError:
+                from dnd_sim.combat import _tag_modificadores
         alcanzados = []
         for _ in range(max(1, int(self.elements or 1))):
             targets = valid_targets(context.actor, ctx=context)
             if not targets:
                 return
             target = pick(context.rng, targets)
+            dt = parse_damage_type(self.damage_type)
             cantidad = roll_dice(self.damage, context.rng)
-            inflict_damage(target, cantidad, self.damage_type,
+            # Como el daño de un ataque, la inmunidad/resistencia/
+            # vulnerabilidad del objetivo se resuelve antes de infligir
+            # (p. ej. un objetivo inmune al daño de fuerza no pierde PV
+            # con el Proyectil Mágico).
+            final = apply_damage_modifiers(cantidad, dt, target)
+            inflict_damage(target, final, dt,
                            source=context.actor, ctx=context)
             alcanzados.append(target)
             log = context.log if (context.log is not None) else None
             if log is not None:
+                tag = _tag_modificadores(cantidad, final, dt, target)
                 log.append(f"  {getattr(context.actor, 'name', context.actor)} -> "
                            f"{getattr(target, 'name', target)} con {self.name}: "
-                           f"{cantidad} daño (HP {max(target.hp, 0)}/{target.max_hp})")
+                           f"{final} daño{tag} "
+                           f"(HP {max(target.hp, 0)}/{target.max_hp})")
         # Reacciones de los objetivos heridos (una por turno propio cada uno).
         for objetivo in alcanzados:
             trigger_reaction(objetivo, context)

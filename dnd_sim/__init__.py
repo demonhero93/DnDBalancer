@@ -38,7 +38,9 @@ try:
         SpellFixedDamageAction, SpellStateAction, Spellcasting, StateEffect,
         spell_action,
     )
-    from .traits import BloodFrenzy, DamageTransfer, Trait
+    from .traits import (BloodFrenzy, DamageTransfer, HeatedBody,
+                         MartialAdvantage, PackTactics, Regeneration, Trait,
+                         TurnResistance)
     from .dice import D20Result, RollMode, roll_d20, roll_dice, d20
     from .randomness import pick, sample
     from .stats import simulate, print_report
@@ -113,7 +115,9 @@ except ImportError:
     except Exception:
         pass
     try:
-        from traits import BloodFrenzy, DamageTransfer, Trait
+        from traits import (BloodFrenzy, DamageTransfer, HeatedBody,
+                            MartialAdvantage, PackTactics, Regeneration,
+                            Trait, TurnResistance)
     except Exception:
         pass
     from dice import D20Result, RollMode, roll_d20, roll_dice, d20
@@ -141,10 +145,12 @@ __all__ = [
     "CombatContext", "Combatant", "CombatResult", "CombatState", "Condition",
     "ConditionAction", "ConditionEffect", "ConditionInstance",
     "ConditionTracker", "D20Result", "DamageType", "DamageTransfer",
-    "EXCLUDED_CONDITIONS",
+    "EXCLUDED_CONDITIONS", "HeatedBody",
     "EscapeCheck", "MultiattackAction", "RANGED_COVER_AC_BONUS", "RepeatSave",
+    "MartialAdvantage", "PackTactics",
     "RollMode", "SaveAction", "SaveDamage", "SaveDamageOutcome", "SaveModifiers",
-    "SaveResult", "Trait", "TurnResources", "UsageKind", "WeaponAttackAction",
+    "SaveResult", "Trait", "TurnResistance", "TurnResources", "UsageKind",
+    "WeaponAttackAction",
     "ability_check", "ability_check_bonus", "apply_condition",
     "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
     "attempt_escapes", "begin_turn", "check_modifiers", "d20", "desenganchar",
@@ -157,7 +163,7 @@ __all__ = [
     "saving_throw", "select_area_targets", "simulate", "load_monster",
     "HealAction", "HealEffect", "Spell", "SpellAction", "SpellAttackAction",
     "SpellFixedDamageAction", "SpellStateAction", "Spellcasting",
-    "StateEffect", "spell_action",
+    "StateEffect", "spell_action", "Regeneration",
     "DEFAULT_LEGENDARY_POINTS", "LegendaryAction", "LegendaryState",
     "legendary_phase", "legendary_resistance",
 ]

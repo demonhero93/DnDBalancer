@@ -22,6 +22,7 @@ from dnd_sim.data.loader import load_monster
 from dnd_sim.data.spell_parser import (
     build_spell_actions, parse_spell, parse_spellcasting,
 )
+from dnd_sim.damage import DamageType
 from dnd_sim.roll_modifiers import AttackRange, attack_modifiers
 from dnd_sim.spells import (
     HealAction, Spell, SpellAction, SpellAttackAction, SpellFixedDamageAction,
@@ -385,6 +386,34 @@ def test_el_proyectil_magico_es_dano_automatico():
     assert spell.damage == "3d4+3"
     accion = spell_action(spell, _spellcasting(level=18))
     assert isinstance(accion.effect, SpellFixedDamageAction)
+
+
+def test_el_proyectil_magico_pasa_por_los_modificadores_de_dano():
+    """El daño fijo también respeta inmunidad/resistencia/vulnerabilidad."""
+    lanzador = _npc(name="Lanzador")
+    inmune = _pj(name="Inmune")
+    inmune.immunities = {DamageType.FORCE}
+    resiste = _pj(name="Resistente")
+    resiste.resistances = {DamageType.FORCE}
+    control = _pj(name="Control")
+
+    def lanzar(objetivo, semilla: int):
+        ctx = _ctx(lanzador, [lanzador, objetivo], rng=random.Random(semilla))
+        SpellFixedDamageAction(name="Proyectil Mágico", damage="10d4",
+                               elements=1).execute(ctx)
+        return ctx
+
+    ctx_inmune = lanzar(inmune, 4)
+    lanzar(control, 4)
+    ctx_resiste = lanzar(resiste, 4)
+
+    # Misma semilla en los tres => misma tirada de dados.
+    assert inmune.hp == inmune.max_hp, "el inmune al daño de fuerza no pierde PV"
+    assert any("inmune" in l for l in ctx_inmune.log), ctx_inmune.log
+    perdido = control.max_hp - control.hp
+    assert perdido > 0
+    assert resiste.max_hp - resiste.hp == perdido // 2
+    assert any("resistencia" in l for l in ctx_resiste.log), ctx_resiste.log
 
 
 def test_la_luz_de_hadas_senala_al_objetivo():

@@ -197,6 +197,19 @@ def _notify_damage_taken(target, amount, damage_type, source):
     # (No se llama para evitar doble conteo; solo si la prueba lo exige.)
 
 
+def _hooks(traits: Any, nombre: str) -> list:
+    """Rasgos que sobrescriben ``nombre`` (import perezoso: evita el ciclo
+    ``traits`` -> ``damage``; traits.py importa este módulo)."""
+    try:
+        from .traits import hooks
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from traits import hooks
+        except ImportError:
+            from dnd_sim.traits import hooks
+    return hooks(traits, nombre)
+
+
 def inflict_damage(target: "Combatant", amount: int,
                    damage_type: Any = None, source: Any = None,
                    ctx: Any = None) -> int:
@@ -219,12 +232,11 @@ def inflict_damage(target: "Combatant", amount: int,
     """
     original = int(amount or 0)
     amt = original
-    if original > 0:
-        for rasgo in list(getattr(target, "traits", None) or []):
-            hook = getattr(rasgo, "modify_incoming_damage", None)
-            if hook is None:
-                continue
-            nuevo = hook(target, amt, damage_type, source, ctx)
+    traits = getattr(target, "traits", None)
+    if original > 0 and traits:
+        for rasgo in _hooks(traits, "modify_incoming_damage"):
+            nuevo = rasgo.modify_incoming_damage(target, amt, damage_type,
+                                                 source, ctx)
             if nuevo is not None:
                 amt = max(0, int(nuevo))
     try:
@@ -242,11 +254,9 @@ def inflict_damage(target: "Combatant", amount: int,
         pass
     _notify_damage_dealt(source, target, amt, dt)
     _notify_damage_taken(target, amt, dt, source)
-    if original > 0:
-        for rasgo in list(getattr(target, "traits", None) or []):
-            hook = getattr(rasgo, "after_damage_taken", None)
-            if hook is not None:
-                hook(target, original, damage_type, source, ctx)
+    if original > 0 and traits:
+        for rasgo in _hooks(traits, "after_damage_taken"):
+            rasgo.after_damage_taken(target, original, damage_type, source, ctx)
     return amt
 
 

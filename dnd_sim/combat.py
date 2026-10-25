@@ -190,6 +190,41 @@ def _bonus_de_tamano(attacker: Any, atk: Any, rng: Any) -> int:
     return roll_dice("1d4", rng)
 
 
+def _bonus_de_rasgos(attacker: Any, target: Any, rango: Any, crit: bool,
+                     ctx: Any, rng: Any, log: Any) -> int:
+    """Daño adicional que los rasgos del atacante suman a este golpe.
+
+    Hoy solo Martial Advantage (hobgoblin): el hook decide si le aplica (su
+    condición es de posición, resuelta al azar si el atacante tiene
+    aliados) y tira sus dados. Devuelve la suma de todos los rasgos que
+    aporten; el import de :mod:`dnd_sim.traits` es perezoso y solo se hace
+    si el atacante tiene rasgos.
+    """
+    traits = getattr(attacker, "traits", None)
+    if not traits:
+        return 0
+    try:
+        from .traits import hooks
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from traits import hooks
+        except ImportError:
+            from dnd_sim.traits import hooks
+    total = 0
+    for rasgo in hooks(traits, "extra_attack_damage"):
+        bonus = int(rasgo.extra_attack_damage(attacker, target, rango,
+                                              crit=crit, ctx=ctx,
+                                              rng=rng) or 0)
+        if bonus <= 0:
+            continue
+        total += bonus
+        if log is not None:
+            log.append(f"  {getattr(attacker, 'name', attacker)} suma "
+                       f"{bonus} de {getattr(rasgo, 'name', rasgo)} "
+                       f"(daño extra)")
+    return total
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
                 verbose: bool = False, ctx: Any = None) -> None:
@@ -224,7 +259,8 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     # se resuelve con ventaja y a partir de aquí deja de estar invisible
     # (# TODO: también al lanzar un hechizo o al usar Enlarge; hoy solo la
     # rompe un ataque).
-    modifiers = attack_modifiers(attacker, target, atk, rango)
+    modifiers = attack_modifiers(attacker, target, atk, rango, ctx=ctx,
+                                 rng=rng)
     mode = modifiers.mode
     if remove_condition(attacker, Condition.INVISIBLE, None) and log is not None:
         log.append(f"  {attacker.name} deja de estar invisible (ataca)")
@@ -260,25 +296,19 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             raw_dmg = max(0, roll_dice(dados, rng, crit=crit)
                           + attacker.dmg_bonus(atk))
             raw_dmg += _bonus_de_tamano(attacker, atk, rng)
+            # Daño extra de los rasgos del atacante (p. ej. Martial
+            # Advantage): entra en el bruto, así que la inmunidad y la
+            # resistencia del objetivo también le afectan.
+            raw_dmg += _bonus_de_rasgos(attacker, target, rango, crit,
+                                        ctx, rng, log)
         dt = atk.damage_type
-        if dt in target.immunities:
-            dmg = 0
-            mod_tag = " (inmune)"
-        elif dt in target.resistances and dt in target.vulnerabilities:
-            after_resist = raw_dmg // 2
-            dmg = after_resist * 2
-            mod_tag = (f" (resistencia: {raw_dmg} -> {after_resist})"
-                       f" (vulnerable: {after_resist} -> {dmg})")
-        elif dt in target.resistances:
-            dmg = raw_dmg // 2
-            mod_tag = f" (resistencia: {raw_dmg} -> {dmg})"
-        elif dt in target.vulnerabilities:
-            dmg = raw_dmg * 2
-            mod_tag = f" (vulnerable: {raw_dmg} -> {dmg})"
-        else:
-            dmg = raw_dmg
-            mod_tag = ""
+        # Única fuente de inmunidad/resistencia/vulnerabilidad (y de la
+        # resistencia por estar petrificado): la regla se aplicaba **dos
+        # veces** —una en este bloque y otra en apply_damage_modifiers— y el
+        # valor de este bloque se descartaba justo después; solo sobrevivía
+        # la etiqueta del log, que ahora se deriva del resultado real.
         dmg = apply_damage_modifiers(raw_dmg, dt, target)
+        mod_tag = _tag_modificadores(raw_dmg, dmg, dt, target)
         inflict_damage(target, dmg, dt, source=attacker, ctx=ctx)
         # Daño adicional del arma (p. ej. el 1d6 de fuego del Warhammer
         # del azer o el ácido del mordisco de un dragón). Cada entrada
@@ -290,14 +320,15 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         for _extra in getattr(atk, "extra_damage", None) or []:
             _raw_x = roll_dice(_extra.damage, rng, crit=crit)
             _dmg_x = apply_damage_modifiers(_raw_x, _extra.damage_type, target)
-            if _dmg_x > 0:
-                inflict_damage(target, _dmg_x, _extra.damage_type,
-                               source=attacker, ctx=ctx)
+            # Como el daño principal, la llamada se hace **siempre** (aunque
+            # quede en 0 por inmunidad): el registro de daño y las
+            # reacciones ven el mismo flujo para los dos tipos.
+            inflict_damage(target, _dmg_x, _extra.damage_type,
+                           source=attacker, ctx=ctx)
             extra_total += _dmg_x
             extra_partes.append(f"{_dmg_x} {_extra.damage_type.value}")
         extra_tag = (" + " + " + ".join(extra_partes)) if extra_partes else ""
         _riders_to_run = list(getattr(atk, "save_riders", None) or [])
-        _log_first = log_enabled
         if log_enabled:
             mode_tag = _mode_tag(mode, result, modifiers.reason())
             tag = " CRÍTICO" if crit else ""
@@ -306,7 +337,9 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             log.append(f"  {attacker.name} -> {target.name} con {atk.name}: "
                        f"{roll}{mode_tag}+{bonus}={total} vs CA {ca_efectiva}{ca_tag}{tag}, "
                        f"{dmg} daño{extra_tag} (HP {max(target.hp, 0)}/{target.max_hp}){mod_tag}")
-        for _rider in _riders_to_run:
+        if _riders_to_run:
+            # Import perezoso **una vez**, fuera del bucle: si no, se repite
+            # por cada rider del ataque.
             try:
                 from .saves import resolve_save_damage as _rsd
             except ImportError:
@@ -314,17 +347,18 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                     from saves import resolve_save_damage as _rsd
                 except ImportError:
                     from dnd_sim.saves import resolve_save_damage as _rsd
+        for _rider in _riders_to_run:
             _rctx = type("RiderCtx", (), {})()
             _rctx.rng = rng
-            _rctx.log = log if _log_first else None
-            _rctx.verbose = _log_first
+            _rctx.log = log
+            _rctx.verbose = log_enabled
             _rsd(attacker, target, _rider, _rctx)
         # Riders de condición (tras el daño y los riders de daño).
-        _apply_condition_riders(attacker, target, atk, rng, log if _log_first else None, ctx)
+        _apply_condition_riders(attacker, target, atk, rng, log, ctx)
         # Reacción del objetivo golpeado (p. ej. Heated Body del azer): se
         # ejecuta en cada impacto, aunque el daño haya sido 0 por inmunidad.
         _trigger_after_being_hit(target, attacker, rango,
-                                 log if _log_first else None, ctx, rng)
+                                 log, ctx, rng)
         # Efectos posteriores al impacto (p. ej. el enganche del cloaker):
         # reciben los modificadores para poder ver si el ataque iba con
         # ventaja (enganche a la cabeza).
@@ -339,6 +373,32 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                   if getattr(getattr(target, "state", None), "at_range", False) else "")
         log.append(f"  {attacker.name} -> {target.name} con {atk.name}: "
                    f"{roll}{mode_tag}+{bonus}={total} vs CA {ca_efectiva}{ca_tag}, falla")
+
+
+def _tag_modificadores(raw: int, final: int, dt: Any, target: Any) -> str:
+    """Etiqueta del log con lo que han hecho inmunidad/resistencia/vulnerabilidad.
+
+    Se deriva del resultado de :func:`dnd_sim.damage.apply_damage_modifiers`
+    (así el log también refleja la resistencia de estar petrificado, que la
+    regla reimplementada en ``attack_roll`` no contemplaba). Sin daño que
+    modificar no hay etiqueta.
+    """
+    if int(raw) <= 0 or int(final) == int(raw):
+        return ""
+    if dt in getattr(target, "immunities", set()):
+        return " (inmune)"
+    resiste = dt in getattr(target, "resistances", set())
+    vulnerable = dt in getattr(target, "vulnerabilities", set())
+    if resiste and vulnerable:
+        after_resist = int(raw) // 2
+        return (f" (resistencia: {raw} -> {after_resist})"
+                f" (vulnerable: {after_resist} -> {final})")
+    if resiste:
+        return f" (resistencia: {raw} -> {final})"
+    if vulnerable:
+        return f" (vulnerable: {raw} -> {final})"
+    # Otra regla de apply_damage_modifiers (p. ej. petrificado: resiste todo).
+    return f" (resistencia: {raw} -> {final})"
 
 
 def _actualizar_distancia(attacker, rango, log) -> None:
@@ -417,12 +477,20 @@ def _trigger_after_being_hit(target: Any, attacker: Any, rango: Any,
     Hoy solo ``Heated Body`` (azer): daño de fuego a quien impacta cuerpo a
     cuerpo. El hook se ejecuta tras el daño, en **cada** impacto (aunque el
     daño haya sido 0 por inmunidad del objetivo), porque el trigger de la
-    ficha es el impacto, no el daño recibido.
+    ficha es el impacto, no el daño recibido. Solo se piden los rasgos que
+    sobrescriben el hook (:func:`dnd_sim.traits.hooks`).
     """
-    traits = list(getattr(target, "traits", None) or [])
+    traits = getattr(target, "traits", None)
     if not traits:
         return
-    hookable = [t for t in traits if getattr(t, "after_being_hit", None)]
+    try:
+        from .traits import hooks
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from traits import hooks
+        except ImportError:
+            from dnd_sim.traits import hooks
+    hookable = hooks(traits, "after_being_hit")
     if not hookable:
         return
     _ctx = ctx
@@ -434,10 +502,7 @@ def _trigger_after_being_hit(target: Any, attacker: Any, rango: Any,
     elif getattr(_ctx, "rng", None) is None:
         _ctx.rng = rng
     for trait in hookable:
-        try:
-            trait.after_being_hit(target, attacker, rango, ctx=_ctx)
-        except Exception:
-            continue
+        trait.after_being_hit(target, attacker, rango, ctx=_ctx)
 
 
 def _reaccion_si_procede(target: Any, ctx: Any) -> None:
@@ -580,9 +645,12 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                     if not enemies:
                         break
             else:
-                # Turno perdido por incapacitación.
-                turns_lost_incapacitated[actor.name] = (
-                    turns_lost_incapacitated.get(actor.name, 0) + 1)
+                # Turno perdido. Solo cuenta como incapacitación si la
+                # criatura sigue viva: quien muere al empezar su turno
+                # (Regeneration) no «pierde» el turno, ya no está.
+                if actor.alive:
+                    turns_lost_incapacitated[actor.name] = (
+                        turns_lost_incapacitated.get(actor.name, 0) + 1)
             # Final del turno: salvaciones de repetición y duración de las
             # condiciones del propio combatiente.
             end_turn(actor, ctx)

@@ -112,7 +112,7 @@ def _resolve_mode_str(value: Any) -> RollMode:
 
 
 def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
-                 mode: Any = None) -> SaveResult:
+                 mode: Any = None, *, kind: str | None = None) -> SaveResult:
     """Tira una salvación de D&D 5e.
 
     Un 20 natural NO es éxito automático y un 1 natural NO es fallo
@@ -127,6 +127,11 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     convertir el fallo en éxito (según ``resistance_probability``). El
     resultado se marca con ``legendary_resistance_used``.
 
+    ``kind`` dice qué tipo de efecto provoca la salvación cuando quien lo
+    conoce lo pasa (``"turn"`` = efecto que convierte no-muertos); lo
+    reciben los hooks de rasgo vía
+    :func:`dnd_sim.roll_modifiers.save_modifiers`.
+
     # TODO: la Resistencia mágica (ventaja contra hechizos) no se modela.
     """
     ab = normalize_ability(ability)
@@ -137,7 +142,7 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
             from roll_modifiers import save_modifiers
         except ImportError:
             from dnd_sim.roll_modifiers import save_modifiers
-    modifiers = save_modifiers(target, ab)
+    modifiers = save_modifiers(target, ab, kind)
 
     if modifiers.auto_fail:
         return _con_resistencia_legendaria(target, SaveResult(
@@ -235,14 +240,13 @@ def _as_combat_context(ctx: Any) -> Any:
     return ctx
 
 
-def _log_line(ctx: Any, line: str) -> None:
-    log = getattr(ctx, "log", None)
-    if log is None:
-        return
+try:
+    from .log import log_line as _log_line
+except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
-        log.append(line)
-    except Exception:
-        pass
+        from log import log_line as _log_line
+    except ImportError:
+        from dnd_sim.log import log_line as _log_line
 
 
 def _inflict_for_save(target: Any, amount: int, damage_type: Any,

@@ -121,15 +121,13 @@ class ActionUsage:
         return False
 
 
-def _log_line(ctx, line: str) -> None:
-    """Añade una línea al log del combate si el contexto lo tiene."""
-    log = getattr(ctx, "log", None)
-    if log is None:
-        return
+try:
+    from .log import log_line as _log_line
+except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
-        log.append(line)
-    except Exception:
-        pass
+        from log import log_line as _log_line
+    except ImportError:
+        from dnd_sim.log import log_line as _log_line
 
 
 def begin_turn(actor, ctx):
@@ -144,12 +142,15 @@ def begin_turn(actor, ctx):
     2. Se **recarga la reacción** del actor (5e: la reacción se recarga al
        empezar tu turno): ``state.reaction_used = False``.
     3. Tiradas de recarga de las acciones descargadas del actor.
-    4. ``attempt_escapes``: intentos de liberarse de los estados con prueba
+    4. ``on_turn_start``: efectos pasivos de los rasgos del actor
+       (p. ej. Regeneration). Automáticos y **antes** de comprobar la
+       incapacidad, como cualquier otra cosa de este inicio de turno.
+    5. ``attempt_escapes``: intentos de liberarse de los estados con prueba
        de escape (automáticos, no son una elección).
-    5. ``intentar_desenganche``: prueba de Fuerza CD 16 para soltarse del
+    6. ``intentar_desenganche``: prueba de Fuerza CD 16 para soltarse del
        enganche de otra criatura (p. ej. el cloaker). También automática y
        con gasto de acción.
-    6. Si el actor está incapacitado, se salta el turno (sin política y
+    7. Si el actor está incapacitado, se salta el turno (sin política y
        sin consumir RNG).
 
     La tirada de recarga ocurre al inicio del turno propio del monstruo, así
@@ -207,7 +208,24 @@ def begin_turn(actor, ctx):
             f" -> {resultado}",
         )
 
-    # (4) Intentos de escape (automáticos).
+    # (4) Rasgos con efecto al inicio del turno (hooks ``on_turn_start``):
+    #     efectos automáticos de la ficha (p. ej. Regeneration). No gastan
+    #     acción, así que se ejecutan aunque el actor esté incapacitado.
+    #     Import local al estilo del resto del módulo (traits.py solo se
+    #     carga si el actor tiene rasgos).
+    traits = getattr(actor, "traits", None)
+    if traits:
+        try:
+            from .traits import hooks
+        except ImportError:  # pragma: no cover - ejecución como script suelto
+            try:
+                from traits import hooks
+            except ImportError:
+                from dnd_sim.traits import hooks
+        for rasgo in hooks(traits, "on_turn_start"):
+            rasgo.on_turn_start(actor, ctx)
+
+    # (5) Intentos de escape (automáticos).
     try:
         from .conditions import attempt_escapes
     except ImportError:  # pragma: no cover - ejecución como script suelto
@@ -220,7 +238,7 @@ def begin_turn(actor, ctx):
     except Exception:
         pass
 
-    # (5) Intento de desenganche (automático): CD 16 de Fuerza para
+    # (6) Intento de desenganche (automático): CD 16 de Fuerza para
     #     soltarse del enganche de otra criatura (cloaker). Import local:
     #     attach importa a actions, que importa este módulo (haría ciclo).
     try:
@@ -235,7 +253,7 @@ def begin_turn(actor, ctx):
     except Exception:
         pass
 
-    # (6) Un combatiente incapacitado pierde el turno entero.
+    # (7) Un combatiente incapacitado pierde el turno entero.
     if not getattr(actor, "can_act", True):
         try:
             ctx.skip_turn = True

@@ -10,9 +10,15 @@ Este módulo es la **única fuente** donde se decide el modo de una tirada:
 ``resolve_roll_mode`` (en :mod:`dnd_sim.combat`) y ``saving_throw`` (en
 :mod:`dnd_sim.saves`) delegan aquí.
 
-Ninguna regla consume RNG salvo la elección de rango de un ataque "a cuerpo
-a cuerpo o a distancia", y solo cuando el resultado depende de ella (el
-objetivo está derribado, paralizado o inconsciente).
+Ninguna regla consume RNG salvo en dos casos, ambos documentados:
+
+- la elección de rango de un ataque "a cuerpo a cuerpo o a distancia" (es
+  decir, un arma ``MELEE_OR_RANGED``), y solo cuando el resultado depende
+  de ella (el objetivo está derribado, paralizado o inconsciente);
+- los rasgos con condición de **posición** (Pack Tactics, Martial
+  Advantage), que sortean su resultado **solo** si el atacante tiene
+  aliados y la llamada llega con ``ctx`` y ``rng``: una llamada directa
+  sin contexto no consume nada.
 """
 from __future__ import annotations
 
@@ -129,6 +135,19 @@ class CheckModifiers:
         return RollMode.NORMAL
 
 
+def _hooks(traits: Any, nombre: str) -> list:
+    """Rasgos que sobrescriben ``nombre`` (import perezoso: evita el ciclo
+    ``roll_modifiers`` -> ``traits``, que importa AttackRange de aquí)."""
+    try:
+        from .traits import hooks
+    except ImportError:  # pragma: no cover - ejecución como script suelto
+        try:
+            from traits import hooks
+        except ImportError:
+            from dnd_sim.traits import hooks
+    return hooks(traits, nombre)
+
+
 def _condiciones(combatant: Any) -> set:
     """Condiciones activas de un combatiente (conjunto vacío si no tiene)."""
     tracker = getattr(combatant, "conditions", None)
@@ -157,16 +176,24 @@ def resolve_attack_range(attack: Any, rng: Any) -> AttackRange:
 
 
 def attack_modifiers(attacker: Any, target: Any, attack: Any,
-                     rango: Any = None) -> AttackModifiers:
+                     rango: Any = None, *, ctx: Any = None,
+                     rng: Any = None) -> AttackModifiers:
     """Reúne los modificadores de la tirada de ataque de ``attacker``.
 
     ``rango`` es el rango ya resuelto (:func:`resolve_attack_range`): si no
     se pasa, se usa el del ataque (sin decidir "cuerpo a cuerpo o a
     distancia").
+
+    ``ctx`` y ``rng`` solo los usan los rasgos cuya condición no se puede
+    comprobar (Pack Tactics): sin ellos esos rasgos no aplican y, muy
+    importante, **no consumen RNG**, así que llamar a esta función sin
+    contexto (como hacen las pruebas directas) no altera ninguna tirada.
     """
     mods = AttackModifiers()
     cond_atacante = _condiciones(attacker)
     cond_objetivo = _condiciones(target)
+    if rng is None and ctx is not None:
+        rng = getattr(ctx, "rng", None)
     if not isinstance(rango, AttackRange):
         # Rango no resuelto (None o un valor ajeno, p. ej. el rng que
         # resolve_roll_mode pasaba por compatibilidad): se usa el del ataque.
@@ -230,12 +257,16 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
         else:
             mods.advantage_sources.append("objetivo derribado, cuerpo a cuerpo")
 
-    # 5. Rasgos especiales del atacante (p. ej. Blood Frenzy del sahuagin):
-    #    cada rasgo decide por sí mismo si aplica (rango, objetivo herido...).
-    for rasgo in getattr(attacker, "traits", []) or []:
-        hook = getattr(rasgo, "modify_attack_modifiers", None)
-        if hook is not None:
-            hook(mods, attacker, target, rango)
+    # 5. Rasgos especiales del atacante (Blood Frenzy, Pack Tactics...):
+    #    cada rasgo decide por sí mismo si aplica (rango, objetivo herido,
+    #    aliados cerca...). Solo los que sobrescriben el hook
+    #    (traits.hooks). Reciben el contexto y el RNG por si su condición
+    #    no es comprobable.
+    traits_atacante = getattr(attacker, "traits", None)
+    if traits_atacante:
+        for rasgo in _hooks(traits_atacante, "modify_attack_modifiers"):
+            rasgo.modify_attack_modifiers(mods, attacker, target, rango,
+                                          ctx=ctx, rng=rng)
 
     # 6. Crítico automático: contra un objetivo paralizado o inconsciente,
     #    todo ataque cuerpo a cuerpo que impacte es crítico.
@@ -246,8 +277,19 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
     return mods
 
 
-def save_modifiers(target: Any, ability: str) -> SaveModifiers:
-    """Reúne los modificadores de una tirada de salvación del objetivo."""
+def save_modifiers(target: Any, ability: str,
+                   kind: str | None = None) -> SaveModifiers:
+    """Reúne los modificadores de una tirada de salvación del objetivo.
+
+    Además de condiciones e indicadores estáticos, consulta los hooks
+    ``modify_save_modifiers`` de los rasgos del objetivo
+    (:mod:`dnd_sim.traits`).
+
+    ``kind`` identifica el tipo de efecto que provoca la salvación cuando
+    quien la tira lo sabe (``"turn"`` = un efecto que convierte
+    no-muertos); hoy solo lo usa Turn Resistance y todavía no lo pasa
+    nadie (# TODO: Turn Undead).
+    """
     mods = SaveModifiers()
     cond = _condiciones(target)
 
@@ -272,6 +314,14 @@ def save_modifiers(target: Any, ability: str) -> SaveModifiers:
             and str(ability).strip().lower() in ("str", "strength")):
         mods.advantage_sources.append("agrandado")
 
+    # Rasgos especiales (Turn Resistance): cada rasgo decide por sí mismo si
+    # aplica, según el tipo de efecto (``kind``) que provoca la salvación.
+    # Solo los que sobrescriben el hook.
+    traits = getattr(target, "traits", None)
+    if traits:
+        for rasgo in _hooks(traits, "modify_save_modifiers"):
+            rasgo.modify_save_modifiers(mods, target, ability, kind)
+
     return mods
 
 
@@ -283,6 +333,9 @@ def check_modifiers(target: Any, ability: str) -> CheckModifiers:
       la vista.)
     - ENLARGED da ventaja en las pruebas de Fuerza.
     - Indicadores estáticos ``checks_with_advantage/disadvantage``.
+    - Hooks ``modify_check_modifiers`` de los rasgos del objetivo
+      (:mod:`dnd_sim.traits`), con ``skill=None`` hasta que se modelen las
+      habilidades.
     """
     mods = CheckModifiers()
     cond = _condiciones(target)
@@ -302,6 +355,13 @@ def check_modifiers(target: Any, ability: str) -> CheckModifiers:
         mods.advantage_sources.append("efecto fijo")
     if ability in desventaja:
         mods.disadvantage_sources.append("efecto fijo")
+
+    # Rasgos especiales (p. ej. Keen Senses): cada rasgo decide por sí mismo
+    # si aplica. Solo los que sobrescriben el hook.
+    traits = getattr(target, "traits", None)
+    if traits:
+        for rasgo in _hooks(traits, "modify_check_modifiers"):
+            rasgo.modify_check_modifiers(mods, target, ability, skill=None)
 
     return mods
 

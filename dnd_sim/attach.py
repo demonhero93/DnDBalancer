@@ -54,14 +54,13 @@ except ImportError:  # pragma: no cover - ejecución como script suelto
 DC_DESENGANCHE = 16
 
 
-def _log_line(ctx: Any, line: str) -> None:
-    log = getattr(ctx, "log", None)
-    if log is None:
-        return
+try:
+    from .log import log_line as _log_line
+except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
-        log.append(line)
-    except Exception:
-        pass
+        from log import log_line as _log_line
+    except ImportError:
+        from dnd_sim.log import log_line as _log_line
 
 
 def _ya_cegado_por(target: Any, enganchador: Any) -> bool:
@@ -88,7 +87,8 @@ class Attach(Trait):
     name: str = "Enganche"
 
     def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
-                                rango: Any) -> None:
+                                rango: Any, ctx: Any = None,
+                                rng: Any = None) -> None:
         enganchado = getattr(getattr(attacker, "state", None), "attached_to", None)
         if enganchado is target:
             mods.advantage_sources.append(self.name or "Enganche")

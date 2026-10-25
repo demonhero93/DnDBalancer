@@ -1,5 +1,6 @@
 import json
 import random
+import re
 from pathlib import Path
 
 import pytest
@@ -137,6 +138,49 @@ def test_attack_roll_log_modifier(monkeypatch, capsys):
     b = Monster(name="B", max_hp=20, ac=5, vulnerabilities={"fire"})
     res = run_combat([a, b], random.Random(1), verbose=True)
     assert any("(vulnerable:" in line for line in res.log)
+
+
+def test_etiqueta_de_modificadores_se_deriva_del_dano_final():
+    """El tag del log no reimplementa la regla: sale del resultado real."""
+    from dnd_sim.combat import _tag_modificadores
+
+    assert _tag_modificadores(7, 3, "bludgeoning",
+                              _target(resistances={"bludgeoning"})) \
+        == " (resistencia: 7 -> 3)"
+    assert _tag_modificadores(5, 10, "fire",
+                              _target(vulnerabilities={"fire"})) \
+        == " (vulnerable: 5 -> 10)"
+    assert _tag_modificadores(7, 0, "poison", _target(immunities={"poison"})) \
+        == " (inmune)"
+    # Sin daño que modificar (o sin cambio) no hay etiqueta.
+    assert _tag_modificadores(7, 7, "fire", _target(vulnerabilities={"fire"})) == ""
+    assert _tag_modificadores(0, 0, "fire", _target(immunities={"fire"})) == ""
+
+
+def test_un_petrificado_resiste_y_el_log_lo_dice():
+    """Petrificado resiste todo el daño; la regla vive en
+    apply_damage_modifiers y el log la refleja (el bloque duplicado de
+    attack_roll no contemplaba el petrificado)."""
+    from dnd_sim.combat import attack_roll
+    from dnd_sim.conditions import Condition, apply_condition
+
+    atacante = PlayerCharacter(
+        name="A", max_hp=10, ac=5, abilities=Abilities(str=16),
+        attacks=[Attack("Golpe", "1d8", ability="str",
+                        damage_type="slashing", attack_bonus=30)],
+    )
+    petrificado = Monster(name="B", max_hp=30, ac=5)
+    apply_condition(petrificado, Condition.PETRIFIED, None)
+    log: list = []
+
+    attack_roll(atacante, petrificado, atacante.attacks[0], random.Random(7),
+                log, verbose=True)
+
+    etiqueta = next((l for l in log if "(resistencia:" in l), "")
+    assert etiqueta, f"el log debe decir que resiste: {log}"
+    perdido = int(re.search(r"\(resistencia: \d+ -> (\d+)\)", etiqueta).group(1))
+    assert perdido > 0 and petrificado.hp == 30 - perdido, \
+        "el daño que resta PV debe ser exactamente el que indica el log"
 
 
 def _guerrero_y_ogro(monkeypatch):

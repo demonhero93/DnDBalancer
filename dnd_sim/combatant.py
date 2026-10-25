@@ -198,7 +198,30 @@ class Combatant:
 
     @property
     def alive(self) -> bool:
-        return self.hp > 0
+        if self.hp > 0:
+            return True
+        # A 0 PV la criatura muere, salvo que un rasgo pueda salvarla hasta
+        # su próximo turno de inicio (Regeneration): entonces sigue viva y
+        # ese turno decide si se recupera o muere.
+        return self._sobrevive_a_cero()
+
+    def _sobrevive_a_cero(self) -> bool:
+        """¿Un rasgo mantiene a esta criatura viva con 0 PV?"""
+        traits = getattr(self, "traits", None)
+        if not traits:
+            return False
+        try:
+            from .traits import hooks
+        except ImportError:  # pragma: no cover - ejecución como script suelto
+            try:
+                from traits import hooks
+            except ImportError:
+                from dnd_sim.traits import hooks
+        try:
+            return any(r.survives_at_zero_hp(self)
+                       for r in hooks(traits, "survives_at_zero_hp"))
+        except Exception:
+            return False
 
     def reset(self) -> None:
         self.hp = self.max_hp
@@ -229,6 +252,21 @@ class Combatant:
         if legendary is not None:
             try:
                 legendary.reset()
+            except Exception:
+                pass
+        # Los rasgos con estado propio por combate (p. ej. Regeneration,
+        # que guarda el bloqueo de ácido/fuego y su propia muerte) se
+        # limpian aquí: ``simulate()`` reutiliza los mismos objetos.
+        try:
+            from .traits import hooks
+        except ImportError:  # pragma: no cover - ejecución como script suelto
+            try:
+                from traits import hooks
+            except ImportError:
+                from dnd_sim.traits import hooks
+        for rasgo in hooks(getattr(self, "traits", None), "reset"):
+            try:
+                rasgo.reset()
             except Exception:
                 pass
 

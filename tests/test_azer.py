@@ -147,3 +147,54 @@ def test_cada_impacto_dispara_su_propia_represalia(monkeypatch):
     hp3 = pj.hp
     assert hp2 < hp1 and hp3 < hp2, "cada impacto debe quemar por separado"
     assert sum("cuerpo ardiente" in l for l in ctx.log) == 2
+
+
+# --- Represalia vs resistencias del atacante -------------------------------- #
+
+def _rasgo(azer: Monster) -> HeatedBody:
+    return next(t for t in azer.traits if isinstance(t, HeatedBody))
+
+
+def test_un_atacante_inmune_al_fuego_no_recibe_dano_de_la_represalia(monkeypatch):
+    """«takes ... fire damage»: quien es inmune al fuego no baja PV."""
+    import dnd_sim.traits as traits_mod
+    azer = _azer(monkeypatch)
+    inmune = _pj()
+    inmune.immunities = {DamageType.FIRE}
+    monkeypatch.setattr(traits_mod, "roll_dice", lambda expr, rng: 9)
+    ctx = _ctx(azer, [azer, inmune])
+    hp_antes = inmune.hp
+
+    _rasgo(azer).after_being_hit(azer, inmune, AttackRange.MELEE, ctx=ctx)
+
+    assert inmune.hp == hp_antes, "la inmunidad al fuego debe anular la quema"
+    # El impacto sí queda registrado (0), igual que el daño principal.
+    assert any("cuerpo ardiente" in l and "0 daño de fuego" in l for l in ctx.log)
+
+
+def test_un_atacante_resistente_al_fuego_recibe_la_mitad(monkeypatch):
+    import dnd_sim.traits as traits_mod
+    azer = _azer(monkeypatch)
+    resistente = _pj()
+    resistente.resistances = {DamageType.FIRE}
+    monkeypatch.setattr(traits_mod, "roll_dice", lambda expr, rng: 9)
+    ctx = _ctx(azer, [azer, resistente])
+    hp_antes = resistente.hp
+
+    _rasgo(azer).after_being_hit(azer, resistente, AttackRange.MELEE, ctx=ctx)
+
+    assert resistente.hp == hp_antes - 4, "9 de fuego a un resistente: 4 PV"
+    assert any("cuerpo ardiente" in l and "4 daño de fuego" in l for l in ctx.log)
+
+
+def test_sin_resistencias_la_represalia_deja_el_dano_de_la_ficha(monkeypatch):
+    import dnd_sim.traits as traits_mod
+    azer = _azer(monkeypatch)
+    pj = _pj()
+    monkeypatch.setattr(traits_mod, "roll_dice", lambda expr, rng: 9)
+    ctx = _ctx(azer, [azer, pj])
+    hp_antes = pj.hp
+
+    _rasgo(azer).after_being_hit(azer, pj, AttackRange.MELEE, ctx=ctx)
+
+    assert pj.hp == hp_antes - 9

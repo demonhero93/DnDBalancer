@@ -198,14 +198,13 @@ class ConditionEffect:
             )
 
 
-def _log_line(ctx, line: str) -> None:
-    log = getattr(ctx, "log", None)
-    if log is None:
-        return
+try:
+    from .log import log_line as _log_line
+except ImportError:  # pragma: no cover - ejecución como script suelto
     try:
-        log.append(line)
-    except Exception:
-        pass
+        from log import log_line as _log_line
+    except ImportError:
+        from dnd_sim.log import log_line as _log_line
 
 
 def _label(condition: Condition) -> str:

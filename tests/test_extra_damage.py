@@ -16,7 +16,7 @@ from dnd_sim.actions import CombatContext, TurnResources
 from dnd_sim.attack import Attack, ExtraDamage
 from dnd_sim.combat import attack_roll
 from dnd_sim.data.loader import load_monster
-from dnd_sim.damage import DamageType
+from dnd_sim.damage import DamageRecorder, DamageType
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -172,12 +172,27 @@ def test_inmune_al_fuego_el_extra_no_dania_pero_el_principal_si(monkeypatch):
     ctx = _ctx(azer, [azer, pj])
     attack_roll(azer, pj, _warhammer(azer), random.Random(SEED_GOLPE), ctx.log,
                 ctx=ctx)
-    # Inmune: el extra de fuego no llega a infligir daño (queda en 0 y ni se
-    # llama a inflict_damage), pero el contundente principal sí se aplica.
+    # Inmune: el extra de fuego se resuelve igual que el daño principal, es
+    # decir, se llama a inflict_damage con 0 (el registro ve el impacto, pero
+    # no baja PV ni suma daño); el contundente principal sí daña.
     fire = [amt for (_t, amt, dt) in llamadas if dt == DamageType.FIRE]
-    assert fire == [], f"el fuego no debe dañar a un inmune, llamadas: {fire}"
+    assert fire == [0], f"el fuego debe infligirse con 0, llamadas: {fire}"
     blud = [amt for (_t, amt, dt) in llamadas if dt == DamageType.BLUDGEONING]
     assert blud and blud[0] > 0
+
+
+def test_el_extra_inmune_queda_registrado_con_cero(monkeypatch):
+    """El registro de daño también ve los impactos que no hacen daño (0)."""
+    azer = _azer(monkeypatch)
+    pj = _pj()
+    pj.immunities = {DamageType.FIRE}
+    ctx = _ctx(azer, [azer, pj])
+    with DamageRecorder() as recorder:
+        attack_roll(azer, pj, _warhammer(azer), random.Random(SEED_GOLPE),
+                    ctx.log, ctx=ctx)
+    fuego = [r["amount"] for r in recorder.records
+             if r["damage_type"] == DamageType.FIRE]
+    assert fuego == [0], f"el extra inmune debe registrarse con 0: {fuego}"
 
 
 # --- Crítico: los dados extra también se duplican --------------------------- #

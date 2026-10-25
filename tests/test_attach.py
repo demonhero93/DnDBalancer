@@ -17,7 +17,7 @@ from dnd_sim.combat import attack_roll, run_combat
 from dnd_sim.combatant import Monster
 from dnd_sim.conditions import Condition, apply_condition
 from dnd_sim.data.loader import load_monster
-from dnd_sim.damage import inflict_damage
+from dnd_sim.damage import DamageType, inflict_damage
 from dnd_sim.roll_modifiers import AttackRange, attack_modifiers
 from dnd_sim.targeting import valid_targets
 from dnd_sim.traits import DamageTransfer
@@ -193,6 +193,40 @@ def test_damage_transfer_no_aplica_sin_enganche(monkeypatch):
     inflict_damage(cloaker, 15, "piercing")
     assert cloaker.hp == 78 - 15
     assert objetivo.hp == 60
+
+
+def test_el_reparto_respeta_la_resistencia_del_receptor(monkeypatch):
+    """La mitad que recibe la otra criatura es daño normal: se resiste."""
+    cloaker = _cloaker(monkeypatch)
+    objetivo = _pj(hp=60)
+    objetivo.resistances = {DamageType.PIERCING}
+    cloaker.state.attached_to = objetivo
+    log: list = []
+    ctx = _ctx(cloaker, [cloaker, objetivo], log=log)
+    # 15 -> el cloaker baja 7 (su propia resistencia no está en la ficha) y
+    # los otros 8 pasan por la resistencia del receptor: 4.
+    infligido = inflict_damage(cloaker, 15, "piercing", ctx=ctx)
+    assert infligido == 7
+    assert cloaker.hp == 78 - 7
+    assert objetivo.hp == 60 - 4
+    assert any("reparte el daño" in linea and "otros 4" in linea
+               and "resistencia" in linea for linea in log), log
+
+
+def test_el_reparto_no_dania_a_un_receptor_inmune(monkeypatch):
+    """Inmune: la llamada se hace con 0 (como el daño principal)."""
+    cloaker = _cloaker(monkeypatch)
+    objetivo = _pj(hp=60)
+    objetivo.immunities = {DamageType.PIERCING}
+    cloaker.state.attached_to = objetivo
+    log: list = []
+    ctx = _ctx(cloaker, [cloaker, objetivo], log=log)
+    infligido = inflict_damage(cloaker, 16, "piercing", ctx=ctx)
+    assert infligido == 8           # el cloaker sigue bajando su mitad
+    assert cloaker.hp == 78 - 8
+    assert objetivo.hp == 60        # el inmune no pierde PV
+    assert any("reparte el daño" in linea and "inmune" in linea
+               for linea in log), log
 
 
 def test_el_daño_al_objetivo_enganchado_no_se_reparte(monkeypatch):
