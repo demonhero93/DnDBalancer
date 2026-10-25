@@ -24,16 +24,8 @@ from __future__ import annotations
 import re
 import warnings
 
-try:
-    from ..conditions import EscapeCheck
-    from ..saves import normalize_ability
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from conditions import EscapeCheck
-        from saves import normalize_ability
-    except ImportError:
-        from dnd_sim.conditions import EscapeCheck
-        from dnd_sim.saves import normalize_ability
+from ..conditions import EscapeCheck
+from ..saves import normalize_ability
 
 
 # "DC 12 Strength check" (prueba explícita con característica).

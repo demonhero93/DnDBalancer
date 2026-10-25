@@ -47,36 +47,14 @@ import re
 import warnings
 from typing import Any
 
-try:
-    from ..actions import ActionType, AttackAction
-    from ..attack import Attack
-    from ..legendary import LegendaryAction, LegendaryState
-    from .area_classifier import is_area_action
-    from .condition_parser import parse_condition_effects, parse_range_type
-    from .save_builder import (build_condition_action, build_save_action,
-                               build_save_effect, damage_dice_of, damage_type_of)
-    from .usage_parser import UnknownUsageError, parse_usage
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from actions import ActionType, AttackAction
-        from attack import Attack
-        from legendary import LegendaryAction, LegendaryState
-        from area_classifier import is_area_action
-        from condition_parser import parse_condition_effects, parse_range_type
-        from save_builder import (build_condition_action, build_save_action,
-                                  build_save_effect, damage_dice_of, damage_type_of)
-        from usage_parser import UnknownUsageError, parse_usage
-    except ImportError:
-        from dnd_sim.actions import ActionType, AttackAction
-        from dnd_sim.attack import Attack
-        from dnd_sim.legendary import LegendaryAction, LegendaryState
-        from dnd_sim.data.area_classifier import is_area_action
-        from dnd_sim.data.condition_parser import (parse_condition_effects,
-                                                   parse_range_type)
-        from dnd_sim.data.save_builder import (build_condition_action,
-                                               build_save_action, build_save_effect,
-                                               damage_dice_of, damage_type_of)
-        from dnd_sim.data.usage_parser import UnknownUsageError, parse_usage
+from ..actions import ActionType, AttackAction
+from ..attack import Attack
+from ..legendary import LegendaryAction, LegendaryState
+from .area_classifier import is_area_action
+from .condition_parser import parse_condition_effects, parse_range_type
+from .save_builder import (build_condition_action, build_save_action,
+                           build_save_effect, damage_dice_of, damage_type_of)
+from .usage_parser import UnknownUsageError, parse_usage
 
 # Sufijo de coste en el nombre: "(Costs 2 Actions)".
 # TODO: patrón frágil (texto libre): si aparece otra forma de indicar el
@@ -275,13 +253,7 @@ def _por_texto(entry: dict, monster_name: str) -> Any:
         return None
     entry = _con_nombre_limpio(entry)
     dc = int(match.group(1))
-    try:
-        from ..saves import normalize_ability
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from saves import normalize_ability
-        except ImportError:
-            from dnd_sim.saves import normalize_ability
+    from ..saves import normalize_ability
     try:
         ability = normalize_ability(match.group(2))
     except Exception:

@@ -3,67 +3,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-try:
-    from .abilities import Abilities
-    from .attack import Attack
-    from .damage import DamageType, parse_damage_type
-    from .targeting import valid_targets  # noqa: F401  (reexport)
-except ImportError:
-    try:
-        from dnd_sim.abilities import Abilities
-        from dnd_sim.attack import Attack
-        from dnd_sim.damage import DamageType, parse_damage_type
-        from dnd_sim.targeting import valid_targets  # noqa: F401  (reexport)
-    except ImportError:
-        from abilities import Abilities
-        from attack import Attack
-        from damage import DamageType, parse_damage_type
-        from targeting import valid_targets  # noqa: F401  (reexport)
+from .abilities import Abilities, normalize_ability
+from .attack import Attack
+from .core.enums import DamageType, parse_damage_type
+from .targeting import valid_targets  # noqa: F401  (reexport)
 
-
-try:
-    from .saves import normalize_ability
-except Exception:
-    try:
-        from dnd_sim.saves import normalize_ability
-    except Exception:
-        try:
-            from saves import normalize_ability
-        except Exception:
-            def normalize_ability(value):
-                return str(value).strip().lower()
-
-try:
-    from .combat_state import CombatState
-    from .conditions import Condition, ConditionTracker
-except Exception:
-    try:
-        from dnd_sim.combat_state import CombatState
-        from dnd_sim.conditions import Condition, ConditionTracker
-    except Exception:
-        class CombatState:  # pragma: no cover - fallback mínimo
-            """Marcador de posición si no se puede importar el módulo real."""
-
-            def __init__(self):
-                self.at_range = False
-
-        class ConditionTracker:  # pragma: no cover - fallback mínimo
-            """Marcador de posición si no se puede importar el módulo real."""
-
-            def __init__(self):
-                self.instances = []
-
-            def active(self):
-                return set()
-
-            def has(self, condition):
-                return False
-
-            def clear(self):
-                self.instances.clear()
-
-        class Condition:  # pragma: no cover - fallback mínimo
-            INCAPACITATED = None
+from .combat_state import CombatState
+from .conditions import Condition, ConditionTracker
 
 if TYPE_CHECKING:  # pragma: no cover - solo para tipado
     from .legendary import LegendaryState
@@ -156,13 +102,7 @@ class Combatant:
         }
 
         # ---- Construcción automática de acciones (evita duplicados) ----
-        try:
-            from .actions import ActionType, AttackAction, WeaponAttackAction
-        except ImportError:
-            try:
-                from dnd_sim.actions import ActionType, AttackAction, WeaponAttackAction
-            except ImportError:
-                from actions import ActionType, AttackAction, WeaponAttackAction
+        from .actions import ActionType, AttackAction, WeaponAttackAction
 
         built: list[Any] = []
         if self.multiattack is None:
@@ -210,13 +150,7 @@ class Combatant:
         traits = getattr(self, "traits", None)
         if not traits:
             return False
-        try:
-            from .traits import hooks
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from traits import hooks
-            except ImportError:
-                from dnd_sim.traits import hooks
+        from .traits import hooks
         try:
             return any(r.survives_at_zero_hp(self)
                        for r in hooks(traits, "survives_at_zero_hp"))
@@ -257,13 +191,7 @@ class Combatant:
         # Los rasgos con estado propio por combate (p. ej. Regeneration,
         # que guarda el bloqueo de ácido/fuego y su propia muerte) se
         # limpian aquí: ``simulate()`` reutiliza los mismos objetos.
-        try:
-            from .traits import hooks
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from traits import hooks
-            except ImportError:
-                from dnd_sim.traits import hooks
+        from .traits import hooks
         for rasgo in hooks(getattr(self, "traits", None), "reset"):
             try:
                 rasgo.reset()
@@ -384,13 +312,7 @@ class Monster(Combatant):
         traits = getattr(self, "traits", None)
         if not traits:
             return
-        try:
-            from .traits import hooks
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from traits import hooks
-            except ImportError:
-                from dnd_sim.traits import hooks
+        from .traits import hooks
         for rasgo in hooks(traits, "extra_actions"):
             extra = rasgo.extra_actions(self) or []
             if extra:

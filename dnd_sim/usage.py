@@ -17,13 +17,7 @@ import random
 from dataclasses import dataclass
 from enum import Enum
 
-try:
-    from .dice import roll_dice
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from dice import roll_dice
-    except ImportError:
-        from dnd_sim.dice import roll_dice
+from .dice import roll_dice
 
 
 class UsageKind(Enum):
@@ -121,13 +115,7 @@ class ActionUsage:
         return False
 
 
-try:
-    from .log import log_line as _log_line
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from log import log_line as _log_line
-    except ImportError:
-        from dnd_sim.log import log_line as _log_line
+from .log import log_line as _log_line
 
 
 def begin_turn(actor, ctx):
@@ -157,13 +145,7 @@ def begin_turn(actor, ctx):
     que la primera tirada de un aliento usado en el turno N es al inicio del
     turno N+1 (nunca en el mismo turno en que se usó).
     """
-    try:
-        from .actions import TurnResources
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from actions import TurnResources
-        except ImportError:
-            from dnd_sim.actions import TurnResources
+    from .actions import TurnResources
 
     resources = TurnResources()
     try:
@@ -215,24 +197,12 @@ def begin_turn(actor, ctx):
     #     carga si el actor tiene rasgos).
     traits = getattr(actor, "traits", None)
     if traits:
-        try:
-            from .traits import hooks
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from traits import hooks
-            except ImportError:
-                from dnd_sim.traits import hooks
+        from .traits import hooks
         for rasgo in hooks(traits, "on_turn_start"):
             rasgo.on_turn_start(actor, ctx)
 
     # (5) Intentos de escape (automáticos).
-    try:
-        from .conditions import attempt_escapes
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from conditions import attempt_escapes
-        except ImportError:
-            from dnd_sim.conditions import attempt_escapes
+    from .conditions import attempt_escapes
     try:
         attempt_escapes(actor, ctx)
     except Exception:
@@ -241,13 +211,7 @@ def begin_turn(actor, ctx):
     # (6) Intento de desenganche (automático): CD 16 de Fuerza para
     #     soltarse del enganche de otra criatura (cloaker). Import local:
     #     attach importa a actions, que importa este módulo (haría ciclo).
-    try:
-        from .attach import intentar_desenganche
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from attach import intentar_desenganche
-        except ImportError:
-            from dnd_sim.attach import intentar_desenganche
+    from .attach import intentar_desenganche
     try:
         intentar_desenganche(actor, ctx)
     except Exception:

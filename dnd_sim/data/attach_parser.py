@@ -8,13 +8,7 @@ from __future__ import annotations
 
 import re
 
-try:
-    from ..attach import AttachOnHitEffect
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from attach import AttachOnHitEffect
-    except ImportError:
-        from dnd_sim.attach import AttachOnHitEffect
+from ..attach import AttachOnHitEffect
 
 #: «the cloaker attaches to it» / «and attaches the target»...
 ATTACH_RE = re.compile(r"\battach(?:es|ed|ing)?\b", re.I)

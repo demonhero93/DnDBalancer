@@ -2,18 +2,8 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-from .damage import DamageType, parse_damage_type
+from .core.enums import AttackRange, DamageType, parse_damage_type
 
-try:
-    from .roll_modifiers import AttackRange
-    from .usage import ActionUsage
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from roll_modifiers import AttackRange
-        from usage import ActionUsage
-    except ImportError:
-        from dnd_sim.roll_modifiers import AttackRange
-        from dnd_sim.usage import ActionUsage
 
 @dataclass
 class ExtraDamage:

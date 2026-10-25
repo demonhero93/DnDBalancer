@@ -10,25 +10,11 @@ orqueste. Formato real usado por dnd5eapi.co (SRD 2014):
 """
 from __future__ import annotations
 
-try:
-    from ..actions import ActionType, SaveAction
-    from ..area import AreaSaveAction, AreaTargeting
-    from ..conditions import ConditionAction
-    from ..saves import SaveDamage, normalize_ability
-    from .area_classifier import is_area_action
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from actions import ActionType, SaveAction
-        from area import AreaSaveAction, AreaTargeting
-        from conditions import ConditionAction
-        from saves import SaveDamage, normalize_ability
-        from area_classifier import is_area_action
-    except ImportError:
-        from dnd_sim.actions import ActionType, SaveAction
-        from dnd_sim.area import AreaSaveAction, AreaTargeting
-        from dnd_sim.conditions import ConditionAction
-        from dnd_sim.saves import SaveDamage, normalize_ability
-        from dnd_sim.data.area_classifier import is_area_action
+from ..actions import ActionType, SaveAction
+from ..area import AreaSaveAction, AreaTargeting
+from ..conditions import ConditionAction
+from ..saves import SaveDamage, normalize_ability
+from .area_classifier import is_area_action
 
 
 def damage_options(entry: dict) -> list[dict]:

@@ -13,16 +13,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-try:
-    from .actions import ActionType, CombatAction
-    from .targeting import valid_targets
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from actions import ActionType, CombatAction
-        from targeting import valid_targets
-    except ImportError:
-        from dnd_sim.actions import ActionType, CombatAction
-        from dnd_sim.targeting import valid_targets
+from .actions import ActionType, CombatAction
+from .targeting import valid_targets
 
 if TYPE_CHECKING:
     from .combatant import Combatant
@@ -203,13 +195,7 @@ class ConditionEffect:
             )
 
 
-try:
-    from .log import log_line as _log_line
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from log import log_line as _log_line
-    except ImportError:
-        from dnd_sim.log import log_line as _log_line
+from .log import log_line as _log_line
 
 
 def _label(condition: Condition) -> str:
@@ -357,20 +343,8 @@ def attempt_escapes(actor: Any, ctx: Any) -> None:
     if not getattr(actor, "can_act", True):
         return  # incapacitado: no intenta escapar
 
-    try:
-        from .checks import ability_check
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from checks import ability_check
-        except ImportError:
-            from dnd_sim.checks import ability_check
-    try:
-        from .randomness import pick
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from randomness import pick
-        except ImportError:
-            from dnd_sim.randomness import pick
+    from .checks import ability_check
+    from .randomness import pick
 
     rng = getattr(ctx, "rng", None)
     nombre = getattr(actor, "name", actor)
@@ -435,13 +409,7 @@ def end_turn(actor: Any, ctx: Any) -> None:
     for instance in list(tracker.instances):
         # 1. Salvación de repetición.
         if instance.repeat_save is not None:
-            try:
-                from .saves import registrar_resistencia, saving_throw
-            except ImportError:  # pragma: no cover - ejecución como script suelto
-                try:
-                    from saves import registrar_resistencia, saving_throw
-                except ImportError:
-                    from dnd_sim.saves import registrar_resistencia, saving_throw
+            from .saves import registrar_resistencia, saving_throw
             sr = saving_throw(actor, instance.repeat_save.ability,
                               instance.repeat_save.dc, ctx.rng)
             sr = registrar_resistencia(ctx, actor, sr)
@@ -464,13 +432,7 @@ def end_turn(actor: Any, ctx: Any) -> None:
 
 def _default_targeting():
     """Área por defecto (import perezoso para no crear ciclos)."""
-    try:
-        from .area import AreaTargeting
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from area import AreaTargeting
-        except ImportError:
-            from dnd_sim.area import AreaTargeting
+    from .area import AreaTargeting
     return AreaTargeting()
 
 
@@ -495,20 +457,8 @@ class ConditionAction(CombatAction):
 
     def _seleccionar_objetivos(self, context) -> list:
         """Hostiles vivos: uno al azar, o varios si la acción es de área."""
-        try:
-            from .area import select_area_targets
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from area import select_area_targets
-            except ImportError:
-                from dnd_sim.area import select_area_targets
-        try:
-            from .randomness import pick
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from randomness import pick
-            except ImportError:
-                from dnd_sim.randomness import pick
+        from .area import select_area_targets
+        from .randomness import pick
 
         actor = context.actor
         pool = list(valid_targets(actor, ctx=context))
@@ -522,13 +472,7 @@ class ConditionAction(CombatAction):
         return select_area_targets(actor, context, self.targeting)
 
     def execute(self, context) -> None:
-        try:
-            from .saves import registrar_resistencia, saving_throw
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from saves import registrar_resistencia, saving_throw
-            except ImportError:
-                from dnd_sim.saves import registrar_resistencia, saving_throw
+        from .saves import registrar_resistencia, saving_throw
 
         effect = self.effect
         if effect is None:

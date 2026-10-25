@@ -6,20 +6,14 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Iterable
 
-try:
-    from .targeting import valid_targets
-    from .usage import ActionUsage, UsageKind
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from targeting import valid_targets
-        from usage import ActionUsage, UsageKind
-    except ImportError:
-        from dnd_sim.targeting import valid_targets
-        from dnd_sim.usage import ActionUsage, UsageKind
+from .targeting import valid_targets
 
 if TYPE_CHECKING:
     from .combatant import Combatant
     from .attack import Attack
+    # Solo en anotaciones: traer ``usage`` a nivel de módulo convertiría
+    # model -> rules en una dependencia de importación real.
+    from .usage import ActionUsage, UsageKind
 
 
 class ActionType(Enum):
@@ -331,13 +325,7 @@ class SaveAction(CombatAction):
             self.name = "Salvación"
 
     def execute(self, context: CombatContext) -> None:
-        try:
-            from .saves import resolve_save_damage, SaveDamage
-        except ImportError:
-            try:
-                from saves import resolve_save_damage, SaveDamage
-            except ImportError:
-                from dnd_sim.saves import resolve_save_damage, SaveDamage
+        from .saves import resolve_save_damage, SaveDamage
         from .randomness import pick as _pick
 
         actor = context.actor

@@ -4,68 +4,28 @@ import random
 from dataclasses import dataclass, field
 from typing import Any
 
-try:
-    from .actions import (
-        ActionType,
-        AttackAction,
-        CombatContext,
-        MultiattackAction,
-        TurnResources,
-        WeaponAttackAction,
-    )
-    from .attack import Attack
-    from .combatant import Combatant, CombatantType, valid_targets
-    from .conditions import (Condition, end_turn,
-                             remove_invisibility_on_action)
-    from .damage import DamageRecorder, apply_damage_modifiers, inflict_damage
-    from .dice import RollMode, d20, roll_d20, roll_dice
-    from .legendary import legendary_phase
-    from .randomness import pick
-    from .roll_modifiers import (
-        AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
-        resolve_attack_range,
-    )
-    from .tactics import first_target_policy, random_policy
-    from .usage import begin_turn
-except ImportError:
-    from actions import (
-        ActionType,
-        AttackAction,
-        CombatContext,
-        MultiattackAction,
-        TurnResources,
-        WeaponAttackAction,
-    )
-    from attack import Attack
-    from combatant import Combatant, CombatantType, valid_targets
-    from damage import DamageRecorder, apply_damage_modifiers, inflict_damage
-    from dice import RollMode, d20, roll_d20, roll_dice
-    from randomness import pick
-    from tactics import first_target_policy, random_policy
-    try:
-        from conditions import (Condition, end_turn,
-                                remove_invisibility_on_action)
-    except ImportError:
-        from dnd_sim.conditions import (Condition, end_turn,
-                                        remove_invisibility_on_action)
-    try:
-        from dnd_sim.legendary import legendary_phase
-    except ImportError:
-        from legendary import legendary_phase
-    try:
-        from roll_modifiers import (
-            AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
-            resolve_attack_range,
-        )
-    except ImportError:
-        from dnd_sim.roll_modifiers import (
-            AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
-            resolve_attack_range,
-        )
-    try:
-        from usage import begin_turn
-    except ImportError:
-        from dnd_sim.usage import begin_turn
+from .actions import (
+    ActionType,
+    AttackAction,
+    CombatContext,
+    MultiattackAction,
+    TurnResources,
+    WeaponAttackAction,
+)
+from .attack import Attack
+from .combatant import Combatant, CombatantType, valid_targets
+from .conditions import (Condition, end_turn,
+                         remove_invisibility_on_action)
+from .damage import DamageRecorder, apply_damage_modifiers, inflict_damage
+from .dice import RollMode, d20, roll_d20, roll_dice
+from .legendary import legendary_phase
+from .randomness import pick
+from .roll_modifiers import (
+    AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
+    resolve_attack_range,
+)
+from .tactics import first_target_policy, random_policy
+from .usage import begin_turn
 
 
 @dataclass
@@ -206,13 +166,7 @@ def _bonus_de_rasgos(attacker: Any, target: Any, rango: Any, crit: bool,
     traits = getattr(attacker, "traits", None)
     if not traits:
         return 0
-    try:
-        from .traits import hooks
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from traits import hooks
-        except ImportError:
-            from dnd_sim.traits import hooks
+    from .traits import hooks
     total = 0
     for rasgo in hooks(traits, "extra_attack_damage"):
         bonus = int(rasgo.extra_attack_damage(attacker, target, rango,
@@ -242,13 +196,7 @@ def _bonus_defensivo(target: Any, attacker: Any, rango: Any, total: int,
     traits = getattr(target, "traits", None)
     if not traits:
         return 0
-    try:
-        from .traits import hooks
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from traits import hooks
-        except ImportError:
-            from dnd_sim.traits import hooks
+    from .traits import hooks
     total_bonus = 0
     for rasgo in hooks(traits, "defensive_ac_bonus"):
         bonus = int(rasgo.defensive_ac_bonus(target, attacker, rango,
@@ -395,13 +343,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         if _riders_to_run:
             # Import perezoso **una vez**, fuera del bucle: si no, se repite
             # por cada rider del ataque.
-            try:
-                from .saves import resolve_save_damage as _rsd
-            except ImportError:
-                try:
-                    from saves import resolve_save_damage as _rsd
-                except ImportError:
-                    from dnd_sim.saves import resolve_save_damage as _rsd
+            from .saves import resolve_save_damage as _rsd
         for _rider in _riders_to_run:
             _rctx = type("RiderCtx", (), {})()
             _rctx.rng = rng
@@ -475,20 +417,8 @@ def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
     riders = list(getattr(atk, "condition_riders", None) or [])
     if not riders:
         return
-    try:
-        from .conditions import RepeatSave, apply_condition
-    except ImportError:
-        try:
-            from conditions import RepeatSave, apply_condition
-        except ImportError:
-            from dnd_sim.conditions import RepeatSave, apply_condition
-    try:
-        from .saves import registrar_resistencia, saving_throw
-    except ImportError:
-        try:
-            from saves import registrar_resistencia, saving_throw
-        except ImportError:
-            from dnd_sim.saves import registrar_resistencia, saving_throw
+    from .conditions import RepeatSave, apply_condition
+    from .saves import registrar_resistencia, saving_throw
 
     _ctx = ctx
     if _ctx is None:
@@ -538,13 +468,7 @@ def _trigger_after_being_hit(target: Any, attacker: Any, rango: Any,
     traits = getattr(target, "traits", None)
     if not traits:
         return
-    try:
-        from .traits import hooks
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from traits import hooks
-        except ImportError:
-            from dnd_sim.traits import hooks
+    from .traits import hooks
     hookable = hooks(traits, "after_being_hit")
     if not hookable:
         return
@@ -568,13 +492,7 @@ def _reaccion_si_procede(target: Any, ctx: Any) -> None:
     """
     if target is None or ctx is None:
         return
-    try:
-        from .spells import trigger_reaction
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from spells import trigger_reaction
-        except ImportError:
-            from dnd_sim.spells import trigger_reaction
+    from .spells import trigger_reaction
     try:
         trigger_reaction(target, ctx)
     except Exception:

@@ -36,37 +36,15 @@ import re
 import warnings
 from typing import Any
 
-try:
-    from ..actions import ActionType
-    from ..conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
-    from ..saves import normalize_ability
-    from ..spells import (
-        Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas,
-    )
-    from .area_classifier import is_area_action
-    from .condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
-    from .escape_parser import parse_escape
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from actions import ActionType
-        from conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
-        from saves import normalize_ability
-        from spells import (
-            Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas,
-        )
-        from area_classifier import is_area_action
-        from condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
-        from escape_parser import parse_escape
-    except ImportError:
-        from dnd_sim.actions import ActionType
-        from dnd_sim.conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
-        from dnd_sim.saves import normalize_ability
-        from dnd_sim.spells import (
-            Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas,
-        )
-        from dnd_sim.data.area_classifier import is_area_action
-        from dnd_sim.data.condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
-        from dnd_sim.data.escape_parser import parse_escape
+from ..actions import ActionType
+from ..conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
+from ..saves import normalize_ability
+from ..spells import (
+    Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas,
+)
+from .area_classifier import is_area_action
+from .condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
+from .escape_parser import parse_escape
 
 # Tiempo de lanzamiento: 1 minuto o más no influye en el combate.
 LONG_CASTING_RE = re.compile(r"\b(\d+)\s*(minute|hour|day)s?\b", re.IGNORECASE)
@@ -574,22 +552,10 @@ def build_spell_actions(monster_json: dict, monster_name: str = "",
     """
     from ..spells import spell_action
 
-    try:
-        from ..usage import ActionUsage, UsageKind
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from usage import ActionUsage, UsageKind
-        except ImportError:
-            from dnd_sim.usage import ActionUsage, UsageKind
+    from ..usage import ActionUsage, UsageKind
 
     if get_spell is None:
-        try:
-            from .api_client import get_spell as _get
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from api_client import get_spell as _get
-            except ImportError:
-                from dnd_sim.data.api_client import get_spell as _get
+        from .api_client import get_spell as _get
         get_spell = _get
 
     spellcasting = parse_spellcasting(monster_json)

@@ -17,13 +17,7 @@ from __future__ import annotations
 
 import warnings
 
-try:
-    from ..actions import AttackEntry
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from actions import AttackEntry
-    except ImportError:
-        from dnd_sim.actions import AttackEntry
+from ..actions import AttackEntry
 
 
 def _norm_name(value: str) -> str:

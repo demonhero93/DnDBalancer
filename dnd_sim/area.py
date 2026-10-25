@@ -20,25 +20,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-try:
-    from .actions import ActionType, CombatAction, CombatContext
-    from .dice import roll_dice
-    from .randomness import pick, sample
-    from .saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
-    from .targeting import valid_targets
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from actions import ActionType, CombatAction, CombatContext
-        from dice import roll_dice
-        from randomness import pick, sample
-        from saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
-        from targeting import valid_targets
-    except ImportError:
-        from dnd_sim.actions import ActionType, CombatAction, CombatContext
-        from dnd_sim.dice import roll_dice
-        from dnd_sim.randomness import pick, sample
-        from dnd_sim.saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
-        from dnd_sim.targeting import valid_targets
+from .actions import ActionType, CombatAction, CombatContext
+from .dice import roll_dice
+from .randomness import pick, sample
+from .saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
+from .targeting import valid_targets
 
 
 @dataclass
@@ -72,13 +58,7 @@ def select_area_targets(actor, ctx, targeting: AreaTargeting) -> list:
     return sample(ctx.rng, pool, k)
 
 
-try:
-    from .log import log_line as _log_line
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from log import log_line as _log_line
-    except ImportError:
-        from dnd_sim.log import log_line as _log_line
+from .log import log_line as _log_line
 
 
 @dataclass
@@ -175,13 +155,7 @@ class AreaSaveAction(CombatAction):
         que el afectado podrá repetir al final de su turno.
         """
         efecto = self.condition
-        try:
-            from .conditions import RepeatSave, apply_condition
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from conditions import RepeatSave, apply_condition
-            except ImportError:
-                from dnd_sim.conditions import RepeatSave, apply_condition
+        from .conditions import RepeatSave, apply_condition
         repeat = None
         if getattr(efecto, "repeat_save", False):
             repeat = RepeatSave(ability=getattr(efecto, "save_ability", None) or "dex",

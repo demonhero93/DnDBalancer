@@ -26,16 +26,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-try:
-    from .randomness import pick
-    from .targeting import valid_targets
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from randomness import pick
-        from targeting import valid_targets
-    except ImportError:
-        from dnd_sim.randomness import pick
-        from dnd_sim.targeting import valid_targets
+from .randomness import pick
+from .targeting import valid_targets
 
 # Número de puntos legendarios por ronda (3 en la SRD 2014).
 # TODO: la API no lo da estructurado; si algún monstruo difiere, habría que
@@ -99,13 +91,7 @@ class LegendaryState:
 # --- Fase legendaria -------------------------------------------------------- #
 
 
-try:
-    from .log import log_line as _log_line
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from log import log_line as _log_line
-    except ImportError:
-        from dnd_sim.log import log_line as _log_line
+from .log import log_line as _log_line
 
 
 def _equipos_vivos(combatants: list) -> set:
@@ -132,13 +118,7 @@ def _contexto_de(owner: Any, ctx: Any) -> Any:
     recursos de turno (``resources=None``): la acción legendaria no gasta ni
     la acción, ni la acción adicional, ni la reacción del dueño.
     """
-    try:
-        from .actions import CombatContext
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from actions import CombatContext
-        except ImportError:
-            from dnd_sim.actions import CombatContext
+    from .actions import CombatContext
     try:
         return CombatContext(
             rng=ctx.rng,

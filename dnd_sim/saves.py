@@ -7,73 +7,19 @@ import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
-try:
-    from .abilities import Abilities, ability_mod
-    from .combatant import Combatant
-    from .damage import DamageType, apply_damage_modifiers, parse_damage_type
-    from .dice import RollMode, roll_d20, roll_dice
-except ImportError:
-    try:
-        from abilities import Abilities, ability_mod
-        from combatant import Combatant
-        from damage import DamageType, apply_damage_modifiers, parse_damage_type
-        from dice import RollMode, roll_d20, roll_dice
-    except ImportError:
-        from dnd_sim.abilities import Abilities, ability_mod
-        from dnd_sim.combatant import Combatant
-        from dnd_sim.damage import DamageType, apply_damage_modifiers, parse_damage_type
-        from dnd_sim.dice import RollMode, roll_d20, roll_dice
+from .abilities import Abilities, ability_mod, normalize_ability
+from .combatant import Combatant
+from .damage import DamageType, apply_damage_modifiers, parse_damage_type
+from .dice import RollMode, roll_d20, roll_dice
 
-try:
-    from .randomness import pick
-except ImportError:
-    try:
-        from randomness import pick
-    except ImportError:
-        from dnd_sim.randomness import pick
+from .randomness import pick
 
 from dataclasses import dataclass as _dc  # noqa: F401
 
-# --- Normalización de características ---------------------------------------
-
-ABILITY_ALIASES: dict[str, str] = {
-    "str": "str",
-    "strength": "str",
-    "s": "str",
-    "dex": "dex",
-    "dexterity": "dex",
-    "d": "dex",
-    "con": "con",
-    "constitution": "con",
-    "c": "con",
-    "int": "int",
-    "intelligence": "int",
-    "i": "int",
-    "wis": "wis",
-    "wisdom": "wis",
-    "w": "wis",
-    "cha": "cha",
-    "charisma": "cha",
-    "h": "cha",
-}
-
-
-def normalize_ability(value: Any) -> str:
-    """Normaliza 'DEX', 'Dexterity', 'dex', etc. a la abreviatura (str/dex/...)."""
-    if value is None:
-        raise ValueError("Característica inválida: None")
-    text = str(value).strip().lower()
-    text = text.replace(" ", "").replace("-", "").replace("_", "")
-    if text in ABILITY_ALIASES:
-        return ABILITY_ALIASES[text]
-    # coincidencia por prefijo
-    for abbr in ("str", "dex", "con", "int", "wis", "cha"):
-        if text.startswith(abbr):
-            return abbr
-    for name, abbr in ABILITY_ALIASES.items():
-        if (name.startswith(text) and len(text) >= 3) or (text.startswith(name) and len(name) >= 3):
-            return abbr
-    raise ValueError(f"Característica inválida: {value!r}")
+# ``normalize_ability`` se importa aquí desde :mod:`dnd_sim.abilities` (capa
+# core) porque ``combatant`` la necesita y este módulo ya importa a
+# ``combatant``: moverla evita el ciclo saves <-> combatant. Se reexporta en
+# ``__all__`` para no romper la API pública histórica.
 
 
 # --- SaveResult / saving_throw -----------------------------------------------
@@ -135,13 +81,7 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     # TODO: la Resistencia mágica (ventaja contra hechizos) no se modela.
     """
     ab = normalize_ability(ability)
-    try:
-        from .roll_modifiers import save_modifiers
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from roll_modifiers import save_modifiers
-        except ImportError:
-            from dnd_sim.roll_modifiers import save_modifiers
+    from .roll_modifiers import save_modifiers
     modifiers = save_modifiers(target, ab, kind)
 
     if modifiers.auto_fail:
@@ -186,13 +126,7 @@ def _con_resistencia_legendaria(target: Any, result: SaveResult,
     Import local (evita el ciclo ``saves`` -> ``legendary`` -> ``area`` ->
     ``saves``).
     """
-    try:
-        from .legendary import legendary_resistance
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from legendary import legendary_resistance
-        except ImportError:
-            from dnd_sim.legendary import legendary_resistance
+    from .legendary import legendary_resistance
     try:
         return legendary_resistance(target, result, rng)
     except Exception:
@@ -205,13 +139,7 @@ def registrar_resistencia(ctx: Any, target: Any, result: SaveResult) -> SaveResu
     Se llama justo después de cada :func:`saving_throw` (el único sitio con
     contexto de combate).
     """
-    try:
-        from .legendary import registrar_resistencia_legendaria
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from legendary import registrar_resistencia_legendaria
-        except ImportError:
-            from dnd_sim.legendary import registrar_resistencia_legendaria
+    from .legendary import registrar_resistencia_legendaria
     try:
         return registrar_resistencia_legendaria(ctx, target, result)
     except Exception:
@@ -240,25 +168,13 @@ def _as_combat_context(ctx: Any) -> Any:
     return ctx
 
 
-try:
-    from .log import log_line as _log_line
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from log import log_line as _log_line
-    except ImportError:
-        from dnd_sim.log import log_line as _log_line
+from .log import log_line as _log_line
 
 
 def _inflict_for_save(target: Any, amount: int, damage_type: Any,
                       source: Any, ctx: Any = None) -> None:
     # Import local para evitar ciclos.
-    try:
-        from .damage import inflict_damage
-    except ImportError:
-        try:
-            from damage import inflict_damage
-        except ImportError:
-            from dnd_sim.damage import inflict_damage
+    from .damage import inflict_damage
     inflict_damage(target, amount, damage_type, source=source, ctx=ctx)
 
 
@@ -421,13 +337,7 @@ def _reaccion_si_procede(target: Any, ctx: Any) -> None:
     """
     if target is None or ctx is None:
         return
-    try:
-        from .spells import trigger_reaction
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from spells import trigger_reaction
-        except ImportError:
-            from dnd_sim.spells import trigger_reaction
+    from .spells import trigger_reaction
     try:
         trigger_reaction(target, ctx)
     except Exception:

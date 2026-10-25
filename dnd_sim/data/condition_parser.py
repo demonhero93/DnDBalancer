@@ -27,22 +27,10 @@ from __future__ import annotations
 import re
 import warnings
 
-try:
-    from ..conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
-    from ..roll_modifiers import AttackRange
-    from ..saves import normalize_ability
-    from .escape_parser import parse_escape
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
-        from roll_modifiers import AttackRange
-        from saves import normalize_ability
-        from escape_parser import parse_escape
-    except ImportError:
-        from dnd_sim.conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
-        from dnd_sim.roll_modifiers import AttackRange
-        from dnd_sim.saves import normalize_ability
-        from dnd_sim.data.escape_parser import parse_escape
+from ..conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
+from ..roll_modifiers import AttackRange
+from ..saves import normalize_ability
+from .escape_parser import parse_escape
 
 
 # Condiciones del Enum y la palabra que las delata en el texto.

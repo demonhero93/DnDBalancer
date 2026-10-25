@@ -33,34 +33,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-try:
-    from .actions import ActionType
-    from .conditions import Condition, apply_condition
-    from .dice import RollMode
-    from .traits import Trait
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from actions import ActionType
-        from conditions import Condition, apply_condition
-        from dice import RollMode
-        from traits import Trait
-    except ImportError:
-        from dnd_sim.actions import ActionType
-        from dnd_sim.conditions import Condition, apply_condition
-        from dnd_sim.dice import RollMode
-        from dnd_sim.traits import Trait
+from .actions import ActionType
+from .conditions import Condition, apply_condition
+from .dice import RollMode
+from .traits import Trait
 
 #: CD de la prueba de Fuerza para desengancharse (ficha del cloaker).
 DC_DESENGANCHE = 16
 
 
-try:
-    from .log import log_line as _log_line
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from log import log_line as _log_line
-    except ImportError:
-        from dnd_sim.log import log_line as _log_line
+from .log import log_line as _log_line
 
 
 def _ya_cegado_por(target: Any, enganchador: Any) -> bool:
@@ -212,13 +194,7 @@ def intentar_desenganche(actor: Any, ctx: Any) -> None:
     except Exception:
         return
 
-    try:
-        from .checks import ability_check
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from checks import ability_check
-        except ImportError:
-            from dnd_sim.checks import ability_check
+    from .checks import ability_check
 
     rng = getattr(ctx, "rng", None)
     resultado = ability_check(actor, "str", DC_DESENGANCHE, rng)

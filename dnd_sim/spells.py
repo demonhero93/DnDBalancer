@@ -64,36 +64,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-try:
-    from .actions import ActionType, CombatAction, CombatContext, TurnResources
-    from .conditions import (Condition, apply_condition,
-                             remove_invisibility_on_action)
-    from .dice import roll_dice
-    from .randomness import pick
-    from .targeting import valid_targets
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from actions import ActionType, CombatAction, CombatContext, TurnResources
-        from conditions import (Condition, apply_condition,
-                                remove_invisibility_on_action)
-        from dice import roll_dice
-        from randomness import pick
-        from targeting import valid_targets
-    except ImportError:
-        from dnd_sim.actions import ActionType, CombatAction, CombatContext, TurnResources
-        from dnd_sim.conditions import (Condition, apply_condition,
-                                        remove_invisibility_on_action)
-        from dnd_sim.dice import roll_dice
-        from dnd_sim.randomness import pick
-        from dnd_sim.targeting import valid_targets
+from .actions import ActionType, CombatAction, CombatContext, TurnResources
+from .conditions import (Condition, apply_condition,
+                         remove_invisibility_on_action)
+from .dice import roll_dice
+from .randomness import pick
+from .targeting import valid_targets
 
-try:
-    from .usage import ActionUsage
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from usage import ActionUsage
-    except ImportError:
-        from dnd_sim.usage import ActionUsage
+from .usage import ActionUsage
 
 
 # Tabla de slots real de un **lanzador completo** (bardo, clérigo, druída,
@@ -303,13 +281,7 @@ class SpellAttackAction(CombatAction):
 
     def execute(self, context: CombatContext) -> None:
         _romper_invisibilidad_al_lanzar(context)
-        try:
-            from .combat import attack_roll
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from combat import attack_roll
-            except ImportError:
-                from dnd_sim.combat import attack_roll
+        from .combat import attack_roll
         ataques = self.attacks
         if self.damage_options:
             # Varias opciones de daño: se elige una al azar al lanzar.
@@ -344,24 +316,9 @@ class SpellFixedDamageAction(CombatAction):
 
     def execute(self, context: CombatContext) -> None:
         _romper_invisibilidad_al_lanzar(context)
-        try:
-            from .damage import (apply_damage_modifiers, inflict_damage,
-                                 parse_damage_type)
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from damage import (apply_damage_modifiers, inflict_damage,
-                                    parse_damage_type)
-            except ImportError:
-                from dnd_sim.damage import (apply_damage_modifiers,
-                                            inflict_damage,
-                                            parse_damage_type)
-        try:
-            from .combat import _tag_modificadores
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from combat import _tag_modificadores
-            except ImportError:
-                from dnd_sim.combat import _tag_modificadores
+        from .damage import (apply_damage_modifiers, inflict_damage,
+                             parse_damage_type)
+        from .combat import _tag_modificadores
         alcanzados = []
         for _ in range(max(1, int(self.elements or 1))):
             targets = valid_targets(context.actor, ctx=context)
@@ -650,28 +607,12 @@ def spell_action(spell: Spell, spellcasting: Spellcasting | None = None,
     """
     if spell is None:
         return None
-    try:
-        from .actions import AttackAction, SaveAction
-        from .area import AreaSaveAction, AreaTargeting
-        from .attack import Attack
-        from .conditions import ConditionAction
-        from .roll_modifiers import AttackRange
-        from .saves import SaveDamage
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from actions import AttackAction, SaveAction
-            from area import AreaSaveAction, AreaTargeting
-            from attack import Attack
-            from conditions import ConditionAction
-            from roll_modifiers import AttackRange
-            from saves import SaveDamage
-        except ImportError:
-            from dnd_sim.actions import AttackAction, SaveAction
-            from dnd_sim.area import AreaSaveAction, AreaTargeting
-            from dnd_sim.attack import Attack
-            from dnd_sim.conditions import ConditionAction
-            from dnd_sim.roll_modifiers import AttackRange
-            from dnd_sim.saves import SaveDamage
+    from .actions import AttackAction, SaveAction
+    from .area import AreaSaveAction, AreaTargeting
+    from .attack import Attack
+    from .conditions import ConditionAction
+    from .roll_modifiers import AttackRange
+    from .saves import SaveDamage
 
     sc = spellcasting or Spellcasting()
     nombre = spell.name

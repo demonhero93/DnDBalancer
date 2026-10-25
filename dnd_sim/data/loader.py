@@ -6,76 +6,27 @@ import warnings
 
 # TODO: Multiataque es una acción de texto libre que aún no se parsea.
 
-try:
-    from ..abilities import Abilities
-    from ..actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
-    from ..attack import Attack, ExtraDamage
-    from ..attach import Attach
-    from ..conditions import Condition
-    from ..dice import doblar_dados
-    from ..spells import SpellStateAction, StateEffect
-    from ..combatant import CombatantType, Monster
-    from ..damage import DamageType
-    from ..saves import SaveDamage, normalize_ability
-    from .api_client import get_monster
-    from .attach_parser import parse_attach_effects
-    from .condition_parser import parse_condition_effects, parse_range_type
-    from .legendary_parser import parse_legendary
-    from .spell_parser import build_spell_actions
-    from .trait_parser import parse_traits
-    from .multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
-    from .save_builder import (build_condition_action, build_save_action,
-                               build_save_effect, damage_dice_of,
-                               damage_options, damage_type_of)
-    from .usage_parser import UnknownUsageError, parse_usage
-except ImportError:  # ejecución como script suelto (cwd en dnd_sim o data)
-    try:
-        from abilities import Abilities
-        from actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
-        from attack import Attack, ExtraDamage
-        from attach import Attach
-        from conditions import Condition
-        from dice import doblar_dados
-        from spells import SpellStateAction, StateEffect
-        from combatant import CombatantType, Monster
-        from damage import DamageType
-        from saves import SaveDamage, normalize_ability
-        from api_client import get_monster
-        from attach_parser import parse_attach_effects
-        from condition_parser import parse_condition_effects, parse_range_type
-        from legendary_parser import parse_legendary
-        from spell_parser import build_spell_actions
-        from trait_parser import parse_traits
-        from multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
-        from save_builder import (build_condition_action, build_save_action,
-                                  build_save_effect, damage_dice_of,
-                                  damage_options, damage_type_of)
-        from usage_parser import UnknownUsageError, parse_usage
-    except ImportError:
-        from dnd_sim.abilities import Abilities
-        from dnd_sim.actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
-        from dnd_sim.attack import Attack, ExtraDamage
-        from dnd_sim.attach import Attach
-        from dnd_sim.conditions import Condition
-        from dnd_sim.dice import doblar_dados
-        from dnd_sim.spells import SpellStateAction, StateEffect
-        from dnd_sim.combatant import CombatantType, Monster
-        from dnd_sim.damage import DamageType
-        from dnd_sim.saves import SaveDamage, normalize_ability
-        from dnd_sim.data.api_client import get_monster
-        from dnd_sim.data.attach_parser import parse_attach_effects
-        from dnd_sim.data.condition_parser import (parse_condition_effects,
-                                                   parse_range_type)
-        from dnd_sim.data.legendary_parser import parse_legendary
-        from dnd_sim.data.spell_parser import build_spell_actions
-        from dnd_sim.data.trait_parser import parse_traits
-        from dnd_sim.data.multiattack_parser import (extract_multiattack_alternatives,
-                                                      resolve_multiattack)
-        from dnd_sim.data.save_builder import (build_condition_action,
-                                               build_save_action, build_save_effect,
-                                               damage_dice_of, damage_options,
-                                               damage_type_of)
-        from dnd_sim.data.usage_parser import UnknownUsageError, parse_usage
+from ..abilities import Abilities
+from ..actions import ActionType, AttackEntry, AttackAction, MultiattackAction, SaveAction
+from ..attack import Attack, ExtraDamage
+from ..attach import Attach
+from ..conditions import Condition
+from ..dice import doblar_dados
+from ..spells import SpellStateAction, StateEffect
+from ..combatant import CombatantType, Monster
+from ..damage import DamageType
+from ..saves import SaveDamage, normalize_ability
+from .api_client import get_monster
+from .attach_parser import parse_attach_effects
+from .condition_parser import parse_condition_effects, parse_range_type
+from .legendary_parser import parse_legendary
+from .spell_parser import build_spell_actions
+from .trait_parser import parse_traits
+from .multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
+from .save_builder import (build_condition_action, build_save_action,
+                           build_save_effect, damage_dice_of,
+                           damage_options, damage_type_of)
+from .usage_parser import UnknownUsageError, parse_usage
 
 
 def _armor_class_value(raw) -> int:

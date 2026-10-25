@@ -202,40 +202,16 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-try:
-    from .conditions import Condition
-    from .damage import (DamageType, apply_damage_modifiers, inflict_damage,
-                         parse_damage_type)
-    from .dice import roll_dice
-    from .randomness import pick
-    from .roll_modifiers import AttackRange
-    from .usage import ActionUsage
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from conditions import Condition
-        from damage import (DamageType, apply_damage_modifiers,
-                            inflict_damage, parse_damage_type)
-        from dice import roll_dice
-        from randomness import pick
-        from roll_modifiers import AttackRange
-        from usage import ActionUsage
-    except ImportError:
-        from dnd_sim.conditions import Condition
-        from dnd_sim.damage import (DamageType, apply_damage_modifiers,
-                                    inflict_damage, parse_damage_type)
-        from dnd_sim.dice import roll_dice
-        from dnd_sim.randomness import pick
-        from dnd_sim.roll_modifiers import AttackRange
-        from dnd_sim.usage import ActionUsage
+from .conditions import Condition
+from .damage import (DamageType, apply_damage_modifiers, inflict_damage,
+                     parse_damage_type)
+from .dice import roll_dice
+from .randomness import pick
+from .roll_modifiers import AttackRange
+from .usage import ActionUsage
 
 
-try:
-    from .log import log_line as _log_line
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from log import log_line as _log_line
-    except ImportError:
-        from dnd_sim.log import log_line as _log_line
+from .log import log_line as _log_line
 
 
 @dataclass
@@ -569,13 +545,7 @@ class DamageTransfer(Trait):
             dt = parse_damage_type(damage_type)
         except Exception:
             dt = None
-        try:
-            from .combat import _tag_modificadores as _tag
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from combat import _tag_modificadores as _tag
-            except ImportError:
-                from dnd_sim.combat import _tag_modificadores as _tag
+        from .combat import _tag_modificadores as _tag
         final = mitad if dt is None else apply_damage_modifiers(mitad, dt, otro)
         tag = "" if dt is None else _tag(mitad, final, dt, otro)
         inflict_damage(otro, final, dt, source=source, ctx=ctx)
@@ -930,13 +900,7 @@ def _guardar_salvacion(owner: Any, ability: str, dc: int, rng: Any):
     El import va dentro de la función (patrón del repo) para no abrir el
     ciclo ``saves`` -> ``traits``.
     """
-    try:
-        from .saves import saving_throw
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from saves import saving_throw
-        except ImportError:
-            from dnd_sim.saves import saving_throw
+    from .saves import saving_throw
     return saving_throw(owner, ability, dc, rng)
 
 
@@ -1014,13 +978,7 @@ class SuperiorInvisibility(Trait):
     """
 
     def extra_actions(self, owner: Any) -> list:
-        try:
-            from .spells import SpellStateAction, StateEffect
-        except ImportError:  # pragma: no cover - ejecución como script suelto
-            try:
-                from spells import SpellStateAction, StateEffect
-            except ImportError:
-                from dnd_sim.spells import SpellStateAction, StateEffect
+        from .spells import SpellStateAction, StateEffect
         return [SpellStateAction(
             effect=StateEffect(condition=Condition.INVISIBLE,
                                duration_rounds=None, target="self",

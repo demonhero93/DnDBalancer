@@ -12,13 +12,7 @@ from __future__ import annotations
 
 import warnings
 
-try:
-    from ..usage import ActionUsage, UsageKind
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from usage import ActionUsage, UsageKind
-    except ImportError:
-        from dnd_sim.usage import ActionUsage, UsageKind
+from ..usage import ActionUsage, UsageKind
 
 
 class UnknownUsageError(ValueError):

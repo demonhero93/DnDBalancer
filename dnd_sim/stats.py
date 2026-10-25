@@ -2,12 +2,8 @@
 import random
 import statistics
 
-try:
-    from .combat import run_combat
-    from .combatant import Combatant
-except ImportError:
-    from combat import run_combat
-    from combatant import Combatant
+from .combat import run_combat
+from .combatant import Combatant
 
 
 def simulate(combatants: list[Combatant], n: int = 1000, seed: int | None = None) -> dict:

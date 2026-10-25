@@ -14,24 +14,10 @@ import random
 from dataclasses import dataclass, field
 from typing import Any
 
-try:
-    from .dice import RollMode, roll_d20
-    from .roll_modifiers import check_modifiers
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from dice import RollMode, roll_d20
-        from roll_modifiers import check_modifiers
-    except ImportError:
-        from dnd_sim.dice import RollMode, roll_d20
-        from dnd_sim.roll_modifiers import check_modifiers
+from .dice import RollMode, roll_d20
+from .roll_modifiers import check_modifiers
 
-try:
-    from .saves import normalize_ability
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from saves import normalize_ability
-    except ImportError:
-        from dnd_sim.saves import normalize_ability
+from .saves import normalize_ability
 
 
 @dataclass

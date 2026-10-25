@@ -24,16 +24,8 @@ from __future__ import annotations
 from dataclasses import fields
 from typing import Any
 
-try:
-    from ..traits import TRAIT_CLASSES, Trait
-    from .usage_parser import UnknownUsageError, parse_usage
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from traits import TRAIT_CLASSES, Trait
-        from usage_parser import UnknownUsageError, parse_usage
-    except ImportError:
-        from dnd_sim.traits import TRAIT_CLASSES, Trait
-        from dnd_sim.data.usage_parser import UnknownUsageError, parse_usage
+from ..traits import TRAIT_CLASSES, Trait
+from .usage_parser import UnknownUsageError, parse_usage
 
 
 #: Secciones de la ficha donde la API puede traer un rasgo modelable.

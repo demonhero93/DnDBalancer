@@ -1,56 +1,17 @@
 """Tipos de daño de D&D 5e y modificadores (resistencia, vulnerabilidad, inmunidad)."""
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING
+
+from .core.enums import DamageType, parse_damage_type  # noqa: F401  (reexport)
 
 if TYPE_CHECKING:
     from .combatant import Combatant
 
 
-class DamageType(str, Enum):
-    ACID = "acid"
-    BLUDGEONING = "bludgeoning"
-    COLD = "cold"
-    FIRE = "fire"
-    FORCE = "force"
-    LIGHTNING = "lightning"
-    NECROTIC = "necrotic"
-    PIERCING = "piercing"
-    POISON = "poison"
-    PSYCHIC = "psychic"
-    RADIANT = "radiant"
-    SLASHING = "slashing"
-    THUNDER = "thunder"
-
-
-def parse_damage_type(value: str | DamageType) -> DamageType:
-    """Convierte un valor flexible (str o DamageType) en DamageType.
-
-    Tolerante a mayúsculas y espacios. Lanza ValueError si es inválido.
-    """
-    if isinstance(value, DamageType):
-        return value
-    if value is None:
-        raise ValueError("Tipo de daño inválido: None")
-    text = str(value).strip().lower().replace(" ", "")
-    # Normaliza guiones/espacios compuestos (p. ej. "bludgeoning damage" no, pero seguro).
-    text = text.replace("_", "")
-    try:
-        return DamageType(text)
-    except ValueError as exc:
-        raise ValueError(f"Tipo de daño inválido: {value!r}") from exc
-
-
 def _is_petrified(target: "Combatant") -> bool:
     """¿Está el objetivo petrificado (resistencia a todo el daño)?"""
-    try:
-        from .conditions import Condition
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from conditions import Condition
-        except ImportError:
-            from dnd_sim.conditions import Condition
+    from .conditions import Condition
     conditions = getattr(target, "conditions", None)
     if conditions is None:
         return False
@@ -200,13 +161,7 @@ def _notify_damage_taken(target, amount, damage_type, source):
 def _hooks(traits: Any, nombre: str) -> list:
     """Rasgos que sobrescriben ``nombre`` (import perezoso: evita el ciclo
     ``traits`` -> ``damage``; traits.py importa este módulo)."""
-    try:
-        from .traits import hooks
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from traits import hooks
-        except ImportError:
-            from dnd_sim.traits import hooks
+    from .traits import hooks
     return hooks(traits, nombre)
 
 

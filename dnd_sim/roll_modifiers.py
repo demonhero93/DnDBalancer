@@ -23,30 +23,12 @@ Ninguna regla consume RNG salvo en dos casos, ambos documentados:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import Any
 
-try:
-    from .conditions import Condition
-    from .dice import RollMode
-    from .randomness import pick
-except ImportError:  # pragma: no cover - ejecución como script suelto
-    try:
-        from conditions import Condition
-        from dice import RollMode
-        from randomness import pick
-    except ImportError:
-        from dnd_sim.conditions import Condition
-        from dnd_sim.dice import RollMode
-        from dnd_sim.randomness import pick
-
-
-class AttackRange(Enum):
-    """Tipo de alcance de un ataque."""
-
-    MELEE = "melee"
-    RANGED = "ranged"
-    MELEE_OR_RANGED = "melee or ranged"
+from .conditions import Condition
+from .core.enums import AttackRange  # noqa: F401  (reexport)
+from .dice import RollMode
+from .randomness import pick
 
 
 # Bonus de CA para atacar a un objetivo que está a distancia (cobertura
@@ -138,13 +120,7 @@ class CheckModifiers:
 def _hooks(traits: Any, nombre: str) -> list:
     """Rasgos que sobrescriben ``nombre`` (import perezoso: evita el ciclo
     ``roll_modifiers`` -> ``traits``, que importa AttackRange de aquí)."""
-    try:
-        from .traits import hooks
-    except ImportError:  # pragma: no cover - ejecución como script suelto
-        try:
-            from traits import hooks
-        except ImportError:
-            from dnd_sim.traits import hooks
+    from .traits import hooks
     return hooks(traits, nombre)
 
 
