@@ -11,6 +11,11 @@ Vive en un módulo **sin dependencias** para que todos esos módulos puedan
 importarla sin ciclos de importación. ``dnd_sim.model.combatant`` la reexporta
 como ``valid_targets`` (API pública histórica).
 
+Además centraliza quién sigue en pie: :func:`living_teams` (equipos con
+algún combatiente vivo) y :func:`combat_finished` (solo queda un bando),
+que usan el bucle del combate y la fase legendaria para dar el encuentro
+por terminado en cuanto cae el último de un lado.
+
 Reglas: nunca el propio actor, nunca los aliados, nunca los muertos.
 """
 from __future__ import annotations
@@ -90,4 +95,30 @@ def valid_targets(actor: Any, ctx: Any = None, combatants: Any = None,
     return result
 
 
-__all__ = ["valid_targets"]
+def living_teams(combatants: Any) -> set:
+    """Equipos (``"PJ"``/``"NPC"``) con algún combatiente en pie.
+
+    Como :func:`valid_targets`, es duck-typed y no consume RNG: lee
+    ``alive`` y ``team`` de cada combatiente.
+    """
+    equipos: set = set()
+    for c in combatants or []:
+        if not getattr(c, "alive", False):
+            continue
+        equipo = getattr(c, "team", None)
+        if equipo is not None:
+            equipos.add(equipo)
+    return equipos
+
+
+def combat_finished(combatants: Any) -> bool:
+    """¿Solo queda un equipo (o ninguno) en pie?
+
+    Es el fin **inmediato** del combate: en cuanto el daño deja a 0 PV al
+    último de un bando (PJ o NPC) y lo marca muerto, ni su bando ni el
+    contrario vuelven a actuar.
+    """
+    return len(living_teams(combatants)) <= 1
+
+
+__all__ = ["valid_targets", "living_teams", "combat_finished"]

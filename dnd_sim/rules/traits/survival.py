@@ -28,8 +28,8 @@ class Regeneration(Trait):
 
     - ``after_damage_taken``: el ácido o el fuego bloquea **el próximo**
       inicio de turno (y solo ese).
-    - ``on_turn_start``: cura ``amount`` PV; o bien muere si empieza el
-      turno a 0 PV sin poder regenerarse.
+    - ``on_turn_start``: si empieza el turno a 0 PV **no se regenera** y
+      muere; en caso contrario cura ``amount`` PV.
     - ``survives_at_zero_hp``: hasta ese momento, a 0 PV sigue vivo (va a
       morir en su turno, no al recibir el golpe).
     - ``reset``: el estado es por combate y ``simulate()`` reutiliza los
@@ -39,8 +39,10 @@ class Regeneration(Trait):
     se puede leer, el rasgo no hace nada y la criatura muere a 0 PV como
     cualquier otra.
 
-    # TODO: la curación se calcula desde 0 PV porque el motor sí deja los
-    # PV por debajo de 0 y la regla 5e no contempla PV negativos.
+    Los PV nunca quedan por debajo de 0 (así lo garantiza
+    :func:`dnd_sim.rules.damage.inflict_damage`), así que la curación se
+    calcula desde 0 PV. A 0 PV, sin embargo, no hay curación posible: el
+    propio turno lo deja morir.
     """
 
     amount: int = 0
@@ -73,33 +75,52 @@ class Regeneration(Trait):
             # El bloqueo dura exactamente un inicio de turno.
             self.blocked = False
             if hp <= 0:
-                # «dies only if it starts its turn with 0 hit points and
-                # doesn't regenerate».
-                self.dead = True
-                try:
-                    ctx.skip_turn = True
-                except Exception:
-                    pass
-                _log_line(ctx, f"{name} empieza su turno con 0 PV sin poder "
-                               f"regenerarse: muere")
+                self._morir(actor, ctx, name)
                 return
             _log_line(ctx, f"{name} no regenera este turno (ácido o fuego)")
             return
         if hp <= 0:
-            hp = 0  # la regla 5e no tiene PV negativos
-        if hp >= max_hp:
-            return  # nada que curar
-        curado = min(self.amount, max_hp - hp)
-        try:
-            actor.hp = hp + curado
-        except Exception:
+            # A 0 PV no se regenera: muere al empezar su turno. Si no, el
+            # troll se salvaría siempre del golpe que lo deja a cero y solo
+            # caería con ácido/fuego que bloquee la curación.
+            hp = 0  # la regla 5e no contempla PV negativos
+            self._morir(actor, ctx, name)
             return
-        _log_line(ctx, f"{name} regenera {curado} PV (Regeneration) "
-                       f"(HP {max(actor.hp, 0)}/{max_hp})")
+        if hp < max_hp:
+            curado = min(self.amount, max_hp - hp)
+            if curado > 0:
+                try:
+                    actor.hp = hp + curado
+                except Exception:
+                    return
+                _log_line(ctx, f"{name} regenera {curado} PV (Regeneration) "
+                               f"(HP {max(actor.hp, 0)}/{max_hp})")
+
+    def _morir(self, actor: Any, ctx: Any, name: Any) -> None:
+        """Muere al empezar su turno a 0 PV: a 0 PV no se regenera.
+
+        Además de apagar el rasgo, pone el estado de muerte del combatiente
+        (``mark_dead``): ``alive`` pasa a False y, si era el último de su
+        bando, el combate termina ahí.
+        """
+        self.dead = True
+        marca = getattr(actor, "mark_dead", None)
+        if callable(marca):
+            try:
+                marca()
+            except Exception:
+                pass
+        try:
+            ctx.skip_turn = True
+        except Exception:
+            pass
+        _log_line(ctx, f"{name} empieza su turno con 0 PV y no se "
+                        f"regenera: muere")
 
     def survives_at_zero_hp(self, owner: Any) -> bool:
-        # Muere en el turno en que empieza a 0 PV sin regenerarse; hasta
-        # entonces sigue en pie (y sigue siendo un objetivo más).
+        # A 0 PV sigue vivo hasta su próximo turno, donde muere sin
+        # regenerarse; hasta entonces sigue en pie (y sigue siendo un
+        # objetivo más).
         return self.amount > 0 and not self.dead
 
     def reset(self) -> None:

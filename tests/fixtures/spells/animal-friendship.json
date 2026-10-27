@@ -1,54 +1,43 @@
 {
-  "higher_level": [],
   "index": "animal-friendship",
-  "name": "Animal Friendship",
-  "desc": [
-    "This spell lets you convince a beast that you mean it no harm. Choose a beast that you can see within range. It must see and hear you. If the beast's Intelligence is 4 or higher, the spell fails. Otherwise, the beast must succeed on a wisdom saving throw or be charmed by you for the spell's duration. If you or one of your companions harms the target, the spells ends."
+  "casting_time": "Action",
+  "classes": [
+    {
+      "index": "bard",
+      "name": "Bard",
+      "url": "/api/2024/classes/bard"
+    },
+    {
+      "index": "druid",
+      "name": "Druid",
+      "url": "/api/2024/classes/druid"
+    },
+    {
+      "index": "ranger",
+      "name": "Ranger",
+      "url": "/api/2024/classes/ranger"
+    }
   ],
-  "range": "30 feet",
   "components": [
     "V",
     "S",
     "M"
   ],
-  "material": "A morsel of food.",
-  "ritual": false,
-  "duration": "24 hours",
   "concentration": false,
-  "casting_time": "1 action",
+  "description": "Target a Beast that you can see within range. The target must succeed on a Wisdom saving throw or have the Charmed condition for the duration. If you or one of your allies deals damage to the target, the spells ends.",
+  "duration": "24 hours",
+  "higher_level": "You can target one additional Beast for each spell slot level above 1.",
   "level": 1,
-  "dc": {
-    "dc_type": {
-      "index": "wis",
-      "name": "WIS",
-      "url": "/api/2014/ability-scores/wis"
-    },
-    "dc_success": "none"
-  },
+  "material": "a morsel of food",
+  "name": "Animal Friendship",
+  "range": "30 feet",
+  "ritual": false,
   "school": {
     "index": "enchantment",
     "name": "Enchantment",
-    "url": "/api/2014/magic-schools/enchantment"
+    "url": "/api/2024/magic-schools/enchantment"
   },
-  "classes": [
-    {
-      "index": "bard",
-      "name": "Bard",
-      "url": "/api/2014/classes/bard"
-    },
-    {
-      "index": "druid",
-      "name": "Druid",
-      "url": "/api/2014/classes/druid"
-    },
-    {
-      "index": "ranger",
-      "name": "Ranger",
-      "url": "/api/2014/classes/ranger"
-    }
-  ],
-  "subclasses": [],
-  "url": "/api/2014/spells/animal-friendship",
-  "updated_at": "2026-04-01T20:35:39.217Z",
-  "damage": []
+  "updated_at": "2026-09-12T22:42:40.696Z",
+  "url": "/api/2024/spells/animal-friendship",
+  "subclasses": []
 }

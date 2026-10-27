@@ -59,7 +59,8 @@ def _salva(monkeypatch, danyo: int, tipo: str = "slashing",
             superado += 1
             if not log_exito:
                 log_exito = list(ctx.log)
-        elif zombi.hp < 0:
+        elif zombi.hp == 0:
+            # Los PV nunca bajan de cero: el exceso lo deja a 0 y muerto.
             caido += 1
         else:
             raise AssertionError(
@@ -148,13 +149,13 @@ def test_un_critico_no_da_salvacion(monkeypatch):
 
 def test_a_un_zombi_ya_caido_no_le_vuelven_a_salvar(monkeypatch):
     # Solo cuenta el daño que lo baja desde PV positivos: rematar un cuerpo
-    # ya en el suelo no revive a nadie.
+    # ya en el suelo no revive a nadie (y los PV no bajan de 0).
     zombi = _zombi(monkeypatch)
     zombi.hp = 0
     ctx = _ctx(zombi, [zombi])
     ctx.log.clear()
     inflict_damage(zombi, 10, "slashing", ctx=ctx)
-    assert zombi.hp == -10
+    assert zombi.hp == 0
     assert not any("Undead Fortitude" in l for l in ctx.log)
 
 
@@ -163,7 +164,8 @@ def test_sin_rng_no_se_tira_la_salvacion(monkeypatch):
     zombi = _zombi(monkeypatch)
     zombi.hp = 5
     inflict_damage(zombi, 10, "slashing")
-    assert zombi.hp == -5
+    assert zombi.hp == 0
+    assert not zombi.alive, "quien no se salva queda a 0 PV y muerto"
 
 
 # --- Integración con el motor ----------------------------------------------- #

@@ -6,13 +6,21 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# Versión de reglas fijada para que los resultados sean consistentes.
-API_VERSION = "2014"
+# Versión de reglas fijada por recurso: la migración a 2024 es **por partes**
+# (decisión: solo hechizos ahora). Los hechizos ya salen del PHB 2024; los
+# monstruos siguen en la SRD 2014 hasta su tarea de migración (su vocabulario
+# de condiciones, salvaciones en texto y legendarias cambiaron en 2024).
+SPELL_API_VERSION = "2024"
+MONSTER_API_VERSION = "2014"
+# Compatibilidad: la versión "por defecto" es la de los hechizos (2024).
+API_VERSION = SPELL_API_VERSION
 API_BASE_URL = f"https://www.dnd5eapi.co/api/{API_VERSION}"
+MONSTER_API_BASE_URL = f"https://www.dnd5eapi.co/api/{MONSTER_API_VERSION}"
+SPELL_API_BASE_URL = f"https://www.dnd5eapi.co/api/{SPELL_API_VERSION}"
 
 # Directorio de caché (relativo al directorio de trabajo).
 CACHE_DIR = Path("cache") / "monsters"
-# Caché de los hechizos (SRD 2014).
+# Caché de los hechizos (PHB 2024).
 SPELL_CACHE_DIR = Path("cache") / "spells"
 
 DEFAULT_TIMEOUT = 15
@@ -69,7 +77,7 @@ def get_monster(
             # Caché corrupta: reintentar descarga.
             pass
 
-    url = f"{API_BASE_URL}/monsters/{index}"
+    url = f"{MONSTER_API_BASE_URL}/monsters/{index}"
 
     # 2) Petición de red.
     try:
@@ -133,7 +141,7 @@ def get_spell(
         except (json.JSONDecodeError, OSError):
             pass
 
-    url = f"{API_BASE_URL}/spells/{index}"
+    url = f"{SPELL_API_BASE_URL}/spells/{index}"
 
     try:
         with urllib.request.urlopen(url, timeout=timeout) as response:

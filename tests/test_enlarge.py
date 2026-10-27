@@ -249,20 +249,19 @@ def test_lanzar_el_hechizo_agranda_al_lanzador():
     assert not objetivo.conditions.has(Condition.ENLARGED)
 
 
-def test_un_lanzador_carga_el_hechizo_con_su_pool_de_slots():
+def test_un_lanzador_carga_el_hechizo_con_su_uso_propio():
+    """PHB 2024: el bloque Spellcasting va en `actions` (con usage por hechizo)."""
     data = {
         "name": "Lanzador",
         "proficiency_bonus": 4,
-        "special_abilities": [{
+        "actions": [{
             "name": "Spellcasting",
             "spellcasting": {
                 "ability": {"index": "int"},
                 "dc": 13,
-                "modifier": 6,
-                "level": 5,
-                "slots": {"2": 3},
                 "spells": [{"name": "Enlarge/Reduce", "level": 2,
-                            "url": "/api/2014/spells/enlarge-reduce"}],
+                            "url": "/api/2024/spells/enlarge-reduce",
+                            "usage": {"type": "per day", "times": 3}}],
             },
         }],
     }
@@ -271,6 +270,7 @@ def test_un_lanzador_carga_el_hechizo_con_su_pool_de_slots():
     assert len(acciones) == 1
     assert acciones[0].name == "Enlarge/Reduce"
     assert acciones[0].usage.uses_left == 3
+    assert acciones[0].usage.uses_max == 3
 
 
 # --- Integración con el motor ----------------------------------------------- #

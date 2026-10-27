@@ -1,1 +1,8 @@
-{"0": "CombatContext", "1": "test_attach.py", "2": "loader.py", "3": "run_combat", "4": "test_area.py", "5": "test_enlarge.py", "6": "dnd_sim/__init__.py", "7": "data/__init__.py", "8": "json", "9": "test_spells.py", "10": "test_traits.py", "11": "Condition", "12": "apply_condition", "13": "PlayerCharacter", "14": "Trait", "15": "usage.py", "16": "defense.py", "17": "combat/__init__.py", "18": "LegendaryState", "19": "combat/attack.py", "20": "test_legendary.py", "21": "legendary_phase", "22": "SaveDamage", "23": "legendary.py", "24": "RollMode", "25": "saves.py", "26": "condition_parser.py", "27": "combatant.py", "28": "load_monster", "29": "traits/__init__.py", "30": "test_undead_fortitude.py", "31": "test_martial_advantage.py", "32": "begin_turn", "33": "saving_throw", "34": "area.py", "35": "typing", "36": "ability_check", "37": "test_pack_tactics.py", "38": "conditions.py", "39": "Regeneration", "40": "roll_modifiers.py", "41": "attack_roll", "42": "inflict_damage", "43": "Combatant", "44": "legendary_parser.py", "45": "intentar_desenganche", "46": "damage.py", "47": "test_superior_invisibility.py", "48": "roll_dice", "49": "AreaSaveAction", "50": "test_checks_escapes.py", "51": "registrar_resistencia", "52": "SaveResult", "53": "trigger_reaction", "54": "._accion_por_nombre", "55": "core/__init__.py", "56": "engine/__init__.py", "57": ".can_use", "58": "model/__init__.py", "59": "_default_targeting", "60": "rules/__init__.py", "61": ".initialize_slots"}
+{
+  "7": "data/__init__.py",
+  "37": "test_pack_tactics.py",
+  "55": "core/__init__.py",
+  "56": "engine/__init__.py",
+  "58": "model/__init__.py",
+  "60": "rules/__init__.py"
+}

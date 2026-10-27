@@ -8,7 +8,8 @@ import random
 from dataclasses import dataclass, field
 
 from ...model.actions import ActionType, CombatContext
-from ...model.combatant import Combatant, CombatantType, valid_targets
+from ...model.combatant import Combatant, valid_targets
+from ...core.targeting import combat_finished, living_teams
 from ...rules.conditions import end_turn
 from ...rules.damage import DamageRecorder
 from ...core.dice import d20
@@ -153,9 +154,22 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
             # acciones descargadas del actor. Si está incapacitado, pierde
             # el turno (sin política y sin consumir RNG).
             resources = begin_turn(actor, ctx)
+            # El actor puede morir en su propio inicio de turno (p. ej.
+            # Regeneration sin curación posible): si eso deja a un bando
+            # sin nadie en pie, el combate termina aquí mismo.
+            if combat_finished(order):
+                break
             if not ctx.skip_turn:
                 # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
                 for action_type in (ActionType.ACTION, ActionType.BONUS_ACTION):
+                    # Fin ya decidido (último de un bando caído): no se
+                    # lanza ninguna habilidad más, ni siquiera la bonus.
+                    if combat_finished(order):
+                        break
+                    # Un actor que ha caído en mitad de su turno (p. ej.
+                    # represalias) no lanza nada más.
+                    if not actor.alive:
+                        break
                     candidates = [
                         a for a in getattr(actor, "actions", [])
                         if getattr(a, "action_type", None) == action_type
@@ -177,7 +191,9 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                     action_name = getattr(chosen, "name", "") or type(chosen).__name__
                     action_uses[action_name] = action_uses.get(action_name, 0) + 1
                     enemies = valid_targets(actor, combatants=order)
-                    if not enemies:
+                    # Con este golpe puede haber caído el último enemigo
+                    # (o el último aliado, vía represalias): fin del combate.
+                    if not enemies or combat_finished(order):
                         break
             else:
                 # Turno perdido. Solo cuenta como incapacitación si la
@@ -186,26 +202,26 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                 if actor.alive:
                     turns_lost_incapacitated[actor.name] = (
                         turns_lost_incapacitated.get(actor.name, 0) + 1)
+            # El combate terminado no cierra turnos ni dispara la fase
+            # legendaria: el bucle se corta en el momento en que cae el
+            # último de un bando.
+            if combat_finished(order):
+                break
             # Final del turno: salvaciones de repetición y duración de las
             # condiciones del propio combatiente.
             end_turn(actor, ctx)
             # Fase legendaria: los demás monstruos legítimos pueden usar una
             # acción legendaria tras el turno de este combatiente.
             legendary_phase(actor, ctx)
-            players_alive = any(c.alive and c.combatant_type == CombatantType.PLAYER for c in order)
-            npcs_alive = any(c.alive and c.combatant_type == CombatantType.NPC for c in order)
-            if not players_alive or not npcs_alive:
+            if combat_finished(order):
                 break
-        players_alive = any(c.alive and c.combatant_type == CombatantType.PLAYER for c in order)
-        npcs_alive = any(c.alive and c.combatant_type == CombatantType.NPC for c in order)
-        if not players_alive or not npcs_alive:
+        if combat_finished(order):
             break
 
-    players_alive = any(c.alive and c.combatant_type == CombatantType.PLAYER for c in order)
-    npcs_alive = any(c.alive and c.combatant_type == CombatantType.NPC for c in order)
-    if players_alive and not npcs_alive:
+    equipos = living_teams(order)
+    if "PJ" in equipos and "NPC" not in equipos:
         winner = "PJ"
-    elif npcs_alive and not players_alive:
+    elif "NPC" in equipos and "PJ" not in equipos:
         winner = "NPC"
     else:
         winner = "Empate"

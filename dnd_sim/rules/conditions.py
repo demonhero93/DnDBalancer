@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from ..model.actions import ActionType, CombatAction
+from ..model.actions import ActionType, CombatAction, actor_is_alive
 from ..core.targeting import valid_targets
 
 if TYPE_CHECKING:
@@ -34,10 +34,11 @@ class Condition(Enum):
     # duergar y el hechizo Enlarge/Reduce); el daño crece según la fuente.
     ENLARGED = "enlarged"
     FRIGHTENED = "frightened"
-    # Guiado: +1d4 a una prueba de característica (se consume al usarla).
+    # Guiado: +1d4 a una prueba de característica (PHB 2024: no se consume
+    # al usarla, dura lo que el hechizo).
     GUIDED = "guided"
     # Señalado: el objetivo otorga ventaja a quien lo ataque (Luz de hadas,
-    # Marca del cazador, Rayo guía).
+    # Rayo guía).
     MARKED = "marked"
     INCAPACITATED = "incapacitated"
     # Invisible: adaptación al simulador, desventaja al ser atacado (el
@@ -50,8 +51,11 @@ class Condition(Enum):
     RESTRAINED = "restrained"
     STUNNED = "stunned"
     UNCONSCIOUS = "unconscious"
-    # Marcado: ventaja en los ataques mientras dure (Hechizo verdadero).
-    TRUE_STRUCK = "true_struck"
+    # Marca del cazador (PHB 2024): el **portador** inflige +1d6 Fuerza
+    # con sus ataques (véase CONDITION_ATTACK_DAMAGE).
+    HUNTERS_MARK = "hunters_mark"
+    # Favor divino (PHB 2024): el **portador** inflige +1d4 Radiante.
+    DIVINE_FAVOR = "divine_favor"
 
 
 # Condiciones que NO se modelan, con el motivo (no son miembros del Enum).
@@ -87,17 +91,36 @@ CONDITION_LABELS: dict[Condition, str] = {
     Condition.PRONE: "derribado",
     Condition.RESTRAINED: "inmovilizado",
     Condition.STUNNED: "aturdido",
-    Condition.TRUE_STRUCK: "marcado",
     Condition.UNCONSCIOUS: "inconsciente",
+    Condition.HUNTERS_MARK: "marcado por la caza",
+    Condition.DIVINE_FAVOR: "bendecido",
+}
+
+
+# Daño extra que el **portador** de una condición inflige con sus ataques
+# (PHB 2024): Marca del cazador (+1d6 Fuerza) y Favor divino (+1d4
+# Radiante). Simplificación: se suma a todo acierto del portador (no solo
+# al objetivo concreto que esté marcado). Véase el impacto en
+# ``dnd_sim.engine.combat.attack_roll``.
+CONDITION_ATTACK_DAMAGE: dict[Condition, tuple[str, Any]] = {
+    Condition.HUNTERS_MARK: ("1d6", "force"),
+    Condition.DIVINE_FAVOR: ("1d4", "radiant"),
 }
 
 
 @dataclass
 class RepeatSave:
-    """Salvación que el afectado puede repetir al final de cada turno suyo."""
+    """Salvación que el afectado puede repetir al final de cada turno suyo.
+
+    ``escalate_to``/``escalate_rounds`` modelan el escalado del Sleep 2024:
+    si la repetición falla, la condición «evoluciona» a otra más grave
+    (Incapacitado → Inconsciente) durante la duración indicada.
+    """
 
     ability: str
     dc: int
+    escalate_to: Any = None      # Condition a la que escala al fallar
+    escalate_rounds: int | None = None
 
 
 @dataclass
@@ -186,6 +209,9 @@ class ConditionEffect:
     repeat_save: bool = False
     on_success: str = "none"
     escape: EscapeCheck | None = None
+    # Escalado al fallar la repetición (Sleep 2024): véase RepeatSave.
+    escalate_to: Any = None
+    escalate_rounds: int | None = None
 
     def __post_init__(self) -> None:
         if self.save_ability is None and self.escape is None:
@@ -421,6 +447,21 @@ def end_turn(actor: Any, ctx: Any) -> None:
                 continue
             _log_line(ctx, f"{nombre} falla la salvación de {habilidad} "
                            f"({sr.total} vs CD {sr.dc}): mantiene {_label(instance.condition)}")
+            # Escalado (Sleep 2024): al fallar la repetición, la condición
+            # pasa a ser otra más grave por el resto de la duración y sin
+            # repetición adicional.
+            escalada = getattr(instance.repeat_save, "escalate_to", None)
+            if escalada is not None and instance.condition is not escalada:
+                tracker.remove_instance(instance)
+                tracker.add(ConditionInstance(
+                    condition=escalada,
+                    source=instance.source,
+                    remaining_rounds=instance.repeat_save.escalate_rounds,
+                    break_on_attack=instance.break_on_attack,
+                ))
+                _log_line(ctx, f"{nombre} queda {_label(escalada)} "
+                               f"(falló la repetición de {_label(instance.condition)})")
+                continue
 
         # 2. Duración.
         if instance.remaining_rounds is not None:
@@ -447,6 +488,10 @@ class ConditionAction(CombatAction):
 
     effect: Any = None
     targeting: Any = field(default_factory=_default_targeting)
+    # Los hechizos de área (Sleep, Luz de hadas...) afectan a todos los
+    # objetivos del área; sin este flag, AreaTargeting() con max=None
+    # acabaría eligiendo un solo objetivo.
+    es_area: bool = False
     usage: Any = None
     action_type: ActionType = ActionType.ACTION
     name: str = "Condición"
@@ -456,7 +501,7 @@ class ConditionAction(CombatAction):
             self.name = "Condición"
 
     def _seleccionar_objetivos(self, context) -> list:
-        """Hostiles vivos: uno al azar, o varios si la acción es de área."""
+        """Hostiles vivos: uno al azar, o todos si la acción es de área."""
         from .area import select_area_targets
         from ..core.randomness import pick
 
@@ -464,6 +509,8 @@ class ConditionAction(CombatAction):
         pool = list(valid_targets(actor, ctx=context))
         if not pool:
             return []
+        if self.es_area:
+            return select_area_targets(actor, context, self.targeting)
         minimo = int(getattr(self.targeting, "min_targets", 1) or 1)
         maximo = getattr(self.targeting, "max_targets", None)
         if maximo is None and minimo <= 1:
@@ -472,6 +519,8 @@ class ConditionAction(CombatAction):
         return select_area_targets(actor, context, self.targeting)
 
     def execute(self, context) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: la habilidad no se lanza
         from .saves import registrar_resistencia, saving_throw
 
         effect = self.effect
@@ -490,7 +539,9 @@ class ConditionAction(CombatAction):
                 # Sin salvación: la condición se aplica directamente.
                 repeat = None
                 if effect.repeat_save:
-                    repeat = RepeatSave(ability="dex", dc=effect.dc)
+                    repeat = RepeatSave(ability="dex", dc=effect.dc,
+                                        escalate_to=getattr(effect, "escalate_to", None),
+                                        escalate_rounds=getattr(effect, "escalate_rounds", None))
                 apply_condition(
                     objetivo, effect.condition, context,
                     source=actor,
@@ -508,7 +559,9 @@ class ConditionAction(CombatAction):
                 continue
             repeat = None
             if effect.repeat_save:
-                repeat = RepeatSave(ability=effect.save_ability, dc=effect.dc)
+                repeat = RepeatSave(ability=effect.save_ability, dc=effect.dc,
+                                    escalate_to=getattr(effect, "escalate_to", None),
+                                    escalate_rounds=getattr(effect, "escalate_rounds", None))
             apply_condition(
                 objetivo, effect.condition, context,
                 source=actor,
@@ -520,6 +573,7 @@ class ConditionAction(CombatAction):
 
 __all__ = [
     "Condition", "EXCLUDED_CONDITIONS", "IMPLIED_CONDITIONS", "CONDITION_LABELS",
+    "CONDITION_ATTACK_DAMAGE",
     "RepeatSave", "EscapeCheck", "ConditionInstance", "ConditionTracker",
     "ConditionEffect", "apply_condition", "attempt_escapes", "end_turn",
     "ConditionAction", "remove_condition", "remove_invisibility_on_action",

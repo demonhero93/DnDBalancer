@@ -45,19 +45,22 @@ def _load_party(specs: list[str], legendary_p: float = 1.0,
 # Los ataques pueden ser ("nombre", "dados", "característica", rango) para
 # marcar los que son a distancia (el arquero deja al atacante a distancia).
 PARTY_TEMPLATES = [
-    dict(name="Guerrero", max_hp=50, ac=18, proficiency=2,
+    dict(name="Guerrero", max_hp=50, ac=18, proficiency=3,
          abilities=dict(str=16, dex=12, con=14, int=10, wis=12, cha=8),
          attacks=[("Espada larga", "1d8", "str", "melee"),
                   ("Arco corto", "1d6", "dex", "ranged")]),
-    dict(name="Pícaro", max_hp=50, ac=15, proficiency=2,
+    dict(name="Pícaro", max_hp=50, ac=15, proficiency=3,
          abilities=dict(str=10, dex=16, con=12, int=14, wis=10, cha=14),
          attacks=[("Daga", "1d4", "dex", "melee")]),
-    dict(name="Monje", max_hp=50, ac=17, proficiency=2,
+    dict(name="Monje", max_hp=50, ac=17, proficiency=3,
          abilities=dict(str=12, dex=16, con=14, int=10, wis=14, cha=8),
          attacks=[("Puño", "1d6", "dex", "melee")]),
-    dict(name="Clérigo", max_hp=50, ac=16, proficiency=2,
+    dict(name="Clérigo", max_hp=50, ac=16, proficiency=3,
          abilities=dict(str=14, dex=10, con=14, int=8, wis=16, cha=12),
          attacks=[("Maza", "1d6", "str", "melee")]),
+    dict(name="Barbaro", max_hp=100, ac=12, proficiency=3,
+        abilities=dict(str=18, dex=14, con=16, int=8, wis=10, cha=12),
+        attacks=[("Hacha de batalla", "1d12", "str", "melee")]),
 ]
 
 
@@ -97,13 +100,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Monstruo a cargar desde la API (formato index o index:cantidad). "
              "Repetible. Ej: --monster owlbear --monster goblin:3",
     )
-    parser.add_argument("-n", "--simulations", type=int, default=10000,
+    parser.add_argument("-n", "--simulations", type=int, default=1000,
                         help="Número de simulaciones (default: 1000).")
     parser.add_argument("--seed", type=int, default=1, help="Semilla RNG.")
     parser.add_argument("--verbose", action="store_true", help="Muestra el primer combate.")
     parser.add_argument(
-        "--party", type=int, default=3,
-        help="Número de personajes jugador del grupo (1-4). Default: 3.",
+        "--party", type=int, default=5,
+        help="Número de personajes jugador del grupo (1-5). Default: 5.",
     )
     parser.add_argument(
         "--legendary-p", type=float, default=1.0,
@@ -120,7 +123,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    specs = args.monster if args.monster else ["chimera"]
+    specs = args.monster if args.monster else ["troll"]
     monsters = _load_party(specs, legendary_p=args.legendary_p,
                            resistance_p=args.resistance_p)
 
@@ -133,7 +136,7 @@ def main() -> None:
     res = run_combat(combatants, random.Random(args.seed), verbose=True)
     print("\n".join(res.log))
     print(f"\nGanador: {res.winner} en {res.rounds} rondas")
-
+    
     report = simulate(combatants, n=args.simulations, seed=args.seed)
     print_report(report)
 

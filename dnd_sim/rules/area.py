@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..model.actions import ActionType, CombatAction, CombatContext
+from ..model.actions import ActionType, CombatAction, CombatContext, actor_is_alive
 from ..core.dice import roll_dice
 from ..core.randomness import pick, sample
 from .saves import SaveDamage, _mode_tag, _outcome_tag, apply_save_damage
@@ -101,6 +101,8 @@ class AreaSaveAction(CombatAction):
             return None
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: la habilidad no se lanza
         actor = context.actor
         effect = self._as_save_damage()
         if effect is None:

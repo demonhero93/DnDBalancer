@@ -45,6 +45,10 @@ class CombatAction:
                 resources = arg
             elif hasattr(arg, "rng") and hasattr(arg, "actor"):
                 context = arg
+        # 2. Un combatiente a 0 PV (o ya marcado muerto) no lanza nada: si
+        #    llega el contexto, la habilidad se niega aquí mismo.
+        if context is not None and not actor_is_alive(context):
+            return False
         if resources is None and context is not None:
             resources = getattr(context, "resources", None)
         if resources is None:
@@ -142,6 +146,23 @@ def _living_enemies(ctx: CombatContext, atk: Any = None) -> list:
     return list(valid_targets(ctx.actor, ctx=ctx, atk=atk))
 
 
+def actor_is_alive(context: Any) -> bool:
+    """¿Sigue vivo el actor? Una habilidad no se lanza con PV <= 0.
+
+    El motor no da turnos a los muertos, pero una habilidad puede llegar a
+    ejecutarse **después** de que su propio actor haya caído en mitad de su
+    turno (represalias, daño transferido, multiataques): en ese caso no se
+    lanza. Todas las ``execute()`` lo comprueban antes de gastar dados.
+    """
+    actor = getattr(context, "actor", None)
+    if actor is None:
+        return True
+    try:
+        return bool(getattr(actor, "alive", True))
+    except Exception:
+        return True
+
+
 def _log(ctx: CombatContext):
     return ctx.log if (ctx.verbose or ctx.log is not None) else None
 
@@ -164,6 +185,8 @@ class AttackAction(CombatAction):
     def execute(self, context: CombatContext) -> None:
         # Resolución real la hace attack_roll vía motor; aquí solo consumimos.
         # (Se espera que el motor invoque attack_roll por cada ataque.)
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: la habilidad no se lanza
         from ..engine.combat import attack_roll  # local para evitar ciclos
 
         actor = context.actor
@@ -230,6 +253,8 @@ class MultiattackAction(CombatAction):
         return usage is None or usage.available
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: la habilidad no se lanza
         from ..engine.combat import attack_roll
         from ..core.randomness import pick
 
@@ -253,6 +278,10 @@ class MultiattackAction(CombatAction):
                 if accion is None:
                     continue
                 for _ in range(count):
+                    # El actor puede caer en mitad del multiataque (p. ej.
+                    # daño transferido o represalias): se corta el resto.
+                    if not actor_is_alive(context):
+                        return
                     enemies = _living_enemies(context)
                     if not enemies:
                         return
@@ -267,6 +296,8 @@ class MultiattackAction(CombatAction):
                     f"El ataque {attack_name!r} no existe en {actor.name!r}.attacks"
                 )
             for _ in range(count):
+                if not actor_is_alive(context):
+                    return  # el actor ha muerto: no sigue pegando
                 enemies = _living_enemies(context, atk)
                 if not enemies:
                     return
@@ -286,6 +317,8 @@ class WeaponAttackAction(CombatAction):
         self.usage = usage
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: la habilidad no se lanza
         from .attack import Attack  # noqa: F401
         from ..engine.combat import attack_roll
         from ..core.randomness import pick
@@ -296,6 +329,8 @@ class WeaponAttackAction(CombatAction):
             return
         total = 1 + int(getattr(actor, "extra_attacks", 0) or 0)
         for _ in range(total):
+            if not actor_is_alive(context):
+                return  # el actor ha muerto: no sigue pegando
             enemies = _living_enemies(context)
             if not enemies:
                 return
@@ -325,6 +360,8 @@ class SaveAction(CombatAction):
             self.name = "Salvación"
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: la habilidad no se lanza
         from ..rules.saves import resolve_save_damage, SaveDamage
         from ..core.randomness import pick as _pick
 

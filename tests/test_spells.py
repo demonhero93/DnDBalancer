@@ -25,9 +25,10 @@ from dnd_sim.data.spell_parser import (
 from dnd_sim.rules.damage import DamageType
 from dnd_sim.rules.roll_modifiers import AttackRange, attack_modifiers
 from dnd_sim.rules.spells import (
-    HealAction, Spell, SpellAction, SpellAttackAction, SpellFixedDamageAction, Spellcasting, spell_action, trigger_reaction
+    FULL_CASTER_SLOTS, HealAction, Spell, SpellAction, SpellAttackAction,
+    SpellFixedDamageAction, Spellcasting, spell_action, trigger_reaction,
 )
-from dnd_sim.rules.usage import begin_turn
+from dnd_sim.rules.usage import UsageKind, begin_turn
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SPELLS = FIXTURES / "spells"
@@ -65,17 +66,18 @@ def _spellcasting(level: int = 18) -> Spellcasting:
 
 # --- Estructura ------------------------------------------------------------ #
 
-def test_el_lanzador_se_lee_de_los_special_abilities():
-    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
+def test_el_lanzador_se_lee_de_los_actions():
+    """PHB 2024: el bloque Spellcasting va en `actions` (con usage por hechizo)."""
+    data = json.loads((FIXTURES / "lich-2024.json").read_text(encoding="utf-8"))
     sc = parse_spellcasting(data)
     assert sc is not None
     assert sc.ability == "int"
     assert sc.save_dc == 20
-    assert sc.attack_bonus == 12
-    assert sc.level == 18
+    assert sc.attack_bonus == 12      # bono de ataque = CD − 8
+    assert sc.ability_mod == 5        # bono de ataque − competencia (7)
+    assert sc.level == 17             # 2 × nivel de hechizo máx (9) − 1
     cantrips = [s for s in sc.spells if s["level"] == 0]
-    assert {s["name"] for s in cantrips} == {
-        "Mage Hand", "Prestidigitation", "Ray of Frost"}
+    assert {s["name"] for s in cantrips} == {"Mage Hand", "Prestidigitation"}
 
 
 def test_un_monstruo_sin_lanzar_hechizos_no_tiene_estado():
@@ -115,7 +117,7 @@ def test_un_cantrip_con_salvacion_usa_la_cd_del_lanzador():
     assert isinstance(accion.effect, SaveAction)
     assert accion.effect.effect.dc == 20      # la CD del lanzador
     assert accion.effect.effect.ability == "wis"
-    assert accion.effect.effect.damage == "1d4"
+    assert accion.effect.effect.damage == "1d6"   # PHB 2024: 1d6 Psíquico
 
 
 def test_un_cantrip_con_varios_elementos_hace_un_ataque_por_elemento():
@@ -227,27 +229,63 @@ def test_solo_se_mantiene_una_concentracion():
     assert instancias[0].remaining_rounds == 5
 
 
-def test_el_hechizo_verdadero_da_ventaja_en_los_ataques():
-    lanzador = _npc()
+def test_el_hechizo_verdadero_es_un_ataque_real_con_dano_extra():
+    """True Strike (PHB 2024): ataque real con el arma + daño extra Radiante.
+
+    Ya no da ventaja: tira el ataque con la característica del lanzador y
+    añade 1d6/2d6/3d6 Radiante a nivel 5/11/17.
+    """
+    raw = _spell_data("true-strike")
+    spell = parse_spell(raw, "Test", _spellcasting(level=18))
+    assert spell.kind == "attack"
+    assert spell.attack_type == "melee"
+    assert spell.damage == "1d8"           # arma genérica
+    assert spell.damage_type == "radiant"
+    assert spell.damage_bonus_from_ability is True
+    assert [d.damage for d in spell.extra_damage] == ["3d6"]  # nivel 17+
+
+    accion = spell_action(spell, _spellcasting(level=18))
+    assert isinstance(accion.effect, AttackAction)
+    atk = accion.effect.attack
+    assert atk.damage_bonus == 12          # MOD del lanzador
+    assert [d.damage for d in atk.extra_damage] == ["3d6"]
+
+    # Sin ventaja: es un ataque normal.
     objetivo = _pj("Objetivo")
-    ctx = _ctx(lanzador, [lanzador, objetivo])
-    from dnd_sim.model.attack import Attack
-    ataque = Attack("Golpe", "1d6", ability="str", attack_bonus=5, damage_bonus=0)
-    antes = attack_modifiers(lanzador, objetivo, ataque).mode
-    apply_condition(lanzador, Condition.TRUE_STRUCK, ctx)
-    despues = attack_modifiers(lanzador, objetivo, ataque).mode
-    assert antes.value == "normal"
-    assert despues.value == "advantage"
+    modo = attack_modifiers(_npc(), objetivo, atk).mode
+    assert modo.value == "normal"
+
+    # El daño extra entra en el impacto del ataque (junto al 1d8).
+    atacante = _npc("Atacante")
+    victima = _pj("Victima")
+    ctx = _ctx(atacante, [atacante, victima])
+    atk.attack_bonus = 100              # impacto seguro
+    attack_roll(atacante, victima, atk, ctx.rng, ctx.log, ctx=ctx)
+    perdida = victima.max_hp - victima.hp
+    assert 4 <= perdida <= 52           # 1d8 + 3d6 (dobles si crítico)
+    assert "radiant" in "".join(str(linea) for linea in ctx.log)
 
 
-def test_la_guia_suma_un_d4_a_una_prueba_y_se_consume():
+def test_el_daño_extra_del_hechizo_verdadero_no_baja_de_cinco():
+    """Por debajo del nivel 5 no hay daño extra (solo el 1d8 del arma)."""
+    raw = _spell_data("true-strike")
+    spell = parse_spell(raw, "Test", _spellcasting(level=1))
+    assert spell.extra_damage == []
+
+
+def test_la_guia_suma_un_d4_a_una_prueba_y_no_se_consume():
+    """PHB 2024: la guía dura 1 minuto; no se consume al usarla."""
     objetivo = _pj("Objetivo")
     ctx = _ctx(objetivo, [objetivo])
     apply_condition(objetivo, Condition.GUIDED, ctx)
     rng = random.Random(7)
     resultado = ability_check(objetivo, "dex", 10, rng)
     assert 1 <= resultado.bonus - 3 <= 4   # +3 (DES) + 1..4 (la guía)
-    assert not objetivo.conditions.has(Condition.GUIDED), "la guía se consume"
+    assert objetivo.conditions.has(Condition.GUIDED), "la guía no se consume"
+    # Sigue disponible para la siguiente prueba.
+    resultado2 = ability_check(objetivo, "dex", 10, rng)
+    assert 1 <= resultado2.bonus - 3 <= 4
+    assert objetivo.conditions.has(Condition.GUIDED)
 
 
 # --- Hechizado: los objetivos se invierten --------------------------------- #
@@ -333,49 +371,52 @@ def test_el_dano_de_un_hechizo_con_slot_escala_con_el_slot():
     assert accion.effect.effect.damage == "3d6"
 
 
-def test_los_hechizos_de_nivel_1_consumen_slots(monkeypatch):
-    """Todos los hechizos de nivel 1 comparten el mismo pool de slots."""
-    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
+def test_los_hechizos_con_uso_limitado_tienen_uso_propio(monkeypatch):
+    """PHB 2024: «per day N» son N usos **propios** del hechizo (sin pools)."""
+    data = json.loads((FIXTURES / "lich-2024.json").read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda name: data)
     monkeypatch.setattr("dnd_sim.data.api_client.get_spell",
                         lambda index, **kw: _spell_data(index))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        lich = load_monster("lich")
-    # Solo los hechizos de nivel 1 (cada nivel tiene su propio pool).
-    con_slots = [a for a in lich.actions
-                 if getattr(a, "usage", None) is not None
-                 and getattr(getattr(a, "spell", None), "level", None) == 1]
-    assert con_slots, "el lich debe cargar hechizos de nivel 1"
-    usages = {id(a.usage) for a in con_slots}
-    assert len(usages) == 1, "el pool de slots es compartido"
-    pool = con_slots[0].usage
-    assert pool.uses_max == 4                 # slots de nivel 1 del lich
+        lich = load_monster("lich-2024")
+    por_nombre = {getattr(a, "name", ""): a for a in lich.actions}
+    con_uso = [a for a in lich.actions
+               if getattr(a, "usage", None) is not None]
+    assert con_uso, "el lich debe cargar hechizos con uso limitado"
+    # Cada hechizo tiene su propio objeto de uso (sin pool compartido).
+    assert len({id(a.usage) for a in con_uso}) == len(con_uso)
+    # «Per day N»: N usos propios (Chain Lightning y Finger of Death).
+    por_dia = [a for a in con_uso
+               if a.usage.kind is UsageKind.PER_DAY]
+    assert {a.name for a in por_dia} >= {"Chain Lightning", "Finger of Death"}
+    for accion in por_dia:
+        assert accion.usage.uses_max >= 1
+        assert accion.usage.uses_left == accion.usage.uses_max
+    # «A voluntad»: uso ilimitado, siempre disponible (Fireball del lich).
+    assert por_nombre["Fireball"].usage.kind is UsageKind.AT_WILL
+    assert por_nombre["Fireball"].usage.available
+    assert por_nombre["Lightning Bolt"].usage.kind is UsageKind.AT_WILL
 
-    # Los cantrips no gastan slots.
-    cantrips = [a for a in lich.actions
-                if getattr(a, "name", "") == "Ray of Frost"]
-    assert cantrips and cantrips[0].usage is None
 
-
-def test_un_slot_gastado_impide_lanzar_mas_hechizos_de_nivel_1(monkeypatch):
-    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
+def test_un_uso_gastado_no_afecta_a_los_otros_hechizos(monkeypatch):
+    data = json.loads((FIXTURES / "lich-2024.json").read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda name: data)
     monkeypatch.setattr("dnd_sim.data.api_client.get_spell",
                         lambda index, **kw: _spell_data(index))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        lich = load_monster("lich")
-    con_slots = [a for a in lich.actions
-                 if getattr(a, "usage", None) is not None
-                 and getattr(getattr(a, "spell", None), "level", None) == 1]
-    assert con_slots
-    pool = con_slots[0].usage
-    for _ in range(pool.uses_max):
-        pool.spend()
-    assert not pool.available
-    for accion in con_slots:
-        assert not accion.can_use()
+        lich = load_monster("lich-2024")
+    por_nombre = {getattr(a, "name", ""): a for a in lich.actions}
+    primero = por_nombre["Chain Lightning"]
+    segundo = por_nombre["Finger of Death"]
+    assert primero.usage is not segundo.usage, "el uso debe ser propio"
+    for _ in range(primero.usage.uses_max):
+        primero.usage.spend()
+    assert not primero.can_use()
+    assert segundo.usage.available, "el uso gastado no afecta a otros hechizos"
+    # Los hechizos «a voluntad» siguen disponibles.
+    assert por_nombre["Fireball"].can_use()
 
 
 def test_el_proyectil_magico_es_dano_automatico():
@@ -462,19 +503,22 @@ def test_el_hechizado_ataca_a_los_de_su_propio_bando():
 
 # --- Integración con los monstruos ----------------------------------------- #
 
-def test_el_lich_carga_su_cantrip_utile(monkeypatch):
-    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
+def test_el_lich_carga_sus_hechizos_utiles(monkeypatch):
+    data = json.loads((FIXTURES / "lich-2024.json").read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda name: data)
     monkeypatch.setattr("dnd_sim.data.api_client.get_spell",
                         lambda index, **kw: _spell_data(index))
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        lich = load_monster("lich")
+        lich = load_monster("lich-2024")
     nombres = [getattr(a, "name", "") for a in lich.actions]
-    assert "Ray of Frost" in nombres
-    # Los cantrips inútiles se omiten con aviso.
+    assert "Fireball" in nombres
+    assert "Lightning Bolt" in nombres
+    assert "Finger of Death" in nombres
+    # Los hechizos sin efecto en combate se omiten con aviso.
     assert "Mage Hand" not in nombres
     assert "Prestidigitation" not in nombres
+    assert "Detect Magic" not in nombres
 
 
 def test_el_ogre_no_carga_hechizos(monkeypatch):
@@ -484,20 +528,21 @@ def test_el_ogre_no_carga_hechizos(monkeypatch):
     assert not [a for a in ogre.actions if isinstance(a, SpellAction)]
 
 
-def test_un_cantrip_se_puede_lanzar_en_cada_turno(monkeypatch):
-    """Los cantrips no tienen límite de usos: se lanzan en cada turno."""
-    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
-    monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda name: data)
-    monkeypatch.setattr("dnd_sim.data.api_client.get_spell",
-                        lambda index, **kw: _spell_data(index))
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        lich = load_monster("lich")
+def test_un_hechizo_a_voluntad_se_puede_lanzar_en_cada_turno():
+    """Los hechizos a voluntad (y los cantrips) no tienen límite de usos."""
+    data = _monstruo_lanzador([("ray-of-frost", "Ray of Frost", 0)],
+                              {0: {"type": "at will"}})
+    acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture)
+    assert len(acciones) == 1
+    assert acciones[0].usage is None, "los cantrips no llevan uso"
+    lanzador = Monster(name="Lanzador", max_hp=100, ac=12,
+                       abilities=Abilities(), attacks=[])
+    lanzador.actions = acciones
     objetivo = _pj("Objetivo", hp=100000)
-    res = run_combat([objetivo, lich], random.Random(3), verbose=True, max_rounds=6)
+    res = run_combat([objetivo, lanzador], random.Random(3), verbose=True,
+                     max_rounds=6)
     lanzamientos = [l for l in res.log if "con Ray of Frost" in l]
-    assert lanzamientos, "el lich debe lanzar su cantrip"
-    assert len(lanzamientos) >= 2
+    assert len(lanzamientos) >= 2, "el hechizo debe lanzarse en cada turno"
 
 
 # --- Hechizos de nivel superior (2+) --------------------------------------- #
@@ -511,25 +556,32 @@ HECHIZOS_TODOS_LOS_NIVELES = [
 ]
 
 
-def _monstruo_lanzador(spells, slots, modifier=12, dc=20, level=18,
+def _monstruo_lanzador(spells, usos_por_nivel=None, dc=20,
                        proficiency=6) -> dict:
-    """JSON de monstruo sintético con hechizos (para build_spell_actions)."""
+    """JSON de monstruo sintético 2024 con hechizos (para build_spell_actions).
+
+    ``usos_por_nivel`` asigna a cada hechizo su propio ``usage``: el PHB
+    2024 no tiene pools por nivel («at will» = ilimitado, «per day N» =
+    N usos propios de ese hechizo).
+    """
+    spells_json = []
+    for indice, nombre, nivel in spells:
+        entrada = {"name": nombre, "level": nivel,
+                   "url": f"/api/2024/spells/{indice}"}
+        tabla_usos = usos_por_nivel or {}
+        uso = tabla_usos.get(str(nivel), tabla_usos.get(nivel))
+        if uso:
+            entrada["usage"] = uso
+        spells_json.append(entrada)
     return {
         "name": "Lanzador",
         "proficiency_bonus": proficiency,
-        "special_abilities": [{
+        "actions": [{
             "name": "Spellcasting",
             "spellcasting": {
                 "ability": {"index": "int"},
                 "dc": dc,
-                "modifier": modifier,
-                "level": level,
-                "slots": slots,
-                "spells": [
-                    {"name": nombre, "level": nivel,
-                     "url": f"/api/2014/spells/{indice}"}
-                    for indice, nombre, nivel in spells
-                ],
+                "spells": spells_json,
             },
         }],
     }
@@ -539,45 +591,58 @@ def _desde_fixture(indice, **kwargs) -> dict:
     return _spell_data(indice)
 
 
-def test_se_cargan_hechizos_de_todos_los_niveles_con_un_pool_por_nivel():
-    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES,
-                              {"1": 4, "2": 3, "7": 1})
+def test_se_cargan_hechizos_de_todos_los_niveles_con_uso_propio():
+    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES, {
+        "1": {"type": "per day", "times": 4},
+        "2": {"type": "per day", "times": 3},
+        "7": {"type": "per day", "times": 1},
+    })
     acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture)
     por_nombre = {a.name: a for a in acciones}
     assert set(por_nombre) == {"Ray of Frost", "Magic Missile", "Thunderwave",
                                "Scorching Ray", "Delayed Blast Fireball"}
-    # Los cantrips no gastan slots.
+    # Los cantrips no gastan usos.
     assert por_nombre["Ray of Frost"].usage is None
-    # Pool compartido entre los hechizos del mismo nivel...
-    assert por_nombre["Magic Missile"].usage is por_nombre["Thunderwave"].usage
+    # Cada hechizo tiene su propio uso (sin pool compartido por nivel)...
+    assert por_nombre["Magic Missile"].usage is not \
+        por_nombre["Thunderwave"].usage
     assert por_nombre["Magic Missile"].usage.uses_max == 4
-    # ...y un pool distinto por nivel.
+    assert por_nombre["Thunderwave"].usage.uses_max == 4
     assert por_nombre["Scorching Ray"].usage.uses_max == 3
     assert por_nombre["Delayed Blast Fireball"].usage.uses_max == 1
-    pools = {id(por_nombre[n].usage) for n in
-             ("Magic Missile", "Scorching Ray", "Delayed Blast Fireball")}
-    assert len(pools) == 3
+    assert por_nombre["Delayed Blast Fireball"].usage.kind is UsageKind.PER_DAY
+    # «A voluntad»: uso ilimitado, siempre disponible.
+    data_at_will = _monstruo_lanzador(
+        [("magic-missile", "Magic Missile", 1)],
+        {"1": {"type": "at will"}})
+    acciones_aw = build_spell_actions(data_at_will, "Test",
+                                      get_spell=_desde_fixture)
+    assert acciones_aw[0].usage.kind is UsageKind.AT_WILL
+    assert acciones_aw[0].usage.available
 
 
-def test_gastar_un_slot_no_afecta_a_los_otros_niveles():
-    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES,
-                              {"1": 4, "2": 3, "7": 1})
+def test_gastar_un_uso_no_afecta_a_los_otros_hechizos():
+    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES, {
+        "1": {"type": "per day", "times": 4},
+        "2": {"type": "per day", "times": 3},
+        "7": {"type": "per day", "times": 1},
+    })
     acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture)
     por_nombre = {a.name: a for a in acciones}
     pool2 = por_nombre["Scorching Ray"].usage
     for _ in range(pool2.uses_max):
         pool2.spend()
-    # Nivel 2 agotado: sus hechizos no se pueden lanzar...
+    # Scorching Ray agotado: no se puede lanzar...
     assert not por_nombre["Scorching Ray"].can_use()
-    # ...pero el nivel 1 y los cantrips siguen disponibles.
+    # ...pero el resto sigue disponible (uso propio, sin pool compartido).
     assert por_nombre["Magic Missile"].can_use()
+    assert por_nombre["Thunderwave"].can_use()
     assert por_nombre["Delayed Blast Fireball"].can_use()
     assert por_nombre["Ray of Frost"].can_use()
 
 
 def test_max_spell_level_limita_el_nivel_cargado():
-    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES,
-                              {"1": 4, "2": 3, "7": 1})
+    data = _monstruo_lanzador(HECHIZOS_TODOS_LOS_NIVELES)
     acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture,
                                    max_spell_level=1)
     assert {a.name for a in acciones} == {"Ray of Frost", "Magic Missile",
@@ -640,10 +705,10 @@ def test_el_upcast_reescala_el_dano_y_la_curacion():
     assert subido.spell.level == 1                            # sigue siendo 1
 
     cw = parse_spell(_spell_data("cure-wounds"), "Test", sc)
-    assert cw.heal == "1d8+6"
-    assert spell_action(cw, sc).effect.effect.heal == "1d8+6"
+    assert cw.heal == "2d8+6"           # PHB 2024: 2d8 de base
+    assert spell_action(cw, sc).effect.effect.heal == "2d8+6"
     cura3 = spell_action(cw, sc, slot_level=3)
-    assert cura3.effect.effect.heal == "3d8+6"
+    assert cura3.effect.effect.heal == "6d8+6"
 
     # Los cantrips escalan con el lanzador: upcast no les cambia nada.
     rayo = parse_spell(_spell_data("ray-of-frost"), "Test", sc)
@@ -652,26 +717,30 @@ def test_el_upcast_reescala_el_dano_y_la_curacion():
 
 
 def test_la_curacion_usa_el_modificador_de_caracteristica_no_el_bono_completo():
-    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
+    data = json.loads((FIXTURES / "lich-2024.json").read_text(encoding="utf-8"))
     sc = parse_spellcasting(data)
     assert sc.attack_bonus == 12
-    assert sc.ability_mod == 5         # 12 = +5 INT + 7 competencia (CR 21)
+    assert sc.ability_mod == 5         # 12 = +5 INT + 7 competencia (prof. 7)
     assert sc.heal_modifier == 5
     spell = parse_spell(_spell_data("cure-wounds"), "Test", sc)
     assert spell.kind == "heal"
-    assert spell.heal == "1d8+5"       # no 1d8+12 (el bono incluye competencia)
+    assert spell.heal == "2d8+5"       # no 2d8+12 (el bono incluye competencia)
     # Sin dato de competencia se usa el bono de ataque (compatibilidad).
     assert Spellcasting(attack_bonus=12).heal_modifier == 12
 
 
-def test_initialize_slots_usa_la_tabla_real_de_un_lanzador_completo():
-    data = json.loads((FIXTURES / "lich.json").read_text(encoding="utf-8"))
+def test_initialize_slots_usa_la_tabla_local_de_un_lanzador_completo():
+    """El PHB 2024 no trae pools en la ficha: la tabla es local (PHB)."""
+    data = json.loads((FIXTURES / "lich-2024.json").read_text(encoding="utf-8"))
     sc_api = parse_spellcasting(data)
+    assert sc_api.slots == {}, "la API de 2024 no trae pools de slots"
     sc_local = Spellcasting()
-    sc_local.initialize_slots(sc_api.level)
+    sc_local.initialize_slots(sc_api.level)      # nivel 17 estimado
     esperado = {0: None}
-    esperado.update({int(k): v for k, v in sc_api.slots.items()})
-    assert sc_local.slots == esperado     # la tabla coincide con la API
+    esperado.update({indice: cantidad for indice, cantidad
+                     in enumerate(FULL_CASTER_SLOTS[sc_api.level], start=1)
+                     if cantidad > 0})
+    assert sc_local.slots == esperado
     bajo = Spellcasting()
     bajo.initialize_slots(1)
     assert bajo.slots == {0: None, 1: 2}  # nivel 1: solo dos de nivel 1
@@ -746,9 +815,9 @@ def test_al_recibir_dano_en_un_ataque_se_dispara_la_reaccion():
     assert any("reacciona con Hellish Rebuke" in linea for linea in log)
 
 
-def test_la_reaccion_gasta_el_slot_de_su_nivel():
+def test_la_reaccion_gasta_su_uso_propio():
     data = _monstruo_lanzador([("hellish-rebuke", "Hellish Rebuke", 1)],
-                              {"1": 4})
+                              {"1": {"type": "per day", "times": 4}})
     acciones = build_spell_actions(data, "Test", get_spell=_desde_fixture)
     assert len(acciones) == 1
     accion = acciones[0]

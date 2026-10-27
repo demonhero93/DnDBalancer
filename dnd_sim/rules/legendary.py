@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..core.randomness import pick
-from ..core.targeting import valid_targets
+from ..core.targeting import combat_finished, valid_targets
 
 # Número de puntos legendarios por ronda (3 en la SRD 2014).
 # TODO: la API no lo da estructurado; si algún monstruo difiere, habría que
@@ -92,23 +92,6 @@ class LegendaryState:
 
 
 from ..core.log import log_line as _log_line
-
-
-def _equipos_vivos(combatants: list) -> set:
-    """Equipos (PJ/NPC) con algún combatiente vivo."""
-    equipos = set()
-    for c in combatants or []:
-        if not getattr(c, "alive", False):
-            continue
-        equipo = getattr(c, "team", None)
-        if equipo is not None:
-            equipos.add(equipo)
-    return equipos
-
-
-def _combate_terminado(combatants: list) -> bool:
-    """¿Solo queda un equipo en pie?"""
-    return len(_equipos_vivos(combatants)) <= 1
 
 
 def _contexto_de(owner: Any, ctx: Any) -> Any:
@@ -218,7 +201,7 @@ def legendary_phase(finished_actor: Any, ctx: Any) -> None:
             continue
         if not getattr(owner, "can_act", True):
             continue
-        if _combate_terminado(combatants):
+        if combat_finished(combatants):
             return
 
         # El dueno tiene 3 acciones legendarias **por ronda**: aunque sus
@@ -260,7 +243,7 @@ def legendary_phase(finished_actor: Any, ctx: Any) -> None:
         if accion is not None:
             accion.execute(owner_ctx)
 
-        if _combate_terminado(combatants):
+        if combat_finished(combatants):
             return
 
 

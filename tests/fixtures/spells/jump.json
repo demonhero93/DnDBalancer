@@ -1,57 +1,48 @@
 {
-  "higher_level": [],
   "index": "jump",
-  "name": "Jump",
-  "desc": [
-    "You touch a creature. The creature's jump distance is tripled until the spell ends."
+  "casting_time": "Bonus Action",
+  "classes": [
+    {
+      "index": "druid",
+      "name": "Druid",
+      "url": "/api/2024/classes/druid"
+    },
+    {
+      "index": "ranger",
+      "name": "Ranger",
+      "url": "/api/2024/classes/ranger"
+    },
+    {
+      "index": "sorcerer",
+      "name": "Sorcerer",
+      "url": "/api/2024/classes/sorcerer"
+    },
+    {
+      "index": "wizard",
+      "name": "Wizard",
+      "url": "/api/2024/classes/wizard"
+    }
   ],
-  "range": "Touch",
   "components": [
     "V",
     "S",
     "M"
   ],
-  "material": "A grasshopper's hind leg.",
-  "ritual": false,
-  "duration": "1 minute",
   "concentration": false,
-  "casting_time": "1 action",
+  "description": "You touch a willing creature. Once on each of its turns until the spell ends, that creature can jump up to 30 feet by spending 10 feet of movement.",
+  "duration": "1 minute",
+  "higher_level": "You can target one additional creature for each spell slot level above 1.",
   "level": 1,
+  "material": "a grasshopper's hind leg",
+  "name": "Jump",
+  "range": "Touch",
+  "ritual": false,
   "school": {
     "index": "transmutation",
     "name": "Transmutation",
-    "url": "/api/2014/magic-schools/transmutation"
+    "url": "/api/2024/magic-schools/transmutation"
   },
-  "classes": [
-    {
-      "index": "druid",
-      "name": "Druid",
-      "url": "/api/2014/classes/druid"
-    },
-    {
-      "index": "ranger",
-      "name": "Ranger",
-      "url": "/api/2014/classes/ranger"
-    },
-    {
-      "index": "sorcerer",
-      "name": "Sorcerer",
-      "url": "/api/2014/classes/sorcerer"
-    },
-    {
-      "index": "wizard",
-      "name": "Wizard",
-      "url": "/api/2014/classes/wizard"
-    }
-  ],
-  "subclasses": [
-    {
-      "index": "lore",
-      "name": "Lore",
-      "url": "/api/2014/subclasses/lore"
-    }
-  ],
-  "url": "/api/2014/spells/jump",
-  "updated_at": "2026-04-01T20:35:39.217Z",
-  "damage": []
+  "updated_at": "2026-09-12T22:42:40.697Z",
+  "url": "/api/2024/spells/jump",
+  "subclasses": []
 }

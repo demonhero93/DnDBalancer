@@ -8,7 +8,9 @@ from typing import Any
 
 from ...model.attack import Attack
 from ...model.combatant import Combatant
-from ...rules.conditions import Condition, remove_invisibility_on_action
+from ...core.enums import parse_damage_type
+from ...rules.conditions import (CONDITION_ATTACK_DAMAGE, Condition,
+                                 remove_invisibility_on_action)
 from ...rules.damage import apply_damage_modifiers, inflict_damage
 from ...core.dice import RollMode, roll_d20, roll_dice
 from ...rules.roll_modifiers import (
@@ -275,6 +277,21 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                            source=attacker, ctx=ctx, crit=crit, rng=rng)
             extra_total += _dmg_x
             extra_partes.append(f"{_dmg_x} {_extra.damage_type.value}")
+        # Daño extra por condiciones del **atacante** (Marca del cazador,
+        # Favor divino): como el daño extra, con su propio tipo y sus
+        # modificadores, y sus dados también se duplican en crítico.
+        for _cond_extra, (_dados_c, _tipo_c) in CONDITION_ATTACK_DAMAGE.items():
+            tracker_c = getattr(attacker, "conditions", None)
+            if tracker_c is None or not tracker_c.has(_cond_extra):
+                continue
+            _tipo_dano = parse_damage_type(_tipo_c)
+            _raw_c = roll_dice(_dados_c, rng, crit=crit)
+            _dmg_c = apply_damage_modifiers(_raw_c, _tipo_dano, target)
+            inflict_damage(target, _dmg_c, _tipo_dano, source=attacker,
+                           ctx=ctx, crit=crit, rng=rng)
+            extra_total += _dmg_c
+            extra_partes.append(f"{_dmg_c} {_tipo_dano.value} "
+                                f"({_cond_extra.value})")
         extra_tag = (" + " + " + ".join(extra_partes)) if extra_partes else ""
         _riders_to_run = list(getattr(atk, "save_riders", None) or [])
         if log_enabled:

@@ -1,34 +1,39 @@
-"""Interpreta el JSON de los hechizos de la API (dnd5eapi.co, SRD 2014).
+"""Interpreta el JSON de los hechizos de la API (dnd5eapi.co, PHB 2024).
 
-Formato real (verificado sobre los hechizos de la SRD 2014):
+Formato real (verificado sobre los hechizos del PHB 2024):
 
 .. code-block:: json
 
     {"name": "Ray of Frost", "index": "ray-of-frost", "level": 0,
-     "casting_time": "1 action", "range": "60 feet",
+     "casting_time": "Action", "range": "60 feet",
      "components": ["V", "S"], "duration": "Instantaneous",
-     "concentration": false, "ritual": false, "school": "evocation",
-     "attack_type": "ranged",
-     "damage": [{"damage_type": {"index": "cold"},
-                 "damage_at_character_level": {"1": "1d8", "5": "2d8",
-                                               "11": "3d8", "17": "4d8"}}],
-     "desc": ["A frigid beam of blue-white light streaks toward a creature
-               within range. Make a ranged spell attack against the target.
-               On a hit, it takes 1d8 cold damage, and its speed is reduced
-               by 10 feet until the start of your next turn."]}
+     "concentration": false, "ritual": false,
+     "school": {"index": "evocation", "name": "Evocation", "url": "..."},
+     "damage": {"damage_type": {"index": "cold", "url": "..."},
+                "damage_at_slot_level": {"0": "1d8"}},
+     "description": "A frigid beam ... Make a ranged spell attack ...",
+     "higher_level": null}
 
-Claves a tener en cuenta:
+Diferencias con la SRD 2014 que condicionan el parser:
 
-- El **daño** de un cantrip viene en ``damage_at_character_level`` (según el
-  nivel del lanzador) y el de un hechizo con slot en ``damage_at_slot_level``.
-- La **curación** viene en ``heal_at_slot_level``, con el marcador ``MOD``
-  donde va el bonificador del lanzador.
-- La **CD** de las salvaciones no está en el hechizo: la tiene el lanzador
-  (``spellcasting.dc``). El hechizo solo dice la característica y si el
-  éxito reduce el daño (``dc.dc_success``).
-- El **número de elementos** (rayos, dardos...) solo aparece en el texto.
+- ``description``/``higher_level`` son **cadenas** (no listas), ``school`` es
+  un objeto y ``damage`` es **un objeto** (no una lista) con solo
+  ``damage_at_slot_level`` (los cantrips usan la clave ``"0"``).
+- **No** hay campos ``dc``, ``attack_type`` ni ``heal_at_slot_level``: la
+  característica de la salvación («Dexterity saving throw»), el medio daño
+  («half as much damage»), el daño fijo («base damage is 12d6»), la
+  curación («regains ... Hit Points equal to 2d8») y las condiciones
+  («have the Blinded condition») salen del **texto**.
+- El escalado (upcast) también vive en el texto: «increases by 1d6 for
+  each spell slot level above 1» (daño o curación) y en los cantrips
+  «levels 5 (2d6), 11 (3d6), and 17 (4d6)».
+- El lanzador va en ``actions`` (bloque «Spellcasting») con ``dc`` y
+  ``spells[].usage`` («at will» / «per day N»): sin ``modifier``, ``level``
+  ni ``slots``; el bono de ataque se deriva de la CD (CD − 8) y el nivel de
+  lanzador se estima como 2 × nivel de hechizo máx − 1.
 
-# TODO: los patrones de texto son frágiles (texto libre de la API).
+# TODO: el parser es frágil por naturaleza (texto libre): si un hechizo
+se clasifica mal, hay que ajustar el regex correspondiente aquí.
 """
 from __future__ import annotations
 
@@ -37,582 +42,702 @@ import warnings
 from typing import Any
 
 from ..model.actions import ActionType
-from ..rules.conditions import Condition, ConditionEffect, EXCLUDED_CONDITIONS
+from ..model.attack import ExtraDamage
+from ..rules.conditions import Condition, ConditionEffect
+from ..rules.damage import DamageType, parse_damage_type
 from ..rules.saves import normalize_ability
-from ..rules.spells import (
-    Spell, Spellcasting, StateEffect, dado_por_nivel, duracion_en_rondas
-)
+from ..rules.spells import (Spell, Spellcasting, StateEffect, dado_por_nivel,
+                            duracion_en_rondas, spell_action)
+from ..rules.usage import ActionUsage, UsageKind
 from .area_classifier import is_area_action
-from .condition_parser import CONDITION_KEYWORDS, REPEAT_SAVE_RE
+from .condition_parser import CONDITION_KEYWORDS
 from .escape_parser import parse_escape
 
-# Tiempo de lanzamiento: 1 minuto o más no influye en el combate.
+
+# ---------------------------------------------------------------------------
+# Vocabulario del PHB 2024 (expresiones literales de los textos de la API)
+# ---------------------------------------------------------------------------
+
+# «1 minute», «1 hour», «1 day» en el tiempo de lanzamiento: no se modela.
 LONG_CASTING_RE = re.compile(r"\b(\d+)\s*(minute|hour|day)s?\b", re.IGNORECASE)
-
-# Tiempo de casteo -> tipo de acción (vocabulario cerrado).
-CASTING_TIME_ACTIONS: dict[str, str] = {
-    "1 action": "action",
-    "1 bonus action": "bonus_action",
-    "1 reaction": "reaction",
-}
-
-# Hechizos que crean objetos (si no hacen daño ni dejan estado: se omiten).
-CREATE_MARKERS: tuple[str, ...] = (
-    "you create", "you conjure", "appear in your hand", "appear in your hands",
-)
-
-# Escuela de las ilusiones (se omiten si no dejan estado en el rival).
-ILLUSION_SCHOOL = "illusion"
-
-# Dano directo a un objetivo (no un bonus a los ataques del lanzador):
-# "A dart deals 1d4 + 1 force damage to its target".
-DIRECT_DAMAGE_RE = re.compile(
-    r"damage to (?:its|the) target|takes? [\w\d+ ]*damage", re.IGNORECASE)
-
-# Efecto por puntos de vida ("Roll 5d8; the total is how many hit points of
-# creatures this spell can affect"): no se modela.
-HP_THRESHOLD_RE = re.compile(
-    r"how many hit points of creatures", re.IGNORECASE)
-
-# Palabras que delatan un efecto sobre el movimiento (se buscan como
-# palabras completas: "firefly" no es "fly").
-MOVEMENT_MARKERS: tuple[str, ...] = (
-    "speed", "teleport", "dash", "levitate", "push", "pull", "shove",
-    "knock", "swim", "jump", "walk", "fly", "flying", "movement", "descent",
-)
-MOVEMENT_RES = tuple(re.compile(rf"\b{re.escape(m)}\b", re.IGNORECASE)
-                     for m in MOVEMENT_MARKERS)
-
-# Elementos de un hechizo ("three rays of fire", "four beams at 17th level").
-ELEMENT_BY_LEVEL_RE = re.compile(
-    r"\b(two|three|four|five)\s+(?:beams|rays|darts|bolts)\s+at\s+(\d+)"
-    r"(?:st|nd|rd|th)\s+level", re.IGNORECASE)
+# «Action», «Bonus Action», «Reaction, which you take...».
+CASTING_TIME_RE = re.compile(
+    r"^\s*(?:\d+\s*)?(bonus action|reaction|action)\b", re.IGNORECASE)
+_ACTION_TYPES = {"bonus action": ActionType.BONUS_ACTION,
+                 "reaction": ActionType.REACTION,
+                 "action": ActionType.ACTION}
+# «Make a ranged spell attack» / «Make a melee spell attack».
+SPELL_ATTACK_RE = re.compile(r"\b(ranged|melee)\s+spell attack\b",
+                             re.IGNORECASE)
+# «a Constitution saving throw» (primera mención del texto).
+SAVE_RE = re.compile(
+    r"\b(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma)"
+    r"\s+saving throw", re.IGNORECASE)
+# «half as much damage» / «takes half as much damage only».
+HALF_RE = re.compile(r"half as much damage", re.IGNORECASE)
+# «The damage increases by 1d6 for each spell slot level above 1.»
+UPCAST_DAMAGE_RE = re.compile(
+    r"damage increases by (\d+d\d+) for each spell slot level above (\d+)",
+    re.IGNORECASE)
+# «The healing increases by 2d8 for each spell slot level above 1.»
+UPCAST_HEAL_RE = re.compile(
+    r"healing increases by (\d+d\d+) for each spell slot level above (\d+)",
+    re.IGNORECASE)
+# Cantrips: «levels 5 (2d6), 11 (3d6), and 17 (4d6)».
+CANTRIP_UPGRADE_RE = re.compile(
+    r"levels 5 \((\w+)\), 11 \((\w+)\), and 17 \((\w+)\)", re.IGNORECASE)
+# «You create three glowing darts» / «You hurl three fiery rays».
 ELEMENT_RE = re.compile(
-    r"\b(two|three|four|five|six)\s+(?:beams|rays|darts|bolts)\b", re.IGNORECASE)
-# "Make a separate attack roll for each beam" / "attack for each ray".
+    r"\b(two|three|four|five|six)\s+(?:\w+\s+)?(?:beams|rays|darts|bolts)\b",
+    re.IGNORECASE)
+# «The spell creates two beams at level 5, three beams at level 11, ...»
+ELEMENT_BY_LEVEL_RE = re.compile(
+    r"\b(two|three|four|five)\s+(?:\w+\s+)?(?:beams|rays|darts|bolts)"
+    r"\s+at level (\d+)", re.IGNORECASE)
+# «Make a separate attack roll for each beam» / «attack for each ray».
 SEPARATE_ELEMENTS_RE = re.compile(
-    r"(?:attack roll for each|attack for each)", re.IGNORECASE)
+    r"separate attack roll for each|attack for each|"
+    r"roll (?:a|an|the) .{0,40} for each", re.IGNORECASE)
+# «have the Charmed condition» / «has the Prone and Incapacitated
+# conditions» / «or fall Prone» / «be knocked prone».
+CONDITION_2024_RE = re.compile(
+    r"\b(?:have|has)\s+(?:the\s+)?([a-z]+(?:\s+and\s+[a-z]+)*)\s+conditions?\b"
+    r"|\bor fall\s+(\w+)\b"
+    r"|\bbe knocked\s+(\w+)\b", re.IGNORECASE)
+# Frase con salvación: «saving throw», «On a failed save», «repeats the
+# save», «fails the second save»...
+_SALVACION_EN_FRASE_RE = re.compile(
+    r"saving throw|failed save|fails?\b[^.]{0,40}\bsave\b|"
+    r"repeats? the save|that save", re.IGNORECASE)
+# «the target repeats the save» / «it makes another Wisdom saving throw».
+REPEAT_SAVE_RE = re.compile(
+    r"(?:repeat(?:s)?|makes? another)\s+(?:\w+\s+)?(?:saving throw|save)",
+    re.IGNORECASE)
+# «If the target fails the second save, the target has the Unconscious
+# condition for the duration» (Sleep 2024): escalado de la repetición.
+ESCALATE_RE = re.compile(
+    r"fails the (?:second|repeat)[^.]*?has the (\w+) condition",
+    re.IGNORECASE)
+# «... until the end of your next turn»: la condición dura 1 ronda.
+UNTIL_NEXT_TURN_RE = re.compile(
+    r"until the end of (?:your|its|his|her|their) next turn", re.IGNORECASE)
+# «regains a number of Hit Points equal to 2d8 plus your spellcasting
+# ability modifier».
+HEAL_RE = re.compile(
+    r"regains (?:a number of )?Hit Points equal to (\d+d\d+)"
+    r"(\s*plus your spellcasting ability modifier)?", re.IGNORECASE)
+# «The spell's base damage is 12d6» (Delayed Blast Fireball).
+BASE_DAMAGE_RE = re.compile(r"base damage is (\d+d\d+)", re.IGNORECASE)
+# «A creature takes Fire damage equal to the total accumulated damage»:
+# tipo de daño del hechizo sin campo estructurado (Delayed Blast Fireball).
+DAMAGE_TYPE_TEXT_RE = re.compile(r"takes (\w+) damage", re.IGNORECASE)
+# «taking 7d8 + 30 Necrotic damage on a failed save» (Finger of Death):
+# daño con salvación sin campo estructurado en la API.
+SAVE_DAMAGE_TEXT_RE = re.compile(
+    r"taking (\d+d\d+)(?:\s*\+\s*(\d+))?\s+(\w+) damage", re.IGNORECASE)
+# «A dart deals 1d4 + 1 Force damage to its target» (Magic Missile).
+PER_ELEMENT_DAMAGE_RE = re.compile(
+    r"(\d+)d(\d+)\s*\+\s*(\d+)\s+(\w+)\s+damage", re.IGNORECASE)
+# «The spell creates one more dart for each spell slot level above 1.»
+ONE_MORE_ELEMENT_RE = re.compile(
+    r"creates one more \w+ for each spell slot level above (\d+)",
+    re.IGNORECASE)
+# «damage to its target» / «takes 2d8 Fire damage».
+DIRECT_DAMAGE_RE = re.compile(r"damage to (?:its|the) target|"
+                              r"takes? [\w\d+ ]*damage", re.IGNORECASE)
+# «You gain 2d4 + 4 Temporary Hit Points»: no se modelan.
+TEMP_HP_RE = re.compile(r"temporary hit points", re.IGNORECASE)
 
-# La API no siempre trae ``attack_type`` (p. ej. Scorching Ray): si el texto
-# dice "ranged spell attack" / "melee spell attack" se trata como ataque.
-SPELL_ATTACK_RE = re.compile(r"\b(ranged|melee)\s+spell attack\b", re.IGNORECASE)
+# Expresiones de dados «NdX», «NdX+3» o «NdX+MOD» (para sumar upcast).
+_DADOS_RE = re.compile(r"^(\d+)d(\d+)(?:([+-])(\d+|MOD))?$", re.IGNORECASE)
 
-# Hechizos que dejan un estado (vocabulario cerrado):
-# nombre -> (condición, objetivo "self" | "ally" | "enemy", ¿salvación?).
+_NUMEROS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
+
+# Hechizos de estado del SRD (vocabulario cerrado):
+# nombre -> (condición, destino, necesita salvación).
+# - Guidance: +1d4 a una prueba durante 1 minuto (PHB 2024: no se consume
+#   al usarla).
+# - Divine Favor / Hunter's Mark: el **portador** inflige daño extra con
+#   sus ataques (véase CONDITION_ATTACK_DAMAGE en rules.conditions).
+# - Charm Person / Faerie Fire necesitan salvación, que sale del texto.
 SPELL_STATES: dict[str, tuple[str, str, bool]] = {
     "guidance": ("guided", "ally", False),
-    "true strike": ("true_struck", "self", False),
     "charm person": ("charmed", "enemy", True),
     "faerie fire": ("marked", "enemy", True),
-    # Enlarge/Reduce: se modela la variante Agrandar al propio lanzador
-    # (auto-aplicada, sin salvación); la salvación CON contra un objetivo
-    # no dispuesto no se modela. Comparte el estado ENLARGED con el rasgo
-    # del duergar (dnd_sim.data.loader._STATE_BUFF_ACTIONS).
     "enlarge/reduce": ("enlarged", "self", False),
+    "divine favor": ("divine_favor", "self", False),
+    "hunter's mark": ("hunters_mark", "self", False),
 }
 
-# Estado de "hechizado": "it is charmed by you until the spell ends".
-CHARMED_RE = re.compile(r"\bis charmed by\b", re.IGNORECASE)
-# Repeticion de la salvacion: "can make another wisdom saving throw".
-SPELL_REPEAT_SAVE_RE = re.compile(
-    r"(?:repeat|make another)\s+(?:\w+\s+)?saving throw", re.IGNORECASE)
+# Marcas de texto para lo que NO se modela (sin daño ni condición).
+CREATE_MARKERS = ("you create", "you conjure", "appear in your hand",
+                  "appear in your hands")
+MOVEMENT_MARKERS = ("speed", "teleport", "dash", "levitate", "push", "pull",
+                    "shove", "knock", "swim", "jump", "walk", "fly",
+                    "flying", "movement", "descent")
 
-NUMBER_WORDS: dict[str, int] = {
-    "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
-}
-
-
-def _warn(monster_name: str, spell_name: str, motivo: str) -> None:
-    """Avisa de que un hechizo se ignora (con su motivo)."""
-    warnings.warn(
-        f"Hechizo {spell_name!r} de {monster_name!r}: {motivo}. Se omite. "
-        f"# TODO: modelar si procede.",
-        stacklevel=3,
-    )
+# Gravedad de las condiciones 2024: cuando el texto enumera varias («the
+# Prone and Incapacitated conditions»), se aplica la más grave.
+GRAVEDAD: tuple[str, ...] = (
+    "stunned", "paralyzed", "unconscious", "petrified", "incapacitated",
+    "restrained", "blinded", "prone", "poisoned", "frightened", "charmed")
 
 
-# --- Datos del lanzador ---------------------------------------------------- #
+def _avisar(monster_name: str, nombre: str, motivo: str) -> None:
+    warnings.warn(f"[hechizo] {nombre} ({monster_name or 'SRD'}): {motivo}",
+                  stacklevel=2)
 
-def parse_spellcasting(monster_json: dict) -> Spellcasting | None:
-    """Datos de lanzamiento del monstruo (``special_abilities``).
 
-    El **modificador de característica** (``ability_mod``) se deriva del
-    bono de ataque de la API restando la competencia (la API solo da el
-    bono completo). Es el ``MOD`` de la curación: ``1d8 + MOD``.
+# ---------------------------------------------------------------------------
+# Auxiliares de texto
+# ---------------------------------------------------------------------------
+
+def _frases(texto: str) -> list[str]:
+    """Divide el texto en frases (exige misma frase para salvación+condición)."""
+    return [f.strip() for f in re.split(r"(?<=[.!?])\s+|\n+", texto) if f.strip()]
+
+
+def _condiciones_de_frase(frase: str) -> list[str]:
+    """Condiciones del vocabulario 2024 presentes en la frase."""
+    match = CONDITION_2024_RE.search(frase)
+    if not match:
+        return []
+    bruto = match.group(1) or match.group(2) or match.group(3) or ""
+    candidatos = [p.strip().lower()
+                  for p in re.split(r"\s+and\s+", bruto) if p.strip()]
+    return [c for c in candidatos if c in CONDITION_KEYWORDS]
+
+
+def _condicion_con_salvacion(texto: str) -> Condition | None:
+    """Condición ligada textualmente a una salvación (PHB 2024).
+
+    Vocabulario: «or have the Charmed condition», «has the Prone and
+    Incapacitated conditions» (se elige la más grave) u «or fall Prone».
+    La frase debe contener también palabras de salvación para no confundir
+    efectos secundarios de otras frases.
     """
-    for ability in monster_json.get("special_abilities") or []:
-        if not isinstance(ability, dict):
+    for frase in _frases(texto):
+        if not _SALVACION_EN_FRASE_RE.search(frase):
             continue
-        if str(ability.get("name") or "").strip().lower() != "spellcasting":
+        candidatos = _condiciones_de_frase(frase)
+        if not candidatos:
             continue
-        data = ability.get("spellcasting") or {}
-        ab = data.get("ability") or {}
-        index = ab.get("index") if isinstance(ab, dict) else ab
-        modifier = data.get("modifier")
-        proficiency = monster_json.get("proficiency_bonus")
-        ability_mod = None
-        if modifier is not None and proficiency is not None:
-            try:
-                ability_mod = int(modifier) - int(proficiency)
-            except (TypeError, ValueError):
-                ability_mod = None
-        return Spellcasting(
-            ability=str(index or "int"),
-            save_dc=int(data.get("dc") or 10),
-            attack_bonus=int(modifier or 0),
-            level=int(data.get("level") or 5),
-            slots=dict(data.get("slots") or {}),
-            spells=list(data.get("spells") or []),
-            ability_mod=ability_mod,
-        )
+        candidatos.sort(key=lambda c: (GRAVEDAD.index(c) if c in GRAVEDAD
+                                       else len(GRAVEDAD)))
+        return Condition(CONDITION_KEYWORDS[candidatos[0]])
     return None
 
 
-# --- Utilidades de datos --------------------------------------------------- #
-
-# La resolución de dados por nivel vive en el módulo de reglas
-# (``spells.dado_por_nivel``); aquí se conserva el alias interno.
-_dado_por_nivel = dado_por_nivel
-
-
-def _dados_de_dano(entries: list, nivel: int, slot: int = 0) -> str:
-    """Dados de daño de la primera entrada con daño.
-
-    El daño de un **cantrip** escala con el nivel del lanzador
-    (``damage_at_character_level``) y el de un hechizo con slot con el nivel
-    del **slot** usado (``damage_at_slot_level``).
-    """
-    for entry in entries or []:
-        if not isinstance(entry, dict):
+def _slot_table(entry: dict) -> dict[str, str]:
+    """Tabla {nivel: dados} del objeto ``damage`` (2024: solo slots)."""
+    tabla = (entry.get("damage_at_slot_level")
+             or entry.get("damage_at_character_level") or {})
+    if not isinstance(tabla, dict):
+        return {}
+    out: dict[str, str] = {}
+    for clave, valor in tabla.items():
+        try:
+            out[str(int(clave))] = str(valor)
+        except (TypeError, ValueError):
             continue
-        if isinstance(entry.get("damage_at_character_level"), dict):
-            dados = _dado_por_nivel(entry["damage_at_character_level"], nivel)
-            if dados:
-                return dados
-        if isinstance(entry.get("damage_at_slot_level"), dict):
-            dados = _dado_por_nivel(entry["damage_at_slot_level"], slot or 1)
-            if dados:
-                return dados
-        for key in ("damage_dice", "damage", "dice"):
-            if entry.get(key):
-                return str(entry[key]).replace(" ", "")
-    return ""
-
-
-def _tabla_de_dano(entries: list) -> dict:
-    """Tabla cruda de escalado del daño (guardada en ``Spell.damage_table``).
-
-    Misma precedencia que :func:`_dados_de_dano`: primero
-    ``damage_at_character_level`` (cantrips: escalan con el lanzador) y
-    después ``damage_at_slot_level`` (hechizos con slot: escalan con el
-    slot, incluido el upcast).
-    """
-    for entry in entries or []:
-        if not isinstance(entry, dict):
-            continue
-        for key in ("damage_at_character_level", "damage_at_slot_level"):
-            tabla = entry.get(key)
-            if isinstance(tabla, dict) and tabla:
-                return dict(tabla)
-    return {}
-
-
-def _opciones_de_dano(entries: list) -> list[str]:
-    """Opciones de daño (formato ``{"choose": n, "from": {...}}``)."""
-    opciones = []
-    for entry in entries or []:
-        if not isinstance(entry, dict):
-            continue
-        from_opts = entry.get("from")
-        if isinstance(from_opts, dict):
-            for opt in from_opts.get("options") or []:
-                if not isinstance(opt, dict):
-                    continue
-                for key in ("damage_dice", "damage", "dice"):
-                    if opt.get(key):
-                        opciones.append(str(opt[key]).replace(" ", ""))
-    return opciones
+    return out
 
 
 def _tipo_de_dano(entries: list) -> str:
-    """Tipo de daño de la primera entrada con daño."""
-    for entry in entries or []:
-        if not isinstance(entry, dict):
-            continue
-        dt = entry.get("damage_type") or {}
-        if isinstance(dt, dict):
-            index = dt.get("index") or dt.get("name")
-            if index:
-                return str(index).lower()
-        elif isinstance(dt, str) and dt:
-            return dt.lower()
-    return "bludgeoning"
+    for entry in entries:
+        tipo = entry.get("damage_type") or {}
+        if isinstance(tipo, dict):
+            return str(tipo.get("index") or "")
+        return str(tipo or "")
+    return ""
 
 
-def _dc_ability(dc_info: dict) -> str:
-    """Característica de la salvación del hechizo."""
-    tipo = dc_info.get("dc_type") or {}
-    index = tipo.get("index") if isinstance(tipo, dict) else tipo
+def _tabla_cantrip(base: str, texto: str,
+                   con_base: bool = True) -> dict[str, str]:
+    """Tabla de escalado de cantrip por **nivel de personaje**."""
+    tabla = {"1": base} if con_base else {}
+    match = CANTRIP_UPGRADE_RE.search(texto)
+    if match:
+        tabla["5"] = str(match.group(1))
+        tabla["11"] = str(match.group(2))
+        tabla["17"] = str(match.group(3))
+    return tabla
+
+
+def _dados_hasta(tabla: dict[str, str], nivel: int) -> str:
+    """Dados de la clave más alta <= nivel ('' si no hay ninguna)."""
     try:
-        return normalize_ability(index) if index else "dex"
-    except Exception:
-        return "dex"
+        claves = sorted(int(k) for k in tabla)
+    except (TypeError, ValueError):
+        return ""
+    elegido = None
+    for clave in claves:
+        if clave <= nivel:
+            elegido = clave
+    return str(tabla[str(elegido)]) if elegido is not None else ""
 
 
-def _numero_elementos(texto: str, nivel: int) -> int:
-    """Nº de elementos de un hechizo (rayos, dardos,dardos...)."""
-    if not SEPARATE_ELEMENTS_RE.search(texto):
-        return 1
-    mejor = None
-    for match in ELEMENT_BY_LEVEL_RE.finditer(texto):
-        lvl = int(match.group(2))
-        if lvl <= nivel and (mejor is None or lvl >= mejor[0]):
-            mejor = (lvl, NUMBER_WORDS.get(match.group(1).lower(), 1))
-    if mejor is not None:
-        return mejor[1]
-    match = ELEMENT_RE.search(texto)
-    if match is not None:
-        return NUMBER_WORDS.get(match.group(1).lower(), 1)
-    return 1
+def _sumar_dados(base: str, incremento: str) -> str | None:
+    """Suma dos expresiones de dados de igual cara (upcast).
+
+    Devuelve None si no se puede (cara distinta o formato raro): quien
+    llama no extiende la tabla y avisa.
+    """
+    m1 = _DADOS_RE.match(str(base).strip())
+    m2 = _DADOS_RE.match(str(incremento).strip())
+    if not m1 or not m2:
+        return None
+    n1, c1, s1, f1 = m1.groups()
+    n2, c2, s2, f2 = m2.groups()
+    if c1 != c2:
+        return None
+    if f1 is None and f2 is None:
+        flat = ""
+    elif f1 is None:
+        flat = f"{s2}{f2}"
+    elif f2 is None:
+        flat = f"{s1}{f1}"
+    elif s1 == s2 and f1 == f2:
+        flat = f"{s1}{f1}"  # MOD+MOD (o el mismo plano)
+    elif f1.isdigit() and f2.isdigit():
+        total = int(f1) + (int(f2) if s2 == "+" else -int(f2))
+        flat = f"{s1}{total}" if total else ""
+    else:
+        return None
+    return f"{int(n1) + int(n2)}d{c1}{flat}"
 
 
-def _crea_objetos(texto: str) -> bool:
-    """¿El hechizo crea objetos? (si no hacen daño ni efecto, se omiten)."""
-    low = str(texto or "").lower()
-    return any(marker in low for marker in CREATE_MARKERS)
-
-
-def _es_ilusion(raw: dict) -> bool:
-    """¿El hechizo pertenece a la escuela de la ilusión?"""
-    school = raw.get("school") or ""
-    index = school.get("index") if isinstance(school, dict) else str(school)
-    return str(index or "").lower() == ILLUSION_SCHOOL
+def _extender_tabla(tabla: dict[str, str], incremento: str, desde: int,
+                    monster_name: str, nombre: str) -> dict[str, str]:
+    """Extiende la tabla de daño/curación con el upcast del texto."""
+    out = {str(k): str(v) for k, v in tabla.items()}
+    if str(desde) not in out:
+        return out
+    for nivel in range(desde + 1, 10):
+        previo = out.get(str(nivel - 1))
+        if previo is None:
+            break
+        nuevo = _sumar_dados(previo, incremento)
+        if nuevo is None:
+            _avisar(monster_name, nombre,
+                    f"upcast con dados distintos ({previo} + {incremento}): "
+                    "tabla sin extender")
+            break
+        out[str(nivel)] = nuevo
+    return out
 
 
 def _elementos_totales(texto: str) -> int:
-    """Nº de elementos de un hechizo (dardos, dardos...) aunque no sean
-    ataques independientes."""
-    match = ELEMENT_RE.search(str(texto or ""))
-    if match is not None:
-        return NUMBER_WORDS.get(match.group(1).lower(), 1)
-    return 1
+    match = ELEMENT_RE.search(texto)
+    if not match:
+        return 1
+    return _NUMEROS.get(match.group(1).lower(), 1)
 
 
-def _afecta_movimiento(texto: str) -> bool:
-    """¿El hechizo afecta al movimiento (propio o ajeno)?"""
-    return any(p.search(str(texto or "")) for p in MOVEMENT_RES)
+def _elementos_por_nivel(texto: str, nivel: int) -> int:
+    """Elementos por nivel de lanzador («two beams at level 5, ...»)."""
+    tabla: dict[int, int] = {}
+    for match in ELEMENT_BY_LEVEL_RE.finditer(texto):
+        tabla[int(match.group(2))] = _NUMEROS.get(match.group(1).lower(), 1)
+    if not tabla:
+        return _elementos_totales(texto)
+    elegido = 1
+    for clave in sorted(tabla):
+        if clave <= nivel:
+            elegido = tabla[clave]
+    return elegido
 
 
-def _condicion_con_salvacion(texto: str, nombre: str, monster_name: str,
-                              ability: str, dc: int,
-                              duracion: int | None) -> ConditionEffect | None:
-    """Condición que deja un hechizo con salvación (vocabulario cerrado).
-
-    La duración es la del **hechizo** ("Until dispelled", "1 minute"...), no
-    la del texto de la acción.
-    """
-    repeat = bool(REPEAT_SAVE_RE.search(texto) or SPELL_REPEAT_SAVE_RE.search(texto))
-    escape = parse_escape(texto, monster_name, nombre)
-    for clave, condicion in CONDITION_KEYWORDS.items():
-        if clave in EXCLUDED_CONDITIONS:
-            continue
-        if clave == "charmed":
-            # Solo el hechizo de hechizar (vocabulario cerrado) deja CHARMED.
-            continue
-        patron = (rf"saving throw[^.;]*?\b(?:be|become|fall)\s+"
-                  rf"(?:knocked\s+)?{clave}\b")
-        if re.search(patron, texto, re.IGNORECASE):
-            return ConditionEffect(
-                condition=condicion, save_ability=ability, dc=dc,
-                duration_rounds=duracion, repeat_save=repeat, escape=escape,
-            )
-    return None
-
-
-# --- Interpretación de un hechizo ------------------------------------------ #
+# ---------------------------------------------------------------------------
+# Parser de un hechizo
+# ---------------------------------------------------------------------------
 
 def parse_spell(raw: dict, monster_name: str = "",
                 spellcasting: Spellcasting | None = None) -> Spell | None:
-    """Interpreta el JSON de un hechizo.
+    """Interpreta la ficha de un hechizo del PHB 2024.
 
-    Devuelve ``None`` si el hechizo no se puede modelar (con aviso).
+    Devuelve un :class:`Spell` con el efecto ya interpretado, o ``None`` si
+    no se modela (ritual, 1 minuto de casteo, utilidad...). En ese caso se
+    emite un aviso con el motivo.
     """
     nombre = str(raw.get("name") or "")
-    desc = [str(d) for d in (raw.get("desc") or [])]
-    texto = " ".join(desc)
+    desc_str = str(raw.get("description") or "")
+    higher = str(raw.get("higher_level") or "")
+    texto = desc_str
+    texto_completo = (desc_str + " " + higher).strip()
+    desc = [p.strip() for p in desc_str.split("\n") if p.strip()]
+    school = raw.get("school") or ""
+    if isinstance(school, dict):
+        school = str(school.get("index") or "")
+    nivel = int(raw.get("level") or 0)
     spell = Spell(
         name=nombre,
         index=str(raw.get("index") or ""),
-        level=int(raw.get("level") or 0),
-        school=str(raw.get("school") or ""),
+        level=nivel,
+        school=str(school),
         casting_time=str(raw.get("casting_time") or ""),
         range=str(raw.get("range") or ""),
         duration=str(raw.get("duration") or ""),
         concentration=bool(raw.get("concentration")),
         desc=desc,
+        slot_level=nivel,
     )
+    sc = spellcasting
+    nivel_lanzador = int(getattr(sc, "level", 0) or 0) or max(1, nivel)
 
-    # (1) Rituales: no se pueden usar en combate.
-    if bool(raw.get("ritual")):
-        _warn(monster_name, nombre, "ritual: no se usa en combate")
+    # (1) Ritual: no se modela el componente ni el tiempo.
+    if raw.get("ritual"):
+        spell.ignored = "ritual"
+        _avisar(monster_name, nombre, spell.ignored)
         return None
-
-    # (2) Tiempo de lanzamiento de 1 minuto o más: no influye en el combate.
+    # (2) Tiempo de lanzamiento largo («1 minute» o más).
     if LONG_CASTING_RE.search(spell.casting_time):
-        _warn(monster_name, nombre, "tiempo de lanzamiento de 1 minuto o más")
+        spell.ignored = "1 minuto"
+        _avisar(monster_name, nombre, spell.ignored)
         return None
+    # (3) Tiempo de lanzamiento -> tipo de acción («Action», «Bonus
+    #     Action», «Reaction, which you take...»).
+    match = CASTING_TIME_RE.match(spell.casting_time)
+    if match:
+        spell.action_type = _ACTION_TYPES[match.group(1).lower()]
 
-    # (3) Tiempo de casteo -> tipo de acción.
-    tipo = CASTING_TIME_ACTIONS.get(spell.casting_time.strip().lower())
-    if tipo is None:
-        _warn(monster_name, nombre,
-              f"tiempo de casteo no modelado ({spell.casting_time!r})")
-        return None
-    spell.action_type = ActionType(tipo)
-    spell.slot_level = int(spell.level or 0)
-
-    nivel = int(getattr(spellcasting, "level", 5) or 5)
-    modificador = int(getattr(spellcasting, "attack_bonus", 0) or 0)
-    # MOD de la curación: modificador de característica si se conoce
-    # (la API solo da el bono de ataque completo).
-    mod_curacion = int(getattr(spellcasting, "heal_modifier", modificador) or 0)
-    # El slot usado: los hechizos con slot escalan con el slot, no con el
-    # nivel del lanzador.
-    slot = int(spell.level or 0)
-    # Nivel de referencia para el nº de elementos: el del lanzador en los
-    # cantrips y el del slot en los hechizos con slot.
-    referencia = nivel if slot <= 0 else slot
-    ataque = str(raw.get("attack_type") or "")
-    if not ataque:
-        # La API no trae attack_type en todos los hechizos (p. ej.
-        # Scorching Ray): si el texto dice "ranged/melee spell attack"
-        # se toma de ahí.
-        coincidencia = SPELL_ATTACK_RE.search(texto)
-        if coincidencia:
-            ataque = coincidencia.group(1).lower()
-    dc_info = raw.get("dc")
-    damage = raw.get("damage") or []
-    heal_levels = raw.get("heal_at_slot_level")
-    # Tablas de escalado crudas: permiten reescalar daño/curación al hacer
-    # upcast (``spell_action(..., slot_level=N)``) sin volver a la API.
-    spell.damage_table = _tabla_de_dano(damage)
-    if isinstance(heal_levels, dict):
-        spell.heal_table = dict(heal_levels)
-
-    # (4) Hechizos de estado (sin daño ni salvación): vocabulario cerrado.
+    # (4) Hechizos de estado sin salvación (vocabulario cerrado).
     estado = SPELL_STATES.get(nombre.lower())
-    if estado is not None:
-        condicion, objetivo, necesita_salvacion = estado
-        if not necesita_salvacion:
-            spell.kind = "state"
-            spell.state = StateEffect(
-                condition=Condition(condicion),
-                duration_rounds=duracion_en_rondas(spell.duration),
-                target=objetivo,
-            )
-            spell.state_target = objetivo
-            return spell
-
-    # (5) Curación.
-    if isinstance(heal_levels, dict) and heal_levels:
-        if "temporary hit points" in texto.lower():
-            # Puntos de vida temporales: el motor no los modela.
-            _warn(monster_name, nombre, "puntos de vida temporales: no se modelan")
-            return None
-        spell.kind = "heal"
-        spell.heal = _dado_por_nivel(heal_levels, slot, mod_curacion)
-        if not spell.heal:
-            _warn(monster_name, nombre, "curación sin dados reconocibles")
-            return None
+    if estado is not None and not estado[2]:
+        spell.kind = "state"
+        spell.state_target = estado[1]
+        spell.state = StateEffect(
+            condition=Condition(estado[0]),
+            duration_rounds=duracion_en_rondas(spell.duration),
+            target=estado[1],
+        )
         return spell
 
-    # (6) Ataque de hechizo.
-    if ataque:
-        dados = _dados_de_dano(damage, nivel, slot)
-        if not dados:
-            _warn(monster_name, nombre, "ataque sin daño modelable")
-            return None
+    # (5) True Strike: ataque real con el arma del lanzador (genérica 1d8
+    #     Radiante) + daño extra Radiante según el nivel del lanzador.
+    if nombre.lower() == "true strike":
         spell.kind = "attack"
-        spell.attack_type = ataque
-        spell.damage = dados
-        spell.damage_type = _tipo_de_dano(damage)
-        spell.damage_options = _opciones_de_dano(damage)
-        spell.elements = _numero_elementos(texto, referencia)
-        if spell.elements > 1 and not SEPARATE_ELEMENTS_RE.search(texto):
-            # El daño de la API es el total de todos los elementos.
-            warnings.warn(
-                f"Hechizo {nombre!r} de {monster_name!r}: el daño de la API es "
-                f"el total de los {spell.elements} elementos; se aplica a un "
-                f"solo objetivo. # TODO: repartir el daño entre los elementos.",
-                stacklevel=3,
-            )
-            spell.elements = 1
+        spell.attack_type = "melee"
+        spell.damage = "1d8"
+        spell.damage_type = "radiant"
+        spell.damage_bonus_from_ability = True
+        extra = _dados_hasta(
+            _tabla_cantrip("1d6", texto_completo, con_base=False),
+            nivel_lanzador)
+        if extra:
+            spell.extra_damage = [ExtraDamage(extra, DamageType.RADIANT)]
         return spell
 
-    # (7) Daño con salvación.
-    if isinstance(dc_info, dict) and damage:
-        dados = _dados_de_dano(damage, nivel, slot)
-        if not dados:
-            _warn(monster_name, nombre, "daño con salvación sin dados")
-            return None
-        spell.kind = "save"
-        spell.damage = dados
-        spell.damage_type = _tipo_de_dano(damage)
-        spell.dc_ability = _dc_ability(dc_info)
-        success = str(dc_info.get("dc_success") or "none").lower()
-        spell.dc_success = "half" if success == "half" else "none"
-        spell.area = is_area_action({"desc": texto})
-        return spell
-
-    # (8) Condición con salvación (o estado con salvación).
-    if isinstance(dc_info, dict):
-        dc = int(getattr(spellcasting, "save_dc", 10) or 10)
-        if estado is not None:
-            condicion, _objetivo, _ = estado
-            efecto = ConditionEffect(
-                condition=Condition(condicion),
-                save_ability=_dc_ability(dc_info),
-                dc=dc,
-                duration_rounds=duracion_en_rondas(spell.duration),
-                repeat_save=False,
-                escape=None,
-            )
-        else:
-            efecto = _condicion_con_salvacion(
-                texto, nombre, monster_name, _dc_ability(dc_info), dc,
-                duracion_en_rondas(spell.duration),
-            )
-        if efecto is None:
-            if _afecta_movimiento(texto):
-                _warn(monster_name, nombre, "solo afecta al movimiento")
-            else:
-                _warn(monster_name, nombre, "utilidad sin efecto en combate")
-            return None
-        spell.kind = "condition"
-        spell.condition = efecto
-        spell.dc_ability = _dc_ability(dc_info)
-        spell.area = is_area_action({"desc": texto})
-        return spell
-
-    # (9) Daño automático (sin ataque ni salvación): p. ej. Proyectil Mágico.
-    if damage and HP_THRESHOLD_RE.search(texto):
-        _warn(monster_name, nombre, "efecto por puntos de vida: no se modela")
+    # (6) Puntos de vida temporales: no se modelan.
+    if TEMP_HP_RE.search(texto_completo):
+        spell.ignored = "puntos de vida temporales: no se modelan."
+        _avisar(monster_name, nombre, spell.ignored)
         return None
-    if damage and DIRECT_DAMAGE_RE.search(texto):
-        dados = _dados_de_dano(damage, nivel, slot)
-        if dados:
-            spell.kind = "fixed"
-            spell.damage = dados
-            spell.damage_type = _tipo_de_dano(damage)
-            elementos = _elementos_totales(texto)
-            if elementos > 1:
-                warnings.warn(
-                    f"Hechizo {nombre!r} de {monster_name!r}: el daño de la API es "
-                    f"el total de los {elementos} elementos; se aplica a un solo "
-                    f"objetivo. # TODO: repartir el daño entre los elementos.",
-                    stacklevel=3,
-                )
-            spell.elements = 1
+
+    # --- Daño estructurado (objeto `damage` con damage_at_slot_level) ---
+    damage = raw.get("damage")
+    entries = [damage] if isinstance(damage, dict) else list(damage or [])
+    entries = [e for e in entries if isinstance(e, dict)]
+    if entries:
+        tipo = _tipo_de_dano(entries)
+        if tipo:
+            spell.damage_type = parse_damage_type(tipo).value
+        tabla_slots = _slot_table(entries[0])
+        if nivel == 0:
+            # Cantrip: base en la clave «0» + escalado del texto
+            # (levels 5 (2d8), 11 (3d8), 17 (4d8)) con el nivel del
+            # lanzador.
+            base = tabla_slots.get("0") or tabla_slots.get("1") or ""
+            if base:
+                spell.damage_table = _tabla_cantrip(base, texto_completo)
+                spell.damage = dado_por_nivel(spell.damage_table,
+                                              nivel_lanzador)
+        else:
+            spell.damage_table = dict(tabla_slots)
+            match = UPCAST_DAMAGE_RE.search(texto_completo)
+            if match:
+                spell.damage_table = _extender_tabla(
+                    spell.damage_table, match.group(1), int(match.group(2)),
+                    monster_name, nombre)
+            spell.damage = dado_por_nivel(spell.damage_table, spell.slot_level)
+    else:
+        # Sin campo estructurado: daño por texto (Delayed Blast Fireball:
+        # «The spell's base damage is 12d6»).
+        match = BASE_DAMAGE_RE.search(texto_completo)
+        if match:
+            spell.damage_table = {str(spell.slot_level): match.group(1)}
+            match_tipo = DAMAGE_TYPE_TEXT_RE.search(texto_completo)
+            if match_tipo:
+                spell.damage_type = parse_damage_type(
+                    match_tipo.group(1)).value
+            match2 = UPCAST_DAMAGE_RE.search(texto_completo)
+            if match2:
+                spell.damage_table = _extender_tabla(
+                    spell.damage_table, match2.group(1), int(match2.group(2)),
+                    monster_name, nombre)
+            spell.damage = dado_por_nivel(spell.damage_table, spell.slot_level)
+
+    # --- Salvación («a Constitution saving throw») y medio daño ---
+    match = SAVE_RE.search(texto_completo)
+    save_ability = normalize_ability(match.group(1)) if match else ""
+    half = bool(HALF_RE.search(texto_completo))
+
+    # (7) Curación por texto («regains ... Hit Points equal to 2d8 plus
+    #     your spellcasting ability modifier»). No hay salvación ni ataque.
+    match = HEAL_RE.search(texto_completo)
+    if match and not save_ability and not SPELL_ATTACK_RE.search(texto_completo):
+        dados = match.group(1)
+        base = f"{dados}+MOD" if match.group(2) else dados
+        spell.kind = "heal"
+        spell.heal_table = {str(spell.slot_level): base}
+        match2 = UPCAST_HEAL_RE.search(texto_completo)
+        if match2:
+            spell.heal_table = _extender_tabla(
+                spell.heal_table, match2.group(1), int(match2.group(2)),
+                monster_name, nombre)
+        spell.heal = dado_por_nivel(spell.heal_table, spell.slot_level,
+                                    int(getattr(sc, "heal_modifier", 0) or 0))
+        return spell
+
+    # (8) Ataque de hechizo («Make a ranged spell attack»).
+    match = SPELL_ATTACK_RE.search(texto_completo)
+    if match:
+        spell.kind = "attack"
+        spell.attack_type = match.group(1).lower()
+        if SEPARATE_ELEMENTS_RE.search(texto_completo):
+            if ELEMENT_BY_LEVEL_RE.search(texto_completo):
+                spell.elements = _elementos_por_nivel(texto_completo,
+                                                      nivel_lanzador)
+            else:
+                spell.elements = _elementos_totales(texto_completo)
+        return spell
+
+    # (9) Daño con salvación («must succeed on a Dexterity saving throw...
+    #     taking 3d6 Fire damage» / «base damage is 12d6»). Si la API no
+    #     trae el campo, el daño sale del texto (Finger of Death).
+    if save_ability and not spell.damage:
+        match = SAVE_DAMAGE_TEXT_RE.search(texto_completo)
+        if match:
+            base = (f"{match.group(1)}+{match.group(2)}" if match.group(2)
+                    else match.group(1))
+            spell.damage_table = {str(spell.slot_level): base}
+            match2 = UPCAST_DAMAGE_RE.search(texto_completo)
+            if match2:
+                spell.damage_table = _extender_tabla(
+                    spell.damage_table, match2.group(1), int(match2.group(2)),
+                    monster_name, nombre)
+            spell.damage = dado_por_nivel(spell.damage_table, spell.slot_level)
+            spell.damage_type = parse_damage_type(match.group(3)).value
+    if save_ability and spell.damage:
+        spell.kind = "save"
+        spell.dc_ability = save_ability
+        spell.dc_success = "half" if half else "none"
+        spell.area = is_area_action({"desc": texto_completo})
+        return spell
+
+    # (10) Condición con salvación («or have the Blinded condition»).
+    if save_ability:
+        condicion = None
+        if estado is not None:
+            # Hechizo de estado con salvación (Charm Person, Luz de hadas).
+            condicion = Condition(estado[0])
+        if condicion is None:
+            condicion = _condicion_con_salvacion(texto_completo)
+        if condicion is not None:
+            duracion = (1 if UNTIL_NEXT_TURN_RE.search(texto_completo)
+                        else duracion_en_rondas(spell.duration))
+            repite = bool(REPEAT_SAVE_RE.search(texto_completo))
+            escala_a = None
+            escala_rondas = None
+            match = ESCALATE_RE.search(texto_completo)
+            if match:
+                try:
+                    escala_a = Condition(match.group(1).lower())
+                    escala_rondas = duracion_en_rondas(spell.duration)
+                except ValueError:
+                    escala_a = None
+            spell.kind = "condition"
+            spell.dc_success = "none"
+            spell.area = is_area_action({"desc": texto_completo})
+            spell.condition = ConditionEffect(
+                condition=condicion,
+                save_ability=save_ability,
+                dc=int(getattr(sc, "save_dc", 10) or 10),
+                duration_rounds=duracion,
+                repeat_save=repite,
+                escape=parse_escape(texto_completo),
+                escalate_to=escala_a,
+                escalate_rounds=escala_rondas,
+            )
             return spell
 
-    # (10) Sin efecto modelable.
-    if HP_THRESHOLD_RE.search(texto):
-        _warn(monster_name, nombre,
-              "efecto por puntos de vida: no se modela")
-        return None
-    if _es_ilusion(raw):
-        _warn(monster_name, nombre, "ilusión sin estado en el rival")
-        return None
-    if _crea_objetos(texto):
-        _warn(monster_name, nombre, "crea objetos sin daño ni efecto")
-        return None
-    if _afecta_movimiento(texto):
-        _warn(monster_name, nombre, "solo afecta al movimiento")
+    # (11) Daño fijo sin salvación (Magic Missile): se modela como el
+    #      **total** de los dardos (p. ej. 3d4+3, 5d4+5 en slot 3).
+    match = PER_ELEMENT_DAMAGE_RE.search(texto_completo)
+    match2 = ONE_MORE_ELEMENT_RE.search(texto_completo)
+    if (not spell.kind and not save_ability and match and match2
+            and DIRECT_DAMAGE_RE.search(texto_completo)):
+        caras = int(match.group(2))
+        plano = int(match.group(3))
+        base = _elementos_totales(texto_completo)
+        desde = int(match2.group(1))
+        tabla: dict[str, str] = {}
+        for slot in range(1, 10):
+            dardos = base + max(0, slot - desde)
+            tabla[str(slot)] = f"{dardos}d{caras}+{dardos * plano}"
+        spell.kind = "fixed"
+        spell.damage_type = parse_damage_type(match.group(4)).value
+        spell.damage_table = tabla
+        spell.damage = dado_por_nivel(tabla, spell.slot_level)
+        spell.area = False
+        _avisar(monster_name, nombre,
+                "daño fijo modelado como el total de los elementos "
+                "(se aplica a un solo objetivo)")
+        return spell
+
+    # (12) Ignorado: el motivo más específico que coincida.
+    texto_bajo = texto_completo.lower()
+    if "illusion" in spell.school.lower():
+        motivo = "ilusión sin estado en el rival"
+    elif any(m in texto_bajo for m in CREATE_MARKERS):
+        motivo = "crea objetos sin daño ni efecto"
+    elif any(m in texto_bajo for m in MOVEMENT_MARKERS):
+        motivo = "solo afecta al movimiento"
     else:
-        _warn(monster_name, nombre, "utilidad sin efecto en combate")
+        motivo = "utilidad sin efecto en combate"
+    spell.ignored = motivo
+    _avisar(monster_name, nombre, motivo)
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Lanzador y carga de acciones
+# ---------------------------------------------------------------------------
+
+def parse_spellcasting(monster_json: dict) -> Spellcasting | None:
+    """Datos del lanzador del monstruo (bloque «Spellcasting» del PHB 2024).
+
+    El bloque va en ``actions`` (no en ``special_abilities``) y trae
+    ``ability``, ``dc`` y ``spells`` (cada entrada con ``level`` y
+    ``usage``). No hay ``modifier``, ``level`` ni ``slots``:
+
+    - bono de ataque = CD − 8 (en 5e el bono de ataque de un hechizo es 8
+      menos su CD);
+    - MOD de característica = bono de ataque − competencia (si la ficha la
+      trae);
+    - nivel de lanzador estimado = 2 × nivel de hechizo máx − 1 (clamp
+      1..20), para escalar los cantrips.
+    """
+    if not isinstance(monster_json, dict):
+        return None
+    for ability in monster_json.get("actions") or []:
+        if not isinstance(ability, dict):
+            continue
+        if str(ability.get("name") or "").strip().lower() != "spellcasting":
+            continue
+        data = ability.get("spellcasting") or {}
+        abilidad = data.get("ability") or {}
+        if isinstance(abilidad, dict):
+            index = abilidad.get("index")
+        else:
+            index = abilidad
+        dc = int(data.get("dc") or 10)
+        attack_bonus = dc - 8
+        ability_mod = None
+        proficiency = monster_json.get("proficiency_bonus")
+        if proficiency is not None:
+            try:
+                ability_mod = attack_bonus - int(proficiency)
+            except (TypeError, ValueError):
+                ability_mod = None
+        spells = [s for s in (data.get("spells") or []) if isinstance(s, dict)]
+        max_level = max((int(s.get("level") or 0) for s in spells), default=0)
+        level = max(1, min(20, 2 * max_level - 1)) if max_level > 0 else 1
+        return Spellcasting(
+            ability=str(index or "int"),
+            save_dc=dc,
+            attack_bonus=attack_bonus,
+            level=level,
+            slots={},
+            spells=spells,
+            ability_mod=ability_mod,
+        )
+    return None
+
+
+def _uso_de_entrada(entrada: dict, monster_name: str,
+                    spell: Spell) -> ActionUsage | None:
+    """Uso por hechizo del PHB 2024 (sin pools compartidos por nivel).
+
+    - Cantrips (nivel 0): ``None`` = usos infinitos.
+    - «at will»: uso ilimitado (siempre disponible).
+    - «per day N»: N usos **propios** de ese hechizo.
+    """
+    if spell.is_cantrip:
+        return None
+    uso = entrada.get("usage") or {}
+    tipo = str(uso.get("type") or "").strip().lower()
+    if tipo == "at will":
+        return ActionUsage(UsageKind.AT_WILL)
+    if tipo == "per day":
+        try:
+            veces = int(uso.get("times") or 0)
+        except (TypeError, ValueError):
+            veces = 0
+        if veces > 0:
+            return ActionUsage(UsageKind.PER_DAY, veces)
+        _avisar(monster_name, spell.name,
+                "uso «per day» sin veces: se ignora")
     return None
 
 
 def build_spell_actions(monster_json: dict, monster_name: str = "",
-                        get_spell=None,
+                        get_spell: Any = None,
                         max_spell_level: int | None = None) -> list:
-    """Acciones de hechizo del monstruo: **todos sus hechizos** (0-9).
+    """Carga los hechizos del bloque «Spellcasting» del PHB 2024.
 
-    - Los **cantrips** (nivel 0) se lanzan cuantas veces se quiera: no
-      gastan slots ni usos por día (``usage = None``).
-    - Los hechizos de nivel 1 o superior comparten un **pool de slots por
-      nivel** (``ActionUsage`` compartido entre los hechizos de ese nivel);
-      el motor lo gasta al lanzar (``usage.spend()``) y ``Combatant.reset()``
-      lo restaura al empezar el combate.
-    - ``max_spell_level`` permite limitar el nivel cargado (None = todos,
-      la ficha manda). Útil para comparar balance con/sin hechizos altos.
-
-    ``get_spell`` es la función que descarga el JSON del hechizo (por
-    defecto :func:`dnd_sim.data.api_client.get_spell`).
+    Cada entrada de ``spells`` trae su ``level`` (el **slot** con el que la
+    lanza el monstruo, p. ej. Fireball a nivel 5) y su ``usage`` («at
+    will» = ilimitado; «per day N» = N usos propios del hechizo).
+    ``max_spell_level`` filtra por el nivel de la entrada (los cantrips
+    siempre pasan).
     """
-    from ..rules.spells import spell_action
-
-    from ..rules.usage import ActionUsage, UsageKind
-
-    if get_spell is None:
-        from .api_client import get_spell as _get
-        get_spell = _get
-
+    if not isinstance(monster_json, dict):
+        return []
     spellcasting = parse_spellcasting(monster_json)
     if spellcasting is None:
         return []
-
-    # Un pool de slots por nivel (compartido por los hechizos de ese nivel).
-    # Los cantrips (nivel 0) no entran: son ilimitados.
-    slots: dict[int, Any] = {}
-    for nivel, usos in (spellcasting.slots or {}).items():
-        try:
-            cantidad = int(usos)
-            nivel_int = int(nivel)
-        except (TypeError, ValueError):
-            continue
-        if cantidad > 0 and nivel_int > 0:
-            slots[nivel_int] = ActionUsage(kind=UsageKind.PER_DAY,
-                                            uses_max=cantidad,
-                                            uses_left=cantidad)
-
-    acciones = []
+    if get_spell is None:
+        from .api_client import get_spell as _get
+        get_spell = _get
+    acciones: list = []
     for entrada in spellcasting.spells:
-        if not isinstance(entrada, dict):
-            continue
         nivel = int(entrada.get("level") or 0)
         if max_spell_level is not None and nivel > max_spell_level:
             continue
         url = str(entrada.get("url") or "")
-        indice = url.rsplit("/", 1)[-1] if url else str(entrada.get("name") or "")
-        if not indice:
-            continue
+        indice = (url.rstrip("/").split("/")[-1] if url
+                  else str(entrada.get("name") or "").lower().replace(" ", "-"))
         try:
             raw = get_spell(indice)
-        except Exception:
-            warnings.warn(
-                f"Hechizo {entrada.get('name')!r} de {monster_name!r}: no se ha "
-                f"podido cargar. # TODO: revisar la conexión con la API.",
-                stacklevel=3,
-            )
+            spell = parse_spell(raw, monster_name, spellcasting)
+        except Exception as exc:  # red, 404, JSON raro...
+            _avisar(monster_name, str(entrada.get("name") or indice),
+                    f"no se ha podido cargar ({exc})")
             continue
-        spell = parse_spell(raw, monster_name, spellcasting)
         if spell is None:
             continue
-        accion = spell_action(spell, spellcasting)
-        if accion is not None:
-            # Un hechizo con slot usa el pool de su nivel (compartido).
-            # (El slot se gasta al lanzar, no aquí.)
-            accion.usage = slots.get(nivel)
-            acciones.append(accion)
+        # El slot de la entrada es el nivel con el que el monstruo lanza
+        # el hechizo (upcast): Fireball a nivel 5 tira sus dados de 5.
+        accion = spell_action(spell, spellcasting, slot_level=nivel or None)
+        if accion is None:
+            continue
+        accion.usage = _uso_de_entrada(entrada, monster_name, spell)
+        acciones.append(accion)
     return acciones
 
 
 __all__ = [
-    "parse_spell",
-    "parse_spellcasting",
-    "build_spell_actions",
-    "SPELL_STATES",
-    "LONG_CASTING_RE",
-    "ELEMENT_RE",
+    "parse_spell", "parse_spellcasting", "build_spell_actions",
+    "SPELL_STATES", "LONG_CASTING_RE", "ELEMENT_RE",
 ]

@@ -55,10 +55,10 @@ Rasgos implementados:
   :func:`dnd_sim.engine.combat.attack_roll` (``after_being_hit``) y se activa
   aunque el daño sea 0 por inmunidad.
 - **Regeneration** (troll): recupera 10 PV al inicio de su turno salvo que
-  haya recibido daño de ácido o fuego desde su turno anterior, y a 0 PV no
-  muere de inmediato sino **al empezar su turno** si no llega a
-  regenerarse (hooks ``on_turn_start``, ``after_damage_taken``,
-  ``survives_at_zero_hp`` y ``reset``).
+  haya recibido daño de ácido o fuego desde su turno anterior. A 0 PV **no
+  se regenera**: muere al empezar su turno (si no, el troll se salvaría
+  siempre del golpe que lo deja a cero) (hooks ``on_turn_start``,
+  ``after_damage_taken``, ``survives_at_zero_hp`` y ``reset``).
 - **Relentless** (jabalí, jabalí gigante, hombre lobo): si el daño que lo
   dejaría a 0 no pasa de su umbral (7 el jabalí, 10 el gigante, 14 el
   hombre lobo) queda a 1 PV. Con uso limitado de la ficha («recharge after

@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ...model.actions import ActionType, CombatAction, CombatContext, TurnResources
+from ...model.actions import (ActionType, CombatAction, CombatContext,
+                              TurnResources, actor_is_alive)
 from ..conditions import apply_condition, remove_invisibility_on_action
 from ...core.dice import roll_dice
 from ...core.randomness import pick
@@ -62,6 +63,8 @@ class SpellAttackAction(CombatAction):
     usage: ActionUsage | None = None
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: el hechizo no se lanza
         _romper_invisibilidad_al_lanzar(context)
         from ...engine.combat import attack_roll
         ataques = self.attacks
@@ -71,6 +74,10 @@ class SpellAttackAction(CombatAction):
             dados = pick(context.rng, self.damage_options)
             ataques = [replace(a, damage=dados) for a in ataques]
         for atk in ataques:
+            # Cada elemento es un lanzamiento: si el actor cae entre rayos,
+            # los siguientes no se lanzan.
+            if not actor_is_alive(context):
+                return
             enemies = valid_targets(context.actor, ctx=context)
             if not enemies:
                 return
@@ -97,12 +104,17 @@ class SpellFixedDamageAction(CombatAction):
     usage: ActionUsage | None = None
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: el hechizo no se lanza
         _romper_invisibilidad_al_lanzar(context)
         from ..damage import (apply_damage_modifiers, inflict_damage,
                              parse_damage_type)
         from ...engine.combat import _tag_modificadores
         alcanzados = []
         for _ in range(max(1, int(self.elements or 1))):
+            # Si el actor cae entre elementos, los siguientes no se lanzan.
+            if not actor_is_alive(context):
+                return
             targets = valid_targets(context.actor, ctx=context)
             if not targets:
                 return
@@ -169,6 +181,8 @@ class HealAction(CombatAction):
         return bool(self._aliados_heridos(context))
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: el hechizo no se lanza
         _romper_invisibilidad_al_lanzar(context)
         objetivo = None
         aliados = self._aliados_heridos(context)
@@ -242,6 +256,8 @@ class SpellStateAction(CombatAction):
         return True
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: el hechizo no se lanza
         _romper_invisibilidad_al_lanzar(context)
         efecto = self.effect
         if efecto is None:
@@ -313,6 +329,8 @@ class SpellAction(CombatAction):
             return False
 
     def execute(self, context: CombatContext) -> None:
+        if not actor_is_alive(context):
+            return  # el actor ya no está en pie: el hechizo no se lanza
         _romper_invisibilidad_al_lanzar(context)
         if self.concentration:
             apply_concentration(context.actor, context, self.duration_rounds)

@@ -1,47 +1,32 @@
 {
-  "higher_level": [],
   "index": "resistance",
-  "name": "Resistance",
-  "desc": [
-    "You touch one willing creature. Once before the spell ends, the target can roll a d4 and add the number rolled to one saving throw of its choice. It can roll the die before or after making the saving throw. The spell then ends."
-  ],
-  "range": "Touch",
-  "components": [
-    "V",
-    "S",
-    "M"
-  ],
-  "material": "A miniature cloak.",
-  "ritual": false,
-  "duration": "Up to 1 minute",
-  "concentration": true,
-  "casting_time": "1 action",
-  "level": 0,
-  "school": {
-    "index": "abjuration",
-    "name": "Abjuration",
-    "url": "/api/2014/magic-schools/abjuration"
-  },
+  "casting_time": "Action",
   "classes": [
     {
       "index": "cleric",
       "name": "Cleric",
-      "url": "/api/2014/classes/cleric"
+      "url": "/api/2024/classes/cleric"
     },
     {
       "index": "druid",
       "name": "Druid",
-      "url": "/api/2014/classes/druid"
+      "url": "/api/2024/classes/druid"
     }
   ],
-  "subclasses": [
-    {
-      "index": "lore",
-      "name": "Lore",
-      "url": "/api/2014/subclasses/lore"
-    }
-  ],
-  "url": "/api/2014/spells/resistance",
-  "updated_at": "2026-04-01T20:35:39.217Z",
-  "damage": []
+  "components": [],
+  "concentration": true,
+  "description": "You touch a willing creature and choose a damage type: Acid, Bludgeoning, Cold, Fire, Lightning, Necrotic, Piercing, Poison, Radiant, Slashing, or Thunder. When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by 1d4. A creature can benefit from this spell only once per turn.",
+  "duration": "up to 1 minute",
+  "level": 0,
+  "name": "Resistance",
+  "range": "Touch Component: V, S",
+  "ritual": false,
+  "school": {
+    "index": "abjuration",
+    "name": "Abjuration",
+    "url": "/api/2024/magic-schools/abjuration"
+  },
+  "updated_at": "2026-09-12T22:42:40.697Z",
+  "url": "/api/2024/spells/resistance",
+  "subclasses": []
 }

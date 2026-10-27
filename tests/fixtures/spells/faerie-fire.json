@@ -1,52 +1,34 @@
 {
-  "higher_level": [],
   "index": "faerie-fire",
-  "name": "Faerie Fire",
-  "desc": [
-    "Each object in a 20-foot cube within range is outlined in blue, green, or violet light (your choice). Any creature in the area when the spell is cast is also outlined in light if it fails a dexterity saving throw. For the duration, objects and affected creatures shed dim light in a 10-foot radius.",
-    "Any attack roll against an affected creature or object has advantage if the attacker can see it, and the affected creature or object can't benefit from being invisible."
-  ],
-  "range": "60 feet",
-  "components": [
-    "V"
-  ],
-  "ritual": false,
-  "duration": "Up to 1 minute",
-  "concentration": true,
-  "casting_time": "1 action",
-  "level": 1,
-  "dc": {
-    "dc_type": {
-      "index": "dex",
-      "name": "DEX",
-      "url": "/api/2014/ability-scores/dex"
-    },
-    "dc_success": "none"
-  },
-  "area_of_effect": {
-    "type": "cube",
-    "size": 20
-  },
-  "school": {
-    "index": "evocation",
-    "name": "Evocation",
-    "url": "/api/2014/magic-schools/evocation"
-  },
+  "casting_time": "Action",
   "classes": [
+    {
+      "index": "bard",
+      "name": "Bard",
+      "url": "/api/2024/classes/bard"
+    },
     {
       "index": "druid",
       "name": "Druid",
-      "url": "/api/2014/classes/druid"
+      "url": "/api/2024/classes/druid"
     }
   ],
-  "subclasses": [
-    {
-      "index": "lore",
-      "name": "Lore",
-      "url": "/api/2014/subclasses/lore"
-    }
+  "components": [
+    "V"
   ],
-  "url": "/api/2014/spells/faerie-fire",
-  "updated_at": "2026-04-01T20:35:39.217Z",
-  "damage": []
+  "concentration": true,
+  "description": "Objects in a 20-foot Cube within range are outlined in blue, green, or violet light (your choice). Each creature in the Cube is also outlined if it fails a Dexterity saving throw. For the duration, objects and affected creatures shed Dim Light in a 10-foot radius and can't benefit from the Invisible condition.\n  Attack rolls against an affected creature or object have Advantage if the attacker can see it.",
+  "duration": "up to 1 minute",
+  "level": 1,
+  "name": "Faerie Fire",
+  "range": "60 feet",
+  "ritual": false,
+  "school": {
+    "index": "evocation",
+    "name": "Evocation",
+    "url": "/api/2024/magic-schools/evocation"
+  },
+  "updated_at": "2026-09-12T22:42:40.696Z",
+  "url": "/api/2024/spells/faerie-fire",
+  "subclasses": []
 }

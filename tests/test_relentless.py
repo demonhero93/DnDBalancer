@@ -115,7 +115,9 @@ def test_un_danyo_que_supera_el_umbral_lo_mata(monkeypatch):
     ctx = _ctx(jabali, [jabali])
     ctx.log.clear()
     inflict_damage(jabali, 8, "piercing", ctx=ctx)
-    assert jabali.hp == -1
+    # Los PV no bajan de 0 y el exceso lo deja ya marcado como muerto.
+    assert jabali.hp == 0
+    assert jabali.dead
     assert not jabali.alive
     assert not any("se mantiene en pie" in l for l in ctx.log)
 

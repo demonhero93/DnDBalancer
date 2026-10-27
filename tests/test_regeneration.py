@@ -1,8 +1,8 @@
 """Regeneration del troll (rasgo de ficha con estado por turno).
 
 La ficha (fixture real de la API) dice tres cosas: recupera 10 PV al
-inicio de su turno, no lo hace si ha recibido ácido o fuego, y muere solo
-si empieza su turno con 0 PV sin poder regenerarse. Cada frase es un hook
+inicio de su turno, no lo hace si ha recibido ácido o fuego, y muere si
+empieza su turno con 0 PV (a 0 PV no se regenera). Cada frase es un hook
 distinto de :mod:`dnd_sim.rules.traits`.
 """
 import json
@@ -128,13 +128,18 @@ def test_el_daño_normal_no_bloquea_la_regeneracion(monkeypatch):
     assert not any("no regenera" in linea for linea in ctx.log)
 
 
-def test_el_troll_sigue_vivo_a_0_pv_hasta_su_turno(monkeypatch):
+def test_el_troll_a_0_pv_no_regenera_y_muere_en_su_turno(monkeypatch):
     troll = _troll(monkeypatch)
     troll.hp = 0
-    assert troll.alive, "con regeneración no muere al llegar a 0 PV"
-    begin_turn(troll, _ctx(troll, [troll]))
-    assert troll.hp == 10
-    assert troll.alive
+    assert troll.alive, "a 0 PV sigue en pie hasta su próximo turno"
+    ctx = _ctx(troll, [troll])
+    begin_turn(troll, ctx)
+    # A 0 PV no se regenera (si no, el troll se salvaría siempre).
+    assert troll.hp == 0
+    assert not troll.alive
+    assert troll.dead
+    assert ctx.skip_turn, "su turno queda anulado"
+    assert any("muere" in linea for linea in ctx.log)
 
 
 def test_el_troll_muere_en_su_turno_si_no_puede_regenerarse(monkeypatch):

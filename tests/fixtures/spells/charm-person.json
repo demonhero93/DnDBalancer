@@ -1,1 +1,51 @@
-{"index":"charm-person","name":"Charm Person","desc":["You attempt to charm a humanoid you can see within range. It must make a wisdom saving throw, and does so with advantage if you or your companions are fighting it. If it fails the saving throw, it is charmed by you until the spell ends or until you or your companions do anything harmful to it. The charmed creature regards you as a friendly acquaintance. When the spell ends, the creature knows it was charmed by you."],"higher_level":["When you cast this spell using a spell slot of 2nd level or higher, you can target one additional creature for each slot level above 1st. The creatures must be within 30 feet of each other when you target them."],"range":"30 feet","components":["V","S"],"ritual":false,"duration":"1 hour","concentration":false,"casting_time":"1 action","level":1,"dc":{"dc_type":{"index":"wis","name":"WIS","url":"/api/2014/ability-scores/wis"},"dc_success":"none"},"school":{"index":"enchantment","name":"Enchantment","url":"/api/2014/magic-schools/enchantment"},"classes":[{"index":"bard","name":"Bard","url":"/api/2014/classes/bard"},{"index":"druid","name":"Druid","url":"/api/2014/classes/druid"},{"index":"sorcerer","name":"Sorcerer","url":"/api/2014/classes/sorcerer"},{"index":"warlock","name":"Warlock","url":"/api/2014/classes/warlock"},{"index":"wizard","name":"Wizard","url":"/api/2014/classes/wizard"}],"subclasses":[{"index":"lore","name":"Lore","url":"/api/2014/subclasses/lore"}],"url":"/api/2014/spells/charm-person","updated_at":"2026-04-01T20:35:39.217Z","damage":[]}
+{
+  "index": "charm-person",
+  "casting_time": "Action",
+  "classes": [
+    {
+      "index": "bard",
+      "name": "Bard",
+      "url": "/api/2024/classes/bard"
+    },
+    {
+      "index": "druid",
+      "name": "Druid",
+      "url": "/api/2024/classes/druid"
+    },
+    {
+      "index": "sorcerer",
+      "name": "Sorcerer",
+      "url": "/api/2024/classes/sorcerer"
+    },
+    {
+      "index": "warlock",
+      "name": "Warlock",
+      "url": "/api/2024/classes/warlock"
+    },
+    {
+      "index": "wizard",
+      "name": "Wizard",
+      "url": "/api/2024/classes/wizard"
+    }
+  ],
+  "components": [
+    "V",
+    "S"
+  ],
+  "concentration": false,
+  "description": "One Humanoid you can see within range makes a Wisdom saving throw. It does so with Advantage if you or your allies are fighting it. On a failed save, the target has the Charmed condition until the spell ends or until you or your allies damage it. The Charmed creature is Friendly to you. When the spell ends, the target knows it was Charmed by you.",
+  "duration": "1 hour",
+  "higher_level": "You can target one additional creature for each spell slot level above 1.",
+  "level": 1,
+  "name": "Charm Person",
+  "range": "30 feet",
+  "ritual": false,
+  "school": {
+    "index": "enchantment",
+    "name": "Enchantment",
+    "url": "/api/2024/magic-schools/enchantment"
+  },
+  "updated_at": "2026-09-12T22:42:40.696Z",
+  "url": "/api/2024/spells/charm-person",
+  "subclasses": []
+}

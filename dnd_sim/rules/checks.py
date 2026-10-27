@@ -45,10 +45,11 @@ def ability_check_bonus(target: Any, ability: str) -> int:
 
 
 def _guia(target: Any, rng: Any) -> int:
-    """Bonus de la guía (+1d4) y consumo del estado, si lo hay.
+    """Bonus de la guía (+1d4), si el objetivo está guiado.
 
-    El hechizo de guía da +1d4 a **una** prueba de característica: al
-    usarla, la guía se consume (el hechizo termina).
+    El hechizo de guía (PHB 2024) da +1d4 a **una** prueba de
+    característica y **no se consume** al usarla: dura lo que el hechizo
+    (hasta 1 minuto).
     """
     try:
         from .conditions import Condition
@@ -57,22 +58,12 @@ def _guia(target: Any, rng: Any) -> int:
             return 0
     except Exception:
         return 0
-    total = 0
-    if rng is not None:
-        try:
-            total = int(rng.randint(1, 4))
-        except Exception:
-            total = 0
-    # La guía se consume: el hechizo termina tras la prueba.
+    if rng is None:
+        return 0
     try:
-        from .conditions import Condition
-        tracker = getattr(target, "conditions", None)
-        for instance in list(getattr(tracker, "instances", []) or []):
-            if instance.condition is Condition.GUIDED:
-                tracker.remove_instance(instance)
+        return int(rng.randint(1, 4))
     except Exception:
-        pass
-    return total
+        return 0
 
 
 def ability_check(target: Any, ability: str, dc: int, rng: random.Random,

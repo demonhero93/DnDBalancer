@@ -165,14 +165,17 @@ def _hooks(traits: Any, nombre: str) -> list:
     return hooks(traits, nombre)
 
 
-def _salvar_a_cero(target: "Combatant", amount: int, damage_type: Any,
-                   source: Any, crit: bool, ctx: Any, rng: Any) -> None:
+def _salvar_a_cero(target: "Combatant", hp_antes: int, amount: int,
+                   damage_type: Any, source: Any, crit: bool, ctx: Any,
+                   rng: Any) -> None:
     """Aplica (si procede) el hook ``on_reduced_to_zero_hp`` del objetivo.
 
     Se llama justo después de que el daño baje a 0 PV y **antes** de avisar
     de que el daño ha llegado: una criatura que se salva sigue viva y, por
     ejemplo, puede reaccionar. Solo cuenta si el daño la ha bajado desde PV
-    positivos (rematar a un cuerpo ya caído no revive a nadie).
+    positivos (rematar a un cuerpo ya caído no revive a nadie), así que
+    recibe ``hp_antes``: los PV ya han quedado recortados a 0 en
+    :func:`inflict_damage` y ya no sirven para distinguir ambos casos.
 
     El rasgo devuelve los PV con los que sigue en pie (1 en el caso de
     Undead Fortitude) o ``None`` si muere; con más de un rasgo, gana el
@@ -180,12 +183,12 @@ def _salvar_a_cero(target: "Combatant", amount: int, damage_type: Any,
     """
     if int(amount or 0) <= 0:
         return
+    hp_antes = int(hp_antes or 0)
+    if hp_antes <= 0 or hp_antes - int(amount) > 0:
+        return  # no estaba a 0 el daño, o ya estaba caído
     traits = getattr(target, "traits", None)
     if not traits:
         return
-    hp_final = int(getattr(target, "hp", 0) or 0)
-    if hp_final > 0 or hp_final + int(amount) <= 0:
-        return  # no estaba a 0 el daño, o ya estaba caído
     for rasgo in _hooks(traits, "on_reduced_to_zero_hp"):
         nuevo = rasgo.on_reduced_to_zero_hp(target, amount, damage_type,
                                             source, crit=crit, ctx=ctx,
@@ -193,6 +196,33 @@ def _salvar_a_cero(target: "Combatant", amount: int, damage_type: Any,
         if nuevo is not None and int(nuevo) > 0:
             target.hp = int(nuevo)
             return
+
+
+def _mark_dead_if_down(target: "Combatant") -> None:
+    """Pone el estado de muerto si el objetivo sigue a 0 PV.
+
+    Consulta ``target.alive``: un rasgo como Regeneration mantiene a la
+    criatura en pie hasta su próximo turno y, hasta entonces, no se marca.
+    Quien sí queda marcado ya no vuelve a estar vivo, así que si era el
+    último de su bando (PJ o NPC) el combate termina en ese mismo instante.
+    """
+    try:
+        if getattr(target, "alive", True):
+            return
+    except Exception:
+        return
+    marca = getattr(target, "mark_dead", None)
+    if callable(marca):
+        try:
+            marca()
+        except Exception:
+            pass
+        return
+    # Objetivos duck-typed (fichas de prueba sin la API completa).
+    try:
+        target.dead = True
+    except Exception:
+        pass
 
 
 def inflict_damage(target: "Combatant", amount: int,
@@ -220,6 +250,12 @@ def inflict_damage(target: "Combatant", amount: int,
     combatiente; los repartos hacia abajo por enteros hacen que eso termine
     siempre.
 
+    Los PV nunca bajan de cero: el daño que supera los PV restantes deja al
+    objetivo a 0 PV y, si ningún rasgo lo salva, queda **marcado como
+    muerto** (:meth:`dnd_sim.model.combatant.Combatant.mark_dead`) al
+    instante, así que si era el último de su bando (PJ o NPC) el combate se
+    da por terminado en ese mismo golpe.
+
     ``crit`` dice si el daño viene de un ataque crítico (Undead Fortitude
     no se salva de un crítico) y ``rng`` es el generador con el que tirar;
     si no llega se usa el del contexto y, si tampoco hay, el rasgo se
@@ -236,11 +272,20 @@ def inflict_damage(target: "Combatant", amount: int,
                                                  source, ctx)
             if nuevo is not None:
                 amt = max(0, int(nuevo))
+    # PV antes del golpe: hace falta para saber si este daño deja al
+    # objetivo a 0 desde PV positivos (véase _salvar_a_cero).
     try:
-        target.hp -= amt
+        hp_antes = int(getattr(target, "hp", 0) or 0)
+    except Exception:
+        hp_antes = 0
+    # Los PV nunca bajan de 0: la regla 5e no contempla PV negativos y el
+    # exceso de daño solo sirve para rematar (queda a 0 y marcado muerto).
+    hp_despues = max(0, hp_antes - amt)
+    try:
+        target.hp = hp_despues
     except Exception:
         try:
-            target.hp = getattr(target, "hp", 0) - amt
+            setattr(target, "hp", hp_despues)
         except Exception:
             pass
     dt = damage_type
@@ -250,12 +295,16 @@ def inflict_damage(target: "Combatant", amount: int,
     except Exception:
         pass
     if original > 0:
-        _salvar_a_cero(target, amt, dt, source, crit, ctx, rng)
+        _salvar_a_cero(target, hp_antes, amt, dt, source, crit, ctx, rng)
     _notify_damage_dealt(source, target, amt, dt)
     _notify_damage_taken(target, amt, dt, source)
     if original > 0 and traits:
         for rasgo in _hooks(traits, "after_damage_taken"):
             rasgo.after_damage_taken(target, original, damage_type, source, ctx)
+    # Estado de muerte: si tras los rasgos sigue a 0 PV y nada lo mantiene
+    # en pie, queda marcado ya (muerte al instante, no al acabar el turno).
+    if int(getattr(target, "hp", 0) or 0) <= 0:
+        _mark_dead_if_down(target)
     return amt
 
 

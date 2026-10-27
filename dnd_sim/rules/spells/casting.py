@@ -131,6 +131,13 @@ class Spell:
     # ``heal_at_slot_level`` con el marcador ``MOD``.
     damage_table: dict = field(default_factory=dict)
     heal_table: dict = field(default_factory=dict)
+    # Daño extra del ataque (True Strike 2024: +1d6/2d6/3d6 Radiante a
+    # nivel 5/11/17), resuelto al parsear y copiado al ``Attack``.
+    extra_damage: list = field(default_factory=list)
+    # El ataque usa la característica del lanzador para el daño
+    # (True Strike 2024: «uses your spellcasting ability for the attack
+    # and damage rolls»).
+    damage_bonus_from_ability: bool = False
 
     @property
     def is_cantrip(self) -> bool:
@@ -233,10 +240,16 @@ def spell_action(spell: Spell, spellcasting: Spellcasting | None = None,
             ability=sc.ability,
             proficient=True,
             attack_bonus=int(sc.attack_bonus),
-            damage_bonus=0,
+            # True Strike: el daño usa la característica del lanzador.
+            damage_bonus=(int(sc.heal_modifier)
+                          if spell.damage_bonus_from_ability else 0),
             damage_type=spell.damage_type,
             range_type=rango,
         )
+        # Daño extra propio del hechizo (True Strike): sus dados también
+        # se duplican en crítico (como cualquier daño extra del ataque).
+        if spell.extra_damage:
+            atk.extra_damage = list(spell.extra_damage)
         elementos = max(1, int(spell.elements or 1))
         if elementos == 1 and not spell.damage_options:
             efecto = AttackAction(atk, action_type=tipo, name=nombre)
@@ -266,11 +279,19 @@ def spell_action(spell: Spell, spellcasting: Spellcasting | None = None,
                 name=nombre, effect=eff, action_type=tipo,
             )
     elif spell.kind == "condition":
-        efecto = ConditionAction(
-            name=nombre, effect=spell.condition,
-            targeting=AreaTargeting(min_targets=1, max_targets=1),
-            action_type=tipo,
-        )
+        if spell.area:
+            # De área (Sleep, Luz de hadas...): todos los objetivos.
+            efecto = ConditionAction(
+                name=nombre, effect=spell.condition,
+                targeting=AreaTargeting(), es_area=True,
+                action_type=tipo,
+            )
+        else:
+            efecto = ConditionAction(
+                name=nombre, effect=spell.condition,
+                targeting=AreaTargeting(min_targets=1, max_targets=1),
+                action_type=tipo,
+            )
     elif spell.kind == "heal":
         efecto = HealAction(effect=HealEffect(cura), action_type=tipo,
                             name=nombre)

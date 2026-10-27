@@ -73,6 +73,11 @@ class Combatant:
     traits: list[Any] = field(default_factory=list)
     hp: int = field(init=False)
     initiative: int = field(init=False, default=0)
+    # Estado de muerte explícito. Lo pone el motor (al recibir un daño igual
+    # o mayor que los PV restantes, o al morir en su propio turno) y solo lo
+    # limpia ``reset()``: así quien queda a 0 PV no «revive» a mitad de un
+    # combate reutilizado y el combate se da por terminado al instante.
+    dead: bool = field(init=False, default=False)
 
     def __post_init__(self):
         if isinstance(self.combatant_type, str):
@@ -138,12 +143,26 @@ class Combatant:
 
     @property
     def alive(self) -> bool:
+        # El estado de muerte manda: quien queda marcado ya no vuelve.
+        if self.dead:
+            return False
         if self.hp > 0:
             return True
         # A 0 PV la criatura muere, salvo que un rasgo pueda salvarla hasta
         # su próximo turno de inicio (Regeneration): entonces sigue viva y
-        # ese turno decide si se recupera o muere.
+        # ese turno decide entre morir (a 0 PV no se regenera) o seguir.
         return self._sobrevive_a_cero()
+
+    def mark_dead(self) -> None:
+        """Marca el combatiente como muerto (estado definitivo).
+
+        Lo llaman :func:`dnd_sim.rules.damage.inflict_damage` cuando el daño
+        deja a 0 PV a quien no tiene rasgo que lo salve, y los rasgos que
+        mueren en su propio turno (Regeneration). ``alive`` pasa a False al
+        instante, así que el combate termina en el momento en que cae el
+        último de un bando (PJ o NPC).
+        """
+        self.dead = True
 
     def _sobrevive_a_cero(self) -> bool:
         """¿Un rasgo mantiene a esta criatura viva con 0 PV?"""
@@ -159,6 +178,8 @@ class Combatant:
 
     def reset(self) -> None:
         self.hp = self.max_hp
+        # Un combate nuevo revive a todos: el estado de muerte se limpia aquí.
+        self.dead = False
         # Las condiciones duran hasta el fin del combate: se limpian aquí.
         try:
             self.conditions.clear()
