@@ -15,14 +15,16 @@ class Trait:
     # --- Tiradas -----------------------------------------------------------
     def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
                                 rango: Any, ctx: Any = None,
-                                rng: Any = None) -> None:
+                                rng: Any = None, atk: Any = None) -> None:
         """Hook: añade ventaja/desventaja a ``mods`` si el rasgo aplica.
 
         ``mods`` es un :class:`dnd_sim.rules.roll_modifiers.AttackModifiers` y
         ``rango`` el rango ya resuelto del ataque. ``ctx`` es el contexto
         del combate (con ``combatants``: la única información de posición
         que hay) y ``rng`` el generador, para los rasgos cuya condición no
-        se puede comprobar (Pack Tactics). Si ``ctx`` o ``rng`` llegan
+        se puede comprobar (Pack Tactics). ``atk`` es el objeto ataque con
+        que se tira (p. ej. para distinguir un ataque con FUE en Furia);
+        ``None`` si el llamante no lo pasa. Si ``ctx`` o ``rng`` llegan
         vacíos el rasgo **no debe aplicarse** en lugar de inventar un
         resultado. Por defecto no hace nada.
         """
@@ -59,15 +61,45 @@ class Trait:
         """
         return None
 
+    # --- Al golpear (otro hook de dnd_sim.engine.combat.attack_roll) ---------
+    def after_dealing_hit(self, target: Any, attacker: Any, rango: Any,
+                          ctx: Any = None) -> None:
+        """Hook: efecto cuando ``attacker`` (dueño del rasgo) **impacta**.
+
+        Espejo de :meth:`after_being_hit` por el lado del atacante: se
+        ejecuta tras el daño, en cada impacto, con ``target`` la criatura
+        golpeada (p. ej. Protectores Ancestrales: marcar a la primera
+        criatura golpeada en el turno). Por defecto no hace nada.
+        """
+        return None
+
+    # --- Mitigar daño de otros (hook de dnd_sim.rules.damage) ----------------
+    def reduce_damage_to_allies(self, target: Any, amount: int,
+                                damage_type: Any = None,
+                                source: Any = None,
+                                ctx: Any = None) -> int | None:
+        """Hook: reducir el daño que recibe **otro** combatiente.
+
+        Se consulta a los rasgos del resto de combatientes (hace falta
+        ``ctx`` con ``combatants``) justo antes de bajar los PV de
+        ``target``; devuelve la cantidad nueva o ``None`` sin cambios.
+        El nombre habla de aliados, pero el hook no comprueba bandos:
+        quien lo implementa decide a quién protege (p. ej. Espíritu
+        Guardián del Bárbaro, que no se protege a sí mismo).
+        """
+        return None
+
     def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
                             crit: bool = False, ctx: Any = None,
-                            rng: Any = None) -> int:
+                            rng: Any = None, atk: Any = None) -> int:
         """Hook: daño adicional que ``attacker`` suma a **este** ataque.
 
         Devuelve los PV extra (0 = nada). El motor los suma al daño bruto
         **antes** de la inmunidad/resistencia/vulnerabilidad del objetivo y
         con el tipo de daño del propio ataque; ``crit`` indica si el golpe
         es crítico para que los dados extra se dupliquen como el resto.
+        ``atk`` es el objeto ataque (p. ej. para condicionarlo a una
+        habilidad); ``None`` si el llamante no lo pasa.
         Se dispara en :func:`dnd_sim.engine.combat.attack_roll`.
         """
         return 0
@@ -93,10 +125,10 @@ class Trait:
         """Hook: ventaja/desventaja en la prueba ``ability`` de ``target``.
 
         ``mods`` es un :class:`dnd_sim.rules.roll_modifiers.CheckModifiers`.
-        ``skill`` es la habilidad asociada si la hubiera (``"perception"``);
-        # TODO: las habilidades aún no se modelan, así que hoy siempre es
-        ``None``: un rasgo limitado a una habilidad (Keen Senses) no puede
-        distinguirla y debe esperar a ese modelo. Por defecto no hace nada.
+        ``skill`` es la habilidad asociada si la prueba es de habilidad
+        (``"perception"``) o ``None`` en una prueba pura de característica:
+        un rasgo limitado a una habilidad (Keen Senses) distingue entre
+        ambas por ese argumento. Por defecto no hace nada.
         """
         return None
 
@@ -107,6 +139,17 @@ class Trait:
         Se ejecuta en :func:`dnd_sim.rules.usage.begin_turn`, con los recursos ya
         cargados y **antes de comprobar si el actor está incapacitado**
         (es un efecto automático, no una acción). Por defecto no hace nada.
+        """
+        return None
+
+    # --- Fin del turno -----------------------------------------------------
+    def on_turn_end(self, actor: Any, ctx: Any = None) -> None:
+        """Hook: efecto pasivo al fin del turno propio de ``actor``.
+
+        Se ejecuta en :func:`dnd_sim.rules.conditions.end_turn` **antes**
+        de mirar las condiciones (debe correr aunque no haya ninguna).
+        Lo usa la Furia para evaluar su extensión/fin de ronda. Por defecto
+        no hace nada.
         """
         return None
 
@@ -193,9 +236,12 @@ HOOK_NAMES: tuple[str, ...] = (
     "modify_incoming_damage",
     "after_damage_taken",
     "after_being_hit",
+    "after_dealing_hit",
+    "reduce_damage_to_allies",
     "extra_attack_damage",
     "defensive_ac_bonus",
     "on_turn_start",
+    "on_turn_end",
     "survives_at_zero_hp",
     "on_reduced_to_zero_hp",
     "extra_actions",

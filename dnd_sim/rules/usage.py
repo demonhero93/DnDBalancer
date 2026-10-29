@@ -168,6 +168,13 @@ def begin_turn(actor, ctx):
             state.reaction_used = False
         except Exception:
             pass
+        # Reinicio de los indicadores por turno (Furia: ataque o salvación
+        # forzada en el turno anterior ya no cuenta para extenderla).
+        try:
+            state.attacked_this_turn = False
+            state.forced_save_this_turn = False
+        except Exception:
+            pass
 
     # (3) Recargas de las acciones descargadas.
     rng = getattr(ctx, "rng", None)

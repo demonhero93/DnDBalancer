@@ -12,7 +12,7 @@ from ...model.combatant import Combatant, valid_targets
 from ...core.targeting import combat_finished, living_teams
 from ...rules.conditions import end_turn
 from ...rules.damage import DamageRecorder
-from ...core.dice import d20
+from ...core.dice import RollMode, d20, roll_d20
 from ...rules.legendary import legendary_phase
 from ...core.randomness import pick
 from ..tactics import random_policy
@@ -64,7 +64,14 @@ def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
 
 def roll_initiative(combatants: list[Combatant], rng: random.Random) -> list[Combatant]:
     for c in combatants:
-        c.initiative = d20(rng) + c.abilities.mod("dex")
+        if getattr(c, "initiative_with_advantage", False):
+            # Feral Instinct: ventaja. Fuera de esta rama el RNG sigue su
+            # curso normal, así que el orden de tiradas de los demás no
+            # cambia respecto a un combate sin la feature.
+            roll = roll_d20(rng, RollMode.ADVANTAGE).value
+        else:
+            roll = d20(rng)
+        c.initiative = roll + c.abilities.mod("dex")
     return sorted(combatants, key=lambda c: (c.initiative, c.abilities.dex), reverse=True)
 
 

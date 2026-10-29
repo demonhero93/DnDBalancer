@@ -7,7 +7,9 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 from dnd_sim import (Abilities, Attack, AttackRange, PlayerCharacter,
-                     load_monster, run_combat)
+                     apply_ancestral_guardian, apply_barbarian,
+                     apply_battlerager, load_monster,
+                     run_combat)
 from dnd_sim.engine.stats import print_report, simulate
 
 
@@ -45,20 +47,38 @@ def _load_party(specs: list[str], legendary_p: float = 1.0,
 # Los ataques pueden ser ("nombre", "dados", "característica", rango) para
 # marcar los que son a distancia (el arquero deja al atacante a distancia).
 PARTY_TEMPLATES = [
-    dict(name="Guerrero", max_hp=50, ac=18, proficiency=3,
+    dict(name="Guerrero", max_hp=50, ac=18, level=5,
+         save_proficiencies=("str", "con"),
+         skill_proficiencies=("athletics", "intimidation", "perception",
+                              "survival"),
          abilities=dict(str=16, dex=12, con=14, int=10, wis=12, cha=8),
          attacks=[("Espada larga", "1d8", "str", "melee"),
                   ("Arco corto", "1d6", "dex", "ranged")]),
-    dict(name="Pícaro", max_hp=50, ac=15, proficiency=3,
+    dict(name="Pícaro", max_hp=50, ac=15, level=5,
+         save_proficiencies=("dex", "int"),
+         skill_proficiencies=("stealth", "sleight-of-hand", "perception",
+                              "deception"),
+         skill_expertise=("stealth", "sleight-of-hand"),
          abilities=dict(str=10, dex=16, con=12, int=14, wis=10, cha=14),
          attacks=[("Daga", "1d4", "dex", "melee")]),
-    dict(name="Monje", max_hp=50, ac=17, proficiency=3,
+    dict(name="Monje", max_hp=50, ac=17, level=5,
+         save_proficiencies=("str", "dex"),
+         skill_proficiencies=("acrobatics", "stealth", "perception",
+                              "insight"),
          abilities=dict(str=12, dex=16, con=14, int=10, wis=14, cha=8),
          attacks=[("Puño", "1d6", "dex", "melee")]),
-    dict(name="Clérigo", max_hp=50, ac=16, proficiency=3,
+    dict(name="Clérigo", max_hp=50, ac=16, level=5,
+         save_proficiencies=("wis", "cha"),
+         skill_proficiencies=("insight", "religion", "persuasion",
+                              "medicine"),
          abilities=dict(str=14, dex=10, con=14, int=8, wis=16, cha=12),
          attacks=[("Maza", "1d6", "str", "melee")]),
-    dict(name="Barbaro", max_hp=100, ac=12, proficiency=3,
+    dict(name="Barbaro", max_hp=100, ac=12, level=5,
+         class_name="barbarian",
+         subclass_name="battlerager",
+         save_proficiencies=("str", "con"),
+         skill_proficiencies=("athletics", "intimidation", "perception",
+                              "survival"),
         abilities=dict(str=18, dex=14, con=16, int=8, wis=10, cha=12),
         attacks=[("Hacha de batalla", "1d12", "str", "melee")]),
 ]
@@ -80,16 +100,27 @@ def _build_party(size: int) -> list:
                 Attack(nombre, dado, ability=habilidad,
                        range_type=AttackRange(rango))
             )
-        party.append(
-            PlayerCharacter(
-                name=template["name"],
-                max_hp=template["max_hp"],
-                ac=template["ac"],
-                proficiency=template["proficiency"],
-                abilities=Abilities(**template["abilities"]),
-                attacks=ataques,
-            )
+        pj = PlayerCharacter(
+            name=template["name"],
+            max_hp=template["max_hp"],
+            ac=template["ac"],
+            level=template["level"],
+            save_proficiencies=set(template.get("save_proficiencies", ())),
+            skill_proficiencies=set(template.get("skill_proficiencies", ())),
+            skill_expertise=set(template.get("skill_expertise", ())),
+            abilities=Abilities(**template["abilities"]),
+            attacks=ataques,
         )
+        if template.get("class_name") == "barbarian":
+            # Salvaciones/Unarmored/Extra Attack/Furia: todo desde la clase.
+            # Las skills de la plantilla son las mismas de la lista bárbaro.
+            apply_barbarian(pj, skills=template.get("skill_proficiencies", ()),
+                            level=template["level"])
+            if template.get("subclass_name") == "ancestral-guardian":
+                apply_ancestral_guardian(pj, level=template["level"])
+            elif template.get("subclass_name") == "battlerager":
+                apply_battlerager(pj, level=template["level"])
+        party.append(pj)
     return party
 
 

@@ -127,12 +127,15 @@ class RepeatSave:
 class EscapeCheck:
     """Prueba de característica para liberarse de un estado.
 
-    ``abilities``: características posibles (si hay más de una, se elige una
-    al azar al intentar escapar). ``consumes_action``: la prueba gasta la
-    acción del afectado (como "As an action" en las fichas).
+    ``skills``: habilidades posibles (preferidas: Atletismo/Acrobacias).
+    ``abilities``: características posibles, usadas cuando ``skills`` está
+    vacío (si hay más de una, se elige una al azar al intentar escapar).
+    ``consumes_action``: la prueba gasta la acción del afectado (como
+    "As an action" en las fichas).
     """
 
     abilities: tuple[str, ...] = ("str",)
+    skills: tuple[str, ...] = ()
     dc: int = 10
     consumes_action: bool = False
 
@@ -356,12 +359,13 @@ def attempt_escapes(actor: Any, ctx: Any) -> None:
        duración.
     2. Recorre las instancias con ``escape`` en orden de aplicación. Si la
        prueba consume acción y el actor ya gastó su acción, se salta.
-    3. Elige la característica (uniforme entre las posibles), tira la
-       prueba y, si tiene éxito, elimina la instancia. Si la prueba
-       consumía acción, la gasta acierte o falle.
+    3. Elige la habilidad (preferida) o, en su defecto, la característica
+       (uniforme entre las posibles), tira la prueba y, si tiene éxito,
+       elimina la instancia. Si la prueba consumía acción, la gasta acierte
+       o falle.
 
-    Orden del RNG: (característica elegida, si hay varias) y prueba, por
-    instancia y en orden.
+    Orden del RNG: (habilidad/característica elegida, si hay varias) y
+    prueba, por instancia y en orden.
     """
     tracker = getattr(actor, "conditions", None)
     if tracker is None or not tracker.instances:
@@ -369,7 +373,7 @@ def attempt_escapes(actor: Any, ctx: Any) -> None:
     if not getattr(actor, "can_act", True):
         return  # incapacitado: no intenta escapar
 
-    from .checks import ability_check
+    from .checks import ability_check, skill_check
     from ..core.randomness import pick
 
     rng = getattr(ctx, "rng", None)
@@ -381,12 +385,17 @@ def attempt_escapes(actor: Any, ctx: Any) -> None:
             continue
         if escape.consumes_action and not _queda_accion(actor, ctx):
             continue
-        habilidades = list(escape.abilities) or ["str"]
-        if len(habilidades) == 1:
-            habilidad = habilidades[0]
+        skills = list(getattr(escape, "skills", ()) or ())
+        if skills:
+            habilidad = skills[0] if len(skills) == 1 else pick(rng, skills)
+            resultado = skill_check(actor, habilidad, escape.dc, rng)
         else:
-            habilidad = pick(rng, habilidades)
-        resultado = ability_check(actor, habilidad, escape.dc, rng)
+            habilidades = list(escape.abilities) or ["str"]
+            if len(habilidades) == 1:
+                habilidad = habilidades[0]
+            else:
+                habilidad = pick(rng, habilidades)
+            resultado = ability_check(actor, habilidad, escape.dc, rng)
         etiqueta = _label(instance.condition)
         # Estadísticas: intentos y éxitos por condición.
         _contar(ctx, "escape_attempts", instance.condition.value)
@@ -428,6 +437,13 @@ def end_turn(actor: Any, ctx: Any) -> None:
     instancias y solo si existen.
     """
     tracker = getattr(actor, "conditions", None)
+    # Los hooks de fin de turno (Furia) corren siempre, aunque no haya
+    # condiciones: el despacho va ANTES del atajo de abajo.
+    traits = getattr(actor, "traits", None)
+    if traits:
+        from .traits import hooks
+        for rasgo in hooks(traits, "on_turn_end"):
+            rasgo.on_turn_end(actor, ctx)
     if tracker is None or not tracker.instances:
         return
     nombre = getattr(actor, "name", actor)

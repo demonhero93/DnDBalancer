@@ -225,6 +225,51 @@ def _mark_dead_if_down(target: "Combatant") -> None:
         pass
 
 
+def _mitigacion_de_otros(target: "Combatant", amount: int,
+                         damage_type: Any, source: Any, ctx: Any) -> int:
+    """Fase 1b: consulta a los rasgos del resto que reducen daño ajeno.
+
+    Recorre los combatientes del contexto (``ctx.combatants``) y les pide
+    el hook ``reduce_damage_to_allies``; cada ``None`` deja la cantidad
+    como está y cada entero la sustituye (sin bajar de 0). El import es
+    perezoso para no cargar ``traits`` al importar ``damage``.
+    """
+    combatientes = getattr(ctx, "combatants", None) or []
+    for otro in combatientes:
+        if otro is target:
+            continue
+        traits = getattr(otro, "traits", None)
+        if not traits:
+            continue
+        for rasgo in _hooks(traits, "reduce_damage_to_allies"):
+            nuevo = rasgo.reduce_damage_to_allies(target, amount,
+                                                  damage_type, source, ctx)
+            if nuevo is not None:
+                amount = max(0, int(nuevo))
+    return amount
+
+
+def _absorber_pv_temporales(target: "Combatant", amount: int) -> int:
+    """Fase 1c: gasta los PV temporales del objetivo con el daño recibido.
+
+    Regla 5e: el daño baja primero de los PV temporales y solo lo que
+    sobre llega a los PV normales. Devuelve la parte que sí baja de PV;
+    los PV temporales restantes quedan actualizados en el combatiente.
+    """
+    try:
+        temp = int(getattr(target, "temp_hp", 0) or 0)
+    except Exception:
+        return amount
+    if temp <= 0:
+        return amount
+    absorbido = min(temp, amount)
+    try:
+        target.temp_hp = temp - absorbido
+    except Exception:
+        pass
+    return amount - absorbido
+
+
 def inflict_damage(target: "Combatant", amount: int,
                    damage_type: Any = None, source: Any = None,
                    ctx: Any = None, *, crit: bool = False,
@@ -242,6 +287,13 @@ def inflict_damage(target: "Combatant", amount: int,
        (Damage Transfer: la mitad, redondeada hacia abajo). Reciben la
        cantidad en curso y ``None`` significa "sin cambios"; no pueden
        dejar el daño en negativo.
+    1b. ``reduce_damage_to_allies``: los rasgos del **resto** de
+       combatientes (hace falta ``ctx.combatants``) pueden reducir aún
+       más la cantidad antes de tocar los PV, sin mirar bandos (p. ej.
+       Espíritu Guardián: reacción que reduce el daño a otro).
+    1c. ``temp_hp``: los PV temporales absorben el daño restante antes
+       de tocar los PV (regla 5e: primero los temporales). Lo que
+       absorben no baja de PV ni dispara ``on_reduced_to_zero_hp``.
     2. ``after_damage_taken``: con el daño original ya aplicado, hacen sus
        efectos (Damage Transfer reparte la otra mitad a la criatura a la
        que está enganchado, con una llamada anidada a esta función).
@@ -272,6 +324,14 @@ def inflict_damage(target: "Combatant", amount: int,
                                                  source, ctx)
             if nuevo is not None:
                 amt = max(0, int(nuevo))
+    # 1b. Mitigación de otros combatientes (Espíritu Guardián): requiere
+    # un contexto con la lista de combatientes; sin él, no intervienen.
+    if original > 0 and amt > 0 and ctx is not None:
+        amt = _mitigacion_de_otros(target, amt, damage_type, source, ctx)
+    # 1c. PV temporales: absorben lo que sobre antes de tocar los PV
+    # normales (lo que se gasta aquí no vuelve a contar como daño a PV).
+    if original > 0 and amt > 0:
+        amt = _absorber_pv_temporales(target, amt)
     # PV antes del golpe: hace falta para saber si este daño deja al
     # objetivo a 0 desde PV positivos (véase _salvar_a_cero).
     try:

@@ -8,6 +8,11 @@ reglas completas están en ``ARCHITECTURE.md``.
 
 # core: dados, habilidades, estado de combate y apuntado
 from .core.abilities import Abilities, ability_mod
+from .core.classes import rage_damage, rage_uses
+from .core.proficiency import proficiency_bonus
+from .core.backgrounds import Background
+from .core.races import Race
+from .core.skills import normalize_skill, skill_ability
 from .core.combat_state import CombatState
 from .core.dice import D20Result, RollMode, d20, roll_d20, roll_dice
 from .core.randomness import pick, sample
@@ -28,7 +33,17 @@ from .rules.area import AreaSaveAction, AreaTargeting, select_area_targets
 from .rules.attach import (
     Attach, AttachOnHitEffect, desenganchar, intentar_desenganche,
 )
-from .rules.checks import CheckResult, ability_check, ability_check_bonus
+from .rules.classes.ancestral_guardian import (
+    AncestralGuardianFeatures, apply_ancestral_guardian,
+)
+from .rules.classes.barbarian import (
+    BarbarianFeatures, ExtendRageAction, RageAction, apply_barbarian,
+)
+from .rules.classes.battlerager import (
+    BattleragerFeatures, SpikedArmorAction, apply_battlerager,
+)
+from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
+                           skill_bonus, skill_check)
 from .rules.conditions import (
     Condition, ConditionAction, ConditionEffect, ConditionInstance,
     ConditionTracker, EXCLUDED_CONDITIONS, EscapeCheck, RepeatSave,
@@ -69,33 +84,48 @@ from .engine.tactics import first_target_policy, random_policy
 
 # data: carga de fichas de la API
 from .data.loader import load_monster
+from .data.background_parser import load_background, parse_background
+from .data.race_parser import load_race, parse_race
 
 __all__ = [
-    "Abilities", "ActionType", "ActionUsage", "AreaSaveAction",
+    "Abilities", "ActionType", "ActionUsage", "AncestralGuardianFeatures",
+    "AreaSaveAction",
     "AreaTargeting", "Attach", "AttachOnHitEffect", "Attack", "AttackAction",
-    "AttackEntry", "AttackModifiers", "AttackRange", "BloodFrenzy",
+    "AttackEntry", "AttackModifiers", "AttackRange", "Background",
+    "BarbarianFeatures", "BattleragerFeatures", "BloodFrenzy",
     "CheckModifiers", "CheckResult", "CombatAction", "CombatContext",
     "CombatResult", "CombatState", "Combatant", "CombatantType", "Condition",
     "ConditionAction", "ConditionEffect", "ConditionInstance",
     "ConditionTracker", "D20Result", "DEFAULT_LEGENDARY_POINTS",
     "DamageTransfer", "DamageType", "EXCLUDED_CONDITIONS", "EscapeCheck",
-    "HealAction", "HealEffect", "HeatedBody", "LegendaryAction",
+    "ExtendRageAction", "HealAction", "HealEffect", "HeatedBody",
+    "LegendaryAction",
     "LegendaryState", "MartialAdvantage", "Monster", "MultiattackAction",
     "PackTactics", "Parry", "PlayerCharacter", "RANGED_COVER_AC_BONUS",
-    "Regeneration", "Relentless", "RepeatSave", "RollMode", "SaveAction",
+    "Race", "RageAction", "Regeneration", "Relentless", "RepeatSave",
+    "RollMode", "SaveAction",
     "SaveDamage", "SaveDamageOutcome", "SaveModifiers", "SaveResult", "Spell",
     "SpellAction", "SpellAttackAction", "SpellFixedDamageAction",
-    "SpellStateAction", "Spellcasting", "StateEffect", "SuperiorInvisibility",
+    "SpellStateAction", "Spellcasting", "SpikedArmorAction", "StateEffect",
+    "SuperiorInvisibility",
     "Trait", "TurnResistance", "TurnResources", "UndeadFortitude",
     "UsageKind", "WeaponAttackAction", "ability_check", "ability_check_bonus",
-    "ability_mod", "apply_condition", "apply_damage_modifiers",
-    "apply_save_damage", "attack_modifiers", "attempt_escapes", "begin_turn",
+    "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
+    "apply_battlerager",
+    "apply_condition",
+    "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
+    "attempt_escapes", "begin_turn",
     "check_modifiers", "d20", "desenganchar", "effective_ac", "end_turn",
     "first_target_policy", "inflict_damage", "intentar_desenganche",
-    "legendary_phase", "legendary_resistance", "load_monster",
-    "normalize_ability", "parse_damage_type", "pick", "print_report",
-    "random_policy", "resolve_attack_range", "resolve_roll_mode",
+    "legendary_phase", "legendary_resistance", "load_background",
+    "load_monster", "load_race",
+    "normalize_ability", "normalize_skill", "parse_background",
+    "parse_damage_type", "parse_race", "pick",
+    "print_report",
+    "proficiency_bonus", "rage_damage", "rage_uses", "random_policy",
+    "resolve_attack_range", "resolve_roll_mode",
     "resolve_save_damage", "roll_d20", "roll_dice", "run_combat", "sample",
-    "save_modifiers", "saving_throw", "select_area_targets", "simulate",
+    "save_modifiers", "saving_throw", "select_area_targets", "skill_ability",
+    "skill_bonus", "skill_check", "simulate",
     "spell_action", "valid_targets",
 ]

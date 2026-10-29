@@ -70,7 +70,7 @@ class Attach(Trait):
 
     def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
                                 rango: Any, ctx: Any = None,
-                                rng: Any = None) -> None:
+                                rng: Any = None, atk: Any = None) -> None:
         enganchado = getattr(getattr(attacker, "state", None), "attached_to", None)
         if enganchado is target:
             mods.advantage_sources.append(self.name or "Enganche")

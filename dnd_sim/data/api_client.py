@@ -6,22 +6,19 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-# Versión de reglas fijada por recurso: la migración a 2024 es **por partes**
-# (decisión: solo hechizos ahora). Los hechizos ya salen del PHB 2024; los
-# monstruos siguen en la SRD 2014 hasta su tarea de migración (su vocabulario
-# de condiciones, salvaciones en texto y legendarias cambiaron en 2024).
-SPELL_API_VERSION = "2024"
-MONSTER_API_VERSION = "2014"
-# Compatibilidad: la versión "por defecto" es la de los hechizos (2024).
-API_VERSION = SPELL_API_VERSION
+# Versión de reglas fijada para que los resultados sean consistentes.
+API_VERSION = "2024"
 API_BASE_URL = f"https://www.dnd5eapi.co/api/{API_VERSION}"
-MONSTER_API_BASE_URL = f"https://www.dnd5eapi.co/api/{MONSTER_API_VERSION}"
-SPELL_API_BASE_URL = f"https://www.dnd5eapi.co/api/{SPELL_API_VERSION}"
 
 # Directorio de caché (relativo al directorio de trabajo).
 CACHE_DIR = Path("cache") / "monsters"
-# Caché de los hechizos (PHB 2024).
+# Caché de los hechizos (SRD 2024).
 SPELL_CACHE_DIR = Path("cache") / "spells"
+# Caché de los transfondos (SRD 2024).
+BACKGROUND_CACHE_DIR = Path("cache") / "backgrounds"
+# Caché de las razas (species, SRD 2024) y de sus rasgos.
+RACE_CACHE_DIR = Path("cache") / "races"
+TRAIT_CACHE_DIR = Path("cache") / "traits"
 
 DEFAULT_TIMEOUT = 15
 
@@ -77,7 +74,7 @@ def get_monster(
             # Caché corrupta: reintentar descarga.
             pass
 
-    url = f"{MONSTER_API_BASE_URL}/monsters/{index}"
+    url = f"{API_BASE_URL}/monsters/{index}"
 
     # 2) Petición de red.
     try:
@@ -141,7 +138,7 @@ def get_spell(
         except (json.JSONDecodeError, OSError):
             pass
 
-    url = f"{SPELL_API_BASE_URL}/spells/{index}"
+    url = f"{API_BASE_URL}/spells/{index}"
 
     try:
         with urllib.request.urlopen(url, timeout=timeout) as response:
@@ -163,6 +160,163 @@ def get_spell(
     except TimeoutError as exc:
         hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/spells/{index}.json"
         raise NetworkError(f"Timeout al pedir {url}. {hint}") from exc
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+    return data
+
+
+def _get_entry(
+    endpoint: str,
+    index: str,
+    cache_dir: Path,
+    label: str,
+    force_refresh: bool = False,
+    timeout: int = DEFAULT_TIMEOUT,
+) -> dict:
+    """Descarga (o lee de caché) una entrada genérica de la API.
+
+    Misma mecánica que :func:`get_monster`: caché en disco primero, red
+    después, y ``label`` personaliza los mensajes de error («El rasgo ...»).
+    """
+    path = cache_dir / f"{index}.json"
+
+    if not force_refresh and path.exists():
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    url = f"{API_BASE_URL}/{endpoint}/{index}"
+    hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o {cache_dir}/{index}.json"
+
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            raise MonsterNotFoundError(
+                f"El {label} {index!r} no existe en la API ({url})."
+            ) from exc
+        raise NetworkError(
+            f"Error HTTP {exc.code} al pedir {url}: {exc.reason}. {hint}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise NetworkError(
+            f"Sin red o error de conexión al pedir {url}: {exc.reason}. {hint}"
+        ) from exc
+    except TimeoutError as exc:
+        raise NetworkError(f"Timeout al pedir {url}: {exc.reason}. {hint}") from exc
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as fh:
+            json.dump(data, fh, ensure_ascii=False, indent=2)
+    except OSError:
+        pass
+
+    return data
+
+
+def get_race(
+    index: str,
+    force_refresh: bool = False,
+    refresh: bool | None = None,
+    force: bool | None = None,
+    timeout: int = DEFAULT_TIMEOUT,
+    cache_dir: Path | str | None = None,
+) -> dict:
+    """Descarga (o lee de caché) el JSON de una raza por su índice.
+
+    En la API 2024 las razas se llaman ``species``. Solo se pide la raza
+    solicitada; sus rasgos se piden aparte con :func:`get_trait`.
+    """
+    if refresh is not None:
+        force_refresh = bool(refresh)
+    if force is not None:
+        force_refresh = bool(force)
+    base = Path(cache_dir) if cache_dir is not None else RACE_CACHE_DIR
+    return _get_entry("species", index, base, "raza", force_refresh, timeout)
+
+
+def get_trait(
+    index: str,
+    force_refresh: bool = False,
+    refresh: bool | None = None,
+    force: bool | None = None,
+    timeout: int = DEFAULT_TIMEOUT,
+    cache_dir: Path | str | None = None,
+) -> dict:
+    """Descarga (o lee de caché) el JSON de un rasgo por su índice.
+
+    Los rasgos traen las competencias de habilidad (``proficiency_choices``)
+    y, en su descripción, los hechizos que el personaje aprende.
+    """
+    if refresh is not None:
+        force_refresh = bool(refresh)
+    if force is not None:
+        force_refresh = bool(force)
+    base = Path(cache_dir) if cache_dir is not None else TRAIT_CACHE_DIR
+    return _get_entry("traits", index, base, "rasgo", force_refresh, timeout)
+
+
+def get_background(
+    index: str,
+    force_refresh: bool = False,
+    refresh: bool | None = None,
+    force: bool | None = None,
+    timeout: int = DEFAULT_TIMEOUT,
+    cache_dir: Path | str | None = None,
+) -> dict:
+    """Descarga (o lee de caché) el JSON de un transfondo por su índice.
+
+    Igual que :func:`get_monster`, pero en la caché de transfondos
+    (``cache/backgrounds``). Solo se pide el transfondo solicitado: no
+    se descargan todos.
+    """
+    if refresh is not None:
+        force_refresh = bool(refresh)
+    if force is not None:
+        force_refresh = bool(force)
+
+    base = Path(cache_dir) if cache_dir is not None else BACKGROUND_CACHE_DIR
+    path = base / f"{index}.json"
+
+    if not force_refresh and path.exists():
+        try:
+            with path.open("r", encoding="utf-8") as fh:
+                return json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    url = f"{API_BASE_URL}/backgrounds/{index}"
+
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            raise MonsterNotFoundError(
+                f"El transfondo {index!r} no existe en la API ({url})."
+            ) from exc
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/backgrounds/{index}.json"
+        raise NetworkError(
+            f"Error HTTP {exc.code} al pedir {url}: {exc.reason}. {hint}"
+        ) from exc
+    except urllib.error.URLError as exc:
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/backgrounds/{index}.json"
+        raise NetworkError(
+            f"Sin red o error de conexión al pedir {url}: {exc.reason}. {hint}"
+        ) from exc
+    except TimeoutError as exc:
+        hint = f"Puedes descargarlo manualmente con: curl -sS {url} -o cache/backgrounds/{index}.json"
+        raise NetworkError(f"Timeout al pedir {url}: {exc.reason}. {hint}") from exc
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)

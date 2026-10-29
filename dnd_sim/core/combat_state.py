@@ -37,6 +37,18 @@ class CombatState:
     at_range: bool = False
     reaction_used: bool = False
     attached_to: Any = None
+    # ¿Quién le ha marcado? (p. ej. Protectores Ancestrales: quien está
+    # marcado tiene desventaja salvo al atacar contra su marcador y su
+    # daño a otros se resiste). Lo marca el rasgo del marcador y lo
+    # limpia el propio marcador al acabar el efecto (y Combatant.reset()).
+    marked_by: Any = None
+    # ¿Ha tirado un ataque en su propio turno? (Furia: extiende la duración.)
+    # Lo pone el motor en ``attack_roll`` y lo limpia ``begin_turn``.
+    attacked_this_turn: bool = False
+    # ¿Ha obligado a un enemigo a tirar salvación en su propio turno?
+    # (Furia: otra vía de extensión.) Lo pone ``resolve_save_damage`` y lo
+    # limpia ``begin_turn``.
+    forced_save_this_turn: bool = False
 
 
 __all__ = ["CombatState"]

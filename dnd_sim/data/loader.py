@@ -12,6 +12,7 @@ from ..model.attack import Attack, ExtraDamage
 from ..rules.attach import Attach
 from ..rules.conditions import Condition
 from ..core.dice import doblar_dados
+from ..core.skills import normalize_skill
 from ..rules.spells import SpellStateAction, StateEffect
 from ..model.combatant import CombatantType, Monster
 from ..rules.damage import DamageType
@@ -126,8 +127,10 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         cha=int(data.get("charisma", 10)),
     )
 
-    # Salvaciones del monstruo (totales de la ficha).
+    # Salvaciones y habilidades del monstruo (totales de la ficha).
     save_overrides = {}
+    skill_overrides = {}
+    skill_proficiencies: set[str] = set()
     for prof in data.get("proficiencies") or []:
         if not isinstance(prof, dict):
             continue
@@ -135,19 +138,34 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         idx = prof.get("index")
         if idx is None and isinstance(prof_obj, dict):
             idx = prof_obj.get("index")
-        if not isinstance(idx, str) or not idx.startswith("saving-throw-"):
+        if not isinstance(idx, str):
             continue
-        abbr = idx[len("saving-throw-"):]
-        try:
-            abbr = normalize_ability(abbr)
-        except Exception:
-            pass
+        if idx.startswith("saving-throw-"):
+            kind = "save"
+            name = idx[len("saving-throw-"):]
+            try:
+                name = normalize_ability(name)
+            except Exception:
+                pass
+        elif idx.startswith("skill-"):
+            kind = "skill"
+            name = idx[len("skill-"):]
+            try:
+                name = normalize_skill(name)
+            except Exception:
+                pass
+        else:
+            continue
         value = prof.get("value")
         if value is None and isinstance(prof_obj, dict):
             value = prof_obj.get("value")
         if value is None:
             continue
-        save_overrides[abbr] = int(value)
+        if kind == "save":
+            save_overrides[name] = int(value)
+        else:
+            skill_overrides[name] = int(value)
+            skill_proficiencies.add(name)
 
     # Primera pasada: ataques sueltos válidos.
     attacks = []
@@ -490,6 +508,8 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         immunities=_simple_damage_modifiers(data.get("damage_immunities")),
         multiattack=multiattack,
         save_overrides=save_overrides,
+        skill_overrides=skill_overrides,
+        skill_proficiencies=skill_proficiencies,
         actions=extra_actions,
         legendary=legendary,
         traits=traits,

@@ -100,6 +100,10 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
         pass
     result = roll_d20(rng, mode)
     total = result.value + int(bonus)
+    # Suelo del total (Indomitable Might): si el rasgo fija un mínimo y la
+    # tirada sale más baja, se usa el mínimo.
+    if getattr(modifiers, "minimum_total", None) is not None:
+        total = max(int(total), int(modifiers.minimum_total))
     success = total >= int(dc)
     return _con_resistencia_legendaria(target, SaveResult(
         ability=ab,
@@ -283,6 +287,15 @@ def resolve_save_damage(source: Any, target: Any, effect: SaveDamage,
     rng = getattr(ctx, "rng", None)
     if rng is None and hasattr(ctx, "randint"):
         rng = ctx
+
+    # Obligar a un enemigo a tirar salvación extiende la Furia: el que
+    # fuerza es ``source``. Lo limpie ``begin_turn``.
+    state = getattr(source, "state", None)
+    if state is not None:
+        try:
+            state.forced_save_this_turn = True
+        except Exception:
+            pass
 
     eff = effect
     if not isinstance(eff, SaveDamage):

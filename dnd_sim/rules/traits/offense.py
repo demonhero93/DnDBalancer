@@ -26,7 +26,7 @@ class BloodFrenzy(Trait):
 
     def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
                                 rango: Any, ctx: Any = None,
-                                rng: Any = None) -> None:
+                                rng: Any = None, atk: Any = None) -> None:
         if rango is not AttackRange.MELEE:
             return  # solo ataques cuerpo a cuerpo
         max_hp = int(getattr(target, "max_hp", 0) or 0)
@@ -87,7 +87,7 @@ class PackTactics(Trait):
 
     def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
                                 rango: Any, ctx: Any = None,
-                                rng: Any = None) -> None:
+                                rng: Any = None, atk: Any = None) -> None:
         if _condicion_posicional(attacker, ctx, rng):
             mods.advantage_sources.append(self.name or "Pack Tactics")
 
@@ -122,7 +122,7 @@ class MartialAdvantage(Trait):
 
     def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
                             crit: bool = False, ctx: Any = None,
-                            rng: Any = None) -> int:
+                            rng: Any = None, atk: Any = None) -> int:
         if not self.dice:
             return 0  # descripción no interpretable: el rasgo no hace nada
         if not _condicion_posicional(attacker, ctx, rng):

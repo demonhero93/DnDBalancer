@@ -101,7 +101,7 @@ def _bonus_de_tamano(attacker: Any, atk: Any, rng: Any) -> int:
 
 
 def _bonus_de_rasgos(attacker: Any, target: Any, rango: Any, crit: bool,
-                     ctx: Any, rng: Any, log: Any) -> int:
+                     ctx: Any, rng: Any, log: Any, atk: Any = None) -> int:
     """Daño adicional que los rasgos del atacante suman a este golpe.
 
     Hoy solo Martial Advantage (hobgoblin): el hook decide si le aplica (su
@@ -118,7 +118,7 @@ def _bonus_de_rasgos(attacker: Any, target: Any, rango: Any, crit: bool,
     for rasgo in hooks(traits, "extra_attack_damage"):
         bonus = int(rasgo.extra_attack_damage(attacker, target, rango,
                                               crit=crit, ctx=ctx,
-                                              rng=rng) or 0)
+                                              rng=rng, atk=atk) or 0)
         if bonus <= 0:
             continue
         total += bonus
@@ -181,6 +181,14 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         raise ValueError(
             f"{attacker.name} no es hostil a {target.name}: no se permite fuego amigo."
         )
+    # Un ataque contra un enemigo extiende la Furia del bárbaro (aunque
+    # la tirada falle: basta con haber atacado). Lo limpie ``begin_turn``.
+    state = getattr(attacker, "state", None)
+    if state is not None:
+        try:
+            state.attacked_this_turn = True
+        except Exception:
+            pass
     # (1) Rango resuelto.
     rango = resolve_attack_range(atk, rng)
     # (2) Estado de distancia del atacante.
@@ -246,7 +254,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             # Advantage): entra en el bruto, así que la inmunidad y la
             # resistencia del objetivo también le afectan.
             raw_dmg += _bonus_de_rasgos(attacker, target, rango, crit,
-                                        ctx, rng, log)
+                                        ctx, rng, log, atk=atk)
         dt = atk.damage_type
         # Única fuente de inmunidad/resistencia/vulnerabilidad (y de la
         # resistencia por estar petrificado): la regla se aplicaba **dos
@@ -255,6 +263,15 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         # la etiqueta del log, que ahora se deriva del resultado real.
         dmg = apply_damage_modifiers(raw_dmg, dt, target)
         mod_tag = _tag_modificadores(raw_dmg, dmg, dt, target)
+        # Resistencia por marca del defensor (p. ej. Protectores
+        # Ancestrales): si el atacante está marcado y golpea a quien no
+        # es su marcador, el daño principal queda a la mitad, igual que
+        # una resistencia (sin apilarse con la del tipo: se calcula una
+        # sola vez a partir del resultado ya modificado).
+        _marcador = getattr(getattr(attacker, "state", None),
+                            "marked_by", None)
+        if dmg > 0 and _marcador is not None and target is not _marcador:
+            dmg = max(0, dmg // 2)
         # ``crit`` y ``rng`` viajan con el daño: los rasgos que se salvan a
         # 0 PV (Undead Fortitude) necesitan saber si el golpe fue crítico y
         # con qué tirar.
@@ -311,6 +328,9 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             _rctx.rng = rng
             _rctx.log = log
             _rctx.verbose = log_enabled
+            # Los riders también ven a los demás combatientes, así que la
+            # mitigación de terceros (Espíritu Guardián) les llega igual.
+            _rctx.combatants = getattr(ctx, "combatants", None)
             _rsd(attacker, target, _rider, _rctx)
         # Riders de condición (tras el daño y los riders de daño).
         _apply_condition_riders(attacker, target, atk, rng, log, ctx)
@@ -318,6 +338,10 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         # ejecuta en cada impacto, aunque el daño haya sido 0 por inmunidad.
         _trigger_after_being_hit(target, attacker, rango,
                                  log, ctx, rng)
+        # Efectos del propio atacante tras impactar (p. ej. Protectores
+        # Ancestrales: marcar a la primera criatura golpeada en el turno).
+        _trigger_after_dealing_hit(attacker, target, rango,
+                                   log, ctx, rng)
         # Efectos posteriores al impacto (p. ej. el enganche del cloaker):
         # reciben los modificadores para poder ver si el ataque iba con
         # ventaja (enganche a la cabeza).
@@ -444,6 +468,35 @@ def _trigger_after_being_hit(target: Any, attacker: Any, rango: Any,
         _ctx.rng = rng
     for trait in hookable:
         trait.after_being_hit(target, attacker, rango, ctx=_ctx)
+
+
+def _trigger_after_dealing_hit(attacker: Any, target: Any, rango: Any,
+                               log: Any, ctx: Any, rng: Any = None) -> None:
+    """Dispara los rasgos de ``attacker`` que reaccionan a impactar.
+
+    Espejo de :func:`_trigger_after_being_hit` por el lado del atacante
+    (p. ej. Protectores Ancestrales: marcar a la primera criatura
+    golpeada en el turno). Como allí, se ejecuta tras el daño y en cada
+    impacto, y solo se piden los rasgos que sobrescriben el hook
+    (:func:`dnd_sim.rules.traits.hooks`).
+    """
+    traits = getattr(attacker, "traits", None)
+    if not traits:
+        return
+    from ...rules.traits import hooks
+    hookable = hooks(traits, "after_dealing_hit")
+    if not hookable:
+        return
+    _ctx = ctx
+    if _ctx is None:
+        _ctx = type("HitCtx", (), {})()
+        _ctx.rng = rng
+        _ctx.log = log
+        _ctx.verbose = log is not None
+    elif getattr(_ctx, "rng", None) is None:
+        _ctx.rng = rng
+    for trait in hookable:
+        trait.after_dealing_hit(target, attacker, rango, ctx=_ctx)
 
 
 def _reaccion_si_procede(target: Any, ctx: Any) -> None:

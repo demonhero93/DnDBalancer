@@ -4,6 +4,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from ..core.abilities import Abilities, normalize_ability
+from ..core.proficiency import proficiency_bonus
+from ..core.backgrounds import Background, normalize_tool
+from ..core.races import Race
+from ..core.skills import normalize_skill, skill_ability
 from .attack import Attack
 from ..core.enums import DamageType, parse_damage_type
 from ..core.targeting import valid_targets  # noqa: F401  (reexport)
@@ -54,6 +58,8 @@ class Combatant:
     attacks_with_disadvantage: bool = False
     grants_advantage_to_attackers: bool = False
     grants_disadvantage_to_attackers: bool = False
+    # Feral Instinct (bárbaro nivel 7): la iniciativa se tira con ventaja.
+    initiative_with_advantage: bool = False
     # Multiataque opcional (sustituye a los ataques sueltos como ACTION).
     multiattack: Any = None
     # Acciones adicionales/construidas (WeaponAttackAction, AttackAction...).
@@ -65,6 +71,18 @@ class Combatant:
     # Ventaja/desventaja en pruebas de característica (por característica).
     checks_with_advantage: set[str] = field(default_factory=set)
     checks_with_disadvantage: set[str] = field(default_factory=set)
+    # Competencias en pruebas de característica (por característica).
+    # En 5e solo un PJ puede tenerlas: salen de clase/antecedente/rasgos.
+    check_proficiencies: set[str] = field(default_factory=set)
+    # Habilidades competentes y expertise (doble competencia, p. ej. Pícaro).
+    skill_proficiencies: set[str] = field(default_factory=set)
+    skill_expertise: set[str] = field(default_factory=set)
+    # Herramientas competentes (herramientas de ladrón, juegos...): las
+    # aporta el transfondo.
+    tool_proficiencies: set[str] = field(default_factory=set)
+    # Totales de ficha de monstruo (igual que ``save_overrides``): mandan
+    # sobre el cálculo de mod + competencia.
+    skill_overrides: dict[str, int] = field(default_factory=dict)
     # Estado legendario (acciones legendarias y resistencia legendaria).
     # Lo rellena ``load_monster`` desde la API.
     legendary: "LegendaryState | None" = None
@@ -72,6 +90,8 @@ class Combatant:
     # sahuagin). También los rellena ``load_monster`` (trait_parser).
     traits: list[Any] = field(default_factory=list)
     hp: int = field(init=False)
+    #: PV temporales (5e): absorben el daño antes que los PV normales.
+    temp_hp: int = 0
     initiative: int = field(init=False, default=0)
     # Estado de muerte explícito. Lo pone el motor (al recibir un daño igual
     # o mayor que los PV restantes, o al morir en su propio turno) y solo lo
@@ -104,6 +124,28 @@ class Combatant:
         }
         self.saves_with_disadvantage = {
             normalize_ability(x) for x in (self.saves_with_disadvantage or set())
+        }
+        self.check_proficiencies = {
+            normalize_ability(x) for x in (self.check_proficiencies or set())
+        }
+
+        # Normalización de campos de habilidades.
+        raw_skills = dict(self.skill_overrides or {})
+        norm_skills = {}
+        for key, val in raw_skills.items():
+            try:
+                norm_skills[normalize_skill(key)] = int(val)
+            except Exception:
+                norm_skills[str(key).strip().lower()] = val
+        self.skill_overrides = norm_skills
+        self.skill_proficiencies = {
+            normalize_skill(x) for x in (self.skill_proficiencies or set())
+        }
+        self.skill_expertise = {
+            normalize_skill(x) for x in (self.skill_expertise or set())
+        }
+        self.tool_proficiencies = {
+            normalize_tool(x) for x in (self.tool_proficiencies or set())
         }
 
         # ---- Construcción automática de acciones (evita duplicados) ----
@@ -180,6 +222,8 @@ class Combatant:
         self.hp = self.max_hp
         # Un combate nuevo revive a todos: el estado de muerte se limpia aquí.
         self.dead = False
+        # Los PV temporales tampoco sobreviven a un combate nuevo.
+        self.temp_hp = 0
         # Las condiciones duran hasta el fin del combate: se limpian aquí.
         try:
             self.conditions.clear()
@@ -191,6 +235,9 @@ class Combatant:
             self.state.at_range = False
             self.state.reaction_used = False
             self.state.attached_to = None
+            self.state.marked_by = None
+            self.state.attacked_this_turn = False
+            self.state.forced_save_this_turn = False
         except Exception:
             pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,
@@ -306,13 +353,102 @@ class Combatant:
             bonus += int(self.proficiency or 0)
         return int(bonus)
 
+    def check_bonus(self, ability: str) -> int:
+        """Bono total de una prueba de característica.
+
+        Suma el modificador de la característica y, si hay competencia
+        declarada en ``check_proficiencies``, el bono de competencia.
+        """
+        ab = normalize_ability(ability)
+        bonus = self.abilities.mod(ab)
+        if ab in (self.check_proficiencies or set()):
+            bonus += int(self.proficiency or 0)
+        return int(bonus)
+
+    def skill_bonus(self, skill: str, ability: str | None = None) -> int:
+        """Bono total de una prueba de habilidad (Atletismo, Sigilo...).
+
+        Un total de ficha en ``skill_overrides`` manda (monstruos); si no,
+        modificador de la característica asociada + competencia, doble con
+        expertise. ``ability`` permite tirar la habilidad con otra
+        característica (Primal Knowledge: Sigilo como FUE con Furia).
+        """
+        name = normalize_skill(skill)
+        overrides = self.skill_overrides or {}
+        if name in overrides:
+            return int(overrides[name])
+        ab = normalize_ability(ability) if ability is not None else skill_ability(name)
+        bonus = self.abilities.mod(ab)
+        if name in (self.skill_expertise or set()):
+            bonus += 2 * int(self.proficiency or 0)
+        elif name in (self.skill_proficiencies or set()):
+            bonus += int(self.proficiency or 0)
+        return int(bonus)
+
 
 @dataclass
 class PlayerCharacter(Combatant):
+    # Nivel total del PJ. Si se indica, manda sobre el campo ``proficiency``
+    # (que se recalcula con la tabla PHB); los monstruos no lo usan.
+    level: int | None = None
+    # Transfondo elegido (si lo hay). Sus competencias se añaden con
+    # ``apply_background``.
+    background: Background | None = None
+    # Raza elegida (si la hay). Sus competencias se añaden con
+    # ``apply_race``; los hechizos que aporta quedan en ``race.spells``
+    # (pendientes de conectar con el sistema de hechizos). Los bonos de
+    # carácter de la raza se asumen ya aplicados.
+    race: Race | None = None
+
     def __post_init__(self):
         object.__setattr__(self, "combatant_type", CombatantType.PLAYER)
+        if self.level is not None:
+            self.proficiency = proficiency_bonus(self.level)
         # TODO: las competencias de salvación vendrán de la clase.
         super().__post_init__()
+
+    def apply_background(self, background: Background) -> None:
+        """Añade al personaje las competencias de su transfondo.
+
+        Skills y herramientas se fusionan con las que ya tenga (sin
+        duplicar) y se guardan normalizados; el transfondo queda registrado
+        en ``self.background``.
+        """
+        self.skill_proficiencies |= {
+            normalize_skill(x) for x in background.skill_proficiencies
+        }
+        self.tool_proficiencies |= {
+            normalize_tool(x) for x in background.tool_proficiencies
+        }
+        self.background = background
+
+    def apply_race(self, race: Race, skill: str | None = None) -> None:
+        """Añade al personaje las competencias de su raza.
+
+        Fusiona las habilidades fijas con las que ya tenga. Si la raza da
+        habilidades a elegir, se toma ``skill`` (validada contra la lista)
+        o, si no se indica, la primera de la lista. Los hechizos quedan
+        registrados en ``self.race.spells``; la raza no toca salvaciones
+        ni características.
+        """
+        self.skill_proficiencies |= {
+            normalize_skill(x) for x in race.skill_proficiencies
+        }
+        if skill is not None:
+            choice = normalize_skill(skill)
+            valid = {
+                normalize_skill(x)
+                for x in (*race.skill_proficiencies, *race.skill_choices)
+            }
+            if choice not in valid:
+                raise ValueError(
+                    f"{choice!r} no es una habilidad de {race.name!r}: "
+                    f"opciones {sorted(valid)}."
+                )
+            self.skill_proficiencies.add(choice)
+        elif race.skill_choices:
+            self.skill_proficiencies.add(normalize_skill(race.skill_choices[0]))
+        self.race = race
 
 
 @dataclass

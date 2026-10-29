@@ -558,7 +558,7 @@ def test_en_un_combate_la_telaraña_inmoviliza_y_el_pj_intenta_escapar(monkeypat
     res = run_combat([objetivo, araña], random.Random(3), verbose=True, max_rounds=6)
     log = "\n".join(res.log)
     assert "inmovilizado" in log, log
-    assert "prueba STR" in log, log
+    assert "prueba ATHLETICS" in log, log
     assert res.escape_attempts, res.escape_attempts
 
 

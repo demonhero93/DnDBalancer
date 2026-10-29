@@ -17,12 +17,15 @@ Formatos reales encontrados (SRD 2014):
   -> "escape DC 16" **sin característica**: se usa FUE o DES (a elegir al
   azar) y **no** consume acción.
 
+Las características FUE/DES se traducen a su habilidad (Atletismo /
+Acrobacias): la tirada usa la competencia del que escapa si la tiene.
 Vocabulario cerrado (con #: TODO de fragilidad: es texto libre).
 """
 from __future__ import annotations
 
 import re
 
+from ..core.skills import DEFAULT_SKILL_BY_ABILITY
 from ..rules.conditions import EscapeCheck
 from ..rules.saves import normalize_ability
 
@@ -34,9 +37,22 @@ ESCAPE_DC_RE = re.compile(r"escape\s+DC\s*(\d+)", re.IGNORECASE)
 # "As an action" (la prueba consume la acción del afectado).
 AS_AN_ACTION_RE = re.compile(r"\bas an action\b", re.IGNORECASE)
 
-# Características sin las que se puede escapar (FUE o DES).
-# TODO: modelar habilidades (Atletismo, Acrobacias...) en vez de FUE/DES.
+# Características sin las que se puede escapar (FUE o DES) y sus
+# habilidades equivalentes (Atletismo y Acrobacias).
 DEFAULT_ESCAPE_ABILITIES: tuple[str, ...] = ("str", "dex")
+DEFAULT_ESCAPE_SKILLS: tuple[str, ...] = tuple(
+    DEFAULT_SKILL_BY_ABILITY[a] for a in DEFAULT_ESCAPE_ABILITIES
+)
+
+
+def _skills_for(abilities) -> tuple[str, ...]:
+    """Habilidades equivalentes a las características dadas (FUE/DES)."""
+    skills = []
+    for ability in abilities:
+        skill = DEFAULT_SKILL_BY_ABILITY.get(ability)
+        if skill and skill not in skills:
+            skills.append(skill)
+    return tuple(skills)
 
 
 def parse_escape(desc: str, monster_name: str = "",
@@ -59,6 +75,7 @@ def parse_escape(desc: str, monster_name: str = "",
             ability = match.group(2).strip().lower()
         return EscapeCheck(
             abilities=(ability,),
+            skills=_skills_for((ability,)),
             dc=dc,
             consumes_action=bool(AS_AN_ACTION_RE.search(text)),
         )
@@ -67,6 +84,7 @@ def parse_escape(desc: str, monster_name: str = "",
     if match:
         return EscapeCheck(
             abilities=DEFAULT_ESCAPE_ABILITIES,
+            skills=DEFAULT_ESCAPE_SKILLS,
             dc=int(match.group(1)),
             consumes_action=bool(AS_AN_ACTION_RE.search(text)),
         )
@@ -80,4 +98,5 @@ def has_escape_text(desc: str) -> bool:
     return bool(CHECK_RE.search(text) or ESCAPE_DC_RE.search(text))
 
 
-__all__ = ["parse_escape", "has_escape_text", "DEFAULT_ESCAPE_ABILITIES"]
+__all__ = ["parse_escape", "has_escape_text", "DEFAULT_ESCAPE_ABILITIES",
+           "DEFAULT_ESCAPE_SKILLS"]

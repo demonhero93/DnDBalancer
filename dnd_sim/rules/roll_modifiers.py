@@ -87,6 +87,9 @@ class SaveModifiers:
     auto_fail: bool = False
     advantage_sources: list[str] = field(default_factory=list)
     disadvantage_sources: list[str] = field(default_factory=list)
+    # Suelo del total (Indomitable Might, nivel 18): si la tirada sale
+    # más baja, se usa este valor. ``None`` = sin suelo.
+    minimum_total: int | None = None
 
     @property
     def mode(self) -> RollMode:
@@ -105,6 +108,11 @@ class CheckModifiers:
 
     advantage_sources: list[str] = field(default_factory=list)
     disadvantage_sources: list[str] = field(default_factory=list)
+    # Suelo del total (Indomitable Might, nivel 18); ver SaveModifiers.
+    minimum_total: int | None = None
+    # Característica con la que se tira en lugar de la asociada a la
+    # habilidad (Primal Knowledge: tirar Sigilo como FUE con Furia).
+    ability_override: str | None = None
 
     @property
     def mode(self) -> RollMode:
@@ -185,6 +193,14 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
     if getattr(target, "grants_disadvantage_to_attackers", False):
         mods.disadvantage_sources.append("efecto fijo del objetivo")
 
+    # 1b. Marcas de defensor (p. ej. Protectores Ancestrales): quien está
+    # marcado tiene desventaja salvo al atacar contra su marcador. El
+    # estado lo lleva el marcado (``state.marked_by``) y lo limpia el
+    # rasgo del marcador cuando el efecto termina.
+    marcador = getattr(getattr(attacker, "state", None), "marked_by", None)
+    if marcador is not None and target is not marcador:
+        mods.disadvantage_sources.append("marca del defensor")
+
     # 2. Condiciones del atacante: desventaja en sus ataques.
     if Condition.BLINDED in cond_atacante:
         mods.disadvantage_sources.append("atacante cegado")
@@ -238,7 +254,7 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
     if traits_atacante:
         for rasgo in _hooks(traits_atacante, "modify_attack_modifiers"):
             rasgo.modify_attack_modifiers(mods, attacker, target, rango,
-                                          ctx=ctx, rng=rng)
+                                          ctx=ctx, rng=rng, atk=attack)
 
     # 6. Crítico automático: contra un objetivo paralizado o inconsciente,
     #    todo ataque cuerpo a cuerpo que impacte es crítico.
@@ -297,7 +313,8 @@ def save_modifiers(target: Any, ability: str,
     return mods
 
 
-def check_modifiers(target: Any, ability: str) -> CheckModifiers:
+def check_modifiers(target: Any, ability: str,
+                    skill: str | None = None) -> CheckModifiers:
     """Modificadores de una prueba de característica.
 
     - POISONED y FRIGHTENED dan desventaja en toda prueba.
@@ -306,8 +323,9 @@ def check_modifiers(target: Any, ability: str) -> CheckModifiers:
     - ENLARGED da ventaja en las pruebas de Fuerza.
     - Indicadores estáticos ``checks_with_advantage/disadvantage``.
     - Hooks ``modify_check_modifiers`` de los rasgos del objetivo
-      (:mod:`dnd_sim.rules.traits`), con ``skill=None`` hasta que se modelen las
-      habilidades.
+      (:mod:`dnd_sim.rules.traits`), con ``skill`` cuando la prueba es de
+      habilidad (``"perception"``) o ``None`` en una prueba pura de
+      característica.
     """
     mods = CheckModifiers()
     cond = _condiciones(target)
@@ -333,7 +351,7 @@ def check_modifiers(target: Any, ability: str) -> CheckModifiers:
     traits = getattr(target, "traits", None)
     if traits:
         for rasgo in _hooks(traits, "modify_check_modifiers"):
-            rasgo.modify_check_modifiers(mods, target, ability, skill=None)
+            rasgo.modify_check_modifiers(mods, target, ability, skill=skill)
 
     return mods
 
