@@ -63,13 +63,51 @@ class Trait:
 
     # --- Al golpear (otro hook de dnd_sim.engine.combat.attack_roll) ---------
     def after_dealing_hit(self, target: Any, attacker: Any, rango: Any,
-                          ctx: Any = None) -> None:
+                          ctx: Any = None, atk: Any = None,
+                          damage: int | None = None) -> None:
         """Hook: efecto cuando ``attacker`` (dueño del rasgo) **impacta**.
 
         Espejo de :meth:`after_being_hit` por el lado del atacante: se
         ejecuta tras el daño, en cada impacto, con ``target`` la criatura
         golpeada (p. ej. Protectores Ancestrales: marcar a la primera
-        criatura golpeada en el turno). Por defecto no hace nada.
+        criatura golpeada en el turno). ``atk`` es el objeto ataque y
+        ``damage`` el daño principal final ya aplicado (p. ej. el Mordisco
+        cura solo si ``damage > 0``); ``None`` si el llamante no los pasa.
+        Por defecto no hace nada.
+        """
+        return None
+
+    # --- Tras la tirada de ataque (hook de dnd_sim.engine.combat.attack_roll) -
+    def after_attack_roll(self, attacker: Any, target: Any, atk: Any,
+                          hit: bool, ctx: Any = None,
+                          rng: Any = None) -> None:
+        """Hook: efecto tras resolver una tirada de ataque, acierte o falle.
+
+        Se dispara al final de :func:`dnd_sim.engine.combat.attack_roll`,
+        con ``hit`` el resultado de la tirada. Lo usa el ataque extra de
+        las Garras (Path of the Beast): se lanza aunque la tirada falle
+        («when you attack with them»). Por defecto no hace nada.
+        """
+        return None
+
+    # --- Furia del bárbaro (hooks de dnd_sim.rules.classes.barbarian) -------
+    def on_rage_start(self, actor: Any, ctx: Any = None) -> None:
+        """Hook: la Furia de ``actor`` acaba de empezar.
+
+        Se dispara desde ``RageAction.execute`` tras activar la Furia (ya
+        con ``rage_active`` verdadero). Lo usan las subclases para elegir
+        su forma o sus aliados (Path of the Beast). Por defecto no hace
+        nada.
+        """
+        return None
+
+    def on_rage_end(self, actor: Any, ctx: Any = None) -> None:
+        """Hook: la Furia de ``actor`` acaba de terminar por cualquier motivo.
+
+        Se dispara desde ``BarbarianFeatures`` en cuanto pone
+        ``rage_active`` a falso (incapacitado, expiración sin extensión...).
+        Lo usan las subclases para retirar efectos ligados a la Furia.
+        Por defecto no hace nada.
         """
         return None
 
@@ -237,9 +275,12 @@ HOOK_NAMES: tuple[str, ...] = (
     "after_damage_taken",
     "after_being_hit",
     "after_dealing_hit",
+    "after_attack_roll",
     "reduce_damage_to_allies",
     "extra_attack_damage",
     "defensive_ac_bonus",
+    "on_rage_start",
+    "on_rage_end",
     "on_turn_start",
     "on_turn_end",
     "survives_at_zero_hp",

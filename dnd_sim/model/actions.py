@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import random
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
@@ -167,6 +168,24 @@ def _log(ctx: CombatContext):
     return ctx.log if (ctx.verbose or ctx.log is not None) else None
 
 
+@contextmanager
+def _en_accion_de_ataque(context: Any, action_type: ActionType) -> None:
+    """Marca ``context.in_attack_action`` mientras se ejecuta un ataque.
+
+    ``True`` solo si la acción es una acción **de Atacar** (no una bonus o
+    reacción): los rasgos que se activan «al atacar con la acción de
+    Atacar» (las Garras del Path of the Beast) lo comprueban. Se restaura
+    el valor anterior, así que las acciones anidadas (un multiataque que
+    ejecuta otra acción) no dejan la marca puesta.
+    """
+    previo = getattr(context, "in_attack_action", None)
+    context.in_attack_action = action_type == ActionType.ACTION
+    try:
+        yield
+    finally:
+        context.in_attack_action = previo
+
+
 @dataclass
 class AttackAction(CombatAction):
     attack: "Attack"
@@ -199,7 +218,8 @@ class AttackAction(CombatAction):
         target = pick(context.rng, enemies)
         log = context.log if (context.log is not None) else None
         # Log solo si verbose; mantenemos compatibilidad: attack_roll decide.
-        attack_roll(actor, target, self.attack, context.rng, log, ctx=context)
+        with _en_accion_de_ataque(context, self.action_type):
+            attack_roll(actor, target, self.attack, context.rng, log, ctx=context)
 
 
 class MultiattackAction(CombatAction):
@@ -307,7 +327,8 @@ class MultiattackAction(CombatAction):
                     return
                 target = pick(context.rng, enemies)
                 log = context.log
-                attack_roll(actor, target, atk, context.rng, log, ctx=context)
+                with _en_accion_de_ataque(context, self.action_type):
+                    attack_roll(actor, target, atk, context.rng, log, ctx=context)
 
 
 class WeaponAttackAction(CombatAction):
@@ -324,7 +345,11 @@ class WeaponAttackAction(CombatAction):
         from ..core.randomness import pick
 
         actor = context.actor
+        # ``weapons`` (ficha) + ``dynamic_weapons`` (p. ej. el arma natural
+        # del Path of the Beast mientras dura la Furia): la lista de la
+        # ficha no se muta.
         weapons = list(getattr(actor, "weapons", []) or [])
+        weapons += list(getattr(actor, "dynamic_weapons", []) or [])
         if not weapons:
             return
         total = 1 + int(getattr(actor, "extra_attacks", 0) or 0)
@@ -340,7 +365,8 @@ class WeaponAttackAction(CombatAction):
             weapon = pick(context.rng, weapons)
             target = pick(context.rng, enemies)
             log = context.log
-            attack_roll(actor, target, weapon, context.rng, log, ctx=context)
+            with _en_accion_de_ataque(context, self.action_type):
+                attack_roll(actor, target, weapon, context.rng, log, ctx=context)
 
 
 # Alias de coherencia por si algún código espera otro nombre.

@@ -17,7 +17,7 @@ from dnd_sim import (
 from dnd_sim.core.enums import AttackRange
 from dnd_sim.model.actions import ActionType, TurnResources
 from dnd_sim.rules.classes.barbarian import BarbarianFeatures
-from dnd_sim.rules.classes.battlerager import (
+from dnd_sim.rules.classes.barbarian.subclasses.battlerager import (
     BATTLERAGER_FEATURES,
     BattleragerFeatures,
     SpikedArmorAction,

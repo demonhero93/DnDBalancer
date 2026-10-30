@@ -33,14 +33,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ...core.classes import MAX_LEVEL, MIN_LEVEL
-from ...core.enums import AttackRange
-from ...core.log import log_line as _log_line
-from ...model.actions import ActionType, AttackAction
-from ...model.attack import Attack
-from ..damage import apply_damage_modifiers, inflict_damage
-from ..traits.base import Trait
-from .barbarian import BarbarianFeatures, _contexto
+from .....core.classes import MAX_LEVEL, MIN_LEVEL
+from .....core.enums import AttackRange
+from .....core.log import log_line as _log_line
+from .....model.actions import ActionType, AttackAction
+from .....model.attack import Attack
+from ....damage import apply_damage_modifiers, inflict_damage
+from ....traits.base import Trait
+from ..features import BarbarianFeatures, _contexto
 
 #: Features de subclase por nivel (SCAG; nombres en inglés como la API).
 BATTLERAGER_FEATURES: dict[int, tuple[str, ...]] = {

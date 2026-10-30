@@ -53,6 +53,11 @@ class Combatant:
     saves_with_disadvantage: set[str] = field(default_factory=set)
     # --- Nuevos campos ---
     weapons: list[Attack] = field(default_factory=list)
+    # Armas dinámicas (p. ej. el arma natural del Path of the Beast mientras
+    # dura la Furia): WeaponAttackAction las ofrece **junto** a ``weapons``
+    # sin mutar esta lista, que es la de la ficha. Las retira el rasgo que
+    # las añadió (al terminar la Furia y en su ``reset``).
+    dynamic_weapons: list[Attack] = field(default_factory=list)
     extra_attacks: int = 0
     attacks_with_advantage: bool = False
     attacks_with_disadvantage: bool = False

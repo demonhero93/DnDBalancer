@@ -33,15 +33,19 @@ from .rules.area import AreaSaveAction, AreaTargeting, select_area_targets
 from .rules.attach import (
     Attach, AttachOnHitEffect, desenganchar, intentar_desenganche,
 )
-from .rules.classes.ancestral_guardian import (
+from .rules.classes.barbarian.subclasses.ancestral_guardian import (
     AncestralGuardianFeatures, apply_ancestral_guardian,
 )
 from .rules.classes.barbarian import (
     BarbarianFeatures, ExtendRageAction, RageAction, apply_barbarian,
 )
-from .rules.classes.battlerager import (
+from .rules.classes.barbarian.subclasses.battlerager import (
     BattleragerFeatures, SpikedArmorAction, apply_battlerager,
 )
+from .rules.classes.barbarian.subclasses.beast import (
+    BeastFeatures, FormOfTheBeast, NaturalWeapon, apply_beast,
+)
+from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
                            skill_bonus, skill_check)
 from .rules.conditions import (
@@ -92,16 +96,19 @@ __all__ = [
     "AreaSaveAction",
     "AreaTargeting", "Attach", "AttachOnHitEffect", "Attack", "AttackAction",
     "AttackEntry", "AttackModifiers", "AttackRange", "Background",
-    "BarbarianFeatures", "BattleragerFeatures", "BloodFrenzy",
+    "BarbarianFeatures", "BattleragerFeatures", "BeastFeatures",
+    "BloodFrenzy",
     "CheckModifiers", "CheckResult", "CombatAction", "CombatContext",
     "CombatResult", "CombatState", "Combatant", "CombatantType", "Condition",
     "ConditionAction", "ConditionEffect", "ConditionInstance",
     "ConditionTracker", "D20Result", "DEFAULT_LEGENDARY_POINTS",
     "DamageTransfer", "DamageType", "EXCLUDED_CONDITIONS", "EscapeCheck",
-    "ExtendRageAction", "HealAction", "HealEffect", "HeatedBody",
+    "ExtendRageAction", "FormOfTheBeast", "HealAction", "HealEffect",
+    "HeatedBody",
     "LegendaryAction",
     "LegendaryState", "MartialAdvantage", "Monster", "MultiattackAction",
-    "PackTactics", "Parry", "PlayerCharacter", "RANGED_COVER_AC_BONUS",
+    "NaturalWeapon", "PackTactics", "Parry", "PlayerCharacter",
+    "RANGED_COVER_AC_BONUS",
     "Race", "RageAction", "Regeneration", "Relentless", "RepeatSave",
     "RollMode", "SaveAction",
     "SaveDamage", "SaveDamageOutcome", "SaveModifiers", "SaveResult", "Spell",
@@ -111,7 +118,7 @@ __all__ = [
     "Trait", "TurnResistance", "TurnResources", "UndeadFortitude",
     "UsageKind", "WeaponAttackAction", "ability_check", "ability_check_bonus",
     "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
-    "apply_battlerager",
+    "apply_battlerager", "apply_beast", "apply_class",
     "apply_condition",
     "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
     "attempt_escapes", "begin_turn",

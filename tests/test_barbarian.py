@@ -17,7 +17,7 @@ from dnd_sim import (
 from dnd_sim.core.classes import (
     BARBARIAN_FEATURES, extra_attacks_for,
 )
-from dnd_sim.rules.classes import barbarian as barb_mod
+from dnd_sim.rules.classes.barbarian import features as barb_mod
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

@@ -29,12 +29,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ...core.classes import MAX_LEVEL, MIN_LEVEL
-from ...core.dice import roll_dice
-from ...core.enums import parse_damage_type
-from ...core.log import log_line as _log_line
-from ..traits.base import Trait
-from .barbarian import BarbarianFeatures
+from .....core.classes import MAX_LEVEL, MIN_LEVEL
+from .....core.dice import roll_dice
+from .....core.enums import parse_damage_type
+from .....core.log import log_line as _log_line
+from ....traits.base import Trait
+from ..features import BarbarianFeatures
 
 #: Features de subclase por nivel (XGtE; nombres en inglés como la API).
 ANCESTRAL_FEATURES: dict[int, tuple[str, ...]] = {
@@ -81,7 +81,8 @@ class AncestralGuardianFeatures(Trait):
 
     # --- Ancestral Protectors (3) -------------------------------------------
     def after_dealing_hit(self, target: Any, attacker: Any, rango: Any,
-                          ctx: Any = None) -> None:
+                          ctx: Any = None, atk: Any = None,
+                          damage: int | None = None) -> None:
         """Marca a la primera criatura golpeada en el turno, con Furia."""
         if self.level < 3:
             return
@@ -142,7 +143,7 @@ class AncestralGuardianFeatures(Trait):
             # Vengeful Ancestors: lo evitado vuelve al atacante como
             # fuerza. La reacción ya está gastada, así que este daño no
             # vuelve a entrar por esta misma vía.
-            from ..damage import inflict_damage
+            from ....damage import inflict_damage
             inflict_damage(source, reducido, parse_damage_type("force"),
                            source=self.owner, ctx=ctx, rng=rng)
         return max(0, int(amount) - reducido)

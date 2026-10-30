@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from ...core.classes import (
+from ....core.classes import (
     BARBARIAN_PRIMAL_SKILLS,
     BARBARIAN_SKILLS,
     MAX_LEVEL,
@@ -31,13 +31,13 @@ from ...core.classes import (
     rage_damage,
     rage_uses,
 )
-from ...core.dice import roll_dice
-from ...core.log import log_line as _log_line
-from ...core.skills import normalize_skill
-from ...model.actions import ActionType, AttackEntry, CombatAction, MultiattackAction
-from ..saves import saving_throw
-from ..traits.base import Trait
-from ..usage import ActionUsage, UsageKind
+from ....core.dice import roll_dice
+from ....core.log import log_line as _log_line
+from ....core.skills import normalize_skill
+from ....model.actions import ActionType, AttackEntry, CombatAction, MultiattackAction
+from ...saves import saving_throw
+from ...traits.base import Trait, hooks
+from ...usage import ActionUsage, UsageKind
 
 
 @dataclass
@@ -74,7 +74,7 @@ class BarbarianFeatures(Trait):
         """¿El ataque tira con FUE? (``atk`` ausente → se asume cuerpo a cuerpo)."""
         if atk is None:
             return True
-        from ...core.abilities import normalize_ability
+        from ....core.abilities import normalize_ability
         try:
             return normalize_ability(getattr(atk, "ability", "")) == "str"
         except Exception:
@@ -88,7 +88,7 @@ class BarbarianFeatures(Trait):
             return False
 
     def _incapacitado(self, actor: Any) -> bool:
-        from ..conditions import Condition
+        from ...conditions import Condition
         return self._condicion(actor, Condition.INCAPACITATED)
 
     def activate(self, round_: int) -> None:
@@ -181,6 +181,17 @@ class BarbarianFeatures(Trait):
             mods.minimum_total = score
 
     # --- Ciclo de turno -----------------------------------------------------
+    def _finalizar_furia(self, actor: Any, ctx: Any = None, *,
+                         log: bool = False) -> None:
+        """Termina la Furia y avisa a las subclases (hook ``on_rage_end``)."""
+        self.rage_active = False
+        if log:
+            _log_line(ctx, f"{getattr(actor, 'name', actor)}: la Furia termina")
+        # Despacho directo a los rasgos del dueño: los que no sobrescriben
+        # el hook no se llaman (mismo filtro de ``hooks``).
+        for rasgo in hooks(getattr(actor, "traits", None) or [], "on_rage_end"):
+            rasgo.on_rage_end(actor, ctx)
+
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         # Reckless caduca al inicio de tu siguiente turno y con él la
         # ventaja que los demás tenían contra ti.
@@ -195,12 +206,12 @@ class BarbarianFeatures(Trait):
             return
         # La Furia termina antes con Incapacitado; Persistente (15) solo
         # con Unconscious (y también con armadura pesada: sin sistema).
-        from ..conditions import Condition
+        from ...conditions import Condition
         if self.persistent_rage:
             if self._condicion(actor, Condition.UNCONSCIOUS):
-                self.rage_active = False
+                self._finalizar_furia(actor, ctx)
         elif not actor.can_act:  # incapacitado
-            self.rage_active = False
+            self._finalizar_furia(actor, ctx)
 
     def on_turn_end(self, actor: Any, ctx: Any = None) -> None:
         """Fin de turno: evaluar el fin/extensión de la Furia."""
@@ -219,8 +230,7 @@ class BarbarianFeatures(Trait):
             # hasta el final del siguiente turno (sin gastar acción bonus).
             self.rage_expires_round = round_ + 1
         else:
-            self.rage_active = False
-            _log_line(ctx, f"{getattr(actor, 'name', actor)}: la Furia termina")
+            self._finalizar_furia(actor, ctx, log=True)
 
     # --- Supervivencia: Furia Inaguantable (11) -----------------------------
     def on_reduced_to_zero_hp(self, owner: Any, amount: int,
@@ -311,6 +321,11 @@ class RageAction(CombatAction):
             context,
             f"{actor.name} entra en Furia (hasta el final de su siguiente turno)",
         )
+        # Las subclases se enteran de que la Furia empieza (p. ej. Path of
+        # the Beast elige su forma). Los rasgos que no sobrescriben el hook
+        # no se llaman, así que no hay RNG extra sin subclase.
+        for rasgo in hooks(getattr(actor, "traits", None) or [], "on_rage_start"):
+            rasgo.on_rage_start(actor, context)
 
 
 class ExtendRageAction(CombatAction):
@@ -404,7 +419,7 @@ def apply_barbarian(pj: Any, skills: tuple[str, ...] = (),
         if getattr(pj, "weapons", None):
             pj.extra_attacks = max(int(pj.extra_attacks), golpes - 1)
         else:
-            from ...model.actions import AttackAction
+            from ....model.actions import AttackAction
             ataques = [a for a in pj.attacks
                        if not getattr(a, "only_in_multiattack", False)] or list(pj.attacks)
             if ataques:

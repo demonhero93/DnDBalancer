@@ -23,7 +23,9 @@ from dnd_sim import (
     inflict_damage,
 )
 from dnd_sim.engine.combat.attack import attack_roll
-from dnd_sim.rules.classes.ancestral_guardian import ANCESTRAL_FEATURES
+from dnd_sim.rules.classes.barbarian.subclasses.ancestral_guardian import (
+    ANCESTRAL_FEATURES,
+)
 from dnd_sim.rules.roll_modifiers import attack_modifiers
 from dnd_sim.core.dice import roll_dice
 

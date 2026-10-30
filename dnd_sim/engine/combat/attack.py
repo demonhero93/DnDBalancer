@@ -156,7 +156,8 @@ def _bonus_defensivo(target: Any, attacker: Any, rango: Any, total: int,
 
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
-                verbose: bool = False, ctx: Any = None) -> None:
+                verbose: bool = False, ctx: Any = None,
+                allow_friendly: bool = False) -> None:
     """Resuelve un ataque.
 
     Secuencia (documentada):
@@ -176,8 +177,13 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     7. La invisibilidad del atacante termina («until it attacks»): aquí, y
        no antes, porque mientras exista el ataque sale con ventaja y el
        defensor **no puede verlo** (Parry: «must see the attacker»).
+
+    ``allow_friendly`` salta la salvaguarda de fuego amigo para un efecto
+    que **fuerza** a un combatiente a atacar a su propio bando (p. ej. la
+    rama de venganza de la Fiereza infecciosa); el valor por defecto
+    ``False`` conserva el guard en todas las llamadas normales.
     """
-    if not attacker.is_hostile_to(target):
+    if not allow_friendly and not attacker.is_hostile_to(target):
         raise ValueError(
             f"{attacker.name} no es hostil a {target.name}: no se permite fuego amigo."
         )
@@ -341,7 +347,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         # Efectos del propio atacante tras impactar (p. ej. Protectores
         # Ancestrales: marcar a la primera criatura golpeada en el turno).
         _trigger_after_dealing_hit(attacker, target, rango,
-                                   log, ctx, rng)
+                                   log, ctx, rng, atk=atk, damage=dmg)
         # Efectos posteriores al impacto (p. ej. el enganche del cloaker):
         # reciben los modificadores para poder ver si el ataque iba con
         # ventaja (enganche a la cabeza).
@@ -356,6 +362,10 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                   if getattr(getattr(target, "state", None), "at_range", False) else "")
         log.append(f"  {attacker.name} -> {target.name} con {atk.name}: "
                    f"{roll}{mode_tag}+{bonus}={total} vs CA {ca_efectiva}{ca_tag}, falla")
+    # Tras resolver la tirada (acierte o falle): p. ej. el ataque extra de
+    # las Garras del Path of the Beast, que se dispara «cuando atacas con
+    # ellas», no solo cuando impactan.
+    _trigger_after_attack_roll(attacker, target, atk, hit, log, ctx, rng)
 
 
 def _tag_modificadores(raw: int, final: int, dt: Any, target: Any) -> str:
@@ -471,14 +481,17 @@ def _trigger_after_being_hit(target: Any, attacker: Any, rango: Any,
 
 
 def _trigger_after_dealing_hit(attacker: Any, target: Any, rango: Any,
-                               log: Any, ctx: Any, rng: Any = None) -> None:
+                               log: Any, ctx: Any, rng: Any = None,
+                               atk: Any = None,
+                               damage: int | None = None) -> None:
     """Dispara los rasgos de ``attacker`` que reaccionan a impactar.
 
     Espejo de :func:`_trigger_after_being_hit` por el lado del atacante
     (p. ej. Protectores Ancestrales: marcar a la primera criatura
-    golpeada en el turno). Como allí, se ejecuta tras el daño y en cada
-    impacto, y solo se piden los rasgos que sobrescriben el hook
-    (:func:`dnd_sim.rules.traits.hooks`).
+    golpeada en el turno; el Mordisco de la Bestia: curar). Como allí, se
+    ejecuta tras el daño y en cada impacto, y solo se piden los rasgos que
+    sobrescriben el hook (:func:`dnd_sim.rules.traits.hooks`). ``atk`` es
+    el objeto ataque y ``damage`` el daño principal final ya aplicado.
     """
     traits = getattr(attacker, "traits", None)
     if not traits:
@@ -496,7 +509,36 @@ def _trigger_after_dealing_hit(attacker: Any, target: Any, rango: Any,
     elif getattr(_ctx, "rng", None) is None:
         _ctx.rng = rng
     for trait in hookable:
-        trait.after_dealing_hit(target, attacker, rango, ctx=_ctx)
+        trait.after_dealing_hit(target, attacker, rango, ctx=_ctx, atk=atk,
+                                damage=damage)
+
+
+def _trigger_after_attack_roll(attacker: Any, target: Any, atk: Any,
+                               hit: bool, log: Any, ctx: Any,
+                               rng: Any = None) -> None:
+    """Dispara los rasgos de ``attacker`` tras su tirada de ataque.
+
+    Se llama al final de :func:`attack_roll`, tanto si impactó como si
+    falló (p. ej. el ataque extra de las Garras). Solo se piden los rasgos
+    que sobrescriben el hook (:func:`dnd_sim.rules.traits.hooks`).
+    """
+    traits = getattr(attacker, "traits", None)
+    if not traits:
+        return
+    from ...rules.traits import hooks
+    hookable = hooks(traits, "after_attack_roll")
+    if not hookable:
+        return
+    _ctx = ctx
+    if _ctx is None:
+        _ctx = type("RollCtx", (), {})()
+        _ctx.rng = rng
+        _ctx.log = log
+        _ctx.verbose = log is not None
+    elif getattr(_ctx, "rng", None) is None:
+        _ctx.rng = rng
+    for trait in hookable:
+        trait.after_attack_roll(attacker, target, atk, hit, ctx=_ctx, rng=rng)
 
 
 def _reaccion_si_procede(target: Any, ctx: Any) -> None:

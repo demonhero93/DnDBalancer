@@ -7,8 +7,7 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 from dnd_sim import (Abilities, Attack, AttackRange, PlayerCharacter,
-                     apply_ancestral_guardian, apply_barbarian,
-                     apply_battlerager, load_monster,
+                     apply_class, load_monster,
                      run_combat)
 from dnd_sim.engine.stats import print_report, simulate
 
@@ -111,15 +110,14 @@ def _build_party(size: int) -> list:
             abilities=Abilities(**template["abilities"]),
             attacks=ataques,
         )
-        if template.get("class_name") == "barbarian":
-            # Salvaciones/Unarmored/Extra Attack/Furia: todo desde la clase.
-            # Las skills de la plantilla son las mismas de la lista bárbaro.
-            apply_barbarian(pj, skills=template.get("skill_proficiencies", ()),
-                            level=template["level"])
-            if template.get("subclass_name") == "ancestral-guardian":
-                apply_ancestral_guardian(pj, level=template["level"])
-            elif template.get("subclass_name") == "battlerager":
-                apply_battlerager(pj, level=template["level"])
+        if template.get("class_name"):
+            # Salvaciones/Unarmored/Extra Attack/Furia + subclase: todo
+            # desde el registro de clases. Las skills de la plantilla son
+            # las mismas de la lista bárbaro.
+            apply_class(pj, template["class_name"],
+                        template.get("subclass_name"),
+                        skills=template.get("skill_proficiencies", ()),
+                        level=template["level"])
         party.append(pj)
     return party
 
