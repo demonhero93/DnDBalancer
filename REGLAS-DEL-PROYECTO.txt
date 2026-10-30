@@ -1,0 +1,87 @@
+REGLAS DEL PROYECTO — DnDBalancer / dnd_sim
+===========================================
+Compilación de todas las reglas impuestas a lo largo del proyecto.
+Autoridad máxima: ARCHITECTURE.md y tests/test_arquitectura.py (congelados).
+
+1. ARQUITECTURA DE CAPAS
+   Orden: core < model < rules < engine / data < fachada (dnd_sim).
+   1.1 Una capa solo importa de la suya o de una inferior.
+   1.2 core no importa nada de dentro de dnd_sim. Cero imports internos.
+   1.3 model solo puede ver core. Un combatiente no conoce las reglas.
+   1.4 rules puede ver core, model y a sí mismo.
+   1.5 engine y data son paralelas: ninguna depende de la otra; ambas
+       pueden ver core, model y rules.
+   1.6 engine orquesta la simulación; data construye combatientes desde JSON.
+
+2. FACHADA
+   2.1 La fachada dnd_sim/__init__.py reexporta la API pública ordenada
+       por capa.
+   2.2 Dentro del paquete jamás se hace `from dnd_sim import X`; se importa
+       el módulo concreto (`from ..core.dice import roll_d20`).
+   2.3 Nadie importa la fachada por dentro.
+
+3. EXCEPCIÓN ÚNICA ADMITIDA
+   3.1 dnd_sim/model/combatant.py -> dnd_sim/rules.conditions es la única
+       violación consciente de capa (Combatant crea sus condiciones al vuelo).
+   3.2 La lista EXCEPCIONES no puede crecer ni acumular entradas muertas:
+       si desaparece la violación, hay que borrarla del test.
+
+4. IMPORTS DIFERIDOS
+   4.1 Un import dentro de una función o de `if TYPE_CHECKING` no cuenta
+       como dependencia de capa: sirve para cortar ciclos.
+   4.2 Pueden apuntar hacia arriba (ej.: rules.traits.defense importa
+       engine.combat dentro de una función).
+
+5. PAQUETES CON FACHADA (ficheros gigantes partidos)
+   5.1 rules/traits/  -> base, offense, defense, survival, stealth.
+       API reexportada: Trait, HOOK_NAMES, hooks, TRAIT_CLASSES.
+   5.2 rules/spells/  -> effects, reactions, actions, casting.
+       API reexportada: Spell, Spellcasting, spell_action, trigger_reaction.
+   5.3 engine/combat/ -> attack, encounter.
+       API reexportada: attack_roll, run_combat.
+   5.4 Dentro de cada paquete el grafo es acíclico:
+       traits: base <- {offense, defense, survival, stealth}
+       spells: effects <- actions <- casting; reactions <- actions
+       combat: attack y encounter sin dependencias internas.
+   5.5 Las importaciones de fuera no cambian al partir un fichero: el
+       __init__ del paquete reexporta la misma API.
+   5.6 Corte aplicado en la práctica: traits.py (1016), spells.py (818),
+       combat.py (652) partidos en paquetes.
+
+6. TESTS
+   6.1 tests/test_arquitectura.py congela: reglas de capa, excepción única
+       y reexportado de los tres paquetes con fachada.
+   6.2 Un test que parchea un símbolo apunta al módulo que lo define
+       (`import dnd_sim.engine.combat.attack as combat_mod`), porque
+       monkeypatch sustituye un nombre en el espacio de nombres de ese
+       módulo.
+   6.3 pytest.ini: testpaths = tests; norecursedirs = .venv Main .git cache.
+   6.4 Nombres de test descriptivos, en español, con la afirmación
+       dentro del nombre (ej.: test_las_capas_no_se_miran_hacia_arriba).
+   6.5 Fixtures JSON en tests/fixtures/ (monstruos y spells/), no en código.
+
+7. VERIFICACIÓN OBLIGATORIA TRAS UN CAMBIO
+   pytest tests/test_arquitectura.py
+   pytest
+   python tools/capas.py
+   graphify update .
+
+8. GRAPHIFY
+   8.1 Salida en graphify-out/: graph.json, graph.html, GRAPH_REPORT.md,
+       manifest.json y caché AST por versión.
+   8.2 `graphify update .` reextrae y actualiza el grafo sin coste de API;
+       --force solo si el rebuild tiene menos nodos.
+   8.3 Ejecutar tras reorganizaciones de código (así se hizo en 8d4e31e).
+
+9. CÓDIGO
+   9.1 Docstring de módulo en español explicando qué hace y cómo se usa.
+   9.2 `from __future__ import annotations` en módulos con anotaciones.
+   9.3 UTF-8 y salida UTF-8 en CLI (main.py reconfigura sys.stdout).
+   9.4 .gitignore: cache/ y __pycache__/; nunca se commitean binarios.
+   9.5 La superficie pública vive en la fachada; main.py importa de dnd_sim
+       y de dnd_sim.engine.* explícitamente.
+
+10. ORGANIZACIÓN DE COMMITS
+   10.1 Un commit = una idea (partida de un fichero, limpieza de imports,
+        lote de tests, regeneración de grafo).
+   10.2 Mensaje que describe el cambio real, no la intención vaga.

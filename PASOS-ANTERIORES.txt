@@ -1,0 +1,76 @@
+RESUMEN DE LOS PASOS ANTERIORES — DnDBalancer / dnd_sim
+=========================================================
+Documento de contexto (para humanos y para IA). Última revisión: 2026-10-30.
+Fuente: historial git + ARCHITECTURE.md.
+
+1. NÚCLEO DE SIMULACIÓN (2026-10-15)
+   - f33c0c2: tiradas de salvación y tiradas de ataque (`roll_saving_throw`,
+     `roll_attack`) con tests unitarios en tests/test_combat.py.
+   - 2b5d6b3: añadido dnd_sim/actions.py (acciones de combate).
+
+2. BATERÍA DE TESTS DE REGLAS 5e (2026-10-20 / 10-21)
+   - 7421142: efectos de área, multiataques, uso de acciones.
+   - 5dceefe: condiciones 5e y mecánicas generales.
+   - 516290b: mecánicas de hechizos e interacciones.
+
+3. HECHIZOS, RASGOS Y DAÑO (2026-10-23)
+   - af5c4e0: hechizos, rasgos de monstruos y daño adicional de armas.
+   - a1a436e: corrección de invisible (ventaja al atacar y al lanzar hechizo
+     se rompía).
+
+4. RASGOS DE MONSTRUO (2026-10-25)
+   - 93645a7: Regeneration, Pack Tactics, Martial Advantage, Turn Resistance.
+   - b724e4b: Parry, Relentless, Undead Fortitude, Superior Invisibility.
+
+5. LIMPIEZA Y REORGOLLO POR CAPAS (2026-10-25)
+   - f7cc46c: limpieza de imports y desacople de dependencias; nacen
+     dnd_sim/core/ y dnd_sim/data/.
+   - ba00c83: dnd_sim reorganizado en carpetas por capa
+     (core, model, rules, engine, data).
+   - f6f9710: traits.py (1016 líneas) partido en el paquete rules/traits/.
+   - 15d1bd2: spells.py (818 líneas) y combat.py (652) partidos en paquetes.
+   - 6cc4368: ARCHITECTURE.md, test de capas (tests/test_arquitectura.py) y
+     fachada dnd_sim/__init__.py ordenada por capa.
+   - 8d4e31e: grafo de Graphify regenerado tras la reorganización.
+
+6. DATOS Y TESTS RECIENTES (2026-10-27 / 10-29)
+   - 2bcaba3: ficheros de datos de hechizos y tests de muerte en combate.
+   - 99ebee7: tests de subclase Battlerager, bonos de competencia, razas y
+     habilidades.
+
+7. REGISTRO DE CLASES Y PATH OF THE BEAST (2026-10-30)  [SIN COMMITEAR]
+   - Registro genérico de clases/subclases en rules/classes/base.py:
+     CLASSES, register_class, apply_class(pj, clase, subclase, **kwargs)
+     con validación de existencia y nivel ANTES de aplicar.
+   - Paquete rules/classes/barbarian/ (features.py + subclasses/):
+     ancestral_guardian, battlerager y beast reubicados desde
+     rules/classes/*.py; API pública idéntica (fachada actualizada).
+   - Subclase Path of the Beast (Tasha's sobre PHB 2024), en
+     subclasses/beast.py: Form of the Beast (mordisco que cura PB,
+     garras con ataque extra, cola estilo Parry 1d8), Bestial Soul
+     (PENDIENTE: exige flag `magical` en Attack), Fiereza Infecciosa
+     (CD 8+CON+PB, usos=PB) y Call the Hunt (temp HP por aliado).
+   - Hooks nuevos en rules/traits/base.py: on_rage_start, on_rage_end,
+     after_attack_roll; after_dealing_hit con atk/damage; parámetro
+     allow_friendly en attack_roll; Combatant.dynamic_weapons.
+   - Tests nuevos: tests/test_clases.py (10) y tests/test_beast.py (50).
+   - Suite completa en verde: 671 tests.
+
+ESTADO ACTUAL
+   - 68 módulos en dnd_sim/, 12546 líneas; tests/ con 35 ficheros,
+     10826 líneas, 671 tests (todos en verde como último estado conocido).
+   - Registro de clases en rules/classes/ (base + barbarian + subclases).
+   - Arquitectura congelada en tests/test_arquitectura.py (capas + fachadas).
+   - Grafo de Graphify en graphify-out/ (graph.json, graph.html,
+     GRAPH_REPORT.md), construido con `graphify update .`.
+   - Herramienta de dependencias: `python tools/capas.py`.
+
+VERIFICACIÓN HABITUAL
+   pytest tests/test_arquitectura.py   # reglas de capa + fachadas
+   pytest                              # suite completa
+   python tools/capas.py               # mapa de dependencias
+   graphify update .                   # regenera grafo (sin coste de API)
+
+PRÓXIMOS PASOS ABIERTOS (pendientes conocidos)
+   - .graphify_labels.pending.json tiene etiquetas de nodos sin confirmar.
+   - Mantener GRAPH_REPORT.md y grafo al día tras cada cambio de código.
