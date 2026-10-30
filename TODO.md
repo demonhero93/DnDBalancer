@@ -3,24 +3,12 @@
 Revisar al principio de cada sesión. Última revisión: 2026-10-30.
 Contexto detallado: PASOS-ANTERIORES.txt (sección 7) y ARCHITECTURE.md.
 
-## Sin commitear (bloque 2026-10-30, prioridad alta)
+## Bloque 2026-10-30 (commiteado)
 
-Todo el registro de clases y Path of the Beast está sin commitear.
-Antes de empezar trabajo nuevo: `git status` y decidir si se commitea.
-
-- Movidos (borrados en la raíz): `dnd_sim/rules/classes/{barbarian,ancestral_guardian,battlerager}.py`
-  → paquete `dnd_sim/rules/classes/barbarian/`.
-- Nuevos: `dnd_sim/rules/classes/base.py`, paquete `barbarian/` completo,
-  `tests/test_clases.py`, `tests/test_beast.py`.
-- Modificados: fachada `dnd_sim/__init__.py`, `engine/combat/attack.py`,
-  `model/actions.py`, `model/combatant.py`, `rules/traits/base.py`,
-  `main.py`, `ARCHITECTURE.md`, tests de bárbaro/ancestral/battlerager,
-  `graphify-out/`.
-- Sugerencia de commits (una idea por commit, regla 10.1):
-  1. registro de clases (base + paquete barbarian + fachada);
-  2. hooks de traits + dynamic_weapons + allow_friendly;
-  3. subclase beast + sus tests;
-  4. ARCHITECTURE.md + grafo.
+- `ff30aac` feat(classes): registro de clases + Path of the Beast (20 ficheros).
+- `667bc0a` docs: reglas, log de sesión y este TODO.
+- `37b2806` chore(graph): grafo regenerado.
+- Pendiente de push si hay remoto.
 
 ## TODOs en código (marcados `# TODO`)
 
