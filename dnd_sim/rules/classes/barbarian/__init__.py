@@ -13,15 +13,19 @@ from .features import BarbarianFeatures, ExtendRageAction, RageAction, apply_bar
 from .subclasses import (
     ANCESTRAL_FEATURES,
     BATTLERAGER_FEATURES,
+    BERSERKER_FEATURES,
     AncestralGuardianFeatures,
     BattleragerFeatures,
     BeastFeatures,
+    BerserkerFeatures,
     FormOfTheBeast,
+    IntimidatingPresenceAction,
     NaturalWeapon,
     SpikedArmorAction,
     apply_ancestral_guardian,
     apply_battlerager,
     apply_beast,
+    apply_berserker,
 )
 
 #: Registro de la clase bárbaro con sus subclases (claves normalizadas).
@@ -40,6 +44,10 @@ BARBARIAN_CLASS = register_class(ClassDef(
         "beast": SubclassDef(
             name="Path of the Beast", class_name="barbarian",
             min_level=3, apply=apply_beast,
+        ),
+        "berserker": SubclassDef(
+            name="Path of the Berserker", class_name="barbarian",
+            min_level=3, apply=apply_berserker,
         ),
     },
 ))

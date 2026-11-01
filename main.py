@@ -25,7 +25,8 @@ def _parse_monster_token(token: str):
 
 
 def _load_party(specs: list[str], legendary_p: float = 1.0,
-                resistance_p: float = 1.0) -> list:
+                resistance_p: float = 1.0,
+                legendary_points: int | None = None) -> list:
     monsters: list[Combatant] = []
     for spec in specs:
         index, count = _parse_monster_token(spec)
@@ -38,6 +39,9 @@ def _load_party(specs: list[str], legendary_p: float = 1.0,
             if legendary is not None:
                 legendary.use_probability = legendary_p
                 legendary.resistance_probability = resistance_p
+                if legendary_points is not None:
+                    legendary.points_max = legendary_points
+                    legendary.points_left = legendary_points
             monsters.append(monster)
     return monsters
 
@@ -147,6 +151,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Probabilidad de que un monstruo Legendary Resistance convierta "
              "un fallo de salvación en éxito (0.0-1.0). Default: 1.0.",
     )
+    parser.add_argument(
+        "--legendary-points", type=int, default=None,
+        help="Puntos legendarios finales por monstruo (fija el valor sin "
+             "sumar el bonus de guarida). Default: base + 1.",
+    )
     return parser
 
 
@@ -154,7 +163,8 @@ def main() -> None:
     args = build_parser().parse_args()
     specs = args.monster if args.monster else ["troll"]
     monsters = _load_party(specs, legendary_p=args.legendary_p,
-                           resistance_p=args.resistance_p)
+                           resistance_p=args.resistance_p,
+                           legendary_points=args.legendary_points)
 
     # Los PJ sí se definen aquí (personajes jugador).
     party = _build_party(args.party)
@@ -165,7 +175,7 @@ def main() -> None:
     res = run_combat(combatants, random.Random(args.seed), verbose=True)
     print("\n".join(res.log))
     print(f"\nGanador: {res.winner} en {res.rounds} rondas")
-    
+
     report = simulate(combatants, n=args.simulations, seed=args.seed)
     print_report(report)
 

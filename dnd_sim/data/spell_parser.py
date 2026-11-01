@@ -568,6 +568,7 @@ def parse_spell(raw: dict, monster_name: str = "",
                 escape=parse_escape(texto_completo),
                 escalate_to=escala_a,
                 escalate_rounds=escala_rondas,
+                magical=True,
             )
             return spell
 

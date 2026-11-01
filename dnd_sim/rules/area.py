@@ -96,6 +96,7 @@ class AreaSaveAction(CombatAction):
                 damage=getattr(effect, "damage", "1d6"),
                 damage_type=getattr(effect, "damage_type", "bludgeoning"),
                 on_success=getattr(effect, "on_success", "none"),
+                magical=bool(getattr(effect, "magical", False)),
             )
         except Exception:
             return None
@@ -168,6 +169,7 @@ class AreaSaveAction(CombatAction):
             duration_rounds=getattr(efecto, "duration_rounds", None),
             repeat_save=repeat,
             escape=getattr(efecto, "escape", None),
+            magical=bool(getattr(efecto, "magical", False)),
         )
 
 

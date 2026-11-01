@@ -55,6 +55,11 @@ class BarbarianFeatures(Trait):
     rage_expires_round: int = 0
     # Ataque temerario activo (hasta el inicio del siguiente turno).
     reckless_active: bool = False
+
+    @property
+    def reckless_active_this_turn(self) -> bool:
+        """¿Usó Ataque Temerario en el turno actual? (alias claro para Frenzy)."""
+        return self.reckless_active
     # Brutal Strike: pendiente de pagar en este golpe / ya usada este turno.
     brutal_pending: bool = False
     brutal_used_this_turn: bool = False

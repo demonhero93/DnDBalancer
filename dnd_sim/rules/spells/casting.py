@@ -245,6 +245,9 @@ def spell_action(spell: Spell, spellcasting: Spellcasting | None = None,
                           if spell.damage_bonus_from_ability else 0),
             damage_type=spell.damage_type,
             range_type=rango,
+            # Un hechizo ES mágico: sus objetivos aplican las reglas
+            # ``nonmagical_*`` solo contra daño no mágico.
+            magical=True,
         )
         # Daño extra propio del hechizo (True Strike): sus dados también
         # se duplican en crítico (como cualquier daño extra del ataque).
@@ -268,6 +271,7 @@ def spell_action(spell: Spell, spellcasting: Spellcasting | None = None,
             damage=dano,
             damage_type=spell.damage_type,
             on_success=spell.dc_success,
+            magical=True,
         )
         if spell.area:
             efecto = AreaSaveAction(

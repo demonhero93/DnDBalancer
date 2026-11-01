@@ -18,7 +18,8 @@ from dnd_sim.rules.conditions import ConditionAction, apply_condition
 from dnd_sim.data.legendary_parser import COST_PATTERN, TEXT_SAVE_PATTERN, parse_legendary
 from dnd_sim.data.loader import load_monster
 from dnd_sim.rules.legendary import (
-    DEFAULT_LEGENDARY_POINTS, LegendaryAction, LegendaryState, legendary_phase
+    DEFAULT_LEGENDARY_POINTS, LEGENDARY_LAIR_BONUS, LegendaryAction,
+    LegendaryState, legendary_phase
 )
 from dnd_sim.rules.saves import SaveDamage, saving_throw
 from dnd_sim.engine.stats import simulate
@@ -404,7 +405,9 @@ def test_el_dragon_carga_sus_acciones_legendarias(monkeypatch):
     dragon = _load(monkeypatch, "adult-red-dragon")
     state = dragon.legendary
     assert state is not None
-    assert state.points_max == DEFAULT_LEGENDARY_POINTS
+    # Siempre en guarida: points_max = base + LEGENDARY_LAIR_BONUS.
+    assert state.points_max == (
+        DEFAULT_LEGENDARY_POINTS + LEGENDARY_LAIR_BONUS)
 
     nombres = {la.name: la for la in state.actions}
     assert set(nombres) == {"Tail Attack", "Wing Attack"}

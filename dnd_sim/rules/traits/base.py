@@ -170,6 +170,18 @@ class Trait:
         """
         return None
 
+    # --- Condiciones --------------------------------------------------------
+    def blocks_condition(self, condition: Any, ctx: Any = None) -> bool:
+        """Hook: ¿impide ``condition`` aplicarse al dueño del rasgo?
+
+        Se consulta en :func:`dnd_sim.rules.conditions.apply_condition`
+        junto al campo estático ``Combatant.condition_immunities``: si el
+        campo la lista o cualquier rasgo responde ``True``, no se crea la
+        instancia y el log registra «X es inmune a …». ``ctx`` es el
+        contexto del combate. Por defecto no bloquea nada.
+        """
+        return False
+
     # --- Inicio del turno --------------------------------------------------
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         """Hook: efecto pasivo al inicio del turno propio de ``actor``.
@@ -278,6 +290,7 @@ HOOK_NAMES: tuple[str, ...] = (
     "after_attack_roll",
     "reduce_damage_to_allies",
     "extra_attack_damage",
+    "blocks_condition",
     "defensive_ac_bonus",
     "on_rage_start",
     "on_rage_end",

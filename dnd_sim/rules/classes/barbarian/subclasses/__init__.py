@@ -18,8 +18,16 @@ from .beast import (
     NaturalWeapon,
     apply_beast,
 )
+from .berserker import (
+    BERSERKER_FEATURES,
+    BerserkerFeatures,
+    IntimidatingPresenceAction,
+    apply_berserker,
+)
 
 __all__ = ["ANCESTRAL_FEATURES", "AncestralGuardianFeatures",
-           "BATTLERAGER_FEATURES", "BeastFeatures", "BattleragerFeatures",
-           "FormOfTheBeast", "NaturalWeapon", "SpikedArmorAction",
-           "apply_ancestral_guardian", "apply_battlerager", "apply_beast"]
+           "BATTLERAGER_FEATURES", "BERSERKER_FEATURES", "BeastFeatures",
+           "BattleragerFeatures", "BerserkerFeatures", "FormOfTheBeast",
+           "IntimidatingPresenceAction", "NaturalWeapon", "SpikedArmorAction",
+           "apply_ancestral_guardian", "apply_battlerager", "apply_beast",
+           "apply_berserker"]

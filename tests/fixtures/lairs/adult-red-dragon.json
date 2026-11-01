@@ -1,0 +1,10 @@
+[
+  {"name": "Fuego de guarida", "kind": "save_damage",
+   "save": {"ability": "dex", "dc": 15, "damage": "4d6",
+            "damage_type": "fire", "on_success": "half",
+            "magical": true}},
+  {"name": "Golpe de guarida", "kind": "save_damage",
+   "save": {"ability": "str", "dc": 12, "damage": "3d8",
+            "damage_type": "bludgeoning", "on_success": "none",
+            "magical": false}}
+]

@@ -45,6 +45,9 @@ from .rules.classes.barbarian.subclasses.battlerager import (
 from .rules.classes.barbarian.subclasses.beast import (
     BeastFeatures, FormOfTheBeast, NaturalWeapon, apply_beast,
 )
+from .rules.classes.barbarian.subclasses.berserker import (
+    BerserkerFeatures, IntimidatingPresenceAction, apply_berserker,
+)
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
                            skill_bonus, skill_check)
@@ -97,6 +100,7 @@ __all__ = [
     "AreaTargeting", "Attach", "AttachOnHitEffect", "Attack", "AttackAction",
     "AttackEntry", "AttackModifiers", "AttackRange", "Background",
     "BarbarianFeatures", "BattleragerFeatures", "BeastFeatures",
+    "BerserkerFeatures",
     "BloodFrenzy",
     "CheckModifiers", "CheckResult", "CombatAction", "CombatContext",
     "CombatResult", "CombatState", "Combatant", "CombatantType", "Condition",
@@ -105,6 +109,7 @@ __all__ = [
     "DamageTransfer", "DamageType", "EXCLUDED_CONDITIONS", "EscapeCheck",
     "ExtendRageAction", "FormOfTheBeast", "HealAction", "HealEffect",
     "HeatedBody",
+    "IntimidatingPresenceAction",
     "LegendaryAction",
     "LegendaryState", "MartialAdvantage", "Monster", "MultiattackAction",
     "NaturalWeapon", "PackTactics", "Parry", "PlayerCharacter",
@@ -118,7 +123,7 @@ __all__ = [
     "Trait", "TurnResistance", "TurnResources", "UndeadFortitude",
     "UsageKind", "WeaponAttackAction", "ability_check", "ability_check_bonus",
     "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
-    "apply_battlerager", "apply_beast", "apply_class",
+    "apply_battlerager", "apply_beast", "apply_berserker", "apply_class",
     "apply_condition",
     "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
     "attempt_escapes", "begin_turn",

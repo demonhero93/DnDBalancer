@@ -1,7 +1,5 @@
 {
-  "7": "data/__init__.py",
   "55": "core/__init__.py",
   "56": "engine/__init__.py",
-  "58": "model/__init__.py",
-  "60": "rules/__init__.py"
+  "58": "model/__init__.py"
 }

@@ -58,6 +58,11 @@ class Attack:
     # el 1d6 de fuego del Warhammer del azer o el ácido del mordisco de un
     # dragón). Se aplica tras el daño principal en ``attack_roll``.
     extra_damage: list = field(default_factory=list)  # list[ExtraDamage]
+    # El efecto ES mágico (hechizos, armas mágicas, armas naturales con
+    # Bestial Soul). Los combatientes con ``nonmagical_resistances`` /
+    # ``nonmagical_immunities`` solo aplican esas reglas si el daño NO es
+    # mágico. Documentación única del significado: dnd_sim/model/combatant.py.
+    magical: bool = False
 
     def __post_init__(self) -> None:
         # Permite construir Attack con un str como damage_type.

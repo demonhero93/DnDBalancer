@@ -43,10 +43,10 @@ Decisiones de simulación:
   ya, no se suman) que duran lo que la Furia; el +1d6 del aliado es un
   rasgo temporal (``CallTheHuntBonus``) que se añade sin apilarse y se
   retira en ``on_rage_end``/``reset`` sin iterar listas ajenas.
-- **Alma bestial (6)**: las armas naturales serían mágicas para superar
-  resistencias, pero ``Attack`` no tiene flag ``magical`` y
-  ``apply_damage_modifiers`` no lo consume: # TODO: flag ``magical`` en
-  ``Attack`` + consumo en ``apply_damage_modifiers``. Nadar/trepar/saltar
+- **Alma bestial (6)**: las armas naturales (incluidas las dinámicas de
+  la Furia, que son las mismas instancias) se construyen con
+  ``Attack.magical=True`` desde el nivel 6, así superan las
+  resistencias/inmunidades a daño no mágico. Nadar/trepar/saltar
   no se modelan (# TODO).
 - **Weapon Mastery** no se aplica a las armas naturales (no tienen
   propiedad de maestría): # TODO.
@@ -98,10 +98,14 @@ class NaturalWeapon:
     damage_type: str = "piercing"
     ability: str = "str"
 
-    def to_attack(self) -> Attack:
-        """Construye la instancia de :class:`Attack` de esta arma."""
+    def to_attack(self, magical: bool = False) -> Attack:
+        """Construye la instancia de :class:`Attack` de esta arma.
+
+        ``magical`` la marca como arma mágica (Alma bestial, nivel 6).
+        """
         return Attack(self.name, self.damage, ability=self.ability,
-                      damage_type=parse_damage_type(self.damage_type))
+                      damage_type=parse_damage_type(self.damage_type),
+                      magical=magical)
 
 
 #: Armas de cada forma (el trait crea instancias propias por personaje).
@@ -255,7 +259,8 @@ class BeastFeatures(Trait):
         self.hunt_allies = []
 
     # --- 6: Alma bestial ----------------------------------------------------
-    # (ver docstring del módulo: # TODO flag ``magical`` en Attack)
+    # (ver docstring del módulo: armas naturales mágicas desde el nivel 6,
+    # resueltas al construir ``natural_attacks`` en ``apply_beast``)
 
     # --- 10: Fiereza infecciosa + 3: Mordisco -------------------------------
     def after_dealing_hit(self, target: Any, attacker: Any, rango: Any,
@@ -544,7 +549,7 @@ def apply_beast(pj: Any, level: int | None = None) -> BeastFeatures:
     trait = BeastFeatures(
         name="Camino de la Bestia",
         level=lvl,
-        natural_attacks={forma: arma.to_attack()
+        natural_attacks={forma: arma.to_attack(magical=lvl >= 6)
                          for forma, arma in NATURAL_WEAPONS.items()},
         infectious_uses_max=pb, infectious_uses=pb,
         hunt_uses_max=pb, hunt_uses=pb,

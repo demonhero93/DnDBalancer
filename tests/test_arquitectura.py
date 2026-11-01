@@ -107,7 +107,8 @@ def test_los_paquetes_con_fachada_reexportan_su_api():
         ("dnd_sim.rules.classes.barbarian",
          {"BarbarianFeatures", "RageAction", "apply_barbarian"}),
         ("dnd_sim.rules.classes.barbarian.subclasses",
-         {"apply_ancestral_guardian", "apply_battlerager"}),
+         {"apply_ancestral_guardian", "apply_battlerager",
+          "apply_berserker"}),
     ):
         ruta = PAQUETE.joinpath(*nombre.split(".")[1:], "__init__.py")
         assert ruta.exists(), f"desapareció {ruta}"

@@ -51,7 +51,8 @@ def _resolve_mode_str(value: Any) -> RollMode:
 
 
 def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
-                 mode: Any = None, *, kind: str | None = None) -> SaveResult:
+                 mode: Any = None, *, kind: str | None = None,
+                 magical: bool = False) -> SaveResult:
     """Tira una salvación de D&D 5e.
 
     Un 20 natural NO es éxito automático y un 1 natural NO es fallo
@@ -60,6 +61,11 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     Las condiciones pueden provocar un **fallo automático** (aturdido,
     paralizado, inconsciente o petrificado fallan siempre FUE y DES): en ese
     caso no se tiran dados y no se consume RNG.
+
+    **Resistencia mágica**: si ``magical`` es True y el objetivo tiene el
+    rasgo ``magic_resistance``, la salvación tira con ventaja (una fuente
+    más en :func:`dnd_sim.rules.roll_modifiers.save_modifiers`). Ventaja y
+    desventaja se anulan entre sí como siempre.
 
     **Resistencia legendaria**: si la salvación falla (incluido el fallo
     automático) y el objetivo tiene usos de resistencia legendaria, se puede
@@ -70,12 +76,10 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     conoce lo pasa (``"turn"`` = efecto que convierte no-muertos); lo
     reciben los hooks de rasgo vía
     :func:`dnd_sim.rules.roll_modifiers.save_modifiers`.
-
-    # TODO: la Resistencia mágica (ventaja contra hechizos) no se modela.
     """
     ab = normalize_ability(ability)
     from .roll_modifiers import save_modifiers
-    modifiers = save_modifiers(target, ab, kind)
+    modifiers = save_modifiers(target, ab, kind, magical=magical)
 
     if modifiers.auto_fail:
         return _con_resistencia_legendaria(target, SaveResult(
@@ -152,6 +156,9 @@ class SaveDamage:
     damage: str
     damage_type: Any = "bludgeoning"
     on_success: Literal["none", "half"] = "none"
+    # El efecto ES mágico (hechizos). Documentación única del significado:
+    # dnd_sim/model/combatant.py.
+    magical: bool = False
 
     def __post_init__(self) -> None:
         self.ability = normalize_ability(self.ability)
@@ -169,10 +176,12 @@ from ..core.log import log_line as _log_line
 
 
 def _inflict_for_save(target: Any, amount: int, damage_type: Any,
-                      source: Any, ctx: Any = None) -> None:
+                      source: Any, ctx: Any = None, *,
+                      magical: bool = False) -> None:
     # Import local para evitar ciclos.
     from .damage import inflict_damage
-    inflict_damage(target, amount, damage_type, source=source, ctx=ctx)
+    inflict_damage(target, amount, damage_type, source=source, ctx=ctx,
+                   magical=magical)
 
 
 @dataclass
@@ -227,6 +236,7 @@ def apply_save_damage(source: Any, target: Any, effect: SaveDamage,
             damage=getattr(effect, "damage", "0"),
             damage_type=getattr(effect, "damage_type", "bludgeoning"),
             on_success=getattr(effect, "on_success", "none"),
+            magical=bool(getattr(effect, "magical", False)),
         )
 
     rng = getattr(ctx, "rng", None)
@@ -236,7 +246,11 @@ def apply_save_damage(source: Any, target: Any, effect: SaveDamage,
     raw_damage = int(rolled_damage)
 
     # 1. Tirar salvación (la del objetivo: ventaja/desventaja propias).
-    sr = saving_throw(target, eff.ability, int(eff.dc), rng)
+    #    ``magical=eff.magical``: la Resistencia mágica solo aplica si el
+    #    efecto es mágico (hechizo); los alientos y salvaciones de ficha
+    #    van con False por defecto.
+    sr = saving_throw(target, eff.ability, int(eff.dc), rng,
+                      magical=eff.magical)
     sr = registrar_resistencia(ctx, target, sr)
 
     # 2. Aplicar el éxito de la salvación.
@@ -254,7 +268,8 @@ def apply_save_damage(source: Any, target: Any, effect: SaveDamage,
         dt = parse_damage_type(dt)
     except Exception:
         pass
-    final = apply_damage_modifiers(int(dmg_after_save), dt, target)
+    final = apply_damage_modifiers(int(dmg_after_save), dt, target,
+                                   magical=eff.magical)
 
     outcome = SaveDamageOutcome(
         save=sr,
@@ -272,7 +287,7 @@ def apply_save_damage(source: Any, target: Any, effect: SaveDamage,
             pass
 
     # 5. Infligir daño por la función única.
-    _inflict_for_save(target, final, dt, source, ctx)
+    _inflict_for_save(target, final, dt, source, ctx, magical=eff.magical)
 
     return outcome
 

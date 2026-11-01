@@ -267,8 +267,10 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         # veces** —una en este bloque y otra en apply_damage_modifiers— y el
         # valor de este bloque se descartaba justo después; solo sobrevivía
         # la etiqueta del log, que ahora se deriva del resultado real.
-        dmg = apply_damage_modifiers(raw_dmg, dt, target)
-        mod_tag = _tag_modificadores(raw_dmg, dmg, dt, target)
+        dmg = apply_damage_modifiers(raw_dmg, dt, target,
+                                     magical=bool(getattr(atk, "magical", False)))
+        mod_tag = _tag_modificadores(raw_dmg, dmg, dt, target,
+                                     magical=bool(getattr(atk, "magical", False)))
         # Resistencia por marca del defensor (p. ej. Protectores
         # Ancestrales): si el atacante está marcado y golpea a quien no
         # es su marcador, el daño principal queda a la mitad, igual que
@@ -282,7 +284,8 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         # 0 PV (Undead Fortitude) necesitan saber si el golpe fue crítico y
         # con qué tirar.
         inflict_damage(target, dmg, dt, source=attacker, ctx=ctx,
-                       crit=crit, rng=rng)
+                       crit=crit, rng=rng,
+                       magical=bool(getattr(atk, "magical", False)))
         # Daño adicional del arma (p. ej. el 1d6 de fuego del Warhammer
         # del azer o el ácido del mordisco de un dragón). Cada entrada
         # tiene su propio tipo, así que resistencia/inmunidad/vulnerabilidad
@@ -292,12 +295,14 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         extra_partes = []
         for _extra in getattr(atk, "extra_damage", None) or []:
             _raw_x = roll_dice(_extra.damage, rng, crit=crit)
-            _dmg_x = apply_damage_modifiers(_raw_x, _extra.damage_type, target)
+            _dmg_x = apply_damage_modifiers(_raw_x, _extra.damage_type, target,
+                                            magical=bool(getattr(atk, "magical", False)))
             # Como el daño principal, la llamada se hace **siempre** (aunque
             # quede en 0 por inmunidad): el registro de daño y las
             # reacciones ven el mismo flujo para los dos tipos.
             inflict_damage(target, _dmg_x, _extra.damage_type,
-                           source=attacker, ctx=ctx, crit=crit, rng=rng)
+                           source=attacker, ctx=ctx, crit=crit, rng=rng,
+                           magical=bool(getattr(atk, "magical", False)))
             extra_total += _dmg_x
             extra_partes.append(f"{_dmg_x} {_extra.damage_type.value}")
         # Daño extra por condiciones del **atacante** (Marca del cazador,
@@ -368,30 +373,46 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     _trigger_after_attack_roll(attacker, target, atk, hit, log, ctx, rng)
 
 
-def _tag_modificadores(raw: int, final: int, dt: Any, target: Any) -> str:
+def _tag_modificadores(raw: int, final: int, dt: Any, target: Any, *,
+                       magical: bool = False) -> str:
     """Etiqueta del log con lo que han hecho inmunidad/resistencia/vulnerabilidad.
 
     Se deriva del resultado de :func:`dnd_sim.rules.damage.apply_damage_modifiers`
     (así el log también refleja la resistencia de estar petrificado, que la
     regla reimplementada en ``attack_roll`` no contemplaba). Sin daño que
     modificar no hay etiqueta.
+
+    Si el daño NO es mágico y la regla que actúa es una ``nonmagical_*``
+    del objetivo, la etiqueta lo indica («resistencia a daño no mágico:
+    9 -> 4»).
     """
     if int(raw) <= 0 or int(final) == int(raw):
         return ""
-    if dt in getattr(target, "immunities", set()):
-        return " (inmune)"
-    resiste = dt in getattr(target, "resistances", set())
+    inmunidades = set(getattr(target, "immunities", set()) or set())
+    resistencias = set(getattr(target, "resistances", set()) or set())
+    sufijo = ""
+    if not magical:
+        inm_nm = set(getattr(target, "nonmagical_immunities", set()) or set())
+        res_nm = set(getattr(target, "nonmagical_resistances", set()) or set())
+        if (dt in inm_nm and dt not in inmunidades) or (
+                dt in res_nm and dt not in resistencias):
+            sufijo = " a daño no mágico"
+        inmunidades |= inm_nm
+        resistencias |= res_nm
+    if dt in inmunidades:
+        return f" (inmune{sufijo})"
+    resiste = dt in resistencias
     vulnerable = dt in getattr(target, "vulnerabilities", set())
     if resiste and vulnerable:
         after_resist = int(raw) // 2
-        return (f" (resistencia: {raw} -> {after_resist})"
+        return (f" (resistencia{sufijo}: {raw} -> {after_resist})"
                 f" (vulnerable: {after_resist} -> {final})")
     if resiste:
-        return f" (resistencia: {raw} -> {final})"
+        return f" (resistencia{sufijo}: {raw} -> {final})"
     if vulnerable:
         return f" (vulnerable: {raw} -> {final})"
     # Otra regla de apply_damage_modifiers (p. ej. petrificado: resiste todo).
-    return f" (resistencia: {raw} -> {final})"
+    return f" (resistencia{sufijo}: {raw} -> {final})"
 
 
 def _actualizar_distancia(attacker, rango, log) -> None:
@@ -436,9 +457,11 @@ def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
                 duration_rounds=rider.duration_rounds,
                 repeat_save=repeat,
                 escape=rider.escape,
+                magical=bool(getattr(rider, "magical", False)),
             )
             continue
-        sr = saving_throw(target, rider.save_ability, rider.dc, rng)
+        sr = saving_throw(target, rider.save_ability, rider.dc, rng,
+                          magical=bool(getattr(rider, "magical", False)))
         sr = registrar_resistencia(_ctx, target, sr)
         if sr.success:
             continue
@@ -448,6 +471,7 @@ def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
             duration_rounds=rider.duration_rounds,
             repeat_save=repeat,
             escape=rider.escape,
+            magical=bool(getattr(rider, "magical", False)),
         )
 
 

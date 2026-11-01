@@ -517,10 +517,10 @@ def test_cola_baja_la_tasa_efectiva():
 
 # --- Alma bestial ------------------------------------------------------------
 
-def test_alma_bestial_pendiente_de_flag_magical():
-    # # TODO (Alma bestial): Attack no tiene flag ``magical`` y
-    # apply_damage_modifiers no lo consume; no se inventa el flag.
-    assert not hasattr(Attack("Garras", "1d6"), "magical")
+def test_alma_bestial_flag_magical_existe():
+    # El flag ``magical`` existe y por defecto es False: lo consume
+    # Bestial Soul (nivel >= 6) y los tests de magical.py.
+    assert Attack("Garras", "1d6").magical is False
 
 
 # --- Fiereza infecciosa ------------------------------------------------------

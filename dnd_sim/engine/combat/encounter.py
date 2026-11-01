@@ -13,7 +13,7 @@ from ...core.targeting import combat_finished, living_teams
 from ...rules.conditions import end_turn
 from ...rules.damage import DamageRecorder
 from ...core.dice import RollMode, d20, roll_d20
-from ...rules.legendary import legendary_phase
+from ...rules.legendary import lair_phase, legendary_phase
 from ...core.randomness import pick
 from ..tactics import random_policy
 from ...rules.usage import begin_turn
@@ -107,6 +107,10 @@ def run_combat(combatants: list[Combatant], rng: random.Random,
 
     El daño infligido se registra durante el combate (:class:`DamageRecorder`)
     para poder informar del daño medio de cada combatiente.
+
+    Se asume siempre la guarida del monstruo legendario: la fase de guarida
+    corre en la iniciativa 20 si el dueño tiene ``data/lairs/<index>.json``
+    (sin fichero no hay fase, ni aviso, ni RNG).
     """
     with DamageRecorder() as recorder:
         result = _run_combat(combatants, rng, verbose=verbose, max_rounds=max_rounds,
@@ -138,25 +142,42 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
     attacks_at_range: list[int] = []
     # Estadísticas legendarias (acciones usadas, puntos y resistencias).
     legendary_stats: dict = {"actions": {}, "points": 0, "resistances": 0}
+
+    def _nuevo_ctx(actor: Combatant) -> CombatContext:
+        """Contexto de un turno o de la fase de guarida (mismo round)."""
+        return CombatContext(
+            rng=rng, actor=actor, combatants=order, round=rnd,
+            log=log if verbose else None, verbose=verbose, resources=None,
+            action_uses=action_uses, area_targets_hit=area_targets_hit,
+            conditions_applied=conditions_applied,
+            escape_attempts=escape_attempts,
+            escape_successes=escape_successes,
+            attacks_at_range=attacks_at_range,
+            legendary_stats=legendary_stats,
+        )
+
     while rnd < max_rounds:
         rnd += 1
         if verbose:
             log.append(f"-- Ronda {rnd} --")
-        for actor in order:
+        # Fase de guarida: iniciativa 20 con empates perdidos (tras todos
+        # los >= 20 y antes del primero con < 20; 0 = al inicio de la
+        # ronda, len = al final). Siempre activa: sin fichero de guarida
+        # la fase no hace nada ni consume RNG.
+        lair_cut = next(
+            (i for i, a in enumerate(order) if a.initiative < 20),
+            len(order))
+        for idx, actor in enumerate(order):
+            if (idx == lair_cut and not combat_finished(order)):
+                lair_phase(_nuevo_ctx(actor))
+                if combat_finished(order):
+                    break
             if not actor.alive:
                 continue
             enemies = valid_targets(actor, combatants=order)
             if not enemies:
                 break
-            ctx = CombatContext(
-                rng=rng, actor=actor, combatants=order, round=rnd,
-                log=log if verbose else None, verbose=verbose, resources=None,
-                action_uses=action_uses, area_targets_hit=area_targets_hit,
-                conditions_applied=conditions_applied,
-                escape_attempts=escape_attempts, escape_successes=escape_successes,
-                attacks_at_range=attacks_at_range,
-                legendary_stats=legendary_stats,
-            )
+            ctx = _nuevo_ctx(actor)
             # Inicio de turno: recursos nuevos y tiradas de recarga de las
             # acciones descargadas del actor. Si está incapacitado, pierde
             # el turno (sin política y sin consumir RNG).
@@ -222,6 +243,10 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
             legendary_phase(actor, ctx)
             if combat_finished(order):
                 break
+        # Fase de guarida al final de la ronda: todos los combatientes
+        # tenían iniciativa >= 20.
+        if (lair_cut == len(order) and not combat_finished(order)):
+            lair_phase(_nuevo_ctx(order[0]))
         if combat_finished(order):
             break
 

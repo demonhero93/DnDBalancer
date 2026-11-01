@@ -57,9 +57,21 @@ Fuente: historial git + ARCHITECTURE.md.
    - Suite completa en verde: 671 tests.
 
 ESTADO ACTUAL
-   - 68 módulos en dnd_sim/, 12546 líneas; tests/ con 35 ficheros,
-     10826 líneas, 671 tests (todos en verde como último estado conocido).
+   - 69 módulos en dnd_sim/, 13070 líneas; tests/ con 38 ficheros,
+     11812 líneas, 732 tests (todos en verde como último estado conocido).
    - Registro de clases en rules/classes/ (base + barbarian + subclases).
+   - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
+     (bloque A, tests/test_magical.py), magic_resistance (bloque B,
+     tests/test_magic_resistance.py) y nonmagical_resistances/immunities
+     en el loader.
+   - Legendarios y guaridas (bloque C): puntos legendarios por monstruo
+     (DEFAULT_LEGENDARY_POINTS + LEGENDARY_LAIR_BONUS = 4, siempre;
+     CLI --legendary-points fija el valor final) y acciones de guarida
+     en data/lairs/ (dnd_sim/data/lair_loader.py, rules/legendary.py:
+     lair_phase SIEMPRE activa, corte de iniciativa 20 en
+     engine/combat/encounter.py; tests/test_lair.py). Sin interruptor
+     de guarida (política fija: siempre activa). data/lairs/ del repo
+     vacío: el usuario aportará los JSON reales después.
    - Arquitectura congelada en tests/test_arquitectura.py (capas + fachadas).
    - Grafo de Graphify en graphify-out/ (graph.json, graph.html,
      GRAPH_REPORT.md), construido con `graphify update .`.

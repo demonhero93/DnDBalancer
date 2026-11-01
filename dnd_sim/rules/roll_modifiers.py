@@ -266,7 +266,8 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
 
 
 def save_modifiers(target: Any, ability: str,
-                   kind: str | None = None) -> SaveModifiers:
+                   kind: str | None = None, *,
+                   magical: bool = False) -> SaveModifiers:
     """Reúne los modificadores de una tirada de salvación del objetivo.
 
     Además de condiciones e indicadores estáticos, consulta los hooks
@@ -277,6 +278,10 @@ def save_modifiers(target: Any, ability: str,
     quien la tira lo sabe (``"turn"`` = un efecto que convierte
     no-muertos); hoy solo lo usa Turn Resistance y todavía no lo pasa
     nadie (# TODO: Turn Undead).
+
+    ``magical`` dice que la salvación la proviene de un efecto mágico
+    (hechizo): con él, el rasgo ``magic_resistance`` del objetivo (la
+    ventaja de la Resistencia mágica) se suma como fuente de ventaja.
     """
     mods = SaveModifiers()
     cond = _condiciones(target)
@@ -309,6 +314,14 @@ def save_modifiers(target: Any, ability: str,
     if traits:
         for rasgo in _hooks(traits, "modify_save_modifiers"):
             rasgo.modify_save_modifiers(mods, target, ability, kind)
+
+    # Resistencia mágica: ventaja solo si la salvación proviene de un
+    # efecto mágico (``magical=True``) y el objetivo tiene el rasgo. Va
+    # tras los hooks para que cualquier fuente existente conserve su
+    # posición en la lista; ventaja y desventaja se siguen anulando en
+    # el modo resuelto.
+    if magical and getattr(target, "magic_resistance", False):
+        mods.advantage_sources.append("Resistencia mágica")
 
     return mods
 

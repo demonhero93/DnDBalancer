@@ -3,23 +3,29 @@
 Reglas implementadas:
 
 - **Puntos legendarios**: cada monstruo legítimo tiene un número de puntos
-  (3 por ronda en la SRD 2014). Se rellenan al **inicio del turno de su
-  dueño** hasta el máximo; los que no se usan se pierden (no se acumulan).
-  Además, en una misma ronda no se pueden gastar más de ``points_max``
-  puntos (son 3 acciones legendarias **por ronda**).
+  (3 por ronda en la SRD 2014, +1 en guarida). Se asume **siempre** la
+  guarida del monstruo, así que el tope efectivo es 4 (MM 2024: 3, o 4 en
+  guarida). Se rellenan al **inicio del turno de su dueño** hasta el
+  máximo; los que no se usan se pierden (no se acumulan). Además, en una
+  misma ronda no se pueden gastar más de ``points_max`` puntos.
 - **Fase legendaria**: tras el turno de **cada** combatiente (también si el
   turno se perdió por incapacitación), todos los demás monstruos legítimos
   pueden usar **una** acción legendaria. Máximo una acción legendaria por
   dueño y por disparo.
 - **Resistencia legendaria**: si el monstruo falla una salvación, puede
   convertir el fallo en éxito (3 usos por combate en la SRD 2014).
+- **Fase de guarida**: en la iniciativa 20 (empates perdidos), cada dueño
+  con ``data/lairs/<index>.json`` válido usa **una** acción de guarida por
+  ronda sin repetir la de la ronda anterior. Sin fichero: ni fase, ni
+  aviso, ni RNG.
 
 Qué **no** se modela (fuera de alcance, con ``# TODO``):
 
-- Acciones de guarida y efectos regionales.
+- Efectos regionales (ignorados por diseño).
 - Resistencia mágica (ventaja contra hechizos): solo "Legendary Resistance".
 - Hechizos y conjuros, movimiento, detección, curación y utilidades.
-- Puntos legendarios por ronda distintos de 3 (la API no los da).
+- Puntos legendarios por ronda distintos de 3 (la API no los da); el CLI
+  ``--legendary-points`` fija el valor final por encuentro.
 """
 from __future__ import annotations
 
@@ -29,10 +35,25 @@ from typing import Any
 from ..core.randomness import pick
 from ..core.targeting import combat_finished, valid_targets
 
-# Número de puntos legendarios por ronda (3 en la SRD 2014).
-# TODO: la API no lo da estructurado; si algún monstruo difiere, habría que
-# ampliarlo con una tabla por monstruo.
+# Número de puntos legendarios por ronda (3 en la SRD 2014 / MM 2024).
+# La API no da el número por monstruo (solo trae la lista de acciones),
+# así que es lore estándar: excepciones conocidas se anotan en
+# LEGENDARY_POINTS_OVERRIDES (valor base, sin el bonus de guarida) y el
+# CLI --legendary-points fija el valor final por encuentro entero.
 DEFAULT_LEGENDARY_POINTS = 3
+
+#: Puntos legendarios extra por ronda. MM 2024: 3, o 4 en guarida;
+#: asumimos siempre guarida, así que ``points_max = base +
+#: LEGENDARY_LAIR_BONUS`` para todo monstruo legendario. El CLI
+#: ``--legendary-points`` fija el valor final sin sumar este bonus.
+LEGENDARY_LAIR_BONUS = 1
+
+#: Excepciones por monstruo: índice del monstruo -> puntos por ronda.
+#: La API no da el valor y hoy no se conoce ninguna ficha de la SRD que se
+#: aparte de 3, así que la tabla está vacía. No contiene estadísticas de
+#: monstruos: solo un entero de puntos por ronda (excepción permitida,
+#: al estilo de spell_rules).
+LEGENDARY_POINTS_OVERRIDES: dict[str, int] = {}
 
 
 @dataclass
@@ -46,6 +67,21 @@ class LegendaryAction:
 
     name: str
     cost: int = 1
+    action: Any = None
+
+
+@dataclass
+class LairAction:
+    """Una acción de guarida del monstruo.
+
+    Los datos viven en el repo (``data/lairs/<index>.json``; la API no
+    trae guaridas) y los construye :mod:`dnd_sim.data.lair_loader` con
+    los mismos constructores que el resto del motor. ``action`` es la
+    acción real envuelta (un ``AttackAction``, un ``SaveAction``, un
+    ``AreaSaveAction`` o un ``ConditionAction``).
+    """
+
+    name: str
     action: Any = None
 
 
@@ -67,12 +103,23 @@ class LegendaryState:
     use_probability: float = 1.0
     # Probabilidad de gastar la resistencia legendaria cuando toca.
     resistance_probability: float = 1.0
+    # Acciones de guarida (vacío = el monstruo no tiene; la fase corre
+    # siempre que haya fichero en data/lairs/). Las criaturas no legendarias
+    # con guarida quedan sin modelar (# TODO).
+    lair_actions: list[LairAction] = field(default_factory=list)
+    # Nombre de la última acción de guarida usada y la ronda en la que se
+    # usó: al empezar una ronda nueva se olvida, así una sola acción se usa
+    # en rondas alternas y ninguna se repite en dos rondas consecutivas.
+    last_lair_used: str | None = None
+    lair_round: int | None = None
 
     def refill_points(self, round: int | None = None) -> None:
         """Rellena los puntos hasta el máximo (los no usados se pierden).
 
         ``round`` es la ronda en la que se rellenan (informativo): la
-        contabilidad por ronda la lleva la fase legendaria.
+        contabilidad por ronda la lleva la fase legendaria. El tope
+        ``points_max`` ya incluye ``LEGENDARY_LAIR_BONUS`` (siempre en
+        guarida).
         """
         self.points_left = int(self.points_max)
 
@@ -86,6 +133,8 @@ class LegendaryState:
         self.round_id = 0
         self.round_spent = 0
         self.resistance_left = int(self.resistance_max)
+        self.last_lair_used = None
+        self.lair_round = None
 
 
 # --- Fase legendaria -------------------------------------------------------- #
@@ -247,6 +296,78 @@ def legendary_phase(finished_actor: Any, ctx: Any) -> None:
             return
 
 
+def lair_phase(ctx: Any) -> None:
+    """Fase de guarida (siempre activa; la criatura asume su guarida).
+
+    En la iniciativa 20 (con empates perdidos la sitúa el bucle de turnos),
+    cada dueño de acciones de guarida vivo y capaz de actuar usa **una**
+    acción por ronda:
+
+    1. Se eligen las acciones que no se usaron en la ronda anterior. Si no
+       queda ninguna, el dueño no actúa ese turno (una sola acción → se usa
+       en rondas alternas). Si solo hay una opción no se consume RNG (misma
+       regla que las legendarias).
+    2. La acción se resuelve **sin** gastar recursos de turno, uso limitado
+       ni puntos legendarios.
+    3. Tras cada acción se comprueba el fin del combate: si ha terminado,
+       no se ejecutan más acciones ni más dueños.
+
+    Sin dueños con ``lair_actions`` (sin fichero en ``data/lairs/``) o sin
+    combate vivo no se consume RNG.
+    """
+    rng = getattr(ctx, "rng", None)
+    combatants = list(getattr(ctx, "combatants", None) or [])
+    if rng is None or not combatants:
+        return
+    if combat_finished(combatants):
+        return
+
+    for owner in combatants:
+        legendary = getattr(owner, "legendary", None)
+        if legendary is None or not getattr(legendary, "lair_actions", None):
+            continue
+        if not getattr(owner, "alive", False):
+            continue
+        if not getattr(owner, "can_act", True):
+            continue
+        if combat_finished(combatants):
+            return
+
+        # Una por ronda y sin repetir la de la ronda anterior:
+        # ``last_lair_used`` es lo que se usó la ronda pasada (None si
+        # nada). Así una sola acción se usa en rondas alternas y, con
+        # varias, ninguna se repite en dos rondas consecutivas.
+        ronda = getattr(ctx, "round", 0)
+        if legendary.lair_round == ronda:
+            # La fase de este dueño ya corrió en esta ronda.
+            continue
+        legendary.lair_round = ronda
+
+        opciones = list(legendary.lair_actions)
+        elegibles = [
+            a for a in opciones
+            if a.name != getattr(legendary, "last_lair_used", None)
+        ]
+        if not elegibles:
+            # Sin opciones (una sola acción ya usada en la ronda anterior):
+            # este dueño no actúa, no se consume RNG y la ronda cuenta
+            # como «sin uso».
+            legendary.last_lair_used = None
+            continue
+        chosen = pick(rng, elegibles) if len(elegibles) > 1 else elegibles[0]
+        legendary.last_lair_used = chosen.name
+        _log_line(
+            ctx,
+            f"[Guarida] {getattr(owner, 'name', owner)} usa {chosen.name}",
+        )
+        accion = getattr(chosen, "action", None)
+        if accion is not None:
+            accion.execute(_contexto_de(owner, ctx))
+
+        if combat_finished(combatants):
+            return
+
+
 def _contar_accion(ctx: Any, nombre: str) -> None:
     """Suma una acción legendaria a las estadísticas del combate."""
     stats = getattr(ctx, "legendary_stats", None)
@@ -332,7 +453,9 @@ def registrar_resistencia_legendaria(ctx: Any, target: Any, result: Any) -> Any:
 __all__ = [
     "DEFAULT_LEGENDARY_POINTS",
     "LegendaryAction",
+    "LairAction",
     "LegendaryState",
+    "lair_phase",
     "legendary_phase",
     "legendary_resistance",
     "registrar_resistencia_legendaria",

@@ -10,7 +10,7 @@ from ..core.abilities import Abilities
 from ..model.actions import ActionType, AttackAction, MultiattackAction
 from ..model.attack import Attack, ExtraDamage
 from ..rules.attach import Attach
-from ..rules.conditions import Condition
+from ..rules.conditions import Condition, EXCLUDED_CONDITIONS
 from ..core.dice import doblar_dados
 from ..core.skills import normalize_skill
 from ..rules.spells import SpellStateAction, StateEffect
@@ -21,6 +21,7 @@ from .api_client import get_monster
 from .attach_parser import parse_attach_effects
 from .condition_parser import parse_condition_effects, parse_range_type
 from .legendary_parser import parse_legendary
+from .lair_loader import load_lair
 from .spell_parser import build_spell_actions
 from .trait_parser import parse_traits
 from .multiattack_parser import extract_multiattack_alternatives, resolve_multiattack
@@ -61,31 +62,73 @@ def _damage_type(entry: dict) -> str:
     return damage_type_of(entry)
 
 
-def _simple_damage_modifiers(values) -> set:
-    """Convierte una lista de la API en set de DamageType.
+#: Vocabulario cerrado de modificadores a daño NO mágico (verificado sobre
+#: los fixtures de `cache/monsters/`): solo la forma plena de la ficha. Las
+#: variantes «that aren't silvered/adamantine» exigen materiales y siguen
+#: omitidas con `warnings.warn` (fuera de alcance, véase TODO.md).
+_NONMAGICAL_TEXT = "bludgeoning, piercing, and slashing from nonmagical weapons"
+_NONMAGICAL_BPS = frozenset({DamageType("bludgeoning"), DamageType("piercing"),
+                             DamageType("slashing")})
 
-    Los tipos simples ('fire', 'poison', ...) se añaden. Los textos complejos
-    ('bludgeoning, piercing, and slashing from nonmagical weapons', etc.)
-    no se parsean todavía: se emite un warnings.warn y se omiten.
-    TODO: requiere un campo `magical: bool` en Attack para distinguir daño
-    mágico/no mágico y resolver esos modificadores compuestos.
+
+def _parse_damage_modifiers(values) -> tuple[set, set]:
+    """Convierte una lista de la API en ``(normales, no mágicas)``.
+
+    Los tipos simples ('fire', 'poison', ...) van al primer set. La forma
+    plena «bludgeoning, piercing, and slashing from nonmagical weapons»
+    va al segundo como {B, P, S}: son las resistencias/inmunidades que
+    solo aplican contra daño no mágico (`Combatant.nonmagical_*`). Los
+    demás textos complejos se omiten con `warnings.warn`.
     """
-    result = set()
+    simples: set = set()
+    nonmagical: set = set()
     for raw in values or []:
         text = str(raw).strip()
         if not text:
             continue
         simple = text.lower().replace(" ", "")
         try:
-            result.add(DamageType(simple))
+            simples.add(DamageType(simple))
             continue
         except ValueError:
             pass
+        if text.lower() == _NONMAGICAL_TEXT:
+            nonmagical |= _NONMAGICAL_BPS
+            continue
         warnings.warn(
             f"Modificador de daño complejo ignorado (no soportado aún): {text!r}",
             stacklevel=2,
         )
-    return result
+    return simples, nonmagical
+
+
+def _parse_condition_immunities(values) -> set[Condition]:
+    """Convierte ``condition_immunities`` de la API en un set de ``Condition``.
+
+    Cada entrada es un dict con ``index``/``name``. Las condiciones no
+    modeladas (``EXCLUDED_CONDITIONS``; la API llama ``exhaustion`` a lo
+    que el catálogo nombra ``exhausted``) se omiten sin aviso. Una
+    condición desconocida emite ``warnings.warn`` y se ignora.
+    """
+    resultado: set[Condition] = set()
+    for raw in values or []:
+        if isinstance(raw, dict):
+            text = str(raw.get("index") or raw.get("name") or "").strip()
+        else:
+            text = str(raw).strip()
+        clave = text.lower()
+        if not clave:
+            continue
+        if clave in EXCLUDED_CONDITIONS or clave == "exhaustion":
+            continue
+        try:
+            resultado.add(Condition(clave))
+        except ValueError:
+            warnings.warn(
+                f"Condición inmune desconocida ignorada: {text!r}",
+                stacklevel=2,
+            )
+    return resultado
 
 
 def _norm_name(value: str) -> str:
@@ -481,6 +524,15 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         )
     legendary = parse_legendary(data, legendary_candidates)
 
+    # Acciones de guarida: NO vienen de la API; se leen de
+    # ``data/lairs/<index>.json`` (datos del repo, al estilo de
+    # spell_rules). Sin fichero, el monstruo no tiene guaridas y no se
+    # avisa. Solo los legendarios tienen estado que las aloja.
+    # TODO: criaturas no legendarias con guarida de la ficha.
+    if legendary is not None:
+        legendary.lair_actions = load_lair(
+            str(data.get("index") or index))
+
     # Hechizos del monstruo: cantrips (a voluntad) y hechizos con slot de
     # todos los niveles (0-9); cada nivel comparte su propio pool de slots.
     extra_actions += build_spell_actions(data, monster_name)
@@ -495,6 +547,38 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
     if any(getattr(a, "on_hit_effects", None) for a in attacks):
         traits.append(Attach())
 
+    # Rasgo «Magic Weapons» (vocabulario cerrado, nombre completo): todos
+    # los ataques del monstruo cuentan como mágicos (`Attack.magical`).
+    # Las acciones que reutilizan esos objetos (legendarias, multiataque)
+    # heredan el flag sin coste.
+    nombres_habilidades = {
+        str(sa.get("name") or "").strip().lower()
+        for sa in (data.get("special_abilities") or [])
+    }
+    if "magic weapons" in nombres_habilidades:
+        for a in attacks:
+            a.magical = True
+
+    # Rasgo «Magic Resistance» (vocabulario cerrado, nombre completo):
+    # ventaja en salvaciones contra hechizos y otros efectos mágicos.
+    # Flag de estado puro en Combatant; lo consume save_modifiers cuando
+    # la salvación llega con magical=True.
+    magic_resistance = "magic resistance" in nombres_habilidades
+
+    # «Limited Magic Immunity» (rakshasa): no se modela (fuera de alcance).
+    if "limited magic immunity" in nombres_habilidades:
+        warnings.warn(
+            f"[{monster_name}] Limited Magic Immunity sin modelar: "
+            "inmunidad a hechizos de nivel 6 y ventaja contra el resto. "
+            "# TODO: modelar si procede."
+        )
+
+    resistances, res_nonmag = _parse_damage_modifiers(data.get("damage_resistances"))
+    vulnerabilities, _ = _parse_damage_modifiers(data.get("damage_vulnerabilities"))
+    immunities, imm_nonmag = _parse_damage_modifiers(data.get("damage_immunities"))
+    condition_immunities = _parse_condition_immunities(
+        data.get("condition_immunities"))
+
     return Monster(
         name=monster_name,
         combatant_type=combatant_type,
@@ -503,9 +587,13 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         abilities=abilities,
         attacks=attacks,
         proficiency=int(data.get("proficiency_bonus", 2)),
-        resistances=_simple_damage_modifiers(data.get("damage_resistances")),
-        vulnerabilities=_simple_damage_modifiers(data.get("damage_vulnerabilities")),
-        immunities=_simple_damage_modifiers(data.get("damage_immunities")),
+        resistances=resistances,
+        vulnerabilities=vulnerabilities,
+        immunities=immunities,
+        nonmagical_resistances=res_nonmag,
+        nonmagical_immunities=imm_nonmag,
+        magic_resistance=magic_resistance,
+        condition_immunities=condition_immunities,
         multiattack=multiattack,
         save_overrides=save_overrides,
         skill_overrides=skill_overrides,

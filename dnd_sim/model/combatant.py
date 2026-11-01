@@ -46,11 +46,33 @@ class Combatant:
     resistances: set[DamageType] = field(default_factory=set)
     vulnerabilities: set[DamageType] = field(default_factory=set)
     immunities: set[DamageType] = field(default_factory=set)
+    # --- Daño mágico vs no mágico ---
+    # Significado de la bandera ``magical`` de ``Attack``, ``SaveDamage`` y
+    # ``ConditionEffect``: «el efecto ES mágico» (hechizos, armas mágicas,
+    # armas naturales con Bestial Soul). Los dos conjuntos de abajo solo
+    # aplican si el daño NO es mágico; la Furia del bárbaro y las
+    # resistencias incondicionales de arriba no cambian con la bandera.
+    #: Resistencias que solo cuentan contra daño NO mágico.
+    nonmagical_resistances: set[DamageType] = field(default_factory=set)
+    #: Inmunidades que solo cuentan contra daño NO mágico.
+    nonmagical_immunities: set[DamageType] = field(default_factory=set)
     # --- Salvaciones ---
     save_overrides: dict[str, int] = field(default_factory=dict)
     save_proficiencies: set[str] = field(default_factory=set)
     saves_with_advantage: set[str] = field(default_factory=set)
     saves_with_disadvantage: set[str] = field(default_factory=set)
+    # Rasgo «Magic Resistance» de la ficha: ventaja en salvaciones contra
+    # hechizos y otros efectos mágicos. Lo consume save_modifiers cuando la
+    # salvación llega con magical=True; el loader lo fija desde
+    # special_abilities. No es Trait: estado puro sin lógica propia (como
+    # saves_with_advantage).
+    magic_resistance: bool = False
+    # --- Inmunidades a condiciones ---
+    # Condiciones que el combatiente nunca puede recibir (ficha de monstruo
+    # o rasgo). Chequeadas en ``rules.conditions.apply_condition`` antes de
+    # crear la instancia; vacío por defecto. No es Trait: estado puro, como
+    # magic_resistance.
+    condition_immunities: set[Condition] = field(default_factory=set)
     # --- Nuevos campos ---
     weapons: list[Attack] = field(default_factory=list)
     # Armas dinámicas (p. ej. el arma natural del Path of the Beast mientras
@@ -111,6 +133,13 @@ class Combatant:
         self.resistances = {parse_damage_type(x) for x in (self.resistances or set())}
         self.vulnerabilities = {parse_damage_type(x) for x in (self.vulnerabilities or set())}
         self.immunities = {parse_damage_type(x) for x in (self.immunities or set())}
+        self.nonmagical_resistances = {
+            parse_damage_type(x) for x in (self.nonmagical_resistances or set())}
+        self.nonmagical_immunities = {
+            parse_damage_type(x) for x in (self.nonmagical_immunities or set())}
+        self.condition_immunities = {
+            c if isinstance(c, Condition) else Condition(str(c).strip().lower())
+            for c in (self.condition_immunities or set())}
 
         # Normalización de campos de salvación.
         raw_overrides = dict(self.save_overrides or {})

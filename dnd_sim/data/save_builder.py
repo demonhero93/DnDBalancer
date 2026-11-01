@@ -64,7 +64,13 @@ def damage_type_of(entry: dict) -> str:
 
 
 def build_save_effect(dc_info: dict, damage_entry: dict) -> SaveDamage | None:
-    """Crea el ``SaveDamage`` a partir del ``dc`` y de la entrada de daño."""
+    """Crea el ``SaveDamage`` a partir del ``dc`` y de la entrada de daño.
+
+    El efecto se crea con ``magical=False`` (default de ``SaveDamage``): los
+    alientos y las salvaciones de ficha se tratan como no mágicos.
+    TODO: verificar caso a caso si algún aliento (o salvación de monstruo)
+    debe ser mágico; el flag ya existe en ``SaveDamage``.
+    """
     dice = damage_dice_of(damage_entry)
     if not dice:
         return None

@@ -124,14 +124,16 @@ class SpellFixedDamageAction(CombatAction):
             # Como el daño de un ataque, la inmunidad/resistencia/
             # vulnerabilidad del objetivo se resuelve antes de infligir
             # (p. ej. un objetivo inmune al daño de fuerza no pierde PV
-            # con el Proyectil Mágico).
-            final = apply_damage_modifiers(cantidad, dt, target)
+            # con el Proyectil Mágico). El daño es SIEMPRE mágico: son
+            # datos de un hechizo.
+            final = apply_damage_modifiers(cantidad, dt, target, magical=True)
             inflict_damage(target, final, dt,
-                           source=context.actor, ctx=context)
+                           source=context.actor, ctx=context, magical=True)
             alcanzados.append(target)
             log = context.log if (context.log is not None) else None
             if log is not None:
-                tag = _tag_modificadores(cantidad, final, dt, target)
+                tag = _tag_modificadores(cantidad, final, dt, target,
+                                         magical=True)
                 log.append(f"  {getattr(context.actor, 'name', context.actor)} -> "
                            f"{getattr(target, 'name', target)} con {self.name}: "
                            f"{final} daño{tag} "

@@ -164,7 +164,8 @@ def _save_forzado(monkeypatch, exitos):
 
     llamadas = {"n": 0}
 
-    def fake_saving_throw(target, ability, dc, rng, mode=None):
+    def fake_saving_throw(target, ability, dc, rng, mode=None, *,
+                          kind=None, magical=False):
         index = llamadas["n"]
         llamadas["n"] += 1
         exito = exitos[index] if index < len(exitos) else exitos[-1]

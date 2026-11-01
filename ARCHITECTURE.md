@@ -76,6 +76,25 @@ Los tests que parchean un símbolo apuntan al módulo que lo **define**
 (`import dnd_sim.engine.combat.attack as combat_mod`), porque el
 `monkeypatch` sustituye un nombre del espacio de nombres de ese módulo.
 
+## Guaridas: política fija
+
+Se asume **siempre** que la criatura legendaria está en su guarida; no
+hay interruptor de encuentro.
+
+- **Puntos legendarios**: `points_max = base + LEGENDARY_LAIR_BONUS`
+  (MM 2024: 3, o 4 en guarida → siempre 4) para todo monstruo legendario.
+  `DEFAULT_LEGENDARY_POINTS` es la base; `LEGENDARY_POINTS_OVERRIDES`
+  guarda excepciones de base por índice; el CLI `--legendary-points N`
+  fija el valor final sin sumar el bonus.
+- **Fase de guarida** (`rules/legendary.py: lair_phase`): corre en la
+  iniciativa 20 (empates perdidos) en cada ronda, cortado en
+  `engine/combat/encounter.py`. Una acción por dueño y ronda, sin repetir
+  la de la ronda anterior, `pick` entre elegibles (sin RNG con una sola
+  opción), sin gastar recursos de turno ni puntos legendarios.
+- **Sin fichero** `data/lairs/<index>.json` no hay fase, ni aviso, ni RNG.
+  Los datos reales los aporta el maintainer; `data/lairs/` está vacío.
+- **Efectos regionales**: ignorados por diseño.
+
 ## Imports diferidos
 
 Los imports dentro de una función o de `if TYPE_CHECKING` no son

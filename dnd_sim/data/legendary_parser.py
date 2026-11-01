@@ -49,7 +49,10 @@ from typing import Any
 
 from ..model.actions import ActionType, AttackAction
 from ..model.attack import Attack
-from ..rules.legendary import LegendaryAction, LegendaryState
+from ..rules.legendary import (DEFAULT_LEGENDARY_POINTS,
+                               LEGENDARY_LAIR_BONUS,
+                               LEGENDARY_POINTS_OVERRIDES,
+                               LegendaryAction, LegendaryState)
 from .area_classifier import is_area_action
 from .condition_parser import parse_condition_effects, parse_range_type
 from .save_builder import (build_condition_action, build_save_action,
@@ -346,8 +349,16 @@ def parse_legendary(monster_json: dict, loaded_actions: list) -> LegendaryState 
     if not acciones and resistencia <= 0:
         return None
 
+    # Puntos por ronda: la API no los da (es lore del SRD); la tabla de
+    # excepciones es la fuente del valor base. Siempre en guarida:
+    # points_max = base + LEGENDARY_LAIR_BONUS (MM 2024: 3, o 4 en guarida).
+    base = LEGENDARY_POINTS_OVERRIDES.get(
+        str(monster_json.get("index") or ""), DEFAULT_LEGENDARY_POINTS)
+    puntos = base + LEGENDARY_LAIR_BONUS
     state = LegendaryState(
         actions=acciones,
+        points_max=puntos,
+        points_left=puntos,
         resistance_max=resistencia,
         resistance_left=resistencia,
     )

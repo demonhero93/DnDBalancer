@@ -21,15 +21,30 @@ def _is_petrified(target: "Combatant") -> bool:
         return False
 
 
-def apply_damage_modifiers(amount: int, damage_type: str | DamageType, target: "Combatant") -> int:
-    """Aplica inmunidad, resistencia y vulnerabilidad del objetivo (en ese orden)."""
+def apply_damage_modifiers(amount: int, damage_type: str | DamageType,
+                           target: "Combatant", *,
+                           magical: bool = False) -> int:
+    """Aplica inmunidad, resistencia y vulnerabilidad del objetivo (en ese orden).
+
+    ``magical`` dice si el daño es mágico (hechizos, armas mágicas). Los
+    conjuntos ``nonmagical_resistances``/``nonmagical_immunities`` del
+    objetivo solo cuentan si el daño NO es mágico; el resto de reglas no
+    cambian con la bandera. Documentación única del significado:
+    dnd_sim/model/combatant.py.
+    """
     dt = parse_damage_type(damage_type)
     # 1. Inmunidad -> 0.
-    if dt in getattr(target, "immunities", set()):
+    inmunidades = set(getattr(target, "immunities", set()) or set())
+    if not magical:
+        inmunidades |= set(getattr(target, "nonmagical_immunities", set()) or set())
+    if dt in inmunidades:
         return 0
     # 2. Resistencia -> mitad, redondeando hacia abajo (no se acumula).
     #    Un objetivo petrificado tiene resistencia a todo tipo de daño.
-    if dt in getattr(target, "resistances", set()) or _is_petrified(target):
+    resistencias = set(getattr(target, "resistances", set()) or set())
+    if not magical:
+        resistencias |= set(getattr(target, "nonmagical_resistances", set()) or set())
+    if dt in resistencias or _is_petrified(target):
         amount = amount // 2
     # 3. Vulnerabilidad -> doble.
     if dt in getattr(target, "vulnerabilities", set()):
@@ -77,7 +92,8 @@ class DamageRecorder:
         return False
 
 
-def _notify_damage_dealt(source, target, amount, damage_type) -> None:
+def _notify_damage_dealt(source, target, amount, damage_type,
+                         magical: bool = False) -> None:
     """Anota el daño infligido (solo hay coste si hay grabación activa)."""
     if DAMAGE_DEALT is None:
         return
@@ -86,6 +102,7 @@ def _notify_damage_dealt(source, target, amount, damage_type) -> None:
         "target": target,
         "amount": int(amount or 0),
         "damage_type": damage_type,
+        "magical": bool(magical),
     })
 
 
@@ -273,7 +290,7 @@ def _absorber_pv_temporales(target: "Combatant", amount: int) -> int:
 def inflict_damage(target: "Combatant", amount: int,
                    damage_type: Any = None, source: Any = None,
                    ctx: Any = None, *, crit: bool = False,
-                   rng: Any = None) -> int:
+                   rng: Any = None, magical: bool = False) -> int:
     """Inflige daño final (ya modificado) al objetivo y dispara reacciones.
 
     Los rasgos del objetivo intervienen en tres momentos (p. ej. el Damage
@@ -356,7 +373,7 @@ def inflict_damage(target: "Combatant", amount: int,
         pass
     if original > 0:
         _salvar_a_cero(target, hp_antes, amt, dt, source, crit, ctx, rng)
-    _notify_damage_dealt(source, target, amt, dt)
+    _notify_damage_dealt(source, target, amt, dt, magical=magical)
     _notify_damage_taken(target, amt, dt, source)
     if original > 0 and traits:
         for rasgo in _hooks(traits, "after_damage_taken"):

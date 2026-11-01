@@ -156,6 +156,11 @@ class ConditionInstance:
     # Superior Invisibility de la pixie, que dura lo que su concentración,
     # se aplica con False y por eso sobrevive a un ataque.
     break_on_attack: bool = True
+    # La fuente del efecto ES mágica (hechizo): lo guarda la instancia al
+    # aplicarse para que sus salvaciones de repetición sepan si la
+    # Resistencia mágica les aplica. Documentación única del significado:
+    # dnd_sim/model/combatant.py.
+    magical: bool = False
 
 
 @dataclass
@@ -215,6 +220,9 @@ class ConditionEffect:
     # Escalado al fallar la repetición (Sleep 2024): véase RepeatSave.
     escalate_to: Any = None
     escalate_rounds: int | None = None
+    # El efecto ES mágico (hechizo). Documentación única del significado:
+    # dnd_sim/model/combatant.py.
+    magical: bool = False
 
     def __post_init__(self) -> None:
         if self.save_ability is None and self.escape is None:
@@ -243,21 +251,44 @@ def _as_condition(condition: Any) -> Condition:
     raise ValueError(f"Condición desconocida: {condition!r}")
 
 
+def _condicion_bloqueada(target: Any, condition: Condition,
+                         ctx: Any) -> bool:
+    """¿Bloquea ``target`` la ``condition``? (inmunidad estática o por rasgo)."""
+    if condition in (getattr(target, "condition_immunities", None) or set()):
+        return True
+    # Import diferido: traits/__init__ importa defense, que importa este módulo.
+    from .traits.base import hooks
+
+    return any(r.blocks_condition(condition, ctx)
+               for r in hooks(getattr(target, "traits", None), "blocks_condition"))
+
+
 def apply_condition(target: Any, condition: Any, ctx: Any, *,
                     source: Any = None, duration_rounds: int | None = None,
                     repeat_save: RepeatSave | None = None,
                     escape: EscapeCheck | None = None,
-                    break_on_attack: bool = True) -> ConditionInstance:
+                    break_on_attack: bool = True,
+                    magical: bool = False) -> ConditionInstance:
     """Aplica una condición a un objetivo y la registra en el log.
 
     Si el objetivo ya tiene esa condición, se añade otra instancia (cada
     fuente conserva su duración, su salvación de repetición, su escape y si
     termina al atacar).
+
+    Inmunidades: si ``condition`` está en ``Combatant.condition_immunities``
+    del objetivo o algún rasgo responde ``True`` a ``blocks_condition``, no
+    se crea instancia, el log registra «X es inmune a …» y se devuelve
+    ``None`` (ningún llamante usa el retorno). Sin RNG.
     """
     condition = _as_condition(condition)
     tracker = getattr(target, "conditions", None)
     if tracker is None:
         raise ValueError(f"{getattr(target, 'name', target)} no tiene registro de condiciones.")
+
+    if _condicion_bloqueada(target, condition, ctx):
+        _log_line(ctx, f"{getattr(target, 'name', target)} es inmune a "
+                       f"{_label(condition)}")
+        return None
 
     instance = ConditionInstance(
         condition=condition,
@@ -266,6 +297,7 @@ def apply_condition(target: Any, condition: Any, ctx: Any, *,
         repeat_save=repeat_save,
         escape=escape,
         break_on_attack=bool(break_on_attack),
+        magical=bool(magical),
     )
     tracker.add(instance)
 
@@ -453,7 +485,8 @@ def end_turn(actor: Any, ctx: Any) -> None:
         if instance.repeat_save is not None:
             from .saves import registrar_resistencia, saving_throw
             sr = saving_throw(actor, instance.repeat_save.ability,
-                              instance.repeat_save.dc, ctx.rng)
+                              instance.repeat_save.dc, ctx.rng,
+                              magical=bool(getattr(instance, "magical", False)))
             sr = registrar_resistencia(ctx, actor, sr)
             habilidad = instance.repeat_save.ability.upper()
             if sr.success:
@@ -564,9 +597,11 @@ class ConditionAction(CombatAction):
                     duration_rounds=effect.duration_rounds,
                     repeat_save=repeat,
                     escape=effect.escape,
+                    magical=bool(getattr(effect, "magical", False)),
                 )
                 continue
-            sr = saving_throw(objetivo, effect.save_ability, effect.dc, context.rng)
+            sr = saving_throw(objetivo, effect.save_ability, effect.dc, context.rng,
+                              magical=bool(getattr(effect, "magical", False)))
             sr = registrar_resistencia(context, objetivo, sr)
             if sr.success:
                 _log_line(context, f"  {getattr(objetivo, 'name', objetivo)}: "
@@ -584,6 +619,7 @@ class ConditionAction(CombatAction):
                 duration_rounds=effect.duration_rounds,
                 repeat_save=repeat,
                 escape=effect.escape,
+                magical=bool(getattr(effect, "magical", False)),
             )
 
 
