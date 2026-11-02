@@ -276,6 +276,8 @@ def test_un_lanzador_carga_el_hechizo_con_su_uso_propio():
 # --- Integración con el motor ----------------------------------------------- #
 
 def test_un_combate_completo_con_duergar(monkeypatch):
+    # Sin utilitarias (p=0): el log completo es el stream original.
+    monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
     duergar = _duergar(monkeypatch)
     pjs = [_pj(name="A"), _pj(name="B")]
     res = run_combat([*pjs, duergar], random.Random(2), verbose=True,

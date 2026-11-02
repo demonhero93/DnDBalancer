@@ -584,6 +584,7 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
         combatant_type=combatant_type,
         max_hp=int(data.get("hit_points", data.get("hit_points", 1))),
         ac=_armor_class_value(data.get("armor_class", 10)),
+        size=str(data.get("size") or "medium"),
         abilities=abilities,
         attacks=attacks,
         proficiency=int(data.get("proficiency_bonus", 2)),

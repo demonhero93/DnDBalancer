@@ -49,6 +49,10 @@ class CombatState:
     # (Furia: otra vía de extensión.) Lo pone ``resolve_save_damage`` y lo
     # limpia ``begin_turn``.
     forced_save_this_turn: bool = False
+    # ¿Está esquivando (Dodge) hasta el inicio de su próximo turno?
+    # Lo pone ``rules.utility.DodgeAction`` y lo limpia ``begin_turn`` y
+    # ``Combatant.reset()``; los efectos viven en roll_modifiers.
+    dodging: bool = False
 
 
 __all__ = ["CombatState"]

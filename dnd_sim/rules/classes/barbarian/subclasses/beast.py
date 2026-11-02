@@ -53,6 +53,7 @@ Decisiones de simulación:
 """
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -359,8 +360,12 @@ class BeastFeatures(Trait):
                        f"para contraatacar (Fiereza infecciosa)")
         # Import perezoso: rules no debe importar engine a nivel de módulo.
         from .....engine.combat import attack_roll
+        # Copia superficial: marca la llamada como reacción (Ataque
+        # Temerario no decide ni recibe ventaja fuera de su turno).
+        r_ctx = copy.copy(ctx)
+        r_ctx.is_reaction = True
         attack_roll(target, elegido, arma, rng,
-                    log=getattr(ctx, "log", None), ctx=ctx,
+                    log=getattr(ctx, "log", None), ctx=r_ctx,
                     allow_friendly=True)
 
     # --- 3: Cola ------------------------------------------------------------

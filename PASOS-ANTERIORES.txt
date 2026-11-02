@@ -1,6 +1,6 @@
 RESUMEN DE LOS PASOS ANTERIORES — DnDBalancer / dnd_sim
 =========================================================
-Documento de contexto (para humanos y para IA). Última revisión: 2026-10-30.
+Documento de contexto (para humanos y para IA). Última revisión: 2026-11-02.
 Fuente: historial git + ARCHITECTURE.md.
 
 1. NÚCLEO DE SIMULACIÓN (2026-10-15)
@@ -56,22 +56,79 @@ Fuente: historial git + ARCHITECTURE.md.
    - Tests nuevos: tests/test_clases.py (10) y tests/test_beast.py (50).
    - Suite completa en verde: 671 tests.
 
+8. TEMERARIO, BERSERKER Y UTILITARIAS (2026-11-02)  [SIN COMMITEAR]
+   - Ataque Temerario aleatorio (revisión del TODO): constante
+     RECKLESS_USE_PROBABILITY = 0.5 en rules/classes/barbarian/features.py
+     + CLI --reckless-p en main.py; una decisión por turno propio en la
+     primera tirada de ataque de FUE (0.0/1.0 sin RNG, en medio UNA
+     tirada); reacciones y turnos ajenos no deciden ni reciben; efecto en
+     roll_modifiers con fuente "Ataque Temerario"; estado
+     reckless_decided se limpia en on_turn_start y reset(); log
+     "X ataca con temeridad" / "X decide no atacar con temeridad".
+   - Berserker retocado: Frenzy paga en la primera acertada que cualifica
+     (campo frenzy_pagado, sin pagar en reacciones ni en turnos ajenos);
+     Intimidating Presence elige con pick entre "gratis" y "furia"
+     (ActionUsage.restore devuelve el uso gratis); Retaliation con guardas
+     de vida/alcance/hostilidad y armas dinámicas; Mindless Rage purga
+     todas las instancias. tests/test_berserker.py (39).
+   - Utilitarias (módulo nuevo rules/utility.py):
+     UTILITY_ACTION_PROBABILITY = 0.05 + CLI --utility-p; disponibilidad
+     primero, probabilidad después (0/1 sin RNG, en medio un random()).
+     Dodge es una ACTION creada en encounter.py (estado dodging:
+     desventaja de ataques contra él, ventaja en salvaciones DES, se
+     pierde al incapacitarse y al empezar su turno); Agarrar/Empujar
+     sustituyen UN ataque en los tres bucles de model/actions.py
+     (nunca a distancia): salvación FUE o DES del objetivo vs 8+FUE+PB;
+     fallo → GRAPPLED con escape de acción o PRONE con escape libre CD 10.
+   - Condición GRAPPLED fuera de EXCLUDED_CONDITIONS y en el Enum con la
+     regla PHB 2024 en roll_modifiers: quien está agarrado ataca con
+     desventaja salvo contra su agarrador ("atacante agarrado"); keyword
+     "grappled" en data/condition_parser.py.
+   - Tests nuevos: tests/test_reckless.py (11) y tests/test_utility.py
+     (17); tests/test_berserker.py ampliado a 39. 7 tests con semilla
+     exacta anclados a p=0 (utility) para conservar el A/B original.
+   - Límite de tamaño de Agarrar (último TODO del bloque): campo
+     Combatant.size ("medium" por defecto, normalizado en
+     __post_init__), load_monster lee data["size"] de la API y
+     ataque_utilitario filtra el pool: objetivo como máximo un tamaño
+     mayor que el actor (orden PHB en rules/utility.py). Tests:
+     test_utility.py +2 (large permitido, huge solo Empujar) y
+     test_loader.py +1 (size del owlbear).
+   - Suite completa en verde: 817 tests.
+
 ESTADO ACTUAL
-   - 69 módulos en dnd_sim/, 13070 líneas; tests/ con 38 ficheros,
-     11812 líneas, 732 tests (todos en verde como último estado conocido).
+   - 71 módulos en dnd_sim/; tests/ con 42 ficheros y 817 tests
+     (todos en verde como último estado conocido).
    - Registro de clases en rules/classes/ (base + barbarian + subclases).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
-     (bloque A, tests/test_magical.py), magic_resistance (bloque B,
-     tests/test_magic_resistance.py) y nonmagical_resistances/immunities
+     (tests/test_magical.py), magic_resistance
+     (tests/test_magic_resistance.py) y nonmagical_resistances/immunities
      en el loader.
-   - Legendarios y guaridas (bloque C): puntos legendarios por monstruo
+   - Legendarios y guaridas: puntos legendarios por monstruo
      (DEFAULT_LEGENDARY_POINTS + LEGENDARY_LAIR_BONUS = 4, siempre;
      CLI --legendary-points fija el valor final) y acciones de guarida
      en data/lairs/ (dnd_sim/data/lair_loader.py, rules/legendary.py:
      lair_phase SIEMPRE activa, corte de iniciativa 20 en
-     engine/combat/encounter.py; tests/test_lair.py). Sin interruptor
-     de guarida (política fija: siempre activa). data/lairs/ del repo
-     vacío: el usuario aportará los JSON reales después.
+     engine/combat/encounter.py; tests/test_lair.py). Política fija:
+     siempre en guarida, sin interruptor de encuentro. data/lairs/ del
+     repo vacío: el usuario aportará los JSON reales después.
+   - Inmunidades a condiciones: Combatant.condition_immunities +
+     hook Trait.blocks_condition (chequeo temprano en apply_condition,
+     tests/test_condition_immunities.py); alias
+     BarbarianFeatures.reckless_active_this_turn.
+   - Subclase Path of the Berserker (PHB 2024) en
+     rules/classes/barbarian/subclasses/berserker.py: Frenzy (3,
+     rage_damage d6 en la primera acertada con Temerario), Mindless
+     Rage (6, inmunidad/purga de Hechizado y Aterrorizado), Retaliation
+     (10, reacción melee), Intimidating Presence (14, bonus action SAB
+     CD 8+FUE+PB, uso gratis diario o gasto de Furia);
+     tests/test_berserker.py (39).
+   - Ataque Temerario aleatorio por turno
+     (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
+     (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY
+     = 0.05, CLI --utility-p); tests/test_reckless.py (11) y
+     tests/test_utility.py (17). Con p=0 las referencias A/B exactas se
+     conservan (7 tests de semilla fija anclados a p=0).
    - Arquitectura congelada en tests/test_arquitectura.py (capas + fachadas).
    - Grafo de Graphify en graphify-out/ (graph.json, graph.html,
      GRAPH_REPORT.md), construido con `graphify update .`.

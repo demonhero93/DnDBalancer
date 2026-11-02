@@ -840,6 +840,7 @@ def test_ataque_natural_recibe_brutal_strike_como_cualquier_arma():
     objetivo = _monstruo()
     ctx = _ctx(pj, [pj, objetivo])
     barb = _barb(pj)
+    barb.reckless_probability = 1.0  # decisión forzada (sin azar)
     mods = AttackModifiers()
     barb.modify_attack_modifiers(mods, pj, objetivo, AttackRange.MELEE,
                                  ctx, ctx.rng, atk=garras)

@@ -7,8 +7,11 @@ Unarmored Defense, Extra Attack, iniciativa...) a partir de su nivel.
 
 Decisiones de simulación documentadas:
 
-- **Reckless Attack** se usa siempre en el primer ataque de turno (mejor
-  esperado) y **Brutal Strike** renuncia siempre a la ventaja que da.
+- **Reckless Attack** es una decisión aleatoria por turno
+  (``RECKLESS_USE_PROBABILITY``, por defecto 0.5): se decide en la
+  primera tirada de ataque de FUE del turno propio, nunca en
+  reacciones ni en turnos ajenos. **Brutal Strike** renuncia siempre a
+  la ventaja que da.
 - **Instinctive Pounce** (media velocidad), **Fast Movement**, **Weapon
   Mastery**, **Epic Boon** y los efectos de movimiento de Brutal Strike
   (push/slow) no están modelados: no hay sistema de distancia/velocidad.
@@ -39,6 +42,11 @@ from ...saves import saving_throw
 from ...traits.base import Trait, hooks
 from ...usage import ActionUsage, UsageKind
 
+#: Probabilidad por defecto de usar Ataque Temerario en un turno.
+#: 0.5: ni siempre ni nunca, para que la simulación no asuma la política
+#: óptima de la feature; configurable con ``--reckless-p`` en main.py.
+RECKLESS_USE_PROBABILITY = 0.5
+
 
 @dataclass
 class BarbarianFeatures(Trait):
@@ -55,6 +63,10 @@ class BarbarianFeatures(Trait):
     rage_expires_round: int = 0
     # Ataque temerario activo (hasta el inicio del siguiente turno).
     reckless_active: bool = False
+    #: Probabilidad de decidir «sí» en el turno (CLI ``--reckless-p``).
+    reckless_probability: float = RECKLESS_USE_PROBABILITY
+    #: ¿Ya se decidió este turno? (una sola decisión por turno).
+    reckless_decided: bool = False
 
     @property
     def reckless_active_this_turn(self) -> bool:
@@ -104,21 +116,59 @@ class BarbarianFeatures(Trait):
         self.rage_expires_round = round_ + (600 if self.persistent_rage else 1)
 
     # --- Ataque: Reckless Attack y Brutal Strike ---------------------------
+    def _decidir_reckless(self, attacker: Any, ctx: Any, rng: Any) -> None:
+        """Decisión aleatoria de Ataque Temerario (una por turno).
+
+        0.0/1.0 no consumen RNG; con el resto, UN ``rng.random()``.
+        """
+        p = float(self.reckless_probability)
+        nombre = getattr(attacker, "name", attacker)
+        if 0.0 < p < 1.0:
+            if rng is None:
+                rng = getattr(ctx, "rng", None)
+            if rng is None:
+                return  # sin RNG el rasgo se abstiene (podrá decidir después)
+        self.reckless_decided = True
+        if p <= 0.0:
+            self.reckless_active = False
+        elif p >= 1.0:
+            self.reckless_active = True
+        else:
+            self.reckless_active = rng.random() < p
+        if self.reckless_active:
+            _log_line(ctx, f"{nombre} ataca con temeridad")
+        else:
+            _log_line(ctx, f"{nombre} decide no atacar con temeridad")
+
     def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
                                 rango: Any, ctx: Any = None,
                                 rng: Any = None, atk: Any = None) -> None:
         # El pendiente de un golpe anterior (si falló) caduca aquí: cada
         # ataque evalúa lo suyo.
         self.brutal_pending = False
+        if self.level < 2:  # Ataque Temerario es de nivel 2.
+            return
         if not self._es_fue(atk):
+            return
+        if getattr(ctx, "is_reaction", False):
+            # Reacciones (Retaliation, Fiereza infecciosa...): no deciden
+            # ni reciben la ventaja, aunque el turno propio la tenga activa.
+            return
+        # Una sola decisión por turno, en la primera tirada de FUE del
+        # turno propio (ctx sin actor = invocación directa de test).
+        ctx_actor = getattr(ctx, "actor", None) if ctx is not None else None
+        if (not self.reckless_decided
+                and not (ctx is not None and ctx_actor is not None
+                         and ctx_actor is not attacker)):
+            self._decidir_reckless(attacker, ctx, rng)
+        if not self.reckless_active:
             return
         fuente = "Ataque Temerario"
         mods.advantage_sources.append(fuente)
-        if not self.reckless_active:
-            # Primer ataque del turno: activa (y expone a los demás el
-            # contraataque con ventaja) hasta el inicio del siguiente turno.
-            self.reckless_active = True
+        try:
             attacker.grants_advantage_to_attackers = True
+        except Exception:
+            pass
         # Brutal Strike (9): una vez por turno, si la ventaja de este ataque
         # es SOLO la del Reckless, se renuncia a ella (sin desventaja) y el
         # golpe pasa a pagar 1d10 extra si impacta.
@@ -199,13 +249,15 @@ class BarbarianFeatures(Trait):
 
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         # Reckless caduca al inicio de tu siguiente turno y con él la
-        # ventaja que los demás tenían contra ti.
+        # ventaja que los demás tenían contra ti; la decisión del turno
+        # anterior no vale para el nuevo.
         if self.reckless_active:
             self.reckless_active = False
             try:
                 actor.grants_advantage_to_attackers = False
             except Exception:
                 pass
+        self.reckless_decided = False
         self.brutal_used_this_turn = False
         if not self.rage_active:
             return
@@ -269,6 +321,7 @@ class BarbarianFeatures(Trait):
         self.rage_active = False
         self.rage_expires_round = 0
         self.reckless_active = False
+        self.reckless_decided = False
         self.brutal_pending = False
         self.brutal_used_this_turn = False
         self.relentless_uses = 0
@@ -453,4 +506,4 @@ def apply_barbarian(pj: Any, skills: tuple[str, ...] = (),
 
 
 __all__ = ["BarbarianFeatures", "ExtendRageAction", "RageAction",
-           "apply_barbarian"]
+           "RECKLESS_USE_PROBABILITY", "apply_barbarian"]

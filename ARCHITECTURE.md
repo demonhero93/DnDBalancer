@@ -60,7 +60,7 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES`, `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{base,ancestral_guardian,battlerager,beast}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y la clase bárbaro con las suyas. |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{base,ancestral_guardian,battlerager,beast,berserker}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y la clase bárbaro con las suyas. |
 | `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos, daño, represalias) e iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:

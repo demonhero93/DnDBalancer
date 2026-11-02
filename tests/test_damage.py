@@ -89,7 +89,10 @@ def test_regression_guerrero_vs_ogro(monkeypatch):
     cuerpo o a distancia" (MELEE_OR_RANGED) y ahora el rango se decide con
     ``pick`` en **cada** ataque (consume RNG). Antes: PJ 0.108 / NPC 0.892,
     5.881 rondas, 1.073 / 27.503.
+
+    Sin utilitarias (p=0): la regresión fija el stream de RNG original.
     """
+    monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
     data = json.loads(FIXTURE.read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
 
@@ -109,7 +112,11 @@ def test_regression_guerrero_vs_ogro(monkeypatch):
 
 
 def test_regression_guerrero_vs_owlbear(monkeypatch):
-    """Regresión B: el búho solo ataca cuerpo a cuerpo -> NO cambia."""
+    """Regresión B: el búho solo ataca cuerpo a cuerpo -> NO cambia.
+
+    Sin utilitarias (p=0): la regresión fija el stream de RNG original.
+    """
+    monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
     data = json.loads((Path(__file__).parent / "fixtures" / "owlbear.json")
                       .read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)

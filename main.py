@@ -87,8 +87,12 @@ PARTY_TEMPLATES = [
 ]
 
 
-def _build_party(size: int) -> list:
-    """Construye el grupo de PJ a partir de las plantillas."""
+def _build_party(size: int, reckless_p: float | None = None) -> list:
+    """Construye el grupo de PJ a partir de las plantillas.
+
+    ``reckless_p`` (opcional) fija la probabilidad de Ataque Temerario de
+    todo bárbaro del grupo (``--reckless-p``).
+    """
     if size < 1 or size > len(PARTY_TEMPLATES):
         raise ValueError(
             f"El grupo debe tener entre 1 y {len(PARTY_TEMPLATES)} personajes."
@@ -122,6 +126,13 @@ def _build_party(size: int) -> list:
                         template.get("subclass_name"),
                         skills=template.get("skill_proficiencies", ()),
                         level=template["level"])
+        if reckless_p is not None:
+            from dnd_sim.rules.classes.barbarian.features import (
+                BarbarianFeatures,
+            )
+            for trait in getattr(pj, "traits", None) or []:
+                if isinstance(trait, BarbarianFeatures):
+                    trait.reckless_probability = float(reckless_p)
         party.append(pj)
     return party
 
@@ -156,18 +167,34 @@ def build_parser() -> argparse.ArgumentParser:
         help="Puntos legendarios finales por monstruo (fija el valor sin "
              "sumar el bonus de guarida). Default: base + 1.",
     )
+    parser.add_argument(
+        "--reckless-p", type=float, default=None,
+        help="Probabilidad de que un bárbaro use Ataque Temerario en cada "
+             "turno (0.0-1.0). Default: 0.5 (constante "
+             "RECKLESS_USE_PROBABILITY).",
+    )
+    parser.add_argument(
+        "--utility-p", type=float, default=None,
+        help="Probabilidad de usar una utilitaria (Esquivar/Agarrar/"
+             "Empujar) en vez del ataque o acción previsto (0.0-1.0). "
+             "Default: 0.05 (constante UTILITY_ACTION_PROBABILITY).",
+    )
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
+    if args.utility_p is not None:
+        # Fija la probabilidad de utilitarias para todo el simulador.
+        from dnd_sim.rules import utility
+        utility.UTILITY_ACTION_PROBABILITY = float(args.utility_p)
     specs = args.monster if args.monster else ["troll"]
     monsters = _load_party(specs, legendary_p=args.legendary_p,
                            resistance_p=args.resistance_p,
                            legendary_points=args.legendary_points)
 
     # Los PJ sí se definen aquí (personajes jugador).
-    party = _build_party(args.party)
+    party = _build_party(args.party, reckless_p=args.reckless_p)
 
     combatants = party + monsters
 

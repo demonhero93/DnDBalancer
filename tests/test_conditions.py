@@ -565,17 +565,17 @@ def test_la_accion_de_condicion_del_dragon_es_un_condition_action(monkeypatch):
 
 
 def test_una_condicion_excluida_avisa_y_no_se_aplica(monkeypatch):
-    """'grappled' está en EXCLUDED_CONDITIONS: avisa y no la aplica."""
+    """'deafened' está en EXCLUDED_CONDITIONS: avisa y no la aplica."""
     data = _data("ogre")
     data["actions"].append({
         "name": "Mirada",
         "desc": ("The ogre stares. Each creature must succeed on a DC 12 Wisdom "
-                 "saving throw or be grappled for 1 minute."),
+                 "saving throw or be deafened for 1 minute."),
         "dc": {"dc_type": {"index": "wis"}, "dc_value": 12, "success_type": "none"},
         "damage": [],
         "actions": [],
     })
-    with pytest.warns(UserWarning, match="grappled"):
+    with pytest.warns(UserWarning, match="deafened"):
         monster = _load(monkeypatch, "ogre", data)
     nombres = [getattr(a, "name", "") for a in monster.actions]
     assert "Mirada" not in nombres

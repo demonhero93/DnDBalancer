@@ -127,6 +127,11 @@ class CombatContext:
     legendary_stats: dict | None = None
     # El motor marca aquí los turnos que se pierden por incapacitación.
     skip_turn: bool = False
+    # True solo en ataques de reacción (Retaliation, Fiereza infecciosa...):
+    # los rasgos con decisión por turno (Ataque Temerario) no deciden ni
+    # reciben su efecto fuera del turno propio. Lo ponen las llamadas de
+    # reacción con una copia superficial del contexto.
+    is_reaction: bool = False
 
     @property
     def enemies(self) -> list:
@@ -211,6 +216,11 @@ class AttackAction(CombatAction):
         actor = context.actor
         enemies = _living_enemies(context, self.attack)
         if not enemies:
+            return
+        # Utilitaria: Agarrar/Empujar puede sustituir este ataque (el módulo
+        # decide solo; import diferido para no crear ciclo model -> rules).
+        from ..rules.utility import ataque_utilitario
+        if ataque_utilitario(actor, context, context.rng, self.attack):
             return
         # Un ataque suelto: objetivo aleatorio.
         from ..core.randomness import pick
@@ -325,6 +335,10 @@ class MultiattackAction(CombatAction):
                 teams = {getattr(c, "team", None) for c in (context.combatants or []) if getattr(c, "alive", False)}
                 if len(teams) <= 1:
                     return
+                # Utilitaria: Agarrar/Empujar puede sustituir este ataque.
+                from ..rules.utility import ataque_utilitario
+                if ataque_utilitario(actor, context, context.rng, atk):
+                    continue
                 target = pick(context.rng, enemies)
                 log = context.log
                 with _en_accion_de_ataque(context, self.action_type):
@@ -363,6 +377,11 @@ class WeaponAttackAction(CombatAction):
             if len(teams) <= 1:
                 return
             weapon = pick(context.rng, weapons)
+            # Utilitaria: Agarrar/Empujar puede sustituir este ataque (con
+            # el arma ya elegida: a distancia no se sustituye, sin RNG).
+            from ..rules.utility import ataque_utilitario
+            if ataque_utilitario(actor, context, context.rng, weapon):
+                continue
             target = pick(context.rng, enemies)
             log = context.log
             with _en_accion_de_ataque(context, self.action_type):

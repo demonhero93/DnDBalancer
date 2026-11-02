@@ -7,30 +7,37 @@ hardcodeada en :data:`BERSERKER_FEATURES`.
 
 Decisiones de simulación documentadas:
 
-- **Frenzy** (3): la primera acertada de cada turno con Furia activa y
-  Ataque Temerario usado en el turno añade ``rage_damage(level)`` d6 al
-  **mismo paquete de daño** del golpe (el crítico los duplica vía
-  ``crit``). Política: solo la primera acertada se evalúa (PHB «on
-  your first hit each turn»): si esa no califica, no hay Frenzy hasta
-  el siguiente turno. Solo ataques de FUE (PHB: no funciona con armas
-  de Destreza ni a distancia). No causa agotamiento (PHB 2024).
+- **Frenzy** (3): la primera acertada **que cualifica** de cada turno
+  añade ``rage_damage(level)`` d6 al **mismo paquete de daño** del golpe
+  (el crítico los duplica vía ``crit``). Cualifica: Furia activa,
+  Ataque Temerario decidido a favor en el turno, turno propio y ataque
+  de FUE; si el primer acertada no cualifica, el siguiente de ese
+  turno sí puede pagar («on your first hit each turn»: solo se evalúa
+  al pagar, nunca en reacciones). No causa agotamiento (PHB 2024).
   Sin ``rng`` el rasgo se abstiene: no hay bonus ni flag de pago.
 - **Mindless Rage** (6): mientras dure la Furia, inmune a Hechizado y
   Aterrorizado (hook ``blocks_condition``); al entrar en Furia esas
-  condiciones existentes **terminan** en el momento (PHB 2024 «ends
-  instead of postponing», hook ``on_rage_start``).
+  condiciones existentes **terminan** en el momento, todas las
+  instancias de cualquier fuente (PHB 2024 «ends instead of
+  postponing», hook ``on_rage_start``).
 - **Retaliation** (10): reacción: ataque cuerpo a cuerpo contra quien
   te acierta en cuerpo a cuerpo (mismo patrón que la reacción de
-  Beast): una por ronda (``state.reaction_used``). Sin arma melee a la
-  mano se usa «Golpe sin armas» (1 + mod FUE contundente).
+  Beast): una por ronda (``state.reaction_used``), solo si sigues en
+  pie y el atacante sigue vivo y no está a distancia. El arma se elige
+  con ``pick`` entre ``attacks``/``weapons``/``dynamic_weapons``; sin
+  arma melee a la mano se usa «Golpe sin armas» (1 + mod FUE
+  contundente). Sin Frenzy ni ventaja de Temerario (la llamada va
+  marcada ``is_reaction``).
   # TODO: el hook solo dispara con ``rango is MELEE``; el daño no
   melee que llegue por otras vías no está modelado.
 - **Intimidating Presence** (14): acción bonus, salvación de SAB
-  CD 8 + mod FUE + competencia de **todos** los enemigos; fallo →
-  Aterrorizado 1 minuto (10 rondas) con repetición al fin de cada
-  turno suyo. Un uso gratis por día; cada uso adicional gasta un uso
-  de Furia. El estado diario vive en el trait (``Combatant.reset`` lo
-  recupera cada combate, igual que los usos de Furia).
+  CD 8 + mod FUE + competencia de un número aleatorio de enemigos
+  (convención de área); fallo → Aterrorizado 1 minuto (10 rondas) con
+  repetición al fin de cada turno suyo. Un uso gratis por combate; la
+  variante de Furia gasta un uso de Furia y **restaura** el uso gratis;
+  si ambas están disponibles compiten con ``pick``. Funciona con o sin
+  Furia activa. El estado diario vive en el trait (``Combatant.reset``
+  lo recupera cada combate, igual que los usos de Furia).
   # TODO: emanación de 30 ft: sin posiciones reales se afecta a
   todos los enemigos vivos.
 - Fuera de alcance: Weapon Mastery y Brutal Strike (no son features de
@@ -39,6 +46,7 @@ Decisiones de simulación documentadas:
 """
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -47,9 +55,9 @@ from .....core.dice import roll_dice
 from .....core.enums import AttackRange
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick
-from .....core.targeting import valid_targets
 from .....model.actions import ActionType, CombatAction
 from .....model.attack import Attack
+from ....area import AreaTargeting, select_area_targets
 from ....conditions import (Condition, RepeatSave, apply_condition,
                             remove_condition)
 from ....saves import registrar_resistencia, saving_throw
@@ -83,10 +91,15 @@ def _furia_de(actor: Any) -> RageAction | None:
 
 
 def _armas_melee_de(criatura: Any) -> list:
-    """Ataques cuerpo a cuerpo de ``criatura`` (mismo filtro que Beast)."""
+    """Ataques cuerpo a cuerpo de ``criatura`` (mismo filtro que Beast).
+
+    Incluye las armas dinámicas (``dynamic_weapons``, p. ej. el arma
+    natural de la Beast mientras dura la Furia).
+    """
     ataques = list(getattr(criatura, "attacks", None) or [])
     if not ataques:
         ataques = list(getattr(criatura, "weapons", None) or [])
+    ataques += list(getattr(criatura, "dynamic_weapons", None) or [])
     return [
         a for a in ataques
         if getattr(a, "range_type", AttackRange.MELEE) is not AttackRange.RANGED
@@ -104,8 +117,9 @@ class BerserkerFeatures(Trait):
     """Features de la subclase y estado de Frenzy/Presencia."""
 
     level: int = MIN_LEVEL
-    #: ¿Ya se evaluó Frenzy en la primera acertada de este turno?
-    frenzy_evaluado: bool = field(default=False, repr=False, compare=False)
+    #: ¿Ya se pagó Frenzy en este turno? (se evalúa en cada acertada
+    #: hasta que una paga; el flag solo sube al pagar).
+    frenzy_pagado: bool = field(default=False, repr=False, compare=False)
     #: Uso gratis diario de Presencia intimidante (1/día). El estado vive
     #: en el trait para que ``Combatant.reset`` lo recupere cada combate.
     presence_usage: ActionUsage = field(
@@ -123,14 +137,25 @@ class BerserkerFeatures(Trait):
     def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
                             crit: bool = False, ctx: Any = None,
                             rng: Any = None, atk: Any = None) -> int:
-        """d6 extra de Frenzy en la primera acertada del turno (con todo)."""
+        """d6 extra de Frenzy en la primera acertada que cualifica del turno.
+
+        Se evalúa en **cada** acertada hasta que una paga: si el primer
+        golpe no cualifica (sin Furia, sin Temerario...), el siguiente de
+        ese turno sí puede llevar Frenzy. Cualifica: turno propio (nunca
+        reacciones ni turnos ajenos), Furia activa, Ataque Temerario
+        decidido a favor y ataque de FUE (el ``atk`` ausente se asume
+        cuerpo a cuerpo; un arma a distancia con mod de FUE se asume
+        arrojadiza). Sin ``rng`` no paga ni se marca.
+        """
         if self.level < 3 or self.owner is None or attacker is not self.owner:
             return 0
-        if self.frenzy_evaluado:
+        if self.frenzy_pagado:
             return 0
-        # Solo la primera acertada del turno se evalúa: aunque no pague,
-        # el turno queda consumido («on your first hit each turn»).
-        self.frenzy_evaluado = True
+        if getattr(ctx, "is_reaction", False):
+            return 0  # la reacción no lleva Frenzy
+        ctx_actor = getattr(ctx, "actor", None) if ctx is not None else None
+        if ctx is not None and ctx_actor is not None and ctx_actor is not attacker:
+            return 0  # fuera de su turno no paga
         barb = _de(self.owner, BarbarianFeatures)
         if barb is None or not barb.rage_active:
             return 0
@@ -140,6 +165,7 @@ class BerserkerFeatures(Trait):
             return 0
         if rng is None:
             return 0  # sin RNG el rasgo se abstiene (no inventa dados)
+        self.frenzy_pagado = True
         return int(roll_dice(f"{rage_damage(self.level)}d6", rng, crit=crit))
 
     # --- Mindless Rage (6) ---------------------------------------------------
@@ -166,8 +192,12 @@ class BerserkerFeatures(Trait):
             return
         if rango is not AttackRange.MELEE:
             return
+        if not getattr(self.owner, "alive", True):
+            return  # quién ha caído con el golpe no contraataca
         if not getattr(attacker, "alive", True):
             return
+        if getattr(getattr(attacker, "state", None), "at_range", False):
+            return  # el atacante está a distancia: no es un golpe melee
         if not getattr(self.owner, "can_act", True):
             return
         hostil = getattr(self.owner, "is_hostile_to", None)
@@ -187,15 +217,19 @@ class BerserkerFeatures(Trait):
                        f"reacción para contraatacar (Retaliation)")
         # Import perezoso: rules no debe importar engine a nivel de módulo.
         from .....engine.combat import attack_roll
+        # Copia superficial: marca la llamada como reacción (Ataque
+        # Temerario no decide ni recibe ventaja fuera de su turno).
+        r_ctx = copy.copy(ctx)
+        r_ctx.is_reaction = True
         attack_roll(self.owner, attacker, arma, rng,
-                    log=getattr(ctx, "log", None), ctx=ctx)
+                    log=getattr(ctx, "log", None), ctx=r_ctx)
 
     # --- Ciclo de turno ------------------------------------------------------
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
-        self.frenzy_evaluado = False
+        self.frenzy_pagado = False
 
     def reset(self) -> None:
-        self.frenzy_evaluado = False
+        self.frenzy_pagado = False
         self.presence_usage.reset()
 
 
@@ -234,23 +268,29 @@ class IntimidatingPresenceAction(CombatAction):
         rng = getattr(context, "rng", None)
         if rng is None:
             return  # sin RNG no se tira nada (y no se paga el uso)
-        objetivos = valid_targets(
-            actor, ctx=context,
-            combatants=getattr(context, "combatants", None),
-        )
+        # Objetivos por convención de área: número aleatorio de enemigos.
+        objetivos = select_area_targets(actor, context, AreaTargeting())
         if not objetivos:
             return  # sin objetivos no se paga el uso
-        # Pago: primer uso del día gratis; cada adicional gasta un uso
-        # de Furia (PHB 2024 «additional uses requiring an expenditure
-        # of your rage»).
+        # Pago: la variante gratis y la de Furia compiten con ``pick``
+        # cuando ambas están disponibles; la de Furia gasta un uso de
+        # Furia y restaura el uso gratis (PHB «additional uses requiring
+        # an expenditure of your rage»).
+        opciones = []
         if bers.presence_usage.available:
+            opciones.append("gratis")
+        furia = _furia_de(actor)
+        if (furia is not None and furia.usage is not None
+                and furia.usage.available):
+            opciones.append("furia")
+        if not opciones:
+            return  # can_use ya lo impide: red de seguridad
+        pago = pick(rng, opciones)
+        if pago == "gratis":
             bers.presence_usage.spend()
         else:
-            furia = _furia_de(actor)
-            if (furia is None or furia.usage is None
-                    or not furia.usage.available):
-                return  # can_use ya lo impide: red de seguridad
             furia.usage.spend()
+            bers.presence_usage.restore()
         dc = (8 + actor.abilities.mod("str")
               + int(getattr(actor, "proficiency", 0) or 0))
         _log_line(context, f"{actor.name} usa {self.name} sobre "

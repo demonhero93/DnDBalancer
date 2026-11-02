@@ -43,6 +43,7 @@ CONDITION_KEYWORDS: dict[str, Condition] = {
     "petrified": Condition.PETRIFIED,
     "poisoned": Condition.POISONED,
     "prone": Condition.PRONE,
+    "grappled": Condition.GRAPPLED,
     "restrained": Condition.RESTRAINED,
     "stunned": Condition.STUNNED,
     "unconscious": Condition.UNCONSCIOUS,

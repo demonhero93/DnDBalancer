@@ -143,6 +143,20 @@ def _condiciones(combatant: Any) -> set:
         return set()
 
 
+def _instancias(combatant: Any, condition: Any) -> list:
+    """Instancias concretas de ``condition`` en un combatiente (vacío si no).
+
+    A diferencia de :func:`_condiciones` (que devuelve el conjunto de tipos
+    activos), conserva cada instancia con su ``source``: la regla de
+    Agarrado necesita saber QUIÉN agarra.
+    """
+    tracker = getattr(combatant, "conditions", None)
+    if tracker is None:
+        return []
+    return [inst for inst in getattr(tracker, "instances", []) or []
+            if inst.condition is condition]
+
+
 def resolve_attack_range(attack: Any, rng: Any) -> AttackRange:
     """Rango efectivo del ataque.
 
@@ -220,6 +234,15 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
         # calcular los modificadores (romperla es consecuencia de atacar).
         mods.advantage_sources.append("atacante invisible")
 
+    # 2b. Agarrado (PHB 2024): quien está agarrado ataca con desventaja
+    # salvo contra la criatura que lo agarra (la instancia con ``source``).
+    if Condition.GRAPPLED in cond_atacante and target is not None:
+        agarradores = [inst.source for inst in
+                       _instancias(attacker, Condition.GRAPPLED)
+                       if inst.source is not None]
+        if agarradores and all(target is not a for a in agarradores):
+            mods.disadvantage_sources.append("atacante agarrado")
+
     # 4. Condiciones del objetivo.
     if Condition.BLINDED in cond_objetivo:
         mods.advantage_sources.append("objetivo cegado")
@@ -244,6 +267,12 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
             mods.disadvantage_sources.append("objetivo derribado, a distancia")
         else:
             mods.advantage_sources.append("objetivo derribado, cuerpo a cuerpo")
+    # 4b. Esquivar: mientras el objetivo esquiva, sus atacantes tienen
+    # desventaja (la esquiva se pierde al quedar incapacitado y
+    # ``begin_turn`` la limpia al empezar su propio turno).
+    if (getattr(getattr(target, "state", None), "dodging", False)
+            and Condition.INCAPACITATED not in cond_objetivo):
+        mods.disadvantage_sources.append("Esquivar")
 
     # 5. Rasgos especiales del atacante (Blood Frenzy, Pack Tactics...):
     #    cada rasgo decide por sí mismo si aplica (rango, objetivo herido,
@@ -306,6 +335,12 @@ def save_modifiers(target: Any, ability: str,
     if (Condition.ENLARGED in cond
             and str(ability).strip().lower() in ("str", "strength")):
         mods.advantage_sources.append("agrandado")
+    # Esquivar: ventaja en salvaciones de Destreza mientras dure (mismo
+    # criterio de incapacidad que en los ataques).
+    if (str(ability).strip().lower() in ("dex", "dexterity")
+            and getattr(getattr(target, "state", None), "dodging", False)
+            and Condition.INCAPACITATED not in cond):
+        mods.advantage_sources.append("Esquivar")
 
     # Rasgos especiales (Turn Resistance): cada rasgo decide por sí mismo si
     # aplica, según el tipo de efecto (``kind``) que provoca la salvación.

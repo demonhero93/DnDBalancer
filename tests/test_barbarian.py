@@ -344,6 +344,7 @@ def test_furia_persistente_termina_con_unconscious():
 def test_reckless_da_ventaja_y_expone_al_bárbaro():
     pj = _pj(level=2, abilities=_abilities(str=16))
     trait = _trait(pj, 2)
+    trait.reckless_probability = 1.0  # decisión forzada (sin azar)
     mods = AttackModifiers()
     trait.modify_attack_modifiers(mods, pj, _pj(), "melee",
                                   atk=Attack("Hacha", "1d12", ability="str"))
@@ -353,6 +354,7 @@ def test_reckless_da_ventaja_y_expone_al_bárbaro():
     # Al empezar su turno caduca.
     trait.on_turn_start(pj)
     assert trait.reckless_active is False
+    assert trait.reckless_decided is False
     assert pj.grants_advantage_to_attackers is False
 
 
@@ -432,6 +434,7 @@ def test_relentless_rage_fallo_y_sin_furia(monkeypatch):
 def test_brutal_strike_renuncia_a_la_ventaja_y_paga_1d10():
     pj = _pj(level=9, abilities=_abilities(str=16))
     trait = _trait(pj, 9)
+    trait.reckless_probability = 1.0  # decisión forzada (sin azar)
     atk = Attack("Hacha", "1d12", ability="str")
     mods = AttackModifiers()
     trait.modify_attack_modifiers(mods, pj, _pj(), "melee", atk=atk)
@@ -453,6 +456,7 @@ def test_brutal_strike_renuncia_a_la_ventaja_y_paga_1d10():
 def test_brutal_strike_2d10_desde_nivel_17():
     pj = _pj(level=17, abilities=_abilities(str=16))
     trait = _trait(pj, 17)
+    trait.reckless_probability = 1.0  # decisión forzada (sin azar)
     atk = Attack("Hacha", "1d12", ability="str")
     mods = AttackModifiers()
     trait.modify_attack_modifiers(mods, pj, _pj(), "melee", atk=atk)

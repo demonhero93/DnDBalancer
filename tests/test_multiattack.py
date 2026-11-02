@@ -73,6 +73,8 @@ def test_el_aliento_de_la_quimera_no_compite_como_accion_suelta(monkeypatch):
 
 
 def test_la_quimera_hace_tres_ataques_por_turno(monkeypatch):
+    # Sin utilitarias (p=0): un Agarrar sustituiría un ataque del conteo.
+    monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
     quimera = _load(monkeypatch, "chimera")
     jugador = _pj()
     res = run_combat([jugador, quimera], random.Random(5), verbose=True, max_rounds=12)
@@ -104,6 +106,8 @@ def test_el_aliento_dentro_del_multiataque_gasta_su_uso(monkeypatch):
 
 def test_las_alternativas_con_el_aliento_descargado_no_son_viables(monkeypatch):
     """La ficha dice: 'cuando su aliento está disponible puede usarlo'."""
+    # Sin utilitarias (p=0): el stream de RNG es el original.
+    monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
     quimera = _load(monkeypatch, "chimera")
     usage = quimera.multiattack.action_entries["Fire Breath"].usage
     usage.spend()  # aliento descargado
@@ -147,6 +151,8 @@ def test_el_dragon_hace_tres_ataques_por_turno(monkeypatch):
     como parte del multiataque.
     """
     dragon = _load(monkeypatch, "adult-red-dragon")
+    # Sin utilitarias (p=0): el conteo de 3 ataques fija el stream original.
+    monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
     jugador = _pj()
     res = run_combat([jugador, dragon], random.Random(3), verbose=True, max_rounds=10)
 

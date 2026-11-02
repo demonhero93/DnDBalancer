@@ -48,6 +48,10 @@ class Condition(Enum):
     PETRIFIED = "petrified"
     POISONED = "poisoned"
     PRONE = "prone"
+    # Agarrado (PHB 2024): la criatura agarrada ataca con desventaja salvo
+    # contra su agarrador (véase roll_modifiers). La instancia guarda al
+    # agarrador en ``source``; el escape lo intenta al inicio de su turno.
+    GRAPPLED = "grappled"
     RESTRAINED = "restrained"
     STUNNED = "stunned"
     UNCONSCIOUS = "unconscious"
@@ -61,7 +65,6 @@ class Condition(Enum):
 # Condiciones que NO se modelan, con el motivo (no son miembros del Enum).
 EXCLUDED_CONDITIONS: dict[str, str] = {
     "deafened": "sentidos: no se modelan (no afectan a tiradas).",
-    "grappled": "no da ventaja ni desventaja por sí sola.",
     "exhausted": "el agotamiento depende de la edición de reglas.",
 }
 
@@ -89,6 +92,7 @@ CONDITION_LABELS: dict[Condition, str] = {
     Condition.PETRIFIED: "petrificado",
     Condition.POISONED: "envenenado",
     Condition.PRONE: "derribado",
+    Condition.GRAPPLED: "agarrado",
     Condition.RESTRAINED: "inmovilizado",
     Condition.STUNNED: "aturdido",
     Condition.UNCONSCIOUS: "inconsciente",

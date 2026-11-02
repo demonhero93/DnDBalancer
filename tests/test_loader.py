@@ -129,6 +129,8 @@ def test_load_monster_maps_owlbear_multiattack(monkeypatch):
 
 
 def test_owlbear_multiattack_exact_counts(monkeypatch):
+    # Sin utilitarias (p=0): los conteos exactos fijan el stream original.
+    monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
     owlbear = _load_fixture(monkeypatch, "owlbear")
     # Un objetivo inmortal para que se ejecuten muchos ataques.
     from dnd_sim.core.abilities import Abilities
@@ -139,6 +141,11 @@ def test_owlbear_multiattack_exact_counts(monkeypatch):
     claws = sum(" con Claws:" in line for line in res.log)
     assert beak == claws
     assert beak + claws > 0
+
+
+def test_monstruo_guarda_el_size_de_la_ficha(monkeypatch):
+    owlbear = _load_fixture(monkeypatch, "owlbear")
+    assert owlbear.size == "large"
 
 
 def test_no_handcrafted_monsters_in_source():

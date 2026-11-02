@@ -119,6 +119,10 @@ class Combatant:
     hp: int = field(init=False)
     #: PV temporales (5e): absorben el daño antes que los PV normales.
     temp_hp: int = 0
+    #: Tamaño (PHB): cadena de la ficha en minúsculas ("medium" por
+    #: defecto). Lo rellena ``load_monster``; lo consume
+    #: ``dnd_sim.rules.utility`` (Agarrar: un tamaño mayor como máximo).
+    size: str = "medium"
     initiative: int = field(init=False, default=0)
     # Estado de muerte explícito. Lo pone el motor (al recibir un daño igual
     # o mayor que los PV restantes, o al morir en su propio turno) y solo lo
@@ -130,6 +134,7 @@ class Combatant:
         if isinstance(self.combatant_type, str):
             self.combatant_type = CombatantType(self.combatant_type)
         self.hp = self.max_hp
+        self.size = str(self.size or "medium").strip().lower() or "medium"
         self.resistances = {parse_damage_type(x) for x in (self.resistances or set())}
         self.vulnerabilities = {parse_damage_type(x) for x in (self.vulnerabilities or set())}
         self.immunities = {parse_damage_type(x) for x in (self.immunities or set())}
@@ -272,6 +277,7 @@ class Combatant:
             self.state.marked_by = None
             self.state.attacked_this_turn = False
             self.state.forced_save_this_turn = False
+            self.state.dodging = False
         except Exception:
             pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,

@@ -17,6 +17,8 @@ from ...rules.legendary import lair_phase, legendary_phase
 from ...core.randomness import pick
 from ..tactics import random_policy
 from ...rules.usage import begin_turn
+from ...rules.utility import (DodgeAction, debe_usar_utilitaria,
+                              hay_utilitaria_accion)
 
 
 @dataclass
@@ -206,9 +208,18 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                     ]
                     if not candidates:
                         continue
-                    chosen = _invoke_policy(policy, ctx, candidates)
+                    chosen = None
+                    # Utilitaria: Esquivar sustituye la ACTION si toca.
+                    # Disponibilidad primero (hay acción, vivo, puede actuar
+                    # y no esquiva ya), probabilidad después.
+                    if (action_type is ActionType.ACTION
+                            and hay_utilitaria_accion(actor)
+                            and debe_usar_utilitaria(rng)):
+                        chosen = DodgeAction()
                     if chosen is None:
-                        chosen = pick(rng, candidates)
+                        chosen = _invoke_policy(policy, ctx, candidates)
+                        if chosen is None:
+                            chosen = pick(rng, candidates)
                     chosen.execute(ctx)
                     resources.use(action_type)
                     # El uso limitado se gasta aquí (una vez, aunque el área

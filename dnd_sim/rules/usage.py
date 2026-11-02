@@ -85,6 +85,18 @@ class ActionUsage:
             return
         self.charged = False
 
+    def restore(self) -> None:
+        """Devuelve un uso (tope ``uses_max``).
+
+        Lo usa la Presencia intimidante: la variante que paga con Furia
+        restaura el uso gratis diario. Solo tiene sentido para
+        ``PER_DAY``; el resto de tipos no cambian.
+        """
+        if self.kind is not UsageKind.PER_DAY:
+            return
+        if self.uses_left < self.uses_max:
+            self.uses_left += 1
+
     def reset(self) -> None:
         """Restaura el estado inicial (nuevo combate / nuevo día)."""
         if self.kind is UsageKind.AT_WILL:
@@ -173,6 +185,9 @@ def begin_turn(actor, ctx):
         try:
             state.attacked_this_turn = False
             state.forced_save_this_turn = False
+            # La esquiva dura hasta el inicio del propio turno (5e:
+            # «until the start of your next turn»).
+            state.dodging = False
         except Exception:
             pass
 
