@@ -48,6 +48,9 @@ from .rules.classes.barbarian.subclasses.beast import (
 from .rules.classes.barbarian.subclasses.berserker import (
     BerserkerFeatures, IntimidatingPresenceAction, apply_berserker,
 )
+from .rules.classes.barbarian.subclasses.giant import (
+    GiantFeatures, MightyImpelAction, apply_giant,
+)
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
                            skill_bonus, skill_check)
@@ -107,11 +110,13 @@ __all__ = [
     "ConditionAction", "ConditionEffect", "ConditionInstance",
     "ConditionTracker", "D20Result", "DEFAULT_LEGENDARY_POINTS",
     "DamageTransfer", "DamageType", "EXCLUDED_CONDITIONS", "EscapeCheck",
-    "ExtendRageAction", "FormOfTheBeast", "HealAction", "HealEffect",
+    "ExtendRageAction", "FormOfTheBeast", "GiantFeatures", "HealAction",
+    "HealEffect",
     "HeatedBody",
     "IntimidatingPresenceAction",
     "LegendaryAction",
-    "LegendaryState", "MartialAdvantage", "Monster", "MultiattackAction",
+    "LegendaryState", "MartialAdvantage", "MightyImpelAction", "Monster",
+    "MultiattackAction",
     "NaturalWeapon", "PackTactics", "Parry", "PlayerCharacter",
     "RANGED_COVER_AC_BONUS",
     "Race", "RageAction", "Regeneration", "Relentless", "RepeatSave",
@@ -124,7 +129,7 @@ __all__ = [
     "UsageKind", "WeaponAttackAction", "ability_check", "ability_check_bonus",
     "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
     "apply_battlerager", "apply_beast", "apply_berserker", "apply_class",
-    "apply_condition",
+    "apply_condition", "apply_giant",
     "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
     "attempt_escapes", "begin_turn",
     "check_modifiers", "d20", "desenganchar", "effective_ac", "end_turn",

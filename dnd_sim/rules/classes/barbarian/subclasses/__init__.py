@@ -24,10 +24,17 @@ from .berserker import (
     IntimidatingPresenceAction,
     apply_berserker,
 )
+from .giant import (
+    GIANT_FEATURES,
+    GiantFeatures,
+    MightyImpelAction,
+    apply_giant,
+)
 
 __all__ = ["ANCESTRAL_FEATURES", "AncestralGuardianFeatures",
-           "BATTLERAGER_FEATURES", "BERSERKER_FEATURES", "BeastFeatures",
-           "BattleragerFeatures", "BerserkerFeatures", "FormOfTheBeast",
-           "IntimidatingPresenceAction", "NaturalWeapon", "SpikedArmorAction",
+           "BATTLERAGER_FEATURES", "BERSERKER_FEATURES", "GIANT_FEATURES",
+           "BeastFeatures", "BattleragerFeatures", "BerserkerFeatures",
+           "FormOfTheBeast", "GiantFeatures", "IntimidatingPresenceAction",
+           "MightyImpelAction", "NaturalWeapon", "SpikedArmorAction",
            "apply_ancestral_guardian", "apply_battlerager", "apply_beast",
-           "apply_berserker"]
+           "apply_berserker", "apply_giant"]

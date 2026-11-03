@@ -35,6 +35,7 @@ from ....core.classes import (
     rage_uses,
 )
 from ....core.dice import roll_dice
+from ....core.enums import AttackRange
 from ....core.log import log_line as _log_line
 from ....core.skills import normalize_skill
 from ....model.actions import ActionType, AttackEntry, CombatAction, MultiattackAction
@@ -183,10 +184,12 @@ class BarbarianFeatures(Trait):
                             crit: bool = False, ctx: Any = None,
                             rng: Any = None, atk: Any = None) -> int:
         bonus = 0
-        # Daño de Furia: ataques con FUE mientras dura (arma o cuerpo a
-        # cuerpo; los ataques con bono fijo de hechizo no pasan por aquí con
-        # otra característica).
-        if self.rage_active and atk is not None and self._es_fue(atk):
+        # Daño de Furia: ataques cuerpo a cuerpo con FUE mientras dura
+        # (los ataques con bono fijo de hechizo no pasan por aquí con
+        # otra característica). Un ataque arrojadizo no lo recibe: lo
+        # añade Crushing Throw (Path of the Giant).
+        if (self.rage_active and atk is not None and self._es_fue(atk)
+                and rango is not AttackRange.RANGED):
             bonus += rage_damage(self.level)
         if self.brutal_pending:
             if rng is None:
