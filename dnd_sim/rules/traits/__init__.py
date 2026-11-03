@@ -83,6 +83,7 @@ Catálogo de hooks (un único punto de despacho: :func:`hooks`)
 Hook                          Dónde se dispara
 ============================  ======================================================
 ``modify_attack_modifiers``   :func:`dnd_sim.rules.roll_modifiers.attack_modifiers`
+``grant_attack_modifiers``   :func:`dnd_sim.rules.roll_modifiers.attack_modifiers` (rasgos de otros combatientes)
 ``modify_save_modifiers``     :func:`dnd_sim.rules.roll_modifiers.save_modifiers`
 ``modify_check_modifiers``    :func:`dnd_sim.rules.roll_modifiers.check_modifiers`
 ``modify_incoming_damage``    :func:`dnd_sim.rules.damage.inflict_damage` (fase 1)

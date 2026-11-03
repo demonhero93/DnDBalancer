@@ -285,6 +285,23 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
             rasgo.modify_attack_modifiers(mods, attacker, target, rango,
                                           ctx=ctx, rng=rng, atk=attack)
 
+    # 5b. Rasgos de OTROS que grantan ventaja/desventaja a este ataque
+    #     (p. ej. Lobo/León del Corazón Salvaje): mismo patrón que
+    #     reduce_damage_to_allies en rules/damage — se recorren los
+    #     combatientes del contexto y el atacante se salta (ya corrió
+    #     en el bloque 5). Si ningún rasgo sobrescribe el hook no se
+    #     consume RNG.
+    if ctx is not None:
+        for otro in getattr(ctx, "combatants", None) or []:
+            if otro is attacker:
+                continue
+            traits_otro = getattr(otro, "traits", None)
+            if not traits_otro:
+                continue
+            for rasgo in _hooks(traits_otro, "grant_attack_modifiers"):
+                rasgo.grant_attack_modifiers(mods, attacker, target, rango,
+                                             ctx=ctx, rng=rng, atk=attack)
+
     # 6. Crítico automático: contra un objetivo paralizado o inconsciente,
     #    todo ataque cuerpo a cuerpo que impacte es crítico.
     if rango is AttackRange.MELEE and (Condition.PARALYZED in cond_objetivo

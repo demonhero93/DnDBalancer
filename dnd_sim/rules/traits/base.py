@@ -30,6 +30,23 @@ class Trait:
         """
         return None
 
+    # --- Ventaja/desventaja que este rasgo granta a los ataques de otros ------
+    def grant_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
+                               rango: Any, ctx: Any = None,
+                               rng: Any = None, atk: Any = None) -> None:
+        """Hook: ventaja/desventaja que este rasgo **granta** al ataque de ``attacker``.
+
+        Se ejecuta en :func:`dnd_sim.rules.roll_modifiers.attack_modifiers`
+        consultando los rasgos del **resto** de combatientes del contexto
+        (el atacante ya pasó por ``modify_attack_modifiers``): es la vía
+        para que un rasgo influya en ataques de terceros (p. ej. Lobo/León
+        del Corazón Salvaje). ``mods`` es el mismo
+        :class:`dnd_sim.rules.roll_modifiers.AttackModifiers` y cada rasgo
+        decide por sí mismo si aplica (bandos, cobertura...). Por defecto
+        no hace nada.
+        """
+        return None
+
     # --- Daño recibido (fases de dnd_sim.rules.damage.inflict_damage) ------------
     def modify_incoming_damage(self, target: Any, amount: int,
                                damage_type: Any, source: Any,
@@ -281,6 +298,7 @@ class Trait:
 #: :class:`Trait`, regístralo aquí para que el despacho lo reconozca.
 HOOK_NAMES: tuple[str, ...] = (
     "modify_attack_modifiers",
+    "grant_attack_modifiers",
     "modify_save_modifiers",
     "modify_check_modifiers",
     "modify_incoming_damage",
