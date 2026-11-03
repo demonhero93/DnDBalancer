@@ -14,7 +14,9 @@ from .subclasses import (
     ANCESTRAL_FEATURES,
     BATTLERAGER_FEATURES,
     BERSERKER_FEATURES,
+    ENTORNOS,
     GIANT_FEATURES,
+    STORM_HERALD_FEATURES,
     AncestralGuardianFeatures,
     BattleragerFeatures,
     BeastFeatures,
@@ -25,11 +27,14 @@ from .subclasses import (
     MightyImpelAction,
     NaturalWeapon,
     SpikedArmorAction,
+    StormAuraAction,
+    StormHeraldFeatures,
     apply_ancestral_guardian,
     apply_battlerager,
     apply_beast,
     apply_berserker,
     apply_giant,
+    apply_storm_herald,
 )
 
 #: Registro de la clase bárbaro con sus subclases (claves normalizadas).
@@ -56,6 +61,25 @@ BARBARIAN_CLASS = register_class(ClassDef(
         "giant": SubclassDef(
             name="Path of the Giant", class_name="barbarian",
             min_level=3, apply=apply_giant,
+        ),
+        # apply_class solo pasa `level`: el entorno va en el closure.
+        "storm_herald_desert": SubclassDef(
+            name="Path of the Storm Herald (Desert)", class_name="barbarian",
+            min_level=3,
+            apply=lambda pj, level=None: apply_storm_herald(
+                pj, level=level, entorno="desert"),
+        ),
+        "storm_herald_sea": SubclassDef(
+            name="Path of the Storm Herald (Sea)", class_name="barbarian",
+            min_level=3,
+            apply=lambda pj, level=None: apply_storm_herald(
+                pj, level=level, entorno="sea"),
+        ),
+        "storm_herald_tundra": SubclassDef(
+            name="Path of the Storm Herald (Tundra)", class_name="barbarian",
+            min_level=3,
+            apply=lambda pj, level=None: apply_storm_herald(
+                pj, level=level, entorno="tundra"),
         ),
     },
 ))

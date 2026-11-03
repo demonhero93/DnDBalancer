@@ -51,6 +51,9 @@ from .rules.classes.barbarian.subclasses.berserker import (
 from .rules.classes.barbarian.subclasses.giant import (
     GiantFeatures, MightyImpelAction, apply_giant,
 )
+from .rules.classes.barbarian.subclasses.storm_herald import (
+    StormAuraAction, StormHeraldFeatures, apply_storm_herald,
+)
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
                            skill_bonus, skill_check)
@@ -124,12 +127,13 @@ __all__ = [
     "SaveDamage", "SaveDamageOutcome", "SaveModifiers", "SaveResult", "Spell",
     "SpellAction", "SpellAttackAction", "SpellFixedDamageAction",
     "SpellStateAction", "Spellcasting", "SpikedArmorAction", "StateEffect",
+    "StormAuraAction", "StormHeraldFeatures",
     "SuperiorInvisibility",
     "Trait", "TurnResistance", "TurnResources", "UndeadFortitude",
     "UsageKind", "WeaponAttackAction", "ability_check", "ability_check_bonus",
     "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
     "apply_battlerager", "apply_beast", "apply_berserker", "apply_class",
-    "apply_condition", "apply_giant",
+    "apply_condition", "apply_giant", "apply_storm_herald",
     "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
     "attempt_escapes", "begin_turn",
     "check_modifiers", "d20", "desenganchar", "effective_ac", "end_turn",
