@@ -1,7 +1,7 @@
 # TODO — DnDBalancer / dnd_sim
 
 Revisar al principio de cada sesión. Última revisión: 2026-11-03.
-Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-10) y ARCHITECTURE.md.
+Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-11) y ARCHITECTURE.md.
 
 ## Bloque 2026-10-30 (commiteado)
 
@@ -48,6 +48,31 @@ Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-10) y ARCHITECTURE.md.
     sistema de movimiento no tiene efecto mecánico.
   - Raging Storm tundra no tiene reacción (solo actúa al activarse),
     igual que el enunciado.
+
+- Path of the Wild Heart (`rules/classes/barbarian/subclasses/wild_heart.py`):
+  - Animal Speaker (3), Nature Speaker (10) y Aspect of the Wilds (6:
+    Owl/Panther/Salmon, parámetro fijo `aspecto`, no aleatorio): rituales
+    y exploración sin efecto en combate — solo dato del rasgo.
+  - Eagle (3): Disengage/Dash como acción adicional; sin posiciones no
+    tienen efecto mecánico (1/3 de las activaciones no aporta nada: es
+    el comportamiento esperado del pick).
+  - Falcon (14) queda FUERA del pick de Power of the Wilds por no tener
+    efecto (velocidad de vuelo sin posiciones); añadirla si algún día
+    hay modelo de movimiento.
+  - Bear: los B/P/S no se añaden al set de resistencias: ya los
+    recorta la Furia base (`modify_incoming_damage`) durante la MISMA
+    ventana y duplicarlos recortaría el daño a un cuarto (mismo efecto
+    efectivo). El resto de tipos se concede con lista de fuente propia.
+  - Wolf/Lion sin posiciones: «a 5 pies» usa
+    `WILD_HEART_COVERAGE_PROBABILITY = 1.0` (mismo criterio que el
+    aura del Storm Herald); 1.0/0.0 no consumen RNG y en medio hay UNA
+    tirada por criatura.
+  - Lion: «otro personaje con este mismo beneficio» interpretado como
+    un Wild Heart en Furia con opción León (lectura literal del
+    enunciado; cambiar si el usuario quiere otra cosa).
+  - Ram: alcance y «voluntaria» no modelados; PRONE con el mismo
+    escape de Empujar (FUE/DES CD 10, sin gastar acción) y decisión
+    por acierto con `pick` 50/50.
 
 ## Grafo y verificación
 

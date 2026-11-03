@@ -220,8 +220,95 @@ Fuente: historial git + ARCHITECTURE.md.
      **866 passed**, capas.py 1 violación conocida, graphify update .
      (2676 nodos, 9598 aristas).
 
+11. PATH OF THE WILD HEART (2026-11-03)
+
+   Plan (antes de escribir código):
+   (0) git status limpio (Storm Herald ya cerrado: 20b3fb1, 1c0f577,
+       371e9a4, 0237629). Lectura: ARCHITECTURE, Reglas de Proyecto,
+       storm_herald.py (helpers de aura y lista de fuente propia para
+       resistencias), berserker.py (trait + patrón de reacción),
+       giant.py, rules/classes/base.py, features.py (_contexto,
+       on_rage_start/on_rage_end), roll_modifiers.py, traits/base.py
+       (HOOK_NAMES), conditions.py y utility.py (PRONE de Empujar).
+       Reglas de la sección 2 del enunciado; NO se consulta la API
+       (no está en SRD).
+   (1) Hook nuevo en el motor para Wolf/Lion: `grant_attack_modifiers`
+       en Trait + HOOK_NAMES, despachado desde
+       roll_modifiers.attack_modifiers a los rasgos del RESTO de
+       combatientes del contexto (mismo patrón que
+       reduce_damage_to_allies en damage.py; el atacante ya corre en
+       el bloque 5 de modify_attack_modifiers). Tests de no regresión:
+       sin la subclase no cambia el modo y no se consume RNG.
+   (2) Módulo nuevo `rules/classes/barbarian/subclasses/wild_heart.py`:
+       constantes (`WILD_HEART_FEATURES`, `RAGE_OPTIONS`
+       bear/eagle/wolf, `POWER_OPTIONS` lion/ram — Falcon excluido por
+       sin efecto mecánico, `WILD_HEART_COVERAGE_PROBABILITY` = 1.0
+       para «a 5 pies» sin posiciones), trait `WildHeartFeatures`
+       (opciones por activación con pick en on_rage_start; Bear con
+       lista de fuente propia; Wolf/Lion vía grant_attack_modifiers;
+       Ram en extra_attack_damage con el PRONE y escape de Empujar;
+       on_rage_end/reset limpian opciones y revocan). Sin acción
+       propia: las opciones se eligen solas al entrar en Furia.
+   (3) Registro: clave `wild_heart`, reexportos en subclasses/__init__,
+       barbarian/__init__ y fachada `dnd_sim/__init__` (alfabético).
+   (4) `tests/test_wild_heart.py` en español: tabla, apply, Bear
+       (concede/retira al terminar y en reset/no quita una resistencia
+       ajena/no cubre fuerza/necrótico/psíquico/radiante), Eagle sin
+       efecto mecánico, Wolf (ventaja a aliados, no al propio
+       bárbaro, sin Furia no, a distancia incluido, sin enemigo en
+       rango no), Lion (desventaja contra otros objetivos, no contra
+       el bárbaro ni contra otro con el beneficio), Ram (PRONE al
+       acertar melee a Large o menor, no Huge, no distancia, no fallo,
+       no sin Furia), renovación en cada activación, niveles
+       inferiores sin rasgos superiores, semilla fija.
+   (5) Docs: TODO.md (dudas/simplificaciones), ARCHITECTURE.md (fila
+       `rules/classes/` + recuentos) y este bloque + ESTADO ACTUAL.
+   (6) Verificación regla 7: `pytest tests/test_arquitectura.py`,
+       `pytest`, `python tools/capas.py`, `graphify update .`.
+   Commits: (a) hook del motor + sus tests de no regresión, (b)
+   módulo wild_heart.py + registro y fachada, (c) tests de la
+   subclase, (d) documentación y grafo.
+   Hecho:
+   - (1) Hook `grant_attack_modifiers` en `rules/traits/base.py`
+     (método no-op + HOOK_NAMES) y despacho en
+     `roll_modifiers.attack_modifiers` (bloque 5b: rasgos del RESTO de
+     combatientes del contexto, patrón `reduce_damage_to_allies` de
+     damage.py; el atacante se salta porque ya corrió en el bloque 5).
+     Fila nueva en el catálogo de hooks de `rules/traits/__init__.py`.
+     Commits 4c90b58. Tests de no regresión: sin la subclase el modo
+     no cambia y el RNG queda intacto.
+   - (2) `rules/classes/barbarian/subclasses/wild_heart.py` nuevo:
+     `WILD_HEART_FEATURES` {3: Animal Speaker + Rage of the Wilds, 6:
+     Aspect of the Wilds, 10: Nature Speaker, 14: Power of the Wilds};
+     `RAGE_OPTIONS` (bear/eagle/wolf), `POWER_OPTIONS` (lion/ram;
+     Falcon fuera por sin efecto), `ASPECTOS` (owl/panther/salmon),
+     `WILD_HEART_COVERAGE_PROBABILITY = 1.0`; trait
+     `WildHeartFeatures` (opciones con `pick` en `on_rage_start`; Bear
+     con lista `_concedidas`, sin B/P/S para no duplicar el recorte de
+     la Furia; Wolf/Lion en `grant_attack_modifiers`; Ram en
+     `extra_attack_damage` con PRONE y escape de Empujar;
+     `on_rage_end`/`reset` limpian opciones y revocan). Sin acción
+     propia: las opciones se eligen solas al entrar en Furia.
+   - (3) Registro: clave `wild_heart` en `barbarian/__init__.py`,
+     reexportos en `subclasses/__init__.py` y fachada
+     `dnd_sim/__init__.py` (WildHeartFeatures, apply_wild_heart).
+     Commits 68c97cc.
+   - (4) `tests/test_wild_heart.py`: 30 tests (2 de no regresión del
+     hook; tabla, apply/apply_class/aspecto, Bear concede/no concede
+     excluidos/retira/no quita previa/reset, Eagle sin efecto, Wolf
+     ventaja/no al propio bárbaro/sin Furia/a distancia/sin enemigo
+     en rango, Lion desventaja/no al bárbaro/no a otro protegido, Ram
+     derriba/no Huge/no distancia/no sin Furia/no en fallo con d20
+     fijo, renovación por activación, niveles inferiores, semilla
+     fija, Aspect sin efecto). Commit 1df57f0.
+   - (5) Docs: TODO.md (dudas y simplificaciones), ARCHITECTURE.md
+     (fila rules/classes + recuentos: 74 módulos, 45 ficheros) y este
+     bloque. Verificación: arquitectura 3 passed, suite **896
+     passed**, capas.py 1 violación conocida, graphify update .
+     (2758 nodos, 9940 aristas).
+
 ESTADO ACTUAL
-   - 73 módulos en dnd_sim/; tests/ con 44 ficheros y 866 tests
+   - 74 módulos en dnd_sim/; tests/ con 45 ficheros y 896 tests
      (todos en verde como último estado conocido).
    - Registro de clases en rules/classes/ (base + barbarian + subclases).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
@@ -271,6 +358,18 @@ ESTADO ACTUAL
      tundra velocidad 0 como dato al activar); claves
      "storm_herald_desert/sea/tundra" en el registro y fachada;
      tests/test_storm_herald.py (28).
+   - Subclase Path of the Wild Heart (PHB 2024) en
+     rules/classes/barbarian/subclasses/wild_heart.py: Rage of the
+     Wilds (3, opción por activación con pick: Bear resistencias con
+     lista de fuente propia, Eagle sin efecto, Wolf ventaja a aliados
+     vía hook nuevo grant_attack_modifiers), Aspect of the Wilds (6,
+     aspecto owl/panther/salmon sin efecto), Power of the Wilds (14,
+     pick propio: Lion desventaja a enemigos a 5 pies, Ram PRONE al
+     acertar melee a Large o menor con escape de Empujar; Falcon
+     excluida); sin acción propia; clave "wild_heart" en el registro y
+     fachada; hook grant_attack_modifiers en Trait/HOOK_NAMES y
+     roll_modifiers (bloque 5b, patrón reduce_damage_to_allies);
+     tests/test_wild_heart.py (30).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY

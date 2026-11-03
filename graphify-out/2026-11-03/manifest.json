@@ -6,9 +6,9 @@
     "semantic_hash": "7c35e4ad712924d87267833a1ac8835a"
   },
   "dnd_sim/__init__.py": {
-    "mtime": 1793722038.3847046,
-    "seen": 1793722788.130962,
-    "ast_hash": "4c1362c3794a75d4bf36ca678e17d3ab",
+    "mtime": 1793725204.4519038,
+    "seen": 1793725897.3595076,
+    "ast_hash": "f759f8a08462bb09d70fc9d950c28b3c",
     "semantic_hash": ""
   },
   "dnd_sim/data/__init__.py": {
@@ -888,9 +888,9 @@
     "semantic_hash": ""
   },
   "ARCHITECTURE.md": {
-    "mtime": 1793722591.620363,
-    "seen": 1793722788.130962,
-    "ast_hash": "51f717d262db35dcf2c495974f313a6e",
+    "mtime": 1793725766.8950398,
+    "seen": 1793725897.3595076,
+    "ast_hash": "3a78eaa0dfa7f7487cbdad607aafe8b4",
     "semantic_hash": ""
   },
   "tests/test_death.py": {
@@ -1074,9 +1074,9 @@
     "semantic_hash": ""
   },
   "PASOS-ANTERIORES.txt": {
-    "mtime": 1793722747.9414942,
-    "seen": 1793722788.130962,
-    "ast_hash": "93b5fda77871f42ed2fe7b762bc56ac3",
+    "mtime": 1793725856.8021448,
+    "seen": 1793725897.360517,
+    "ast_hash": "d4cae5970f7d2079cf13ee055fd93099",
     "semantic_hash": ""
   },
   "REGLAS-DEL-PROYECTO.txt": {
@@ -1086,9 +1086,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/__init__.py": {
-    "mtime": 1793621504.153186,
-    "seen": 1793722788.130962,
-    "ast_hash": "1b72dbecc28df98df504884512bc726c",
+    "mtime": 1793725175.624384,
+    "seen": 1793725897.3595076,
+    "ast_hash": "b70f0d4e2f6bb0b458538667d14d8a7a",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/features.py": {
@@ -1098,9 +1098,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/__init__.py": {
-    "mtime": 1793621546.0979488,
-    "seen": 1793722788.130962,
-    "ast_hash": "bf026c16eef710852940266f4d0509fb",
+    "mtime": 1793725154.0989287,
+    "seen": 1793725897.3595076,
+    "ast_hash": "f8b55b759888c420d56543d51baa7142",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/ancestral_guardian.py": {
@@ -1170,9 +1170,9 @@
     "semantic_hash": ""
   },
   "TODO.md": {
-    "mtime": 1793722591.6380293,
-    "seen": 1793722788.130962,
-    "ast_hash": "737c3112ebed0d167373124fe29d0e9c",
+    "mtime": 1793725792.1419375,
+    "seen": 1793725897.360517,
+    "ast_hash": "c3eba06564a2f98cf4bb175e8d5684c7",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/berserker.py": {
@@ -1221,6 +1221,18 @@
     "mtime": 1793722368.8469052,
     "seen": 1793722788.130962,
     "ast_hash": "c0fda1e5e60e00a011d81caecf91d39f",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/barbarian/subclasses/storm_herald.py": {
+    "mtime": 1793725118.9633162,
+    "seen": 1793725897.3595076,
+    "ast_hash": "cd97c83ec359b1e2107aa6846c4e8b16",
+    "semantic_hash": ""
+  },
+  "tests/test_storm_herald.py": {
+    "mtime": 1793725645.2000678,
+    "seen": 1793725897.3595076,
+    "ast_hash": "0df68219f421174454ab360250079251",
     "semantic_hash": ""
   }
 }
