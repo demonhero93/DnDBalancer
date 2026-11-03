@@ -152,8 +152,76 @@ Fuente: historial git + ARCHITECTURE.md.
      suite **838 passed**, capas.py 1 violación conocida,
      graphify update ..
 
+10. PATH OF THE STORM HERALD (2026-11-03)
+
+   Plan (antes de escribir código):
+   (0) git status limpio (Giant ya cerrado: 37121aa, ee6f5f3, 791df78,
+       7b8132a). Lectura: ARCHITECTURE, Reglas de Proyecto,
+       berserker.py, giant.py, subclasses/base.py (aquí:
+       rules/classes/base.py), features.py, area.py, targeting.py,
+       saves.py, damage.py, conditions.py, PASOS y TODO. Reglas de la
+       sección 2 del enunciado; NO se consulta la API (no está en SRD).
+   (1) Módulo nuevo `rules/classes/barbarian/subclasses/storm_herald.py`:
+       constantes (`STORM_HERALD_FEATURES`, `ENTORNOS`, tablas de
+       escalado 2/3/4/5/6 y 1d6..4d6, `STORM_AURA_COVERAGE_PROBABILITY`
+       = 1.0), helpers de aura (cobertura por criatura; enemigos con
+       `valid_targets` y aliados propios), trait `StormHeraldFeatures`
+       (Storm Soul permanente en apply; activación del aura en
+       `on_rage_start`; Shielding Storm con lista de fuente propia;
+       Raging Storm con patrón de reacción de Retaliation + pick;
+       `on_rage_end`/`reset` revocan) y `StormAuraAction` (bonus
+       action, usage=None; la decisión de activar la hace el `pick` del
+       encuentro entre candidatas, patrón Intimidating Presence).
+   (2) Registro: 3 claves `storm_herald_desert/sea/tundra`
+       (`apply_class` solo pasa `level`: closures con el entorno),
+       reexportos en `subclasses/__init__.py`, `barbarian/__init__.py`
+       y fachada `dnd_sim/__init__.py` (orden alfabético por capa).
+   (3) `tests/test_storm_herald.py` en español: 3 entornos con sus
+       escalados, activación por Furia y por acción adicional, aura
+       fuera de Furia, Storm Soul permanente, Shielding Storm con y
+       sin resistencia ajena, Raging Storm desert/sea/tundra, niveles
+       inferiores, magia del daño del aura, semilla fija.
+   (4) Docs: TODO.md (simplificaciones y dudas), ARCHITECTURE.md (fila
+       `rules/classes/` + recuentos) y este bloque + ESTADO ACTUAL.
+   (5) Verificación regla 7: `pytest tests/test_arquitectura.py`,
+       `pytest`, `python tools/capas.py`, `graphify update .`.
+   Commits: (a) módulo `storm_herald.py` (helpers de aura + entorno +
+   rasgos), (b) registro y fachada, (c) tests, (d) documentación y
+   grafo. (La propuesta separaba «soporte» de «rasgos» dentro del
+   mismo fichero; un commit = una idea: el módulo va entero y el
+   registro aparte.)
+   Hecho:
+   - (1) `rules/classes/barbarian/subclasses/storm_herald.py` nuevo:
+     `STORM_HERALD_FEATURES` {3: Storm Aura, 6: Storm Soul, 10:
+     Shielding Storm, 14: Raging Storm}; `ENTORNOS`
+     (desert/sea/tundra); constantes `ESCALADO` 2/3/4/5/6 y
+     `1d6..4d6`; `STORM_AURA_COVERAGE_PROBABILITY = 1.0`; helpers
+     `_en_aura`/`_enemigos_en_aura`/`_aliados_en_aura` (criterio de
+     rules/area + valid_targets); trait `StormHeraldFeatures`
+     (`activar_aura` en `on_rage_start`, `_otorgar_resistencia` con
+     lista `_concedidas`, `after_being_hit` con patrón Retaliation +
+     `pick`, tundra `velocidad_cero`, `on_rage_end`/`reset`
+     revocan) y `StormAuraAction` (bonus action, usage=None).
+     Storm Soul (≥6) se añade la resistencia al aplicar (permanente).
+   - (2) Registro: claves `storm_herald_desert/sea/tundra`
+     (closures porque `apply_class` solo pasa `level`) en
+     `barbarian/__init__.py`, reexportos en `subclasses/__init__.py`
+     y fachada `dnd_sim/__init__.py` (StormAuraAction,
+     StormHeraldFeatures, apply_storm_herald).
+   - (3) `tests/test_storm_herald.py`: 28 tests (tabla, apply,
+     entornos, escalados desert/sea, magia del daño, PV temporales
+     sin acumular, activación por Furia y por acción, fuera de Furia,
+     sin enemigos, Storm Soul permanente, Shielding con/sin resistencia
+     ajena y en reset, Raging desert/sea/tundra, niveles inferiores,
+     semilla fija).
+   - (4) Docs: TODO.md (simplificaciones), ARCHITECTURE.md (fila
+     rules/classes + recuentos: 73 módulos, 44 ficheros de tests) y
+     este bloque. Verificación: arquitectura 3 passed, suite
+     **866 passed**, capas.py 1 violación conocida, graphify update .
+     (2676 nodos, 9598 aristas).
+
 ESTADO ACTUAL
-   - 72 módulos en dnd_sim/; tests/ con 43 ficheros y 838 tests
+   - 73 módulos en dnd_sim/; tests/ con 44 ficheros y 866 tests
      (todos en verde como último estado conocido).
    - Registro de clases en rules/classes/ (base + barbarian + subclases).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
@@ -190,6 +258,19 @@ ESTADO ACTUAL
      Mediano o menor: PRONE + 3d6 contundente + fin del agarre),
      Demiurgic Colossus (14, size huge); clave "giant" en el registro
      y fachada; tests/test_giant.py (21).
+   - Subclase Path of the Storm Herald (XGE) en
+     rules/classes/barbarian/subclasses/storm_herald.py: Storm Aura (3,
+     aura en Furia: desierto daño de fuego plano 2/3/4/5/6 sin
+     salvación, mar salvación de DES con 1d6..4d6 y mitad, tundra PV
+     temporales 2/3/4/5/6 sin acumularse; activación automática en
+     on_rage_start y con bonus action usage=None), Storm Soul (6,
+     resistencia permanente por entorno), Shielding Storm (10,
+     resistencia temporal a aliados con lista de fuente propia),
+     Raging Storm (14, reacción patrón Retaliation: desierto daño de
+     fuego = nivel//2 tras salvación de DES, mar PRONE tras FUE;
+     tundra velocidad 0 como dato al activar); claves
+     "storm_herald_desert/sea/tundra" en el registro y fachada;
+     tests/test_storm_herald.py (28).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY

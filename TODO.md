@@ -1,7 +1,7 @@
 # TODO — DnDBalancer / dnd_sim
 
 Revisar al principio de cada sesión. Última revisión: 2026-11-03.
-Contexto detallado: PASOS-ANTERIORES.txt (sección 9) y ARCHITECTURE.md.
+Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-10) y ARCHITECTURE.md.
 
 ## Bloque 2026-10-30 (commiteado)
 
@@ -26,6 +26,28 @@ Contexto detallado: PASOS-ANTERIORES.txt (sección 9) y ARCHITECTURE.md.
     enunciado). La decisión de usarlo o no la hace el `pick` del
     encuentro entre acciones candidatas (patrón Intimidating
     Presence).
+
+- Path of the Storm Herald
+  (`rules/classes/barbarian/subclasses/storm_herald.py`):
+  - La «acción adicional» de Storm Aura se modela como bonus action:
+    el motor solo ejecuta una ACTION y una BONUS_ACTION por turno;
+    la decisión de activarla la hace el `pick` del encuentro entre
+    candidatas (patrón Intimidating Presence / Mighty Impel).
+  - Aura sin posiciones: `STORM_AURA_COVERAGE_PROBABILITY = 1.0`
+    (convención de `rules/area.py`: todo el mundo cuenta a 10 ft);
+    1.0/0.0 no consumen RNG y en medio hay UNA tirada por criatura.
+    Cambiar la constante si algún día hay geometría real.
+  - «Que vea» (Sea) y «aliados elegidos» (Shielding Storm / tundra):
+    sin sistema de visión/elección se usa el pool completo (todos los
+    enemigos / todos los aliados del aura).
+  - Storm Soul: solo la resistencia; los efectos de exploración
+    (respirar bajo el agua, nadar, congelar agua, calor extremo) no
+    tienen efecto en combate sin movimiento: no se modelan.
+  - Raging Storm tundra: la velocidad 0 se guarda como dato
+    (`velocidad_cero`) hasta el próximo turno del bárbaro; sin
+    sistema de movimiento no tiene efecto mecánico.
+  - Raging Storm tundra no tiene reacción (solo actúa al activarse),
+    igual que el enunciado.
 
 ## Grafo y verificación
 
