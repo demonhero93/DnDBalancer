@@ -37,13 +37,20 @@ from .storm_herald import (
     StormHeraldFeatures,
     apply_storm_herald,
 )
+from .wild_heart import (
+    WILD_HEART_FEATURES,
+    WildHeartFeatures,
+    apply_wild_heart,
+)
 
 __all__ = ["ANCESTRAL_FEATURES", "AncestralGuardianFeatures",
            "BATTLERAGER_FEATURES", "BERSERKER_FEATURES", "ENTORNOS",
-           "GIANT_FEATURES", "STORM_HERALD_FEATURES", "BeastFeatures",
+           "GIANT_FEATURES", "STORM_HERALD_FEATURES", "WILD_HEART_FEATURES",
+           "BeastFeatures",
            "BattleragerFeatures", "BerserkerFeatures",
            "FormOfTheBeast", "GiantFeatures", "IntimidatingPresenceAction",
            "MightyImpelAction", "NaturalWeapon", "SpikedArmorAction",
-           "StormAuraAction", "StormHeraldFeatures",
+           "StormAuraAction", "StormHeraldFeatures", "WildHeartFeatures",
            "apply_ancestral_guardian", "apply_battlerager", "apply_beast",
-           "apply_berserker", "apply_giant", "apply_storm_herald"]
+           "apply_berserker", "apply_giant", "apply_storm_herald",
+           "apply_wild_heart"]
