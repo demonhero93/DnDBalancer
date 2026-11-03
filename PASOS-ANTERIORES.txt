@@ -96,8 +96,64 @@ Fuente: historial git + ARCHITECTURE.md.
      test_loader.py +1 (size del owlbear).
    - Suite completa en verde: 817 tests.
 
+9. PATH OF THE GIANT (2026-11-02)  [SIN COMMITEAR]
+   Plan (antes de escribir código):
+   1. Modelo: campo Combatant.size_base (normalizado en __post_init__
+      como size) para restaurar el tamaño al terminar la Furia y en
+      reset().
+   2. Base bárbaro: guardia de rango en
+      BarbarianFeatures.extra_attack_damage (la Furia solo suma en
+      cuerpo a cuerpo; los arrojadizos con FUE los cubre Crushing
+      Throw, que la subclase añade).
+   3. Módulo rules/classes/barbarian/subclasses/giant.py: tabla
+      GIANT_FEATURES, trait GiantFeatures (Giant Stature/Demiurgic
+      Colossus en size, Crushing Throw y Elemental Cleaver en
+      extra_attack_damage, restauración en on_rage_end/reset) y acción
+      bonus MightyImpelAction (patrón Intimidating Presence).
+   4. Registro y fachadas: subclasses/__init__.py, barbarian/__init__.py
+      (clave "giant") y dnd_sim/__init__.py.
+   5. Tests: tests/test_giant.py (tamaño, Crushing Throw, Elemental
+      Cleaver, Mighty Impel, niveles inferiores, límite de Agarrar,
+      semilla fija).
+   6. Docs y verificación: TODO.md (dudas y simplificaciones),
+      ARCHITECTURE.md (fila rules/classes + recuentos), este bloque +
+      ESTADO ACTUAL, regla 7 completa y graphify.
+   Commits: (a) campo size_base, (b) rasgos del Giant + registro,
+   (c) tests, (d) documentación y grafo.
+   Hecho:
+   - (1) `model/combatant.py`: campo `size_base` (normalizado en
+     `__post_init__` a partir de `size`) y `reset()` restaura
+     `size = size_base`.
+   - (2) `rules/classes/barbarian/features.py`: guardia de rango en
+     `BarbarianFeatures.extra_attack_damage` — la Furia base ya no
+     suma en ataques RANGED (los arrojadizos con FUE los cubre
+     Crushing Throw; sin doble conteo).
+   - (3) Módulo nuevo `rules/classes/barbarian/subclasses/giant.py`:
+     `GIANT_FEATURES` {3: Giant's Power+Giant's Havoc, 6: Elemental
+     Cleaver, 10: Mighty Impel, 14: Demiurgic Colossus}; trait
+     `GiantFeatures` (hooks on_rage_start/on_rage_end/extra_attack_
+     damage/reset) y `MightyImpelAction` (bonus action usage=None,
+     patrón Intimidating Presence). Constantes: `_ELEMENTALES` (5
+     tipos, `pick` uniforme); tamaño con `_orden_tamano` de
+     rules/utility.py (filtro de Agarrar dinámico, verificado).
+   - (4) Registro: clave `"giant"` en `barbarian/__init__.py`,
+     reexportos en `subclasses/__init__.py` y fachada
+     `dnd_sim/__init__.py` (GiantFeatures, MightyImpelAction,
+     apply_giant).
+   - (5) `tests/test_giant.py`: 21 tests (tabla, apply/apply_class,
+     tamaño Large/Huge + restauración en on_rage_end y reset, niveles
+     inferiores, Crushing Throw unito+integración con d20 fijo,
+     guardia de la Furia base, Elemental Cleaver (imbuye/+1d6/2d6/
+     restaura), Mighty Impel (con/sin agarrado, sin Furia, objetivo
+     grande), límite de Agarrar con tamaño gigante, semilla fija).
+   - (6) Docs: TODO.md (dudas y simplificaciones), ARCHITECTURE.md
+     (fila rules/classes + recuentos: 72 módulos, 43 ficheros de
+     tests) y este bloque. Verificación: arquitectura 3 passed,
+     suite **838 passed**, capas.py 1 violación conocida,
+     graphify update ..
+
 ESTADO ACTUAL
-   - 71 módulos en dnd_sim/; tests/ con 42 ficheros y 817 tests
+   - 72 módulos en dnd_sim/; tests/ con 43 ficheros y 838 tests
      (todos en verde como último estado conocido).
    - Registro de clases en rules/classes/ (base + barbarian + subclases).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
@@ -123,6 +179,17 @@ ESTADO ACTUAL
      (10, reacción melee), Intimidating Presence (14, bonus action SAB
      CD 8+FUE+PB, uso gratis diario o gasto de Furia);
      tests/test_berserker.py (39).
+   - Subclase Path of the Giant (Camino del Gigante) en
+     rules/classes/barbarian/subclasses/giant.py: Giant Stature (3,
+     size large en Furia, restaura en on_rage_end/reset vía
+     Combatant.size_base), Crushing Throw (3, rage_damage en
+     arrojadiza con FUE que acierta; la Furia base ahora solo suma en
+     cuerpo a cuerpo), Elemental Cleaver (6, tipo con pick + arma
+     imbuyida con tipo alterado/rango MELEE_OR_RANGED y +1d6, 2d6
+     desde 14), Mighty Impel (10, bonus action contra GRAPPLED
+     Mediano o menor: PRONE + 3d6 contundente + fin del agarre),
+     Demiurgic Colossus (14, size huge); clave "giant" en el registro
+     y fachada; tests/test_giant.py (21).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY
