@@ -123,6 +123,9 @@ class Combatant:
     #: defecto). Lo rellena ``load_monster``; lo consume
     #: ``dnd_sim.rules.utility`` (Agarrar: un tamaño mayor como máximo).
     size: str = "medium"
+    #: Tamaño original de la ficha: lo restaura ``reset()`` (y la Furia
+    #: del Path of the Giant) tras un Giant Stature/Demiurgic Colossus.
+    size_base: str = ""
     initiative: int = field(init=False, default=0)
     # Estado de muerte explícito. Lo pone el motor (al recibir un daño igual
     # o mayor que los PV restantes, o al morir en su propio turno) y solo lo
@@ -135,6 +138,8 @@ class Combatant:
             self.combatant_type = CombatantType(self.combatant_type)
         self.hp = self.max_hp
         self.size = str(self.size or "medium").strip().lower() or "medium"
+        self.size_base = (str(self.size_base or self.size).strip().lower()
+                          or "medium")
         self.resistances = {parse_damage_type(x) for x in (self.resistances or set())}
         self.vulnerabilities = {parse_damage_type(x) for x in (self.vulnerabilities or set())}
         self.immunities = {parse_damage_type(x) for x in (self.immunities or set())}
@@ -263,6 +268,8 @@ class Combatant:
         self.dead = False
         # Los PV temporales tampoco sobreviven a un combate nuevo.
         self.temp_hp = 0
+        # El tamaño vuelve al de la ficha (efectos como Giant Stature).
+        self.size = self.size_base
         # Las condiciones duran hasta el fin del combate: se limpian aquí.
         try:
             self.conditions.clear()
