@@ -21,6 +21,7 @@ from .subclasses import (
     WILD_MAGIC_FEATURES,
     WILD_SURGE_TABLE,
     WORLD_TREE_FEATURES,
+    ZEALOT_FEATURES,
     AncestralGuardianFeatures,
     BattleragerFeatures,
     BeastFeatures,
@@ -37,6 +38,9 @@ from .subclasses import (
     WildMagicFeatures,
     WildSurgeAction,
     WorldTreeFeatures,
+    WarriorHealAction,
+    ZealotFeatures,
+    ZealousPresenceAction,
     apply_ancestral_guardian,
     apply_battlerager,
     apply_beast,
@@ -46,6 +50,7 @@ from .subclasses import (
     apply_wild_heart,
     apply_wild_magic,
     apply_world_tree,
+    apply_zealot,
 )
 
 #: Registro de la clase bárbaro con sus subclases (claves normalizadas).
@@ -103,6 +108,10 @@ BARBARIAN_CLASS = register_class(ClassDef(
         "world_tree": SubclassDef(
             name="Path of the World Tree", class_name="barbarian",
             min_level=3, apply=apply_world_tree,
+        ),
+        "zealot": SubclassDef(
+            name="Path of the Zealot", class_name="barbarian",
+            min_level=3, apply=apply_zealot,
         ),
     },
 ))
