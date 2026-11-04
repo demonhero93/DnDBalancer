@@ -6,9 +6,9 @@
     "semantic_hash": "7c35e4ad712924d87267833a1ac8835a"
   },
   "dnd_sim/__init__.py": {
-    "mtime": 1793727783.923246,
-    "seen": 1793728631.1318479,
-    "ast_hash": "6a649e08577ff2375116e4d9bce3f5bf",
+    "mtime": 1793809745.2787316,
+    "seen": 1793810568.4076948,
+    "ast_hash": "60b13ab0a66483129ec4902249fede80",
     "semantic_hash": ""
   },
   "dnd_sim/data/__init__.py": {
@@ -702,8 +702,8 @@
     "semantic_hash": ""
   },
   "dnd_sim/engine/combat/attack.py": {
-    "mtime": 1793466283.954389,
-    "seen": 1793470404.6308365,
+    "mtime": 1793809474.5390172,
+    "seen": 1793810568.4076948,
     "ast_hash": "93e62818d774dc9a7db84ff078d946fd",
     "semantic_hash": ""
   },
@@ -774,8 +774,8 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/conditions.py": {
-    "mtime": 1793615032.5450525,
-    "seen": 1793616391.7797568,
+    "mtime": 1793809474.5650916,
+    "seen": 1793810568.4076948,
     "ast_hash": "9356652edb21d0b8730e4483b5d382be",
     "semantic_hash": ""
   },
@@ -798,9 +798,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/saves.py": {
-    "mtime": 1793466208.5696867,
-    "seen": 1793470404.6308365,
-    "ast_hash": "b4c3c1edbc88d6afde67c16ea7ba0622",
+    "mtime": 1793809474.5650916,
+    "seen": 1793810568.4076948,
+    "ast_hash": "3eef35cf4baa8890e2db374e9ccbf986",
     "semantic_hash": ""
   },
   "dnd_sim/rules/spells/__init__.py": {
@@ -840,9 +840,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/traits/base.py": {
-    "mtime": 1793727182.7315707,
-    "seen": 1793728631.1318479,
-    "ast_hash": "9b796f6e7bab8e31085c6866c626aaf1",
+    "mtime": 1793809244.3562644,
+    "seen": 1793810568.4076948,
+    "ast_hash": "81a0bd734eb6d7f4bd2b16663e6272cf",
     "semantic_hash": ""
   },
   "dnd_sim/rules/traits/defense.py": {
@@ -888,9 +888,9 @@
     "semantic_hash": ""
   },
   "ARCHITECTURE.md": {
-    "mtime": 1793728550.5065718,
-    "seen": 1793728631.1328592,
-    "ast_hash": "75699c213fb5c70e0578c42cda17441e",
+    "mtime": 1793810478.5500891,
+    "seen": 1793810568.4076948,
+    "ast_hash": "6d53f82bf4c373823c74c7b1b5a8c5a7",
     "semantic_hash": ""
   },
   "tests/test_death.py": {
@@ -1074,9 +1074,9 @@
     "semantic_hash": ""
   },
   "PASOS-ANTERIORES.txt": {
-    "mtime": 1793727117.1866593,
-    "seen": 1793728631.1328592,
-    "ast_hash": "94a327a8f25474f8e81727ffd4d1b250",
+    "mtime": 1793810540.9407613,
+    "seen": 1793810568.4076948,
+    "ast_hash": "48fcfc77cc8282f7fab9e8db6a3061cd",
     "semantic_hash": ""
   },
   "REGLAS-DEL-PROYECTO.txt": {
@@ -1086,21 +1086,21 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/__init__.py": {
-    "mtime": 1793727763.856107,
-    "seen": 1793728631.1318479,
-    "ast_hash": "945399a95e7590df20ec64ddb3b835bc",
+    "mtime": 1793809796.5657277,
+    "seen": 1793810568.4076948,
+    "ast_hash": "c35cb7c98ad96458a4bdefacd233996b",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/features.py": {
-    "mtime": 1793621045.8782146,
-    "seen": 1793722788.130962,
+    "mtime": 1793809474.5400634,
+    "seen": 1793810568.4076948,
     "ast_hash": "fc26e38aacaea710e4ece62c30787083",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/__init__.py": {
-    "mtime": 1793727763.8194575,
-    "seen": 1793728631.1318479,
-    "ast_hash": "5739fef7d7d1cacf62f270a22bad6f32",
+    "mtime": 1793809776.6574714,
+    "seen": 1793810568.4076948,
+    "ast_hash": "87092cbcc0a6e70af8bfa126f8aac90d",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/ancestral_guardian.py": {
@@ -1170,9 +1170,9 @@
     "semantic_hash": ""
   },
   "TODO.md": {
-    "mtime": 1793728573.7599082,
-    "seen": 1793728631.1328592,
-    "ast_hash": "66598ea3f395beba6bbaa93b20bef7eb",
+    "mtime": 1793810415.152827,
+    "seen": 1793810568.4076948,
+    "ast_hash": "d47b60e05887c87f23a8fbd1d4bdfa3d",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/berserker.py": {
@@ -1200,8 +1200,8 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/utility.py": {
-    "mtime": 1793617310.0647688,
-    "seen": 1793617578.9684412,
+    "mtime": 1793809474.537003,
+    "seen": 1793810568.4076948,
     "ast_hash": "fc135140f8a16693009deedc3084ab3c",
     "semantic_hash": ""
   },
@@ -1245,6 +1245,18 @@
     "mtime": 1793728348.5215883,
     "seen": 1793728631.1328592,
     "ast_hash": "4ae4cb42385da2fdca37026621346528",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/barbarian/subclasses/wild_magic.py": {
+    "mtime": 1793809667.3234892,
+    "seen": 1793810568.4076948,
+    "ast_hash": "038f352a282aee87a0969f8412b0d360",
+    "semantic_hash": ""
+  },
+  "tests/test_wild_magic.py": {
+    "mtime": 1793810311.0861907,
+    "seen": 1793810568.4076948,
+    "ast_hash": "ce64de8ccb02ad8eb9791faa239893eb",
     "semantic_hash": ""
   }
 }

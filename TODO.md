@@ -1,7 +1,7 @@
 # TODO — DnDBalancer / dnd_sim
 
 Revisar al principio de cada sesión. Última revisión: 2026-11-04.
-Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-12) y ARCHITECTURE.md.
+Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-13) y ARCHITECTURE.md.
 
 ## Bloque 2026-10-30 (commiteado)
 
@@ -103,6 +103,26 @@ Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-12) y ARCHITECTURE.md.
     salvación); las salvaciones que no pasan por ahí (p. ej. la de
     Furia Inaguantable) no lo disparan.
   - CD interpretada 8 + PB + mod CON (regla de la sección 2).
+
+- Path of the World Tree (`rules/classes/barbarian/subclasses/world_tree.py`):
+  - Life-Giving Force: el nº de d6 = `rage_damage(level)` va de memoria
+    [VERIFICAR]; si el texto oficial dice otra cosa, corregir.
+  - Battering Roots (Topple): implementado SIN exigir Furia (regla de
+    la sección 2, de memoria) [VERIFICAR]. Push (maestría) y el alcance
+    +10 pies con armas Heavy/Versatile no tienen efecto sin posiciones:
+    solo dato.
+  - Vitality Surge: los PV temporales NO se revocan al terminar la
+    Furia (la Furia base no los concede ni los retira; misma política
+    que el tundra del Storm Herald; Beast y Battlerager sí revocan los
+    suyos por su regla) [VERIFICAR duración].
+  - Branches of the Tree (6): salvación de FUE, teleporte a 5 pies y
+    velocidad en 0 no modelados (sin posiciones ni movimiento): sin
+    hook, sin gastar reacción y sin consumir RNG, solo dato.
+  - Travel Along the Tree (14): teleporte de 60/150 pies sin posiciones:
+    sin acción propia (para no alterar el `pick` del encuentro), dato.
+  - `Attack.properties`/`Attack.mastery` son campos nuevos con defaults
+    vacíos: el loader NO los rellena, así que Battering Roots solo se
+    activa en armas construidas en código con esas propiedades.
 
 ## Grafo y verificación
 

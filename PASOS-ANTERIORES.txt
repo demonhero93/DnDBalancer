@@ -363,8 +363,72 @@ Fuente: historial git + ARCHITECTURE.md.
      ARCHITECTURE.md (fila rules/classes + recuentos: 75 módulos, 46
      ficheros, 926 tests) y este bloque con ESTADO ACTUAL. Commit (d).
 
+13. PATH OF THE WORLD TREE (2026-11-04)
+   Reglas: PHB 2024 (sección 2). CD Topple 8 + PB + mod de la
+   característica del ataque. Una sola clave "world_tree".
+   Plan (antes de escribir código):
+   1. Campo opcional en model/attack.py: `properties: set[str]` y
+      `mastery: str` (defaults vacíos → fichas existentes sin cambio
+      de comportamiento ni RNG). Commit (a); tests de no regresión en
+      (c).
+   2. Módulo `rules/classes/barbarian/subclasses/world_tree.py`:
+      WORLD_TREE_FEATURES {3: Vitality of the Tree, 6: Branches of the
+      Tree, 10: Battering Roots, 14: Travel Along the Tree};
+      WORLD_TREE_COVERAGE_PROBABILITY=1.0 con `_en_10_pies` (criterio
+      del aura del Storm Herald, copiado sin tocar Storm); trait
+      WorldTreeFeatures: on_rage_start = Vitality Surge (temp_hp =
+      max(actual, level), automático, sin RNG, sin revocar al terminar
+      — política de la Furia base), on_turn_start = Life-Giving Force
+      (aliados heridos a 10 ft, pick entre candidatos + no curar,
+      rage_damage d6 con roll_dice, hp = min(max, hp+total), log), no
+      reacción on_rage_end; extra_attack_damage = Battering Roots
+      (solo MELEE, properties heavy/versatile, mastery != "topple",
+      turno propio sin is_reaction y ctx.actor=owner, pick, salvación
+      CON CD, PRONE con EscapeCheck de Empujar); Branches y Travel solo
+      dato (sin hook, sin reacción, sin RNG). apply_world_tree sin
+      acción propia.
+   3. Registro: clave "world_tree" en barbarian/__init__.py;
+      reexportos en subclasses/__init__.py y fachada dnd_sim/__init__.py.
+      Pasos 2-3 = commit (b).
+   4. tests/test_world_tree.py (~26 tests, patrón test_wild_magic).
+      Commit (c).
+   5. Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
+      ARCHITECTURE.md (fila rules/classes + recuentos: 76 módulos, 47
+      ficheros, N tests) y este bloque con ESTADO ACTUAL. Commit (d).
+   6. Verificación regla 7 (arquitectura, suite, capas.py) +
+      graphify update . antes del commit (d).
+
+   Hecho:
+   - (1) `model/attack.py`: campos `properties: set[str]` y
+     `mastery: str` (defaults vacíos; fichas existentes intactas).
+     Commit 89b2c67.
+   - (2) `world_tree.py`: WORLD_TREE_FEATURES, cobertura 1.0 con
+     `_en_10_pies` + `_aliados_heridos` (criterio del aura del Storm,
+     copiado sin tocarlo), trait con on_rage_start (Vitality Surge,
+     temp_hp = max(actual, nivel), sin RNG, sin revocar),
+     on_turn_start (Life-Giving Force: aliados heridos a 10 ft, pick
+     con opción None, rage_damage d6, hp = min(max), log) y
+     extra_attack_damage (Topple: MELEE, heavy/versatile, mastery !=
+     "topple", sin reacción y ctx.actor=owner, pick, salvación CON CD
+     8+PB+mod del ataque, PRONE con EscapeCheck de Empujar); sin
+     acción propia.
+   - (3) Registro "world_tree" en barbarian/__init__.py + reexportos
+     en subclasses/__init__.py y fachada. Commit bb4e10c.
+   - (4) tests/test_world_tree.py: 27 tests (tabla, apply/apply_class,
+     Vitality Surge nivel/no acumula/no revoca/nivel 3, Life-Giving
+     curación+rage_damage+log/no máximo/no a sí mismo/solo
+     heridos/sin candidatos sin RNG/sin Furia/turno ajeno/decisión no,
+     Topple falla/sin propiedades/ranged/turno propio/duplicado/no
+     Furia/nivel 6, Branches+Travel sin RNG, campos Attack por defecto,
+     semilla fija). Commit 06ab704.
+   - (5) Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
+     ARCHITECTURE.md (fila rules/classes + recuentos: 76 módulos, 47
+     ficheros, 953 tests) y este bloque con ESTADO ACTUAL.
+     Verificación: arquitectura 3 passed, suite **953 passed**,
+     capas.py 1 violación conocida, graphify update .
+
 ESTADO ACTUAL
-   - 75 módulos en dnd_sim/; tests/ con 46 ficheros y 926 tests
+   - 76 módulos en dnd_sim/; tests/ con 47 ficheros y 953 tests
      (todos en verde como último estado conocido).
    - Registro de clases en rules/classes/ (base + barbarian + subclases).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
@@ -437,6 +501,17 @@ ESTADO ACTUAL
      (14, dos tiradas y pick); sin acción propia fuera del espíritu;
      clave "wild_magic" en el registro y fachada;
      tests/test_wild_magic.py (30).
+   - Subclase Path of the World Tree (PHB 2024) en
+     rules/classes/barbarian/subclasses/world_tree.py: Vitality Surge
+     (3, PV temporales = nivel al entrar en Furia, sin revocar al
+     terminar), Life-Giving Force (3, on_turn_start: curación de
+     rage_damage d6 a aliado herido a 10 ft con pick y opción de no
+     curar), Battering Roots (10, extra_attack_damage: Topple con armas
+     Heavy/Versatile en turno propio, salvación CON, PRONE con
+     EscapeCheck de Empujar; campos nuevos Attack.properties/mastery),
+     Branches (6) y Travel (14) como datos sin efecto; sin acción
+     propia; clave "world_tree" en el registro y fachada;
+     tests/test_world_tree.py (27).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY
