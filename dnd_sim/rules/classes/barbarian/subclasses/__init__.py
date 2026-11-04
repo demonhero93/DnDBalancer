@@ -50,18 +50,25 @@ from .wild_magic import (
     WildSurgeAction,
     apply_wild_magic,
 )
+from .world_tree import (
+    WORLD_TREE_COVERAGE_PROBABILITY,
+    WORLD_TREE_FEATURES,
+    WorldTreeFeatures,
+    apply_world_tree,
+)
 
 __all__ = ["ANCESTRAL_FEATURES", "AncestralGuardianFeatures",
            "BATTLERAGER_FEATURES", "BERSERKER_FEATURES", "ENTORNOS",
            "GIANT_FEATURES", "STORM_HERALD_FEATURES", "WILD_HEART_FEATURES",
            "WILD_MAGIC_COVERAGE_PROBABILITY", "WILD_MAGIC_FEATURES",
            "WILD_SURGE_TABLE",
+           "WORLD_TREE_COVERAGE_PROBABILITY", "WORLD_TREE_FEATURES",
            "BeastFeatures",
            "BattleragerFeatures", "BerserkerFeatures",
            "FormOfTheBeast", "GiantFeatures", "IntimidatingPresenceAction",
            "MightyImpelAction", "NaturalWeapon", "SpikedArmorAction",
            "StormAuraAction", "StormHeraldFeatures", "WildHeartFeatures",
-           "WildMagicFeatures", "WildSurgeAction",
+           "WildMagicFeatures", "WildSurgeAction", "WorldTreeFeatures",
            "apply_ancestral_guardian", "apply_battlerager", "apply_beast",
            "apply_berserker", "apply_giant", "apply_storm_herald",
-           "apply_wild_heart", "apply_wild_magic"]
+           "apply_wild_heart", "apply_wild_magic", "apply_world_tree"]
