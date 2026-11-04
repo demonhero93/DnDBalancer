@@ -18,6 +18,8 @@ from .subclasses import (
     GIANT_FEATURES,
     STORM_HERALD_FEATURES,
     WILD_HEART_FEATURES,
+    WILD_MAGIC_FEATURES,
+    WILD_SURGE_TABLE,
     AncestralGuardianFeatures,
     BattleragerFeatures,
     BeastFeatures,
@@ -31,6 +33,8 @@ from .subclasses import (
     StormAuraAction,
     StormHeraldFeatures,
     WildHeartFeatures,
+    WildMagicFeatures,
+    WildSurgeAction,
     apply_ancestral_guardian,
     apply_battlerager,
     apply_beast,
@@ -38,6 +42,7 @@ from .subclasses import (
     apply_giant,
     apply_storm_herald,
     apply_wild_heart,
+    apply_wild_magic,
 )
 
 #: Registro de la clase bárbaro con sus subclases (claves normalizadas).
@@ -87,6 +92,10 @@ BARBARIAN_CLASS = register_class(ClassDef(
         "wild_heart": SubclassDef(
             name="Path of the Wild Heart", class_name="barbarian",
             min_level=3, apply=apply_wild_heart,
+        ),
+        "wild_magic": SubclassDef(
+            name="Path of Wild Magic", class_name="barbarian",
+            min_level=3, apply=apply_wild_magic,
         ),
     },
 ))

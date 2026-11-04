@@ -42,15 +42,26 @@ from .wild_heart import (
     WildHeartFeatures,
     apply_wild_heart,
 )
+from .wild_magic import (
+    WILD_MAGIC_COVERAGE_PROBABILITY,
+    WILD_MAGIC_FEATURES,
+    WILD_SURGE_TABLE,
+    WildMagicFeatures,
+    WildSurgeAction,
+    apply_wild_magic,
+)
 
 __all__ = ["ANCESTRAL_FEATURES", "AncestralGuardianFeatures",
            "BATTLERAGER_FEATURES", "BERSERKER_FEATURES", "ENTORNOS",
            "GIANT_FEATURES", "STORM_HERALD_FEATURES", "WILD_HEART_FEATURES",
+           "WILD_MAGIC_COVERAGE_PROBABILITY", "WILD_MAGIC_FEATURES",
+           "WILD_SURGE_TABLE",
            "BeastFeatures",
            "BattleragerFeatures", "BerserkerFeatures",
            "FormOfTheBeast", "GiantFeatures", "IntimidatingPresenceAction",
            "MightyImpelAction", "NaturalWeapon", "SpikedArmorAction",
            "StormAuraAction", "StormHeraldFeatures", "WildHeartFeatures",
+           "WildMagicFeatures", "WildSurgeAction",
            "apply_ancestral_guardian", "apply_battlerager", "apply_beast",
            "apply_berserker", "apply_giant", "apply_storm_herald",
-           "apply_wild_heart"]
+           "apply_wild_heart", "apply_wild_magic"]

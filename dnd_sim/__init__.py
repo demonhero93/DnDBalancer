@@ -57,6 +57,9 @@ from .rules.classes.barbarian.subclasses.storm_herald import (
 from .rules.classes.barbarian.subclasses.wild_heart import (
     WildHeartFeatures, apply_wild_heart,
 )
+from .rules.classes.barbarian.subclasses.wild_magic import (
+    WildMagicFeatures, WildSurgeAction, apply_wild_magic,
+)
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
                            skill_bonus, skill_check)
@@ -134,11 +137,12 @@ __all__ = [
     "SuperiorInvisibility",
     "Trait", "TurnResistance", "TurnResources", "UndeadFortitude",
     "UsageKind", "WeaponAttackAction", "WildHeartFeatures",
+    "WildMagicFeatures", "WildSurgeAction",
     "ability_check", "ability_check_bonus",
     "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
     "apply_battlerager", "apply_beast", "apply_berserker", "apply_class",
     "apply_condition", "apply_giant", "apply_storm_herald",
-    "apply_wild_heart",
+    "apply_wild_heart", "apply_wild_magic",
     "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",
     "attempt_escapes", "begin_turn",
     "check_modifiers", "d20", "desenganchar", "effective_ac", "end_turn",
