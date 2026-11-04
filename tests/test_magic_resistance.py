@@ -162,7 +162,7 @@ def test_condition_action_de_hechizo_pasa_magical(monkeypatch):
     registros = []
     real = saves_mod.saving_throw
 
-    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False):
+    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False, **kw):
         registros.append(magical)
         return real(target, ability, dc, rng, mode, kind=kind, magical=magical)
 
@@ -184,7 +184,7 @@ def test_end_turn_usa_el_magical_de_la_instancia(monkeypatch):
     registros = []
     real = saves_mod.saving_throw
 
-    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False):
+    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False, **kw):
         registros.append(magical)
         return real(target, ability, dc, rng, mode, kind=kind, magical=magical)
 
@@ -203,7 +203,7 @@ def test_los_riders_de_ataque_pasan_magical(monkeypatch):
     registros = []
     real = saves_mod.saving_throw
 
-    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False):
+    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False, **kw):
         registros.append(magical)
         return real(target, ability, dc, rng, mode, kind=kind, magical=magical)
 
@@ -227,7 +227,7 @@ def test_un_truco_de_hechizo_pasa_magical_a_su_salvacion(monkeypatch):
     registros = []
     real = saves_mod.saving_throw
 
-    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False):
+    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False, **kw):
         registros.append(magical)
         return real(target, ability, dc, rng, mode, kind=kind, magical=magical)
 
@@ -245,7 +245,7 @@ def test_fiereza_infecciosa_de_la_beast_no_activa_la_ventaja(monkeypatch):
     registros = []
     real = saves_mod.saving_throw
 
-    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False):
+    def spy(target, ability, dc, rng, mode=None, *, kind=None, magical=False, **kw):
         registros.append(magical)
         return real(target, ability, dc, rng, mode, kind=kind, magical=magical)
 

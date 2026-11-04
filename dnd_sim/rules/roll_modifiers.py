@@ -313,12 +313,16 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
 
 def save_modifiers(target: Any, ability: str,
                    kind: str | None = None, *,
-                   magical: bool = False) -> SaveModifiers:
+                   magical: bool = False,
+                   ctx: Any = None) -> SaveModifiers:
     """Reúne los modificadores de una tirada de salvación del objetivo.
 
     Además de condiciones e indicadores estáticos, consulta los hooks
     ``modify_save_modifiers`` de los rasgos del objetivo
-    (:mod:`dnd_sim.rules.traits`).
+    (:mod:`dnd_sim.rules.traits`) y, si llega ``ctx``, los hooks
+    ``grant_save_modifiers`` de los rasgos del **resto** de combatientes
+    (p. ej. Zealous Presence: ventaja a aliados; el propio objetivo se
+    salta). Sin ``ctx`` no se consulta a nadie (cero coste y cero RNG).
 
     ``kind`` identifica el tipo de efecto que provoca la salvación cuando
     quien la tira lo sabe (``"turn"`` = un efecto que convierte
@@ -366,6 +370,22 @@ def save_modifiers(target: Any, ability: str,
     if traits:
         for rasgo in _hooks(traits, "modify_save_modifiers"):
             rasgo.modify_save_modifiers(mods, target, ability, kind)
+
+    # Rasgos de OTROS que grantan ventaja/desventaja a esta salvación
+    # (p. ej. Zealous Presence): mismo patrón que el bloque 5b de
+    # attack_modifiers; el propio objetivo se salta (su trait ya corrió
+    # en el bloque anterior). Si ningún rasgo sobrescribe el hook no se
+    # consume RNG.
+    if ctx is not None:
+        for otro in getattr(ctx, "combatants", None) or []:
+            if otro is target:
+                continue
+            traits_otro = getattr(otro, "traits", None)
+            if not traits_otro:
+                continue
+            for rasgo in _hooks(traits_otro, "grant_save_modifiers"):
+                rasgo.grant_save_modifiers(mods, target, ability, kind,
+                                           ctx=ctx)
 
     # Resistencia mágica: ventaja solo si la salvación proviene de un
     # efecto mágico (``magical=True``) y el objetivo tiene el rasgo. Va

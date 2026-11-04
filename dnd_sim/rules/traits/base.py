@@ -174,17 +174,37 @@ class Trait:
         """
         return None
 
+    def grant_save_modifiers(self, mods: Any, target: Any, ability: str,
+                             kind: str | None = None,
+                             ctx: Any = None) -> None:
+        """Hook: ventaja/desventaja que este rasgo **granta** a la salvación de ``target``.
+
+        Se ejecuta en :func:`dnd_sim.rules.roll_modifiers.save_modifiers`
+        consultando los rasgos del **resto** de combatientes del contexto
+        (el propio objetivo ya pasó por ``modify_save_modifiers``): es la
+        vía para que un rasgo influya en salvaciones de terceros (p. ej.
+        Zealous Presence). ``mods`` es el mismo
+        :class:`dnd_sim.rules.roll_modifiers.SaveModifiers` y cada rasgo
+        decide por sí mismo si aplica (bandos, cobertura...). Por defecto
+        no hace nada.
+        """
+        return None
+
     # --- Tras fallar una salvación -------------------------------------------
     def after_failed_save(self, target: Any, ability: str, result: Any,
-                          ctx: Any = None) -> None:
+                          ctx: Any = None) -> Any:
         """Hook: ``target`` acaba de FALLAR una salvación (o auto-falló).
 
-        Se dispara desde :func:`dnd_sim.rules.saving_throw` justo después
-        de resolver la Resistencia legendaria (un fallo convertido en
-        éxito NO lo dispara), solo si llega ``ctx``. ``ability`` es la
-        característica normalizada (``"con"``...) y ``result`` el
-        :class:`SaveResult`. Lo usa Unstable Backlash (Path of Wild
-        Magic). Por defecto no hace nada.
+        Se despacha desde :func:`dnd_sim.rules.registrar_resistencia`
+        (el punto con contexto tras cada ``saving_throw``) solo si llega
+        ``ctx`` y el resultado sigue fallando (la Resistencia legendaria
+        ya se aplicó; un fallo convertido en éxito NO lo dispara).
+        ``ability`` es la característica normalizada (``"con"``...) y
+        ``result`` el :class:`SaveResult`. Devolver un ``SaveResult``
+        nuevo **sustituye** al original (p. ej. la repetición de
+        Fanatical Focus); devolver ``None`` lo deja igual. Lo usan
+        Unstable Backlash (Path of Wild Magic) y Fanatical Focus (Path
+        of the Zealot). Por defecto no hace nada.
         """
         return None
 
@@ -314,6 +334,7 @@ HOOK_NAMES: tuple[str, ...] = (
     "modify_attack_modifiers",
     "grant_attack_modifiers",
     "modify_save_modifiers",
+    "grant_save_modifiers",
     "after_failed_save",
     "modify_check_modifiers",
     "modify_incoming_damage",

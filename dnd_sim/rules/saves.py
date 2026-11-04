@@ -52,7 +52,7 @@ def _resolve_mode_str(value: Any) -> RollMode:
 
 def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
                  mode: Any = None, *, kind: str | None = None,
-                 magical: bool = False) -> SaveResult:
+                 magical: bool = False, ctx: Any = None) -> SaveResult:
     """Tira una salvación de D&D 5e.
 
     Un 20 natural NO es éxito automático y un 1 natural NO es fallo
@@ -76,10 +76,15 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
     conoce lo pasa (``"turn"`` = efecto que convierte no-muertos); lo
     reciben los hooks de rasgo vía
     :func:`dnd_sim.rules.roll_modifiers.save_modifiers`.
+
+    ``ctx`` es el contexto de combate opcional: si llega, los hooks
+    ``grant_save_modifiers`` de los rasgos del **resto** de combatientes
+    pueden añadir ventaja/desventaja a esta salvación (p. ej. Zealous
+    Presence). Sin ``ctx`` no se consulta a nadie (cero coste y cero RNG).
     """
     ab = normalize_ability(ability)
     from .roll_modifiers import save_modifiers
-    modifiers = save_modifiers(target, ab, kind, magical=magical)
+    modifiers = save_modifiers(target, ab, kind, magical=magical, ctx=ctx)
 
     if modifiers.auto_fail:
         return _con_resistencia_legendaria(target, SaveResult(
@@ -141,29 +146,40 @@ def registrar_resistencia(ctx: Any, target: Any, result: SaveResult) -> SaveResu
     con contexto de combate). Si la salvación sigue fallando después de
     la Resistencia legendaria, aquí se despacha también el hook
     ``after_failed_save`` de los rasgos de ``target`` (p. ej. Unstable
-    Backlash): sin ``ctx``, sin fallo o sin rasgos que lo sobrescriban no
-    se consulta nada (cero coste y cero RNG).
+    Backlash, Fanatical Focus): sin ``ctx``, sin fallo o sin rasgos que
+    lo sobrescriban no se consulta nada (cero coste y cero RNG). Un rasgo
+    puede **devolver** un ``SaveResult`` nuevo que sustituya al original
+    (la repetición de Fanatical Focus): si lo hace, es el valor que
+    devuelven los call sites.
     """
     from .legendary import registrar_resistencia_legendaria
     try:
         result = registrar_resistencia_legendaria(ctx, target, result)
     except Exception:
         pass
-    _avisar_fallo_salvacion(target, result, ctx)
-    return result
+    return _avisar_fallo_salvacion(target, result, ctx)
 
 
 def _avisar_fallo_salvacion(target: Any, result: SaveResult,
-                            ctx: Any) -> None:
-    """Despacha el hook ``after_failed_save`` si la salvación falló."""
+                            ctx: Any) -> SaveResult:
+    """Despacha el hook ``after_failed_save`` si la salvación falló.
+
+    Devuelve ``result`` (o el ``SaveResult`` que un rasgo devuelva para
+    sustituirlo; si uno lo salva, se corta el bucle).
+    """
     if ctx is None or target is None or result.success:
-        return
+        return result
     traits = getattr(target, "traits", None)
     if not traits:
-        return
+        return result
     from .traits.base import hooks
     for rasgo in hooks(traits, "after_failed_save"):
-        rasgo.after_failed_save(target, result.ability, result, ctx)
+        nuevo = rasgo.after_failed_save(target, result.ability, result, ctx)
+        if nuevo is not None:
+            result = nuevo
+            if result.success:
+                break
+    return result
 
 
 # --- SaveDamage / resolve_save_damage ---------------------------------------
@@ -269,7 +285,7 @@ def apply_save_damage(source: Any, target: Any, effect: SaveDamage,
     #    efecto es mágico (hechizo); los alientos y salvaciones de ficha
     #    van con False por defecto.
     sr = saving_throw(target, eff.ability, int(eff.dc), rng,
-                      magical=eff.magical)
+                      magical=eff.magical, ctx=ctx)
     sr = registrar_resistencia(ctx, target, sr)
 
     # 2. Aplicar el éxito de la salvación.

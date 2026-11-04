@@ -490,7 +490,8 @@ def end_turn(actor: Any, ctx: Any) -> None:
             from .saves import registrar_resistencia, saving_throw
             sr = saving_throw(actor, instance.repeat_save.ability,
                               instance.repeat_save.dc, ctx.rng,
-                              magical=bool(getattr(instance, "magical", False)))
+                              magical=bool(getattr(instance, "magical", False)),
+                              ctx=ctx)
             sr = registrar_resistencia(ctx, actor, sr)
             habilidad = instance.repeat_save.ability.upper()
             if sr.success:
@@ -605,7 +606,8 @@ class ConditionAction(CombatAction):
                 )
                 continue
             sr = saving_throw(objetivo, effect.save_ability, effect.dc, context.rng,
-                              magical=bool(getattr(effect, "magical", False)))
+                              magical=bool(getattr(effect, "magical", False)),
+                              ctx=context)
             sr = registrar_resistencia(context, objetivo, sr)
             if sr.success:
                 _log_line(context, f"  {getattr(objetivo, 'name', objetivo)}: "

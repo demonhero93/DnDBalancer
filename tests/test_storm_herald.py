@@ -81,7 +81,7 @@ def _fijar_salvacion(monkeypatch, exito: bool) -> None:
     import dnd_sim.rules.saves as saves_mod
 
     def espia(target, ability, dc, rng, mode=None, *, kind=None,
-              magical=False):
+              magical=False, **kw):
         return SaveResult(ability=ability, dc=dc, rolls=[10], bonus=0,
                           total=10, success=exito, mode=RollMode.NORMAL)
 

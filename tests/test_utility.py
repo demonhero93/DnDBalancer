@@ -44,7 +44,7 @@ def _ctx(actor, combatants, rng):
 
 
 def _siempre_falla(target, ability, dc, rng, mode=None, *, kind=None,
-                   magical=False) -> SaveResult:
+                   magical=False, **kw) -> SaveResult:
     # Salvación determinista: el resultado no depende de los dados.
     return SaveResult(ability=ability, dc=dc, rolls=[1], bonus=0, total=1,
                       success=False, mode=RollMode.NORMAL)

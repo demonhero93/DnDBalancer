@@ -363,7 +363,7 @@ def test_guarida_pasa_magical_a_las_salvaciones(lairs_dir, monkeypatch):
     original = saves_mod.saving_throw
 
     def spy(target, ability, dc, rng, mode=None, *, kind=None,
-            magical=False):
+            magical=False, **kw):
         llamadas.append(bool(magical))
         return original(target, ability, dc, rng, mode, kind=kind,
                         magical=magical)

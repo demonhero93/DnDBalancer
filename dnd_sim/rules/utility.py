@@ -169,7 +169,7 @@ def ataque_utilitario(actor: Any, ctx: Any, rng: Any, atk: Any = None) -> bool:
     log_line(ctx, f"{nombre} intenta {tipo} a "
                   f"{getattr(objetivo, 'name', objetivo)}")
     habilidad = pick(rng, ["str", "dex"])
-    sr = saving_throw(objetivo, habilidad, dc, rng, magical=False)
+    sr = saving_throw(objetivo, habilidad, dc, rng, magical=False, ctx=ctx)
     sr = registrar_resistencia(ctx, objetivo, sr)
     if sr.success:
         log_line(ctx, f"  salvación {habilidad.upper()} {sr.total} vs CD {dc}: "

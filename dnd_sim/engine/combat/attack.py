@@ -461,7 +461,8 @@ def _apply_condition_riders(attacker, target, atk, rng, log, ctx) -> None:
             )
             continue
         sr = saving_throw(target, rider.save_ability, rider.dc, rng,
-                          magical=bool(getattr(rider, "magical", False)))
+                          magical=bool(getattr(rider, "magical", False)),
+                          ctx=_ctx)
         sr = registrar_resistencia(_ctx, target, sr)
         if sr.success:
             continue
