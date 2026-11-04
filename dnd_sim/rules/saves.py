@@ -137,14 +137,33 @@ def _con_resistencia_legendaria(target: Any, result: SaveResult,
 def registrar_resistencia(ctx: Any, target: Any, result: SaveResult) -> SaveResult:
     """Log y estadísticas si la Resistencia legendaria se ha gastado.
 
-    Se llama justo después de cada :func:`saving_throw` (el único sitio con
-    contexto de combate).
+    Se llama justo después de cada :func:`saving_throw` (el único sitio
+    con contexto de combate). Si la salvación sigue fallando después de
+    la Resistencia legendaria, aquí se despacha también el hook
+    ``after_failed_save`` de los rasgos de ``target`` (p. ej. Unstable
+    Backlash): sin ``ctx``, sin fallo o sin rasgos que lo sobrescriban no
+    se consulta nada (cero coste y cero RNG).
     """
     from .legendary import registrar_resistencia_legendaria
     try:
-        return registrar_resistencia_legendaria(ctx, target, result)
+        result = registrar_resistencia_legendaria(ctx, target, result)
     except Exception:
-        return result
+        pass
+    _avisar_fallo_salvacion(target, result, ctx)
+    return result
+
+
+def _avisar_fallo_salvacion(target: Any, result: SaveResult,
+                            ctx: Any) -> None:
+    """Despacha el hook ``after_failed_save`` si la salvación falló."""
+    if ctx is None or target is None or result.success:
+        return
+    traits = getattr(target, "traits", None)
+    if not traits:
+        return
+    from .traits.base import hooks
+    for rasgo in hooks(traits, "after_failed_save"):
+        rasgo.after_failed_save(target, result.ability, result, ctx)
 
 
 # --- SaveDamage / resolve_save_damage ---------------------------------------

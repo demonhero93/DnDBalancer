@@ -174,6 +174,20 @@ class Trait:
         """
         return None
 
+    # --- Tras fallar una salvación -------------------------------------------
+    def after_failed_save(self, target: Any, ability: str, result: Any,
+                          ctx: Any = None) -> None:
+        """Hook: ``target`` acaba de FALLAR una salvación (o auto-falló).
+
+        Se dispara desde :func:`dnd_sim.rules.saving_throw` justo después
+        de resolver la Resistencia legendaria (un fallo convertido en
+        éxito NO lo dispara), solo si llega ``ctx``. ``ability`` es la
+        característica normalizada (``"con"``...) y ``result`` el
+        :class:`SaveResult`. Lo usa Unstable Backlash (Path of Wild
+        Magic). Por defecto no hace nada.
+        """
+        return None
+
     # --- Pruebas de característica ----------------------------------------
     def modify_check_modifiers(self, mods: Any, target: Any, ability: str,
                                skill: str | None = None) -> None:
@@ -300,6 +314,7 @@ HOOK_NAMES: tuple[str, ...] = (
     "modify_attack_modifiers",
     "grant_attack_modifiers",
     "modify_save_modifiers",
+    "after_failed_save",
     "modify_check_modifiers",
     "modify_incoming_damage",
     "after_damage_taken",
