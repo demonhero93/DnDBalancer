@@ -307,8 +307,64 @@ Fuente: historial git + ARCHITECTURE.md.
      passed**, capas.py 1 violación conocida, graphify update .
      (2758 nodos, 9940 aristas).
 
+12. PATH OF WILD MAGIC (2026-11-04)
+   Reglas: TCE 2020 (tabla Wild Surge de 8 efectos marcados
+   [VERIFICAR]); CD 8 + PB + mod CON; todo el daño de la subclase es
+   mágico; los efectos duran la Furia y se olvidan en on_rage_end/reset.
+   Plan (antes de escribir código):
+   1. Hook nuevo `after_failed_save`: no-op en Trait + HOOK_NAMES +
+      despacho en rules/saves.py (`saving_throw` gana `ctx=None`;
+      `_avisar_fallo_salvacion` en los dos retornos, solo con fallo y
+      ctx; cero coste/RNG sin rasgos que sobrescriban). Se pasa ctx
+      desde apply_save_damage, utility (empujar), conditions (salvación
+      de repetición y efectos de área), attack (rider) y features
+      (Furia Inaguantable). Commit (a); tests de no regresión en (c).
+   2. Módulo `rules/classes/barbarian/subclasses/wild_magic.py`:
+      WILD_MAGIC_FEATURES {3: Magic Awareness + Wild Surge, 6:
+      Bolstering Magic, 10: Unstable Backlash, 14: Controlled Surge};
+      WILD_SURGE_TABLE con 8 entradas (nombre + función); trait
+      WildMagicFeatures (efecto actual, infusión con armas previas,
+      on_rage_start → _tirar_surge con pick y DOBLE tirada + pick en
+      14, after_being_hit = Retribution + Unstable Backlash,
+      after_failed_save = Unstable Backlash, on_rage_end/reset =
+      _revocar); WildSurgeAction (bonus usage=None, patrón
+      StormAuraAction, solo con Intangible Spirit); apply_wild_magic.
+   3. Registro: clave "wild_magic" en barbarian/__init__.py;
+      reexportos en subclasses/__init__.py y fachada dnd_sim/__init__.py
+      (import bloque + __all__ alfabético). Pasos 2-3 = commit (b).
+   4. tests/test_wild_magic.py (~28 tests, patrón test_wild_heart:
+      helpers, monkeypatch al módulo que define, d20 fijo vía
+      attack.roll_d20). Commit (c).
+   5. Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
+      ARCHITECTURE.md (fila rules/classes + recuentos: 75 módulos, 46
+      ficheros, N tests) y este bloque con ESTADO ACTUAL. Commit (d).
+   6. Verificación regla 7 (arquitectura, suite, capas.py) +
+      graphify update . antes del commit (d).
+
+   Hecho:
+   - (1) hooks: Trait.after_failed_save + HOOK_NAMES + despacho en
+     saves.registrar_resistencia (llamada tras CADA saving_throw con
+     ctx; solo fallo y rasgos que sobrescriban, cero RNG sin ellos).
+     El despacho vive en registrar_resistencia, NO en saving_throw:
+     así ningún stub de test ni firma cambia.
+   - (2) wild_magic.py: tabla de 8, trait con efecto/infusión/
+     retribución/backlash, WildSurgeAction, apply_wild_magic.
+   - (3) Registro "wild_magic" + reexportos en subclasses/__init__.py
+     y fachada.
+   - (4) tests/test_wild_magic.py: 30 tests (tabla, apply/apply_class,
+     activación por Furia, renovación, sin RNG, doble tirada solo en
+     14, Shadowy Tendrils con/sin fallo y PV no acumulables, efectos
+     sin efecto, espíritu can_use/execute, Infusion marca/restaura en
+     on_rage_end y reset, Retribution daño/furia/decisión, Backlash
+     reacción/sustituye/sin reacción/salvación fallida/nivel 3,
+     Controlled Surge, hook no regresión + RNG intacto, semilla fija).
+     Commit 5adca98.
+   - (5) Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
+     ARCHITECTURE.md (fila rules/classes + recuentos: 75 módulos, 46
+     ficheros, 926 tests) y este bloque con ESTADO ACTUAL. Commit (d).
+
 ESTADO ACTUAL
-   - 74 módulos en dnd_sim/; tests/ con 45 ficheros y 896 tests
+   - 75 módulos en dnd_sim/; tests/ con 46 ficheros y 926 tests
      (todos en verde como último estado conocido).
    - Registro de clases en rules/classes/ (base + barbarian + subclases).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
@@ -370,6 +426,17 @@ ESTADO ACTUAL
      fachada; hook grant_attack_modifiers en Trait/HOOK_NAMES y
      roll_modifiers (bloque 5b, patrón reduce_damage_to_allies);
      tests/test_wild_heart.py (30).
+   - Subclase Path of Wild Magic (TCE 2020) en
+     rules/classes/barbarian/subclasses/wild_magic.py: Wild Surge (3,
+     pick en WILD_SURGE_TABLE de 8 efectos por activación: Shadowy
+     Tendrils daño necrótico CON + PV temporales, Intangible Spirit
+     con bonus action WildSurgeAction, Magic Infusion con armas
+     mágicas restaurables, Retribution con rage_damage tras impacto),
+     Unstable Backlash (10, reacción tras impacto o salvación fallida
+     vía hook after_failed_save, revoca y re-tira), Controlled Surge
+     (14, dos tiradas y pick); sin acción propia fuera del espíritu;
+     clave "wild_magic" en el registro y fachada;
+     tests/test_wild_magic.py (30).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY

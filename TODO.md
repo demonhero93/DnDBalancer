@@ -1,7 +1,7 @@
 # TODO — DnDBalancer / dnd_sim
 
-Revisar al principio de cada sesión. Última revisión: 2026-11-03.
-Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-11) y ARCHITECTURE.md.
+Revisar al principio de cada sesión. Última revisión: 2026-11-04.
+Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-12) y ARCHITECTURE.md.
 
 ## Bloque 2026-10-30 (commiteado)
 
@@ -73,6 +73,36 @@ Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-11) y ARCHITECTURE.md.
   - Ram: alcance y «voluntaria» no modelados; PRONE con el mismo
     escape de Empujar (FUE/DES CD 10, sin gastar acción) y decisión
     por acierto con `pick` 50/50.
+
+- Path of Wild Magic (`rules/classes/barbarian/subclasses/wild_magic.py`):
+  - La tabla Wild Surge de 8 efectos va de memoria [VERIFICAR]: si el
+    usuario aporta el texto oficial, ese manda. La entrada 8 ocupa la
+    ranura con «Pendiente» (sin efecto mecánico).
+  - Magic Awareness (3): detectar magia a 60 pies con usos por descanso
+    no tiene efecto en combate — solo dato del rasgo.
+  - Bolstering Magic (6): acción adicional que da 1d3 a ataques y
+    pruebas o recupera un espacio de conjuro [VERIFICAR texto]: sin
+    bono plano a la tirada ni espacios de conjuro en el motor, sin
+    efecto — solo dato (no se creó un hook solo por esto).
+  - Efectos 6 (Bolstering Magic de la tabla), Teleport y Flowers and
+    Vines: sin efecto mecánico (bono no modelado / sin posiciones).
+  - Shadowy Tendrils: los PV temporales NO se revocan al terminar la
+    Furia (no se pueden atribuir por fuente; mismo criterio que el
+    aura de tundra del Storm Herald).
+  - Intangible Spirit: la explosión de área de 5 pies se resuelve
+    sobre UN enemigo elegido con `pick` (sin geometría) y «al final
+    del turno» se modela como bonus action (patrón StormAuraAction).
+  - Magic Infusion: marca TODAS las armas del bárbaro como mágicas
+    (la regla dice «un arma» [VERIFICAR]); se restauran al terminar
+    la Furia y en `reset()`.
+  - Retribution: daño de fuerza = `rage_damage(level)` tras recibir un
+    impacto, sin reacción ni límite por ronda; alcance no modelado
+    [VERIFICAR].
+  - Unstable Backlash: el despacho del hook `after_failed_save` vive
+    en `registrar_resistencia` (el punto con contexto tras cada
+    salvación); las salvaciones que no pasan por ahí (p. ej. la de
+    Furia Inaguantable) no lo disparan.
+  - CD interpretada 8 + PB + mod CON (regla de la sección 2).
 
 ## Grafo y verificación
 
