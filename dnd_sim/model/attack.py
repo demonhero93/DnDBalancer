@@ -63,6 +63,12 @@ class Attack:
     # ``nonmagical_immunities`` solo aplican esas reglas si el daño NO es
     # mágico. Documentación única del significado: dnd_sim/model/combatant.py.
     magical: bool = False
+    # Propiedades del arma ("heavy", "versatile"...): habilitan rasgos
+    # como Battering Roots. Vacío por defecto: las fichas existentes no
+    # cambian comportamiento ni RNG.
+    properties: set[str] = field(default_factory=set)
+    # Maestría del arma ("topple", "push"...): vacío si no la tiene.
+    mastery: str = ""
 
     def __post_init__(self) -> None:
         # Permite construir Attack con un str como damage_type.
