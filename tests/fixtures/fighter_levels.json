@@ -1,0 +1,129 @@
+[
+    {
+        "level": 1,
+        "features": [
+            {"name": "Fighting Style"},
+            {"name": "Second Wind"},
+            {"name": "Weapon Mastery"}
+        ]
+    },
+    {
+        "level": 2,
+        "features": [
+            {"name": "Action Surge"},
+            {"name": "Tactical Mind"}
+        ]
+    },
+    {
+        "level": 3,
+        "features": [
+            {"name": "Fighter Subclass"}
+        ]
+    },
+    {
+        "level": 4,
+        "features": [
+            {"name": "Ability Score Improvement"}
+        ]
+    },
+    {
+        "level": 5,
+        "features": [
+            {"name": "Extra Attack"},
+            {"name": "Tactical Shift"}
+        ]
+    },
+    {
+        "level": 6,
+        "features": [
+            {"name": "Fighter Subclass"}
+        ]
+    },
+    {
+        "level": 7,
+        "features": [
+            {"name": "Fighter Subclass"}
+        ]
+    },
+    {
+        "level": 8,
+        "features": [
+            {"name": "Ability Score Improvement"}
+        ]
+    },
+    {
+        "level": 9,
+        "features": [
+            {"name": "Indomitable"},
+            {"name": "Tactical Master"}
+        ]
+    },
+    {
+        "level": 10,
+        "features": [
+            {"name": "Fighter Subclass"}
+        ]
+    },
+    {
+        "level": 11,
+        "features": [
+            {"name": "Two Extra Attacks"}
+        ]
+    },
+    {
+        "level": 12,
+        "features": [
+            {"name": "Ability Score Improvement"}
+        ]
+    },
+    {
+        "level": 13,
+        "features": [
+            {"name": "Studied Attacks"},
+            {"name": "Indomitable"}
+        ]
+    },
+    {
+        "level": 14,
+        "features": [
+            {"name": "Fighter Subclass"}
+        ]
+    },
+    {
+        "level": 15,
+        "features": [
+            {"name": "Fighter Subclass"}
+        ]
+    },
+    {
+        "level": 16,
+        "features": [
+            {"name": "Ability Score Improvement"}
+        ]
+    },
+    {
+        "level": 17,
+        "features": [
+            {"name": "Action Surge"},
+            {"name": "Indomitable"}
+        ]
+    },
+    {
+        "level": 18,
+        "features": [
+            {"name": "Fighter Subclass"}
+        ]
+    },
+    {
+        "level": 19,
+        "features": [
+            {"name": "Epic Boon"}
+        ]
+    },
+    {
+        "level": 20,
+        "features": [
+            {"name": "Three Extra Attacks"}
+        ]
+    }
+]

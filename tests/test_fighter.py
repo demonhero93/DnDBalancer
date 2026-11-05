@@ -1,11 +1,16 @@
 """Clase Fighter (Guerrero): registro, apply y validaciones de base."""
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import FighterFeatures
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 
 def _abilities(**kwargs) -> Abilities:
@@ -91,6 +96,18 @@ def test_fighter_features_cubre_los_niveles_1_a_20():
     assert sorted(FIGHTER_FEATURES) == list(range(1, 21))
     assert "Second Wind" in FIGHTER_FEATURES[1]
     assert FIGHTER_FEATURES[20] == ("Three Extra Attacks",)
+
+
+def test_features_de_clase_coinciden_con_la_fixture():
+    from dnd_sim.core.classes import FIGHTER_FEATURES
+
+    datos = json.loads(
+        (FIXTURES / "fighter_levels.json").read_text(encoding="utf-8-sig")
+    )
+    for entrada in datos:
+        nivel = int(entrada["level"])
+        esperadas = tuple(f["name"] for f in entrada["features"])
+        assert FIGHTER_FEATURES[nivel] == esperadas, f"nivel {nivel}"
 
 
 class _RngMax:
