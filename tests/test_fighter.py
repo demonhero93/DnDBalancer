@@ -722,3 +722,42 @@ def test_el_motor_pasa_el_piso_de_gwf_a_roll_dice(monkeypatch):
                       abilities=_abilities(), attacks=[])
     atk_mod.attack_roll(pj, enemigo, atk, random.Random(1))
     assert piso == [3]  # 1d12 de un solo golpe, con el piso de GWF
+
+
+# --- Maestría con Armas ---------------------------------------------------------
+
+def test_maestria_con_armas_cuenta_segun_el_nivel():
+    from dnd_sim.core.classes import weapon_mastery_count
+
+    esperado = {1: 3, 3: 3, 4: 4, 9: 4, 10: 5, 15: 5, 16: 6, 20: 6}
+    assert {lvl: weapon_mastery_count(lvl) for lvl in esperado} == esperado
+
+
+def test_maestria_con_armas_elige_las_armas_del_pj_como_dato():
+    pj = _pj()  # sin weapons: pool de ataques
+    apply_fighter(pj)
+    assert _trait(pj).maestrias == ["Hacha de batalla"]
+
+
+def test_maestria_con_armas_elige_armas_distintas_hasta_el_maximo():
+    pj = _pj()
+    pj.weapons = [Attack(f"Arma{i}", "1d6", ability="str") for i in range(6)]
+    apply_fighter(pj)  # nivel 5 → 4 elegibles de 6
+    maestrias = _trait(pj).maestrias
+    assert len(maestrias) == 4
+    assert len(set(maestrias)) == 4
+    assert set(maestrias) <= {a.name for a in pj.weapons}
+
+
+def test_maestria_con_armas_con_menos_armas_que_el_maximo_elige_todas():
+    pj = _pj()
+    pj.weapons = [Attack("Daga", "1d4", ability="str"),
+                  Attack("Espada larga", "1d8", ability="str")]
+    apply_fighter(pj, level=1)  # 3 elegibles, solo 2 armas
+    assert sorted(_trait(pj).maestrias) == ["Daga", "Espada larga"]
+
+
+def test_maestria_con_armas_sin_armas_da_lista_vacia():
+    pj = _pj(attacks=[])
+    apply_fighter(pj)
+    assert _trait(pj).maestrias == []

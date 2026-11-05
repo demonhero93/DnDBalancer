@@ -65,11 +65,12 @@ from ....core.classes import (
     fighter_extra_attacks_for,
     indomitable_uses,
     second_wind_uses,
+    weapon_mastery_count,
 )
 from ....core.dice import roll_dice
 from ....core.enums import AttackRange
 from ....core.log import log_line as _log_line
-from ....core.randomness import pick
+from ....core.randomness import pick, sample
 from ....core.skills import normalize_skill
 from ....model.actions import (
     ActionType,
@@ -116,6 +117,11 @@ class FighterFeatures(Trait):
         default_factory=dict, repr=False, compare=False)
     # Contador de turnos propios (para la caducidad de la línea anterior).
     turno_guerrero: int = 0
+    # Maestría con Armas (1): N armas elegidas como DATO (el motor no
+    # aplica maestría a PJs; ver TODO.md). No es estado de combate:
+    # no se limpia en ``reset``.
+    maestrias: list[str] = field(
+        default_factory=list, repr=False, compare=False)
     # Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
 
@@ -404,6 +410,9 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
       salvación con bonificador = nivel (usos 1/2/3 por nivel).
     - Ataques Estudiados (13): ventaja en el siguiente ataque contra el
       objetivo de una tirada fallida, hasta el fin del siguiente turno.
+    - Maestría con Armas (1): elige N armas (3/4/5/6 por nivel) como
+      dato en ``trait.maestrias``; el motor no aplica maestría a PJs
+      (ver TODO.md).
     - Añade el rasgo :class:`FighterFeatures` y las acciones de la clase.
     """
     lvl = level if level is not None else getattr(pj, "level", None)
@@ -460,6 +469,18 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
 
     trait = FighterFeatures(name="Guerrero", level=lvl, estilo=estilo)
     trait.owner = pj
+    # Maestría con Armas (1): selección de N armas como dato (el motor
+    # no tiene efectos de maestría para PJs; ver TODO.md). Pool de
+    # ``weapons`` o, si el PJ no los usa, de sus ataques; sin ninguno,
+    # lista vacía.
+    pool = list(pj.weapons or []) or list(pj.attacks or [])
+    trait.maestrias = [
+        atk.name for atk in sample(
+            rng if rng is not None else _RNG_CREACION,
+            pool,
+            weapon_mastery_count(lvl),
+        )
+    ]
     if estilo == "Defense":
         # Defense (+1 CA): el modelo no guarda armadura equipada, se da
         # por supuesta (mismo criterio que Battlerager con su armadura).

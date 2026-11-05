@@ -78,6 +78,18 @@ def indomitable_uses(level: int) -> int:
     return 3
 
 
+def weapon_mastery_count(level: int) -> int:
+    """Armas con Maestría elegibles (3/4/5/6 en los niveles 1/4/10/16)."""
+    lvl = _clamp(level)
+    if lvl >= 16:
+        return 6
+    if lvl >= 10:
+        return 5
+    if lvl >= 4:
+        return 4
+    return 3
+
+
 def fighter_extra_attacks_for(level: int) -> int:
     """Golpes de la acción Atacar del Fighter (1/2/3/4 en 1/5/11/20).
 
@@ -205,4 +217,5 @@ __all__ = [
     "rage_damage",
     "rage_uses",
     "second_wind_uses",
+    "weapon_mastery_count",
 ]
