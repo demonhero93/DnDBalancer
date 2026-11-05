@@ -66,7 +66,7 @@ from .rules.classes.barbarian.subclasses.world_tree import (
 from .rules.classes.barbarian.subclasses.zealot import (
     WarriorHealAction, ZealotFeatures, ZealousPresenceAction, apply_zealot,
 )
-from .rules.classes.fighter import FighterFeatures, apply_fighter
+from .rules.classes.fighter import FighterFeatures, SecondWindAction, apply_fighter
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
                            skill_bonus, skill_check)
@@ -138,7 +138,8 @@ __all__ = [
     "RANGED_COVER_AC_BONUS",
     "Race", "RageAction", "Regeneration", "Relentless", "RepeatSave",
     "RollMode", "SaveAction",
-    "SaveDamage", "SaveDamageOutcome", "SaveModifiers", "SaveResult", "Spell",
+    "SaveDamage", "SaveDamageOutcome", "SaveModifiers", "SaveResult",
+    "SecondWindAction", "Spell",
     "SpellAction", "SpellAttackAction", "SpellFixedDamageAction",
     "SpellStateAction", "Spellcasting", "SpikedArmorAction", "StateEffect",
     "StormAuraAction", "StormHeraldFeatures",

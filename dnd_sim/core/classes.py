@@ -51,6 +51,16 @@ def extra_attacks_for(level: int) -> int:
     return 2 if _clamp(level) >= 5 else 1
 
 
+def second_wind_uses(level: int) -> int:
+    """Usos de Tomar Aliento (Second Wind) por descanso según el nivel."""
+    lvl = _clamp(level)
+    if lvl <= 3:
+        return 2
+    if lvl <= 9:
+        return 3
+    return 4
+
+
 def fighter_extra_attacks_for(level: int) -> int:
     """Golpes de la acción Atacar del Fighter (1/2/3/4 en 1/5/11/20).
 
@@ -163,4 +173,5 @@ __all__ = [
     "fighter_extra_attacks_for",
     "rage_damage",
     "rage_uses",
+    "second_wind_uses",
 ]
