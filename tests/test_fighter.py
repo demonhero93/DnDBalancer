@@ -266,3 +266,47 @@ def test_el_encuentro_ejecuta_la_pasada_de_accion_extra_de_la_oleada():
                      max_rounds=1)
     assert res.action_uses.get("Oleada de Acción") == 1
     assert res.action_uses.get("Hacha de batalla", 0) >= 2
+
+
+# --- Extra Attack -------------------------------------------------------------
+
+def test_extra_attack_sustituye_ataques_por_multiataque():
+    from dnd_sim import AttackAction, MultiattackAction
+    from dnd_sim.rules.classes.fighter import SecondWindAction
+
+    for lvl, golpes in ((5, 2), (11, 3), (20, 4)):
+        pj = _pj(level=lvl)
+        assert any(isinstance(a, AttackAction) for a in pj.actions)
+        apply_fighter(pj)
+        multis = [a for a in pj.actions if isinstance(a, MultiattackAction)]
+        assert len(multis) == 1
+        assert not any(isinstance(a, AttackAction) for a in pj.actions)
+        assert sum(e.count for e in multis[0].options[0]) == golpes
+        # Las acciones de clase siguen ahí junto al multiataque.
+        assert any(isinstance(a, SecondWindAction) for a in pj.actions)
+
+
+def test_extra_attack_sin_ataques_no_explota():
+    pj = _pj(level=5, attacks=[])
+    apply_fighter(pj)  # no lanza
+    from dnd_sim import MultiattackAction
+    assert not any(isinstance(a, MultiattackAction) for a in pj.actions)
+
+
+def test_extra_attack_usa_el_atributo_extra_attacks_si_hay_armas():
+    pj = _pj(level=11)
+    pj.weapons = [Attack("Espada larga", "1d8", ability="str")]
+    apply_fighter(pj)
+    from dnd_sim import MultiattackAction
+    # Con armas equipadas el motor suma desde pj.extra_attacks (2 = 3-1).
+    assert pj.extra_attacks == 2
+    assert not any(isinstance(a, MultiattackAction) for a in pj.actions)
+
+
+def test_extra_attack_bajo_el_nivel_5_no_hace_nada():
+    from dnd_sim import MultiattackAction
+
+    pj = _pj(level=4)
+    apply_fighter(pj)
+    assert pj.extra_attacks == 0
+    assert not any(isinstance(a, MultiattackAction) for a in pj.actions)

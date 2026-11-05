@@ -45,12 +45,19 @@ from ....core.classes import (
     MAX_LEVEL,
     MIN_LEVEL,
     action_surge_uses,
+    fighter_extra_attacks_for,
     second_wind_uses,
 )
 from ....core.dice import roll_dice
 from ....core.log import log_line as _log_line
 from ....core.skills import normalize_skill
-from ....model.actions import ActionType, CombatAction, TurnResources
+from ....model.actions import (
+    ActionType,
+    AttackEntry,
+    CombatAction,
+    MultiattackAction,
+    TurnResources,
+)
 from ...traits.base import Trait
 from ...usage import ActionUsage, UsageKind
 
@@ -235,6 +242,7 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
     - Tomar Aliento (1): acción bonus con usos por nivel (2/3/4).
     - Oleada de Acción (2): acción bonus que restaura la acción del
       turno (usos 1/2 por nivel).
+    - Extra Attack (5/11/20): 2/3/4 golpes con la acción Atacar.
     - Añade el rasgo :class:`FighterFeatures` y las acciones de la clase.
     """
     lvl = level if level is not None else getattr(pj, "level", None)
@@ -254,6 +262,28 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
                 )
             nuevas.add(name)
         pj.skill_proficiencies = set(pj.skill_proficiencies or set()) | nuevas
+
+    # Extra Attack (5/11/20): 2/3/4 golpes con la acción Atacar
+    # (mismo patrón que el bárbaro: atributo extra_attacks si el PJ
+    # usa armas, si no un Multiattack con los golpes ciclados).
+    golpes = fighter_extra_attacks_for(lvl)
+    if golpes > 1:
+        if getattr(pj, "weapons", None):
+            pj.extra_attacks = max(int(pj.extra_attacks), golpes - 1)
+        else:
+            from ....model.actions import AttackAction
+            ataques = [a for a in pj.attacks
+                       if not getattr(a, "only_in_multiattack", False)] or list(pj.attacks)
+            if ataques:
+                entradas = [
+                    AttackEntry(ataques[i % len(ataques)].name, count=1)
+                    for i in range(golpes)
+                ]
+                multi = MultiattackAction([entradas])
+                restantes = [a for a in pj.actions
+                             if not isinstance(a, AttackAction)]
+                restantes.append(multi)
+                pj.actions = restantes
 
     trait = FighterFeatures(name="Guerrero", level=lvl)
     trait.owner = pj
