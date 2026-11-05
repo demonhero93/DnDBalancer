@@ -66,6 +66,7 @@ from .rules.classes.barbarian.subclasses.world_tree import (
 from .rules.classes.barbarian.subclasses.zealot import (
     WarriorHealAction, ZealotFeatures, ZealousPresenceAction, apply_zealot,
 )
+from .rules.classes.fighter import FighterFeatures, apply_fighter
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
                            skill_bonus, skill_check)
@@ -125,7 +126,8 @@ __all__ = [
     "ConditionAction", "ConditionEffect", "ConditionInstance",
     "ConditionTracker", "D20Result", "DEFAULT_LEGENDARY_POINTS",
     "DamageTransfer", "DamageType", "EXCLUDED_CONDITIONS", "EscapeCheck",
-    "ExtendRageAction", "FormOfTheBeast", "GiantFeatures", "HealAction",
+    "ExtendRageAction", "FighterFeatures", "FormOfTheBeast", "GiantFeatures",
+    "HealAction",
     "HealEffect",
     "HeatedBody",
     "IntimidatingPresenceAction",
@@ -148,7 +150,7 @@ __all__ = [
     "ability_check", "ability_check_bonus",
     "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
     "apply_battlerager", "apply_beast", "apply_berserker", "apply_class",
-    "apply_condition", "apply_giant", "apply_storm_herald",
+    "apply_condition", "apply_fighter", "apply_giant", "apply_storm_herald",
     "apply_wild_heart", "apply_wild_magic", "apply_world_tree",
     "apply_zealot",
     "apply_damage_modifiers", "apply_save_damage", "attack_modifiers",

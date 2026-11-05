@@ -51,6 +51,48 @@ def extra_attacks_for(level: int) -> int:
     return 2 if _clamp(level) >= 5 else 1
 
 
+def fighter_extra_attacks_for(level: int) -> int:
+    """Golpes de la acción Atacar del Fighter (1/2/3/4 en 1/5/11/20).
+
+    Aparte de :func:`extra_attacks_for` (bárbaro): el bárbaro no pasa
+    nunca de 2 y esa tabla no debe cambiar.
+    """
+    lvl = _clamp(level)
+    if lvl >= 20:
+        return 4
+    if lvl >= 11:
+        return 3
+    if lvl >= 5:
+        return 2
+    return 1
+
+
+#: Nivel en el que el Fighter gana cada feature (PHB 2024).
+#: Solo documentación/paridad: la simulación consulta el ``level`` directo.
+FIGHTER_FEATURES: dict[int, tuple[str, ...]] = {
+    1: ("Fighting Style", "Second Wind", "Weapon Mastery"),
+    2: ("Action Surge", "Tactical Mind"),
+    3: ("Fighter Subclass",),
+    4: ("Ability Score Improvement",),
+    5: ("Extra Attack", "Tactical Shift"),
+    6: ("Fighter Subclass",),
+    7: ("Fighter Subclass",),
+    8: ("Ability Score Improvement",),
+    9: ("Indomitable", "Tactical Master"),
+    10: ("Fighter Subclass",),
+    11: ("Two Extra Attacks",),
+    12: ("Ability Score Improvement",),
+    13: ("Studied Attacks", "Indomitable"),
+    14: ("Fighter Subclass",),
+    15: ("Fighter Subclass",),
+    16: ("Ability Score Improvement",),
+    17: ("Action Surge", "Indomitable"),
+    18: ("Fighter Subclass",),
+    19: ("Epic Boon",),
+    20: ("Three Extra Attacks",),
+}
+
+
 #: Nivel en el que el bárbaro gana cada feature (PHB 2024, vía API).
 #: Solo documentación/paridad: la simulación consulta el ``level`` directo.
 BARBARIAN_FEATURES: dict[int, tuple[str, ...]] = {
@@ -76,7 +118,7 @@ BARBARIAN_FEATURES: dict[int, tuple[str, ...]] = {
     20: ("Primal Champion",),
 }
 
-#: Habilidades de la clase (PHB 2024), en inglés normalizado.
+#: Habilidades de la clase bárbaro (PHB 2024), en inglés normalizado.
 BARBARIAN_SKILLS: tuple[str, ...] = (
     "athletics",
     "intimidation",
@@ -95,13 +137,30 @@ BARBARIAN_PRIMAL_SKILLS: tuple[str, ...] = (
     "survival",
 )
 
+#: Habilidades de la clase Fighter/Guerrero (PHB 2024): elige 2.
+#: Normalizadas con el formato guion (``core.skills``).
+FIGHTER_SKILLS: tuple[str, ...] = (
+    "acrobatics",
+    "animal-handling",
+    "athletics",
+    "history",
+    "insight",
+    "intimidation",
+    "perception",
+    "persuasion",
+    "survival",
+)
+
 __all__ = [
     "BARBARIAN_FEATURES",
     "BARBARIAN_PRIMAL_SKILLS",
     "BARBARIAN_SKILLS",
+    "FIGHTER_FEATURES",
+    "FIGHTER_SKILLS",
     "MAX_LEVEL",
     "MIN_LEVEL",
     "extra_attacks_for",
+    "fighter_extra_attacks_for",
     "rage_damage",
     "rage_uses",
 ]

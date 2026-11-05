@@ -27,12 +27,14 @@ from .barbarian.subclasses import (
     apply_battlerager,
     apply_beast,
 )
+from .fighter import FighterFeatures, apply_fighter
 
 __all__ = ["ANCESTRAL_FEATURES", "AncestralGuardianFeatures",
            "BATTLERAGER_FEATURES", "CLASSES", "ClassDef",
            "BarbarianFeatures", "BeastFeatures", "BattleragerFeatures",
+           "FighterFeatures",
            "SubclassDef", "ExtendRageAction", "FormOfTheBeast",
            "NaturalWeapon", "RageAction", "SpikedArmorAction",
            "apply_ancestral_guardian", "apply_barbarian", "apply_battlerager",
-           "apply_beast", "apply_class", "normalize_class_name",
+           "apply_beast", "apply_class", "apply_fighter", "normalize_class_name",
            "register_class"]

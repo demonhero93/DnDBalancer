@@ -106,6 +106,8 @@ def test_los_paquetes_con_fachada_reexportan_su_api():
           "apply_class"}),
         ("dnd_sim.rules.classes.barbarian",
          {"BarbarianFeatures", "RageAction", "apply_barbarian"}),
+        ("dnd_sim.rules.classes.fighter",
+         {"FighterFeatures", "apply_fighter"}),
         ("dnd_sim.rules.classes.barbarian.subclasses",
          {"apply_ancestral_guardian", "apply_battlerager",
           "apply_berserker"}),
