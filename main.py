@@ -51,6 +51,7 @@ def _load_party(specs: list[str], legendary_p: float = 1.0,
 # marcar los que son a distancia (el arquero deja al atacante a distancia).
 PARTY_TEMPLATES = [
     dict(name="Guerrero", max_hp=50, ac=18, level=5,
+         class_name="fighter",
          save_proficiencies=("str", "con"),
          skill_proficiencies=("athletics", "intimidation", "perception",
                               "survival"),
@@ -119,9 +120,9 @@ def _build_party(size: int, reckless_p: float | None = None) -> list:
             attacks=ataques,
         )
         if template.get("class_name"):
-            # Salvaciones/Unarmored/Extra Attack/Furia + subclase: todo
-            # desde el registro de clases. Las skills de la plantilla son
-            # las mismas de la lista bárbaro.
+            # Salvaciones, habilidades, estilo y rasgos de clase + subclase:
+            # todo desde el registro de clases. Las skills de la plantilla
+            # deben estar en la lista de su clase.
             apply_class(pj, template["class_name"],
                         template.get("subclass_name"),
                         skills=template.get("skill_proficiencies", ()),

@@ -761,3 +761,11 @@ def test_maestria_con_armas_sin_armas_da_lista_vacia():
     pj = _pj(attacks=[])
     apply_fighter(pj)
     assert _trait(pj).maestrias == []
+
+
+def test_plantilla_de_guerrero_de_main_usa_la_clase_fighter():
+    import main
+
+    guerrero = main._build_party(1)[0]
+    assert any(isinstance(t, FighterFeatures) for t in guerrero.traits)
+    assert guerrero.save_proficiencies == {"str", "con"}
