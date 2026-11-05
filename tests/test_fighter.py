@@ -423,3 +423,94 @@ def test_indomitable_reset_de_usos_en_combate_nuevo():
     trait.indomitable_usage.spend()
     trait.reset()
     assert trait.indomitable_usage.uses_left == 2
+
+
+# --- Ataques Estudiados ---------------------------------------------------------
+
+def _mods():
+    from types import SimpleNamespace
+
+    return SimpleNamespace(advantage_sources=[], disadvantage_sources=[])
+
+
+def _objetivo(nombre: str):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(name=nombre)
+
+
+def test_ataques_estudiados_da_ventaja_contra_el_objetivo_tras_un_fallo():
+    pj = _fighter(level=13)
+    trait = _trait(pj)
+    enemigo = _objetivo("Bribón")
+    trait.after_attack_roll(pj, enemigo, None, False, ctx=_ctx(pj))
+    mods = _mods()
+    trait.modify_attack_modifiers(mods, pj, enemigo, None, ctx=_ctx(pj))
+    assert mods.advantage_sources == ["Ataques Estudiados"]
+
+
+def test_ataques_estudiados_es_por_objetivo():
+    pj = _fighter(level=13)
+    trait = _trait(pj)
+    a, b = _objetivo("A"), _objetivo("B")
+    trait.after_attack_roll(pj, a, None, False, ctx=_ctx(pj))
+    mods = _mods()
+    trait.modify_attack_modifiers(mods, pj, b, None, ctx=_ctx(pj))
+    assert mods.advantage_sources == []
+
+
+def test_ataques_estudiados_no_marca_si_el_ataque_acierta():
+    pj = _fighter(level=13)
+    trait = _trait(pj)
+    trait.after_attack_roll(pj, _objetivo("A"), None, True, ctx=_ctx(pj))
+    assert trait.ataques_estudiados == {}
+
+
+def test_ataques_estudiados_solo_da_ventaja_en_el_siguiente_ataque():
+    pj = _fighter(level=13)
+    trait = _trait(pj)
+    enemigo = _objetivo("A")
+    trait.after_attack_roll(pj, enemigo, None, False, ctx=_ctx(pj))
+    primero = _mods()
+    trait.modify_attack_modifiers(primero, pj, enemigo, None, ctx=_ctx(pj))
+    segundo = _mods()
+    trait.modify_attack_modifiers(segundo, pj, enemigo, None, ctx=_ctx(pj))
+    assert primero.advantage_sources == ["Ataques Estudiados"]
+    assert segundo.advantage_sources == []
+
+
+def test_ataques_estudiados_caduca_al_final_del_siguiente_turno():
+    pj = _fighter(level=13)
+    trait = _trait(pj)
+    enemigo = _objetivo("A")
+    trait.after_attack_roll(pj, enemigo, None, False, ctx=_ctx(pj))
+    trait.on_turn_start(pj, _ctx(pj))  # turno propio siguiente: sigue
+    mods = _mods()
+    trait.modify_attack_modifiers(mods, pj, enemigo, None, ctx=_ctx(pj))
+    assert mods.advantage_sources == ["Ataques Estudiados"]
+    # Marca de nuevo y deja pasar dos turnos: caduca.
+    trait.after_attack_roll(pj, enemigo, None, False, ctx=_ctx(pj))
+    trait.on_turn_start(pj, _ctx(pj))
+    trait.on_turn_start(pj, _ctx(pj))
+    mods = _mods()
+    trait.modify_attack_modifiers(mods, pj, enemigo, None, ctx=_ctx(pj))
+    assert mods.advantage_sources == []
+
+
+def test_ataques_estudiados_no_actua_bajo_el_nivel_13():
+    pj = _fighter(level=12)
+    trait = _trait(pj)
+    enemigo = _objetivo("A")
+    trait.after_attack_roll(pj, enemigo, None, False, ctx=_ctx(pj))
+    assert trait.ataques_estudiados == {}
+    mods = _mods()
+    trait.modify_attack_modifiers(mods, pj, enemigo, None, ctx=_ctx(pj))
+    assert mods.advantage_sources == []
+
+
+def test_ataques_estudiados_no_actua_si_el_atacante_no_es_el_dueno():
+    pj = _fighter(level=13)
+    trait = _trait(pj)
+    otro = _objetivo("Intruso")
+    trait.after_attack_roll(otro, _objetivo("A"), None, False, ctx=_ctx(pj))
+    assert trait.ataques_estudiados == {}

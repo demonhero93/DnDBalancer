@@ -31,6 +31,10 @@ Decisiones de simulación documentadas:
   se gastó (si no, se quedaría sin efecto) y nunca en la acción Magia
   (acción que el motor no tiene). Recarga por descanso = solo al
   empezar un combate nuevo (``reset``).
+- **Ataques Estudiados** (13): un fallo marca al objetivo (clave por
+  nombre) hasta el final de tu siguiente turno; el PRÓXIMO ataque
+  contra él tiene ventaja y la consume, acierte o falle. La caducidad
+  se mide en turnos propios (``on_turn_start``).
 - Las decisiones con azar (estilo de combate, Second Wind, Action
   Surge, Indomitable...) se toman con ``core.randomness.pick`` uniforme
   y no consumen RNG cuando solo hay una opción.
@@ -87,12 +91,52 @@ class FighterFeatures(Trait):
     # Usos de Indomitable (nivel 9+; None por debajo).
     indomitable_usage: ActionUsage | None = field(
         default=None, repr=False, compare=False)
+    # Ataques Estudiados (13): nombre del objetivo → turno en que caduca.
+    ataques_estudiados: dict[str, int] = field(
+        default_factory=dict, repr=False, compare=False)
+    # Contador de turnos propios (para la caducidad de la línea anterior).
+    turno_guerrero: int = 0
     # Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
 
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         # «Una vez por turno»: el límite se reinicia al empezar el turno.
         self.surge_used_this_turn = False
+        # Ataques Estudiados: la marca vive hasta el fin del siguiente
+        # turno propio (se marca en el turno N → caduca en N+2).
+        self.turno_guerrero += 1
+        for nombre in [n for n, caduca in self.ataques_estudiados.items()
+                       if caduca <= self.turno_guerrero]:
+            del self.ataques_estudiados[nombre]
+
+    # --- Ataques Estudiados (13) ----------------------------------------------
+    def after_attack_roll(self, attacker: Any, target: Any, atk: Any,
+                          hit: bool, ctx: Any = None,
+                          rng: Any = None) -> None:
+        """Un fallo contra ``target`` da ventaja en el siguiente ataque."""
+        if self.level < 13 or hit or attacker is not self.owner:
+            return None
+        nombre = getattr(target, "name", None)
+        if not nombre:
+            return None
+        self.ataques_estudiados[nombre] = self.turno_guerrero + 2
+        return None
+
+    def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
+                                rango: Any, ctx: Any = None,
+                                rng: Any = None, atk: Any = None) -> None:
+        """Ventaja sobre el objetivo marcado; se consume al concederla."""
+        if self.level < 13 or attacker is not self.owner:
+            return None
+        nombre = getattr(target, "name", None)
+        if not nombre or nombre not in self.ataques_estudiados:
+            return None
+        if self.ataques_estudiados[nombre] <= self.turno_guerrero:
+            del self.ataques_estudiados[nombre]  # caducada
+            return None
+        mods.advantage_sources.append("Ataques Estudiados")
+        del self.ataques_estudiados[nombre]  # solo el siguiente ataque
+        return None
 
     # --- Indomitable (9) -----------------------------------------------------
     def after_failed_save(self, target: Any, ability: str, result: Any,
@@ -139,6 +183,8 @@ class FighterFeatures(Trait):
     def reset(self) -> None:
         """Un combate nuevo = un día descansado: usos de Tomar Aliento llenos."""
         self.surge_used_this_turn = False
+        self.ataques_estudiados.clear()
+        self.turno_guerrero = 0
         if self.second_wind_usage is not None:
             self.second_wind_usage.reset()
         if self.action_surge_usage is not None:
@@ -294,6 +340,8 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
     - Extra Attack (5/11/20): 2/3/4 golpes con la acción Atacar.
     - Indomitable (9): hook ``after_failed_save`` que repite la
       salvación con bonificador = nivel (usos 1/2/3 por nivel).
+    - Ataques Estudiados (13): ventaja en el siguiente ataque contra el
+      objetivo de una tirada fallida, hasta el fin del siguiente turno.
     - Añade el rasgo :class:`FighterFeatures` y las acciones de la clase.
     """
     lvl = level if level is not None else getattr(pj, "level", None)
