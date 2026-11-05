@@ -22,8 +22,14 @@ class D20Result:
     mode: RollMode
 
 
-def roll_dice(expr: str, rng: random.Random, crit: bool = False) -> int:
-    """Tira una expresión tipo '2d6+3'. En crítico se duplican los dados (no el bonus)."""
+def roll_dice(expr: str, rng: random.Random, crit: bool = False,
+              floor: int | None = None) -> int:
+    """Tira una expresión tipo '2d6+3'. En crítico se duplican los dados (no el bonus).
+
+    ``floor`` (opcional): piso por dado — Great Weapon Fighting cuenta
+    los dados que salgan por debajo de ese valor como el propio piso
+    (1 o 2 → 3). No cambia el número de llamadas al RNG.
+    """
     m = _DICE_RE.match(expr)
     if not m:
         raise ValueError(f"Expresión de dados inválida: {expr!r}")
@@ -31,7 +37,10 @@ def roll_dice(expr: str, rng: random.Random, crit: bool = False) -> int:
     bonus = int(m.group(3).replace(" ", "")) if m.group(3) else 0
     if crit:
         n *= 2
-    return sum(rng.randint(1, faces) for _ in range(n)) + bonus
+    valores = [rng.randint(1, faces) for _ in range(n)]
+    if floor:
+        valores = [v if v >= floor else floor for v in valores]
+    return sum(valores) + bonus
 
 
 _DICE_DOBLAR_RE = re.compile(r"(\d+)d(\d+)")

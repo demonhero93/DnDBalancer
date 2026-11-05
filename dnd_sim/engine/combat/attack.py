@@ -129,6 +129,25 @@ def _bonus_de_rasgos(attacker: Any, target: Any, rango: Any, crit: bool,
     return total
 
 
+def _piso_dados_rasgos(attacker: Any, atk: Any, rango: Any, ctx: Any,
+                       rng: Any) -> int:
+    """Piso de los dados de daño que los rasgos del atacante imponen.
+
+    Mismo patrón perezoso que :func:`_bonus_de_rasgos`; el máximo entre
+    los rasgos gana (0 = sin piso, comportamiento idéntico al anterior).
+    """
+    traits = getattr(attacker, "traits", None)
+    if not traits:
+        return 0
+    from ...rules.traits import hooks
+    piso = 0
+    for rasgo in hooks(traits, "damage_dice_upgrades"):
+        piso = max(piso, int(rasgo.damage_dice_upgrades(attacker, atk,
+                                                        rango=rango, ctx=ctx,
+                                                        rng=rng) or 0))
+    return piso
+
+
 def _bonus_defensivo(target: Any, attacker: Any, rango: Any, total: int,
                      ca: int, ctx: Any, rng: Any) -> int:
     """CA extra que los rasgos del defensor suman a **este** ataque.
@@ -253,8 +272,12 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             # condición ENLARGED se usan los dados agrandados de la ficha
             # (o se añade el +1d4 del hechizo Enlarge/Reduce).
             dados = _dados_de_ataque(attacker, atk)
-            raw_dmg = max(0, roll_dice(dados, rng, crit=crit)
-                          + attacker.dmg_bonus(atk))
+            piso = _piso_dados_rasgos(attacker, atk, rango, ctx, rng)
+            # Sin piso se llama igual que siempre (compatibilidad con los
+            # roll_dice parcheados en los tests y cero cambio de resultado).
+            dados_dmg = (roll_dice(dados, rng, crit=crit, floor=piso)
+                         if piso else roll_dice(dados, rng, crit=crit))
+            raw_dmg = max(0, dados_dmg + attacker.dmg_bonus(atk))
             raw_dmg += _bonus_de_tamano(attacker, atk, rng)
             # Daño extra de los rasgos del atacante (p. ej. Martial
             # Advantage): entra en el bruto, así que la inmunidad y la

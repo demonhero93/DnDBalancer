@@ -630,7 +630,6 @@ def test_archery_no_aplica_a_otro_estilo():
 
 def test_archery_permite_acertar_donde_sin_el_bonus_se_fallaria(monkeypatch):
     import random
-    from types import SimpleNamespace
 
     from dnd_sim import Monster
     from dnd_sim.core.dice import D20Result, RollMode
@@ -651,3 +650,75 @@ def test_archery_permite_acertar_donde_sin_el_bonus_se_fallaria(monkeypatch):
                       abilities=_abilities(), attacks=[])
     atk_mod.attack_roll(pj, enemigo, atk, random.Random(1))
     assert enemigo.hp < enemigo.max_hp  # el +2 decidió el impacto
+
+
+# --- Great Weapon Fighting -----------------------------------------------------
+
+class _RngBajo:
+    """RNG de test: siempre el mínimo (1d12 → 1)."""
+
+    def randint(self, a: int, b: int) -> int:
+        return a
+
+    def random(self) -> float:
+        return 0.0
+
+
+def test_roll_dice_con_piso_cuenta_los_dados_bajos_como_el_piso():
+    from dnd_sim.core.dice import roll_dice
+
+    rng = _RngBajo()
+    assert roll_dice("2d6", rng) == 2
+    assert roll_dice("2d6", _RngBajo(), floor=3) == 6  # 1,1 → 3,3
+
+
+def test_gwf_devuelve_tres_en_golpes_con_arma_a_dos_manos():
+    from dnd_sim.core.enums import AttackRange
+
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Great Weapon Fighting")
+    trait = _trait(pj)
+    dos_manos = Attack("Hacha a dos manos", "1d12", ability="str",
+                       properties={"two-handed", "heavy"})
+    assert trait.damage_dice_upgrades(pj, dos_manos,
+                                      AttackRange.MELEE) == 3
+    # No a distancia, ni con arma a una mano, ni con otro estilo.
+    assert trait.damage_dice_upgrades(pj, dos_manos,
+                                      AttackRange.RANGED) == 0
+    assert trait.damage_dice_upgrades(
+        pj, Attack("Espada corta", "1d6", ability="str"),
+        AttackRange.MELEE) == 0
+    otro = _pj()
+    apply_fighter(otro, fighting_style="Defense")
+    assert _trait(otro).damage_dice_upgrades(otro, dos_manos,
+                                             AttackRange.MELEE) == 0
+
+
+def test_el_motor_pasa_el_piso_de_gwf_a_roll_dice(monkeypatch):
+    import random
+
+    from dnd_sim import Monster
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.core.enums import AttackRange
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Great Weapon Fighting")
+    atk = Attack("Hacha a dos manos", "1d12", ability="str",
+                 properties={"two-handed", "heavy"})
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    piso = []
+    original = atk_mod.roll_dice
+
+    def _espia(expr, rng, crit=False, floor=None):
+        piso.append(floor)
+        return original(expr, rng, crit=crit, floor=floor)
+
+    monkeypatch.setattr(atk_mod, "roll_dice", _espia)
+    enemigo = Monster(name="Muñeco", max_hp=60, ac=20,
+                      abilities=_abilities(), attacks=[])
+    atk_mod.attack_roll(pj, enemigo, atk, random.Random(1))
+    assert piso == [3]  # 1d12 de un solo golpe, con el piso de GWF

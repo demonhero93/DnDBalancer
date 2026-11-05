@@ -36,8 +36,10 @@ Decisiones de simulación documentadas:
   semilla fija 0). Implementados: Archery (+2 a la tirada a distancia,
   ``AttackModifiers.bonus``), Defense (+1 CA, armadura dada por
   supuesta), Dueling (+2 daño cuerpo a cuerpo sin propiedad
-  ``two-handed``, sin saber si hay otra arma en la mano), Thrown
-  Weapon Fighting (+2 si el arma tiene la propiedad ``thrown``).
+  ``two-handed``, sin saber si hay otra arma en la mano), Great Weapon
+  Fighting (dados de 1 o 2 cuentan como 3 en golpes cuerpo a cuerpo con
+  arma ``two-handed``; ``versatile`` a dos manos no es modelable),
+  Thrown Weapon Fighting (+2 si el arma tiene la propiedad ``thrown``).
   Protection/Interception/Blind/Unarmed/Two-Weapon Fighting: dato sin
   efecto (TODO.md).
 - **Ataques Estudiados** (13): un fallo marca al objetivo (clave por
@@ -128,6 +130,24 @@ class FighterFeatures(Trait):
             del self.ataques_estudiados[nombre]
 
     # --- Estilos de combate (1) ----------------------------------------------
+    def damage_dice_upgrades(self, attacker: Any, atk: Any,
+                             rango: Any = None, ctx: Any = None,
+                             rng: Any = None) -> int:
+        """Great Weapon Fighting: los dados de 1 o 2 del golpe cuentan como 3.
+
+        Solo armas con la propiedad ``two-handed`` a cuerpo a cuerpo: el
+        motor no guarda si una arma ``versatile`` se empuña a dos manos,
+        así que ese caso queda sin modelar (decisión documentada).
+        """
+        if (self.estilo != "Great Weapon Fighting"
+                or attacker is not self.owner or atk is None
+                or rango is not AttackRange.MELEE):
+            return 0
+        props = set(getattr(atk, "properties", None) or set())
+        if "two-handed" not in props:
+            return 0
+        return 3
+
     def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
                             *, crit: bool = False, ctx: Any = None,
                             rng: Any = None, atk: Any = None) -> int:

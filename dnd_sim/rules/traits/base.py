@@ -159,6 +159,19 @@ class Trait:
         """
         return 0
 
+    # --- Piso de los dados de daño (Great Weapon Fighting) --------------------
+    def damage_dice_upgrades(self, attacker: Any, atk: Any,
+                             rango: Any = None, ctx: Any = None,
+                             rng: Any = None) -> int:
+        """Hook: valor mínimo que pueden mostrar los dados de **este** golpe.
+
+        Devuelve el piso (0 = sin piso); el motor lo pasa a
+        :func:`dnd_sim.core.dice.roll_dice(floor=...)`, que cuenta los
+        dados por debajo del piso como el propio piso (GWF: 1 o 2 → 3).
+        No cambia el número de llamadas al RNG. Por defecto no hace nada.
+        """
+        return 0
+
     # --- Salvaciones -------------------------------------------------------
     def modify_save_modifiers(self, mods: Any, target: Any,
                               ability: str, kind: str | None = None) -> None:
@@ -344,6 +357,7 @@ HOOK_NAMES: tuple[str, ...] = (
     "after_attack_roll",
     "reduce_damage_to_allies",
     "extra_attack_damage",
+    "damage_dice_upgrades",
     "blocks_condition",
     "defensive_ac_bonus",
     "on_rage_start",
