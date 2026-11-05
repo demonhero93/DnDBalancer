@@ -18,14 +18,14 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 |---|---:|---:|---|
 | `dnd_sim/core/` | 13 | 758 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
 | `dnd_sim/model/` | 4 | 932 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 25 | 3872 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases. |
+| `dnd_sim/rules/` | 29 | 8251 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases. |
 | `dnd_sim/rules/traits/` | 6 | 1129 | Los rasgos de monstruo (paquete, ver abajo). |
 | `dnd_sim/rules/spells/` | 5 | 909 | Hechizos (paquete). |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
 | `dnd_sim/engine/combat/` | 3 | 765 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3110 | Carga de fichas de la API: parsers por tipo de dato. |
 | `dnd_sim/__init__.py` | 1 | 132 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **76** | **12546** | + `tests/` con 47 ficheros y 12290 líneas (953 tests). |
+| **Total** | **80** | **17040** | + `tests/` con 49 ficheros y 17142 líneas (1071 tests). |
 
 ## Reglas de dependencia
 
@@ -60,7 +60,7 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES`, `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y la clase bárbaro con las suyas. |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con las subclases del bárbaro. |
 | `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos, daño, represalias) e iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
@@ -68,8 +68,9 @@ Dentro de cada paquete el grafo es acíclico:
 * `traits`: `base` ← {`offense`, `defense`, `survival`, `stealth`}
 * `spells`: `effects` ← `actions` ← `casting`, `reactions` ← `actions`
 * `combat`: `attack` y `encounter` sin dependencias internas
-* `classes`: `base` ← `barbarian.features` ← `barbarian.subclasses`;
-  el `__init__` de `barbarian` reexporta `features` y declara la clase
+* `classes`: `base` ← `barbarian.features` ← `barbarian.subclasses` y
+  `base` ← `fighter.features` ← `fighter.subclasses`;
+  el `__init__` de cada clase reexporta `features` y declara la clase
   en el registro.
 
 Los tests que parchean un símbolo apuntan al módulo que lo **define**
@@ -110,7 +111,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 953 tests
+pytest                              # 1071 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

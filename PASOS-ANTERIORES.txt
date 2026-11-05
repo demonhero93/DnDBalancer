@@ -427,10 +427,252 @@ Fuente: historial git + ARCHITECTURE.md.
      Verificación: arquitectura 3 passed, suite **953 passed**,
      capas.py 1 violación conocida, graphify update .
 
+14. PATH OF THE ZEALOT (2026-11-04)  [SIN COMMITEAR]
+   Reglas: PHB 2024 (sección 2 del enunciado). CD 8 + PB + mod FUE
+   (solo si alguna salvación la necesita). Una sola clave "zealot".
+   Plan (antes de escribir código):
+   1. Hooks en el motor: (i) `grant_save_modifiers` (no-op en Trait +
+      HOOK_NAMES + bucle en roll_modifiers.save_modifiers con `ctx`,
+      patrón del bloque 5b de attack_modifiers, saltando al propio
+      objetivo); `saving_throw` gana `ctx=None` y se pasa desde los 5
+      call sites con ctx en scope (apply_save_damage, utility,
+      conditions ×2, attack rider); (ii) `after_failed_save` pasa a
+      PODER devolver un SaveResult que sustituya al original:
+      saves._avisar_fallo_salvacion lo recoge y registrar_resistencia
+      lo devuelve (los call sites ya usan el retorno). Stubs de test
+      que no acepten el kwarg extra se ajustan con **kw (no congelados).
+      Commit (a); tests de no regresión en (c).
+   2. Módulo `rules/classes/barbarian/subclasses/zealot.py`:
+      ZEALOT_FEATURES {3: Divine Fury + Warrior of the Gods, 6:
+      Fanatical Focus, 10: Zealous Presence, 14: Rage of the Gods};
+      ZEALOT_COVERAGE_PROBABILITY=1.0 (60 pies, criterio aura);
+      trait ZealotFeatures (divine_pagado limpio en on_turn_start/
+      reset; fanatical_usado limpio en on_rage_start/reset;
+      presence_usage ActionUsage(PER_DAY,1) + presencia_activa;
+      dados_restantes con reserva 4/5/6/7; forma_usada/forma_activa/
+      revivificada + _forma_concedidas); WarriorHealAction y
+      ZealousPresenceAction (ambas bonus usage=None, patrón
+      IntimidatingPresenceAction con pick gratis/furia);
+      apply_zealot sin Furia propia.
+   3. Registro: clave "zealot" en barbarian/__init__.py; reexportos en
+      subclasses/__init__.py y fachada dnd_sim/__init__.py. (b)
+   4. tests/test_zealot.py (~35 tests, patrones wild_magic/world_tree).
+      Commit (c).
+   5. Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
+      ARCHITECTURE.md (fila rules/classes + recuentos: 77 módulos, 48
+      ficheros, 953+N tests) y este bloque con ESTADO ACTUAL.
+   6. Verificación regla 7 + graphify update . antes del commit (d).
+
+   Hecho:
+   - (1) Hooks: Trait.grant_save_modifiers + HOOK_NAMES + bucle en
+     roll_modifiers.save_modifiers con `ctx` (patrón bloque 5b de
+     attack_modifiers, saltando al propio objetivo); `saving_throw`
+     gana `ctx=None` y se pasa desde los 5 call sites con ctx en scope
+     (apply_save_damage, utility, conditions ×2, attack rider);
+     `after_failed_save` puede devolver un SaveResult que sustituya al
+     original (saves._avisar_fallo_salvacion lo recoge, corta el
+     bucle si lo salva y registrar_resistencia lo devuelve). 6 stubs
+     de test con `**kw` (no congelados). Suite 953 passed.
+     Commit f7e696a.
+   - (2)(3) zealot.py completo (ZEALOT_FEATURES, trait ZealotFeatures con
+     Divine Fury/Warrior+WarriorHealAction/Fanatical/Presence+
+     ZealousPresenceAction/Rage of the Gods+Revivification, apply_zealot;
+     ZEALOT_COVERAGE_PROBABILITY=1.0) + registro clave "zealot" en
+     barbarian/__init__, reexportos en subclasses/__init__ y fachada.
+     Smoke OK (nivel 8 → 5 dados, acciones presentes). Suite 953
+     passed. Commit 45906c3.
+   - (4) tests/test_zealot.py (hecho y commiteado en 67f9bb3; la línea
+     «Pendiente» era stale).
+
+15. CLASE FIGHTER (GUERRERO) (2026-11-05)
+   Reglas: PHB 2024 dadas en el prompt de sesión (sin API; la API solo
+   para monstruos/hechizos). Una sola clave "fighter". SIN alias
+   "guerrero": tests/test_clases.py usa esa clave como clase
+   desconocida y el bárbaro tampoco tiene alias en español.
+   Plan completo en TODO.md («Fighter: plan de sesión», 13 casillas;
+   cada casilla = un commit).
+
+   Hecho:
+   - (1)(2) Estructura, registro y datos de nivel:
+     rules/classes/fighter/ (features.py: FighterFeatures + apply_fighter
+     con salvaciones FUE+CON y validación de FIGHTER_SKILLS;
+     __init__.py: register_class(ClassDef("fighter", subclasses={}));
+     subclasses/__init__.py vacío con la receta apuntada), core/classes.py
+     (FIGHTER_SKILLS de 9 opciones, FIGHTER_FEATURES 1-20,
+     fighter_extra_attacks_for 1/2/3/4 en 1/5/11/20 — aparte de
+     extra_attacks_for, que es del bárbaro y no cambia), reexport en
+     rules/classes/__init__.py y fachada dnd_sim/__init__.py, entrada
+     dnd_sim.rules.classes.fighter en tests/test_arquitectura.py.
+     tests/test_fighter.py (9 tests: registro con tabla de subclases
+     vacía, equivalencia apply_class/apply_fighter, rasgo, salvaciones,
+     skills ok/ValueError, subclase "champion" inexistente → ValueError,
+     golpes por nivel, paridad de claves de FIGHTER_FEATURES).
+     Decisiones: competencias de armas/armaduras sin campos en el
+     modelo → dato documentado en el docstring; apply_fighter aún no
+     añade acciones (llegan en los pasos 3-9). Suite completa 1017
+     passed antes de tocar datos de nivel; afectados 61 passed.
+     Commit 09ea36e.
+   - (3) Second Wind (Tomar Aliento): `second_wind_uses` en
+     core/classes.py (2/3/4 en 1-3/4-9/10+); usos en el rasgo
+     (ActionUsage PER_DAY, patrón presence_usage del Berserker, se
+     restablece en `FighterFeatures.reset` → Combatant.reset = un
+     combate = un día descansado) para que Tactical Mind comparta el
+     mismo contador; SecondWindAction (bonus, usage=None) elegible SOLO
+     si PV < PV máximos y quedan usos (sin RNG en la elegibilidad),
+     cura `1d10 + nivel` recortada a los PV máximos, gasta el uso al
+     ejecutarse. Decisión: los usos viven en el rasgo, no en la acción,
+     porque Tactical Mind (2) también los gasta desde un hook.
+     tests/test_fighter.py +5 (total 14).
+    - (4) Oleada de Acción (Action Surge): `action_surge_uses` en
+      core/classes.py (1/2 en <17/17+); usos en el rasgo
+      (ActionUsage PER_DAY, se restablece en reset) + flag
+      `surge_used_this_turn` (máx. 1 por turno, se reinicia en
+      `on_turn_start`); ActionSurgeAction (bonus, usage=None) solo
+      elegible si nivel >= 2, quedan usos, no usada ya en el turno y la
+      acción del turno está gastada (así no se gasta un uso en vano);
+      al ejecutarse pone `resources.action_used = False`. Encuentro:
+      el bucle `for action_type in (ACTION, BONUS)` se extrajo al
+      cierre `_pasada(action_type) -> bool` (mismo orden, cortes y
+      stats) y ahora, si tras ACTION+BONUS hay acción ejecutada y el
+      recurso de acción quedó libre, corre UNA tercera pasada de ACTION.
+      Guard: sin Oleada `action_used` queda True → cero cambio de RNG
+      para el resto de clases (suite completa 1032 passed, 0
+      regresiones). Reexport de ActionSurgeAction en fighter/,
+      rules/classes/ y fachada. Decisión: la acción Magia no existe en
+      el motor, así que la prohibición PHB no es aplicable.
+      tests/test_fighter.py +8 (total 22): usos por nivel, ausencia en
+      nivel 1, restaura acción y gasta uso, 1/turno, no elegible sin
+      acción gastada/sin usos/con bonus ya gastada, integración de la
+      3ª pasada en run_combat.
+      Commit e1ef58e.
+    - (5) Extra Attack (5/11/20): `fighter_extra_attacks_for` (2/3/4)
+      aplicado en apply_fighter con el MISMO patrón del bárbaro: si el
+      PJ tiene `weapons` → `pj.extra_attacks = max(…, golpes-1)`; si no
+      → MultiattackAction con AttackEntry ciclados que sustituye a los
+      AttackAction. Sin ataques, no hace nada (no lanza). Decisión:
+      reutilizar el mecanismo ya probado del bárbaro en vez de un
+      canal nuevo (extra_attacks_for del bárbaro NO se toca).
+      tests/test_fighter.py +4 (total 26): sustitución por nivel con
+      recuento de golpes 2/3/4, sin ataques no explota, camino de
+      armas con extra_attacks, nivel <5 no hace nada.
+      Commit 27d8bb2.
+    - (6) Indomitable (9): hook ``after_failed_save`` en
+      FighterFeatures (patrón Fanatical Focus del Zealot): guards de
+      nivel/owner/usos/auto_fail/RNG, decisión con ``pick``,
+      ``saving_throw`` nuevo cuyo total suma +nivel de Guerrero y
+      SUSTITUYE al original (no hay recursión: saving_throw no
+      re-despacha el hook). Usos 1/2/3 (9-12/13-16/17+) con helper
+      ``indomitable_uses`` en core/classes.py (0 por debajo del 9);
+      sin usos o sin RNG no hay re-tirada ni azar. Sin acción propia.
+      tests/test_fighter.py +7 (total 33): tabla de usos, ausencia
+      antes del 9, bonificador = nivel, la nueva tirada manda aunque
+      vuelva a fallar (uso gastado igual), sin usos sin RNG, nivel <9
+      sin pick, reset de usos. Suite completa: 1043 passed.
+      Commit 81fa1e3.
+    - (7) Ataques Estudiados (13): hooks existentes
+      ``after_attack_roll`` (marca al fallar) + ``modify_attack_modifiers``
+      (ventaja). Marca por NOMBRE del objetivo con caducidad medida en
+      turnos propios (``on_turn_start`` incrementa ``turno_guerrero`` y
+      limpia caducadas; se marca en el turno N → caduca en N+2, o sea
+      vale hasta el fin de tu siguiente turno). La ventaja se CONSUME al
+      concederla (solo el siguiente ataque, acierte o falle). Guards:
+      nivel >=13 y atacante = dueño. Sin RNG ni acción propia.
+      tests/test_fighter.py +7 (total 40): ventaja tras fallo, por
+      objetivo, acierto no marca, un solo ataque con ventaja, expira a
+      los 2 turnos, nivel <13 no actúa, atacante ajeno no actúa.
+      Suite completa: 1050 passed.
+      Commit 02448f9.
+    - (8) Estilos de Combate (1): pick uniforme en apply_fighter
+      (kwarg ``fighting_style`` explícito validado, o ``rng`` del
+      llamante; sin rng, semilla fija 0 = personaje reproducible).
+      Pool en ``FIGHTER_STYLES`` (core/classes.py) SOLO con los
+      implementados; los demás son dato sin efecto (casilla 9). Tres
+      commits por grupos de motor:
+      (8a) infra + Defense (+1 CA con armadura dada por supuesta) +
+      Dueling (+2 daño melee sin propiedad two-handed, sin saber si
+      hay otra arma en la mano) + Thrown (+2 con propiedad thrown) vía
+      extra_attack_damage. Commit 3d97afc.
+      (8b) Archery: campo nuevo ``bonus: int = 0`` en AttackModifiers
+      + `total = roll + bonus + modifiers.bonus` en attack.py (default
+      0 = sin cambio) + modify_attack_modifiers del rasgo (ojo: el
+      early-return de Studied Attacks se reestructuró para no tapar el
+      estilo). Commit 3a7bf6b.
+      (8c) GWF: kwarg opcional ``floor`` en core.dice.roll_dice (no
+      cambia llamadas al RNG) + hook nuevo ``damage_dice_upgrades`` en
+      Trait/HOOK_NAMES + _piso_dados_rasgos en attack.py; SIN piso se
+      llama roll_dice igual que siempre (los tests existentes parchean
+      roll_dice sin kwarg floor: 8 fallos de TypeError, resuelto con
+      la rama sin piso). Rasgo: 3 solo melee + arma two-handed;
+      versatile a dos manos no modelable (documentado). Commit
+      2d3746c.
+      tests/test_fighter.py +14 (fichero total 54): pick/determinismo,
+      kwarg explícito, ValueError,
+      apply_class reenvía, Defense CA, Dueling condiciones, Thrown
+      condiciones, atacante ajeno, Archery mods+motor (d20 fijo 10 y
+      AC = to_hit+11), no-otro-estilo, roll_dice floor, GWF devuelto y
+      motor con spy de floor==3. Suite completa: 1064 passed.
+    - (9) Maestría con Armas (1) y datos sin efecto:
+      ``weapon_mastery_count`` en core/classes.py (3/4/5/6 en los
+      niveles 1/4/10/16) + ``sample`` de armas del PJ en
+      ``trait.maestrias`` (pool ``weapons`` o, si el PJ no los usa, de
+      ``attacks``; sin ninguno, lista vacía). Dato puro: el motor no
+      aplica maestría a PJs y el campo NO se limpia en ``reset``.
+      Tactical Mind: ``checks.py`` no recibe ``ctx`` → sin gancho
+      ``after_failed_check`` (no se creó uno solo por esto); Tactical
+      Shift sin sistema de movimiento; Tactical Master sin infra
+      Push/Sap/Slow; ASI y Don Épico sin efecto; estilos restantes
+      (Protection/Interception/Blind/Unarmed/TWF) sin efecto. Todo en
+      TODO.md «Fighter: datos sin efecto». Ojo: la cuenta es 4 ya desde
+      el nivel 4 (test corregido: nivel 5 → 4 armas, no 3).
+      tests/test_fighter.py +5 (fichero total 59): tabla de cuenta,
+      pool de ataques, armas distintas hasta el máximo, menos armas que
+      el máximo → todas, sin armas → []. Suite completa: 1069 passed.
+      Commit 8ca3e5e.
+    - (10) Plantilla de main.py: la plantilla «Guerrero» existente
+      (index 0 de PARTY_TEMPLATES) gana ``class_name="fighter"`` (sin
+      subclase): apply_class le aplica salvaciones (ya las traía),
+      skills (las de la plantilla están todas en FIGHTER_SKILLS),
+      Estilo de Combate, Tomar Aliento y Extra Attack. Se actualizó el
+      comentario de _build_party (ya no es solo bárbaro). Ningún test
+      existente cambió: test_skills quiere str/con y athletics en
+      Guerrero ✓; test_beast usa el índice 4 (Barbaro) ✓.
+      tests/test_fighter.py +1 (total 60): la plantilla de main
+      construye un PJ con el rasgo FighterFeatures.
+      Suite completa: 1070 passed.
+      Commit 8605d28.
+    - (11) Fixture de niveles: tests/fixtures/fighter_levels.json
+      (escrito a mano desde el PHB, formato {level, features:[{name}]}
+      como el test del bárbaro) y test
+      test_features_de_clase_coinciden_con_la_fixture en
+      tests/test_fighter.py: FIGHTER_FEATURES[nivel] == nombres de la
+      fixture, nivel por nivel. tests/test_fighter.py +1 (total 61).
+      Verificado: fighter + arquitectura + clases = 74 passed.
+      Commit 27532b9.
+    - (12) Docs: TODO.md gana la sección «Fighter: cómo añadir una
+      subclase» (receta en 5 pasos al patrón bárbaro + candidatas
+      Champion/Battle Master/Eldritch Knight/Psi Warrior como
+      pendientes); PASOS: encabezado del bloque 15 sin el stale
+      «[SIN COMMITEAR]», línea stale del Zealot «(4) Pendiente:
+      tests/test_zealot.py» corregida (commiteado en 67f9bb3), bloque
+      Guerrero añadido a ESTADO ACTUAL (formato igual que las subclases
+      bárbaro) y recuentos actualizados (80 módulos, 49 ficheros de
+      tests, 17142 líneas, 1071 tests); ARCHITECTURE.md: fighter/ en la
+      tabla de paquetes con fachada, grafo acíclico con
+      base ← fighter.features ← fighter.subclasses, recuentos
+      recalculados con conteo crudo de líneas (las filas suman el
+      total) y «1071 tests» en Cómo comprobar.
+    - (13) Verificación final: pytest tests/test_arquitectura.py (3
+      passed), suite completa (1071 passed, 0 fallos), tools/capas.py
+      (1 violación: la excepción conocida model.combatant →
+      rules.conditions) y `graphify update .` (3219 nodos, 11681
+      aristas, 96 comunidades; grafo y GRAPH_REPORT.md regenerados en
+      graphify-out/).
+
 ESTADO ACTUAL
-   - 76 módulos en dnd_sim/; tests/ con 47 ficheros y 953 tests
-     (todos en verde como último estado conocido).
-   - Registro de clases en rules/classes/ (base + barbarian + subclases).
+   - 80 módulos en dnd_sim/; tests/ con 49 ficheros y 17142 líneas
+     (1071 tests en verde, medido 2026-11-05).
+   - Registro de clases en rules/classes/ (base + barbarian + fighter +
+     subclases bárbaro; fighter sin subclases aún).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities
@@ -512,6 +754,26 @@ ESTADO ACTUAL
      Branches (6) y Travel (14) como datos sin efecto; sin acción
      propia; clave "world_tree" en el registro y fachada;
      tests/test_world_tree.py (27).
+   - Clase Fighter (Guerrero, PHB 2024) en rules/classes/fighter/
+     (init + features + subclasses/ vacío), clave "fighter" SIN alias:
+     Estilo de Combate (pick en apply; implementados Archery con campo
+     nuevo AttackModifiers.bonus, Defense +1 CA, Dueling, Great Weapon
+     Fighting con hook nuevo damage_dice_upgrades y roll_dice floor,
+     Thrown Weapon Fighting; Protection/Interception/Blind/Unarmed/TWF
+     sin efecto), Tomar Aliento (bonus action, 1d10+nivel, usos 2/3/4),
+     Oleada de Acción (restaura el recurso de acción + 3ª pasada en
+     engine/combat/encounter.py, usos 1/2, 1 por turno), Extra Attack
+     2/3/4 (fighter_extra_attacks_for: extra_attacks o Multiattack),
+     Indomitable (hook after_failed_save patrón Fanatical Focus,
+     bono=nivel, usos 1/2/3), Studied Attacks (after_attack_roll marca
+     por objetivo y modify_attack_modifiers da ventaja; caduca en 2
+     turnos), Weapon Mastery como dato (weapon_mastery_count 3/4/5/6 +
+     sample en trait.maestrias); Tactical Mind/Shift/Master, ASI y Don
+     Épico sin efecto (TODO.md «Fighter: datos sin efecto»); plantilla
+     «Guerrero» de main.py con class_name="fighter"; subclases: receta
+     y candidatas en TODO.md (registro vacío congelado);
+     tests/test_fighter.py (61) + fixture fighter_levels.json;
+     commits 09ea36e..27532b9 (11 pasos, ver bloque 15).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY
