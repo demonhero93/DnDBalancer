@@ -408,10 +408,10 @@ def test_indomitable_sin_usos_no_repites_y_no_consume_rng(monkeypatch):
 def test_indomitable_no_actua_bajo_el_nivel_9(monkeypatch):
     from dnd_sim.rules.classes.fighter import features as fighter_mod
 
+    pj = _fighter(level=8)  # se crea ANTES de parchear pick (el estilo la usa)
     llamadas = []
     monkeypatch.setattr(
         fighter_mod, "pick", lambda rng, opciones: llamadas.append(1) or "si")
-    pj = _fighter(level=8)
     assert _trait(pj).after_failed_save(pj, "str", _save_fallada(),
                                         _ctx(pj)) is None
     assert llamadas == []
@@ -514,3 +514,89 @@ def test_ataques_estudiados_no_actua_si_el_atacante_no_es_el_dueno():
     otro = _objetivo("Intruso")
     trait.after_attack_roll(otro, _objetivo("A"), None, False, ctx=_ctx(pj))
     assert trait.ataques_estudiados == {}
+
+
+# --- Estilos de Combate --------------------------------------------------------
+
+def test_estilo_de_combate_se_elige_con_pick_al_crear_el_pj():
+    import random
+
+    from dnd_sim.core.classes import FIGHTER_STYLES
+
+    a = _pj()
+    apply_fighter(a, rng=random.Random(7))
+    assert _trait(a).estilo in FIGHTER_STYLES
+    b = _pj()
+    apply_fighter(b, rng=random.Random(7))
+    assert _trait(b).estilo == _trait(a).estilo  # misma semilla = mismo estilo
+
+
+def test_estilo_de_combate_explícito_se_respeta():
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Dueling")
+    assert _trait(pj).estilo == "Dueling"
+
+
+def test_estilo_de_combate_invalido_da_value_error():
+    with pytest.raises(ValueError, match="no es un Estilo de Combate"):
+        apply_fighter(_pj(), fighting_style="Protection")
+
+
+def test_apply_class_reenvía_el_estilo_de_combate():
+    pj = _pj()
+    apply_class(pj, "fighter", fighting_style="Defense")
+    assert _trait(pj).estilo == "Defense"
+    assert pj.ac == 13  # 12 base +1 de Defense
+
+
+def test_estilo_defense_sube_la_ca_en_uno():
+    pj = _pj()
+    assert pj.ac == 12
+    apply_fighter(pj, fighting_style="Defense")
+    assert pj.ac == 13
+
+
+def test_estilo_dueling_suma_dos_daño_en_cuerpo_a_cuerpo():
+    from dnd_sim.core.enums import AttackRange
+
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Dueling")
+    trait = _trait(pj)
+    enemigo = _objetivo("A")
+    one_handed = Attack("Espada corta", "1d6", ability="str")
+    two_handed = Attack("Hacha a dos manos", "1d12", ability="str",
+                        properties={"two-handed"})
+    dano = trait.extra_attack_damage(pj, enemigo, AttackRange.MELEE,
+                                     atk=one_handed)
+    assert dano == 2
+    # A distancia no aplica Dueling.
+    assert trait.extra_attack_damage(pj, enemigo, AttackRange.RANGED,
+                                     atk=one_handed) == 0
+    # Con arma a dos manos no aplica.
+    assert trait.extra_attack_damage(pj, enemigo, AttackRange.MELEE,
+                                     atk=two_handed) == 0
+
+
+def test_estilo_thrown_weapon_fighting_suma_dos_daño_con_arma_arrojadiza():
+    from dnd_sim.core.enums import AttackRange
+
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Thrown Weapon Fighting")
+    trait = _trait(pj)
+    enemigo = _objetivo("A")
+    dardo = Attack("Dardo", "1d4", ability="str",
+                   properties={"thrown", "range"})
+    assert trait.extra_attack_damage(pj, enemigo, AttackRange.RANGED,
+                                     atk=dardo) == 2
+    assert trait.extra_attack_damage(pj, enemigo, AttackRange.RANGED,
+                                     atk=Attack("Arco", "1d8",
+                                                ability="dex")) == 0
+
+
+def test_extra_attack_damage_no_actúa_si_el_atacante_no_es_el_dueno():
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Dueling")
+    trait = _trait(pj)
+    otro = _objetivo("Intruso")
+    atk = Attack("Espada corta", "1d6", ability="str")
+    assert trait.extra_attack_damage(otro, _objetivo("A"), None, atk=atk) == 0

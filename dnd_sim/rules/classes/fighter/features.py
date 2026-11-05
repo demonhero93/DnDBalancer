@@ -31,6 +31,14 @@ Decisiones de simulación documentadas:
   se gastó (si no, se quedaría sin efecto) y nunca en la acción Magia
   (acción que el motor no tiene). Recarga por descanso = solo al
   empezar un combate nuevo (``reset``).
+- **Estilo de Combate** (1): elección con ``pick`` uniforme en
+  ``apply_fighter`` (``fighting_style`` explícito o ``rng``; sin rng,
+  semilla fija 0). Implementados: Defense (+1 CA, armadura dada por
+  supuesta), Dueling (+2 daño cuerpo a cuerpo sin propiedad
+  ``two-handed``, sin saber si hay otra arma en la mano), Thrown
+  Weapon Fighting (+2 si el arma tiene la propiedad ``thrown``).
+  Protection/Interception/Blind/Unarmed/Two-Weapon Fighting: dato sin
+  efecto (TODO.md).
 - **Ataques Estudiados** (13): un fallo marca al objetivo (clave por
   nombre) hasta el final de tu siguiente turno; el PRÓXIMO ataque
   contra él tiene ventaja y la consume, acierte o falle. La caducidad
@@ -41,11 +49,13 @@ Decisiones de simulación documentadas:
 """
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from typing import Any
 
 from ....core.classes import (
     FIGHTER_SKILLS,
+    FIGHTER_STYLES,
     MAX_LEVEL,
     MIN_LEVEL,
     action_surge_uses,
@@ -54,6 +64,7 @@ from ....core.classes import (
     second_wind_uses,
 )
 from ....core.dice import roll_dice
+from ....core.enums import AttackRange
 from ....core.log import log_line as _log_line
 from ....core.randomness import pick
 from ....core.skills import normalize_skill
@@ -68,6 +79,10 @@ from ...saves import SaveResult, saving_throw
 from ...traits.base import Trait
 from ...usage import ActionUsage, UsageKind
 
+#: RNG con semilla fija para elegir el Estilo de Combate cuando el
+#: llamante no pasa ``rng``: crea el personaje siempre igual (reproducible).
+_RNG_CREACION = random.Random(0)
+
 
 @dataclass
 class FighterFeatures(Trait):
@@ -80,6 +95,8 @@ class FighterFeatures(Trait):
 
     # Nivel del personaje (manda en las tablas de features).
     level: int = MIN_LEVEL
+    # Estilo de Combate elegido (1): clave en ``FIGHTER_STYLES``.
+    estilo: str | None = None
     # Usos de Tomar Aliento (se crea en ``apply_fighter`` con la tabla).
     second_wind_usage: ActionUsage | None = field(
         default=None, repr=False, compare=False)
@@ -108,6 +125,21 @@ class FighterFeatures(Trait):
         for nombre in [n for n, caduca in self.ataques_estudiados.items()
                        if caduca <= self.turno_guerrero]:
             del self.ataques_estudiados[nombre]
+
+    # --- Estilos de combate (1) ----------------------------------------------
+    def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
+                            *, crit: bool = False, ctx: Any = None,
+                            rng: Any = None, atk: Any = None) -> int:
+        """Dueling (+2 cuerpo a cuerpo a una mano) y Thrown (+2 arrojadizo)."""
+        if attacker is not self.owner or atk is None:
+            return 0
+        props = set(getattr(atk, "properties", None) or set())
+        if self.estilo == "Thrown Weapon Fighting" and "thrown" in props:
+            return 2
+        if (self.estilo == "Dueling" and rango is AttackRange.MELEE
+                and "two-handed" not in props):
+            return 2
+        return 0
 
     # --- Ataques Estudiados (13) ----------------------------------------------
     def after_attack_roll(self, attacker: Any, target: Any, atk: Any,
@@ -328,12 +360,17 @@ class ActionSurgeAction(CombatAction):
 # --- Aplicación de la clase a un PJ ------------------------------------------
 
 def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
-                  level: int | None = None) -> FighterFeatures:
+                  level: int | None = None,
+                  rng: random.Random | None = None,
+                  fighting_style: str | None = None) -> FighterFeatures:
     """Aplica la clase Fighter (Guerrero) a ``pj`` según su nivel.
 
     - Salvaciones: FUE y CON.
     - ``skills``: validadas contra la lista de la clase (ValueError si no
       está; el recuento de elecciones lo decide quien llama).
+    - Estilo de Combate (1): ``fighting_style`` explícito o ``pick``
+      uniforme entre los implementados (con ``rng`` del llamante; sin él,
+      semilla fija 0 para crear siempre el mismo personaje).
     - Tomar Aliento (1): acción bonus con usos por nivel (2/3/4).
     - Oleada de Acción (2): acción bonus que restaura la acción del
       turno (usos 1/2 por nivel).
@@ -362,6 +399,18 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
             nuevas.add(name)
         pj.skill_proficiencies = set(pj.skill_proficiencies or set()) | nuevas
 
+    # Estilo de Combate (1): validación antes de tocar al personaje.
+    estilo = fighting_style
+    if estilo is not None:
+        if estilo not in FIGHTER_STYLES:
+            raise ValueError(
+                f"{estilo!r} no es un Estilo de Combate de la clase "
+                f"Guerrero: opciones {sorted(FIGHTER_STYLES)}."
+            )
+    else:
+        estilo = pick(rng if rng is not None else _RNG_CREACION,
+                      FIGHTER_STYLES)
+
     # Extra Attack (5/11/20): 2/3/4 golpes con la acción Atacar
     # (mismo patrón que el bárbaro: atributo extra_attacks si el PJ
     # usa armas, si no un Multiattack con los golpes ciclados).
@@ -384,8 +433,12 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
                 restantes.append(multi)
                 pj.actions = restantes
 
-    trait = FighterFeatures(name="Guerrero", level=lvl)
+    trait = FighterFeatures(name="Guerrero", level=lvl, estilo=estilo)
     trait.owner = pj
+    if estilo == "Defense":
+        # Defense (+1 CA): el modelo no guarda armadura equipada, se da
+        # por supuesta (mismo criterio que Battlerager con su armadura).
+        pj.ac += 1
     trait.second_wind_usage = ActionUsage(
         UsageKind.PER_DAY, uses_max=second_wind_uses(lvl))
     acciones = [SecondWindAction()]

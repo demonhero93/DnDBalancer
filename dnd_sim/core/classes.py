@@ -178,12 +178,24 @@ FIGHTER_SKILLS: tuple[str, ...] = (
     "survival",
 )
 
+#: Estilos de combate del Fighter con efecto en la simulación (PHB 2024).
+#: El resto (Protection, Interception, Blind Fighting, Unarmed Fighting,
+#: Two-Weapon Fighting) queda como dato sin efecto (ver TODO.md).
+FIGHTER_STYLES: tuple[str, ...] = (
+    "Archery",
+    "Defense",
+    "Dueling",
+    "Great Weapon Fighting",
+    "Thrown Weapon Fighting",
+)
+
 __all__ = [
     "BARBARIAN_FEATURES",
     "BARBARIAN_PRIMAL_SKILLS",
     "BARBARIAN_SKILLS",
     "FIGHTER_FEATURES",
     "FIGHTER_SKILLS",
+    "FIGHTER_STYLES",
     "MAX_LEVEL",
     "MIN_LEVEL",
     "action_surge_uses",
