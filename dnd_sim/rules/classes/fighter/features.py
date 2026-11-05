@@ -33,7 +33,8 @@ Decisiones de simulación documentadas:
   empezar un combate nuevo (``reset``).
 - **Estilo de Combate** (1): elección con ``pick`` uniforme en
   ``apply_fighter`` (``fighting_style`` explícito o ``rng``; sin rng,
-  semilla fija 0). Implementados: Defense (+1 CA, armadura dada por
+  semilla fija 0). Implementados: Archery (+2 a la tirada a distancia,
+  ``AttackModifiers.bonus``), Defense (+1 CA, armadura dada por
   supuesta), Dueling (+2 daño cuerpo a cuerpo sin propiedad
   ``two-handed``, sin saber si hay otra arma en la mano), Thrown
   Weapon Fighting (+2 si el arma tiene la propiedad ``thrown``).
@@ -157,8 +158,12 @@ class FighterFeatures(Trait):
     def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
                                 rango: Any, ctx: Any = None,
                                 rng: Any = None, atk: Any = None) -> None:
-        """Ventaja sobre el objetivo marcado; se consume al concederla."""
-        if self.level < 13 or attacker is not self.owner:
+        """Archery: +2 a distancia. Ataques Estudiados: ventaja marcada."""
+        if attacker is not self.owner:
+            return None
+        if self.estilo == "Archery" and rango is AttackRange.RANGED:
+            mods.bonus += 2
+        if self.level < 13:
             return None
         nombre = getattr(target, "name", None)
         if not nombre or nombre not in self.ataques_estudiados:

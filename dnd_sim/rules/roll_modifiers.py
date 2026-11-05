@@ -55,6 +55,8 @@ class AttackModifiers:
     disadvantage_sources: list[str] = field(default_factory=list)
     # Crítico automático si el ataque impacta (objetivo paralizado/inconsciente).
     auto_crit_on_hit: bool = False
+    # Bonificador plano a la tirada (p. ej. Archery: +2 a distancia).
+    bonus: int = 0
 
     @property
     def mode(self) -> RollMode:

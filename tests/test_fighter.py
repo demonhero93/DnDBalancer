@@ -600,3 +600,54 @@ def test_extra_attack_damage_no_actúa_si_el_atacante_no_es_el_dueno():
     otro = _objetivo("Intruso")
     atk = Attack("Espada corta", "1d6", ability="str")
     assert trait.extra_attack_damage(otro, _objetivo("A"), None, atk=atk) == 0
+
+
+def test_archery_suma_dos_a_la_tirada_a_distancia():
+    from dnd_sim.core.enums import AttackRange
+    from dnd_sim.rules.roll_modifiers import attack_modifiers
+
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Archery")
+    enemigo = _objetivo("A")
+    atk = Attack("Arco largo", "1d8", ability="dex")
+    a_distancia = attack_modifiers(pj, enemigo, atk, AttackRange.RANGED)
+    assert a_distancia.bonus == 2
+    cuerpo_a_cuerpo = attack_modifiers(pj, enemigo, atk, AttackRange.MELEE)
+    assert cuerpo_a_cuerpo.bonus == 0
+
+
+def test_archery_no_aplica_a_otro_estilo():
+    from dnd_sim.core.enums import AttackRange
+    from dnd_sim.rules.roll_modifiers import attack_modifiers
+
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Defense")
+    mods = attack_modifiers(pj, _objetivo("A"),
+                            Attack("Arco largo", "1d8", ability="dex"),
+                            AttackRange.RANGED)
+    assert mods.bonus == 0
+
+
+def test_archery_permite_acertar_donde_sin_el_bonus_se_fallaria(monkeypatch):
+    import random
+    from types import SimpleNamespace
+
+    from dnd_sim import Monster
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.core.enums import AttackRange
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj = _pj()
+    apply_fighter(pj, fighting_style="Archery")
+    atk = Attack("Arco largo", "1d8", ability="dex",
+                 range_type=AttackRange.RANGED)
+    # d20 fijo en 10: con +2 de Archery entra; sin él, no.
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=10, rolls=[10],
+                                    mode=RollMode.NORMAL))
+    bonus = pj.to_hit(atk)
+    enemigo = Monster(name="Muñeco", max_hp=30, ac=bonus + 11,
+                      abilities=_abilities(), attacks=[])
+    atk_mod.attack_roll(pj, enemigo, atk, random.Random(1))
+    assert enemigo.hp < enemigo.max_hp  # el +2 decidió el impacto

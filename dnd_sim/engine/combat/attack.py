@@ -213,7 +213,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     result = roll_d20(rng, mode)
     roll = result.value
     bonus = attacker.to_hit(atk)
-    total = roll + bonus
+    total = roll + bonus + modifiers.bonus
     crit = roll == 20
     # (5) CA efectiva (cobertura a distancia).
     ca_efectiva = effective_ac(target)
