@@ -310,3 +310,116 @@ def test_extra_attack_bajo_el_nivel_5_no_hace_nada():
     apply_fighter(pj)
     assert pj.extra_attacks == 0
     assert not any(isinstance(a, MultiattackAction) for a in pj.actions)
+
+
+# --- Indomitable ---------------------------------------------------------------
+
+def _save_fallada(dc: int = 15):
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.rules.saves import SaveResult
+
+    return SaveResult(ability="str", dc=dc, rolls=[3], bonus=3,
+                      total=6, success=False, mode=RollMode.NORMAL)
+
+
+def _saving_nueva(total: int, success: bool, dc: int):
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.rules.saves import SaveResult
+
+    return SaveResult(ability="str", dc=dc, rolls=[total - 2], bonus=2,
+                      total=total, success=success, mode=RollMode.NORMAL)
+
+
+def test_indomitable_usos_por_nivel_son_1_2_y_3():
+    from dnd_sim.core.classes import indomitable_uses
+
+    assert [indomitable_uses(l) for l in (1, 8, 9, 12, 13, 16, 17, 20)] == \
+        [0, 0, 1, 1, 2, 2, 3, 3]
+    for lvl, usos in ((9, 1), (13, 2), (17, 3)):
+        pj = _fighter(level=lvl)
+        assert _trait(pj).indomitable_usage.uses_max == usos
+
+
+def test_indomitable_no_existe_por_debajo_del_nivel_9():
+    pj = _fighter(level=8)
+    assert _trait(pj).indomitable_usage is None
+
+
+def test_indomitable_repite_la_salvacion_con_bonificador_igual_al_nivel(
+        monkeypatch):
+    from dnd_sim.rules.classes.fighter import features as fighter_mod
+
+    pj = _fighter(level=9)
+    trait = _trait(pj)
+    monkeypatch.setattr(fighter_mod, "pick", lambda rng, opciones: "si")
+    monkeypatch.setattr(
+        fighter_mod, "saving_throw",
+        lambda target, ability, dc, rng: _saving_nueva(9, True, dc))
+    salida = trait.after_failed_save(pj, "str", _save_fallada(dc=15),
+                                     _ctx(pj))
+    assert salida is not None
+    assert salida.bonus == 2 + 9  # bono del personaje + nivel de Guerrero
+    assert salida.total == 9 + 9
+    assert salida.success is True
+    uso = trait.indomitable_usage
+    assert uso.uses_left == uso.uses_max - 1
+
+
+def test_indomitable_usa_la_nueva_tirada_incluso_si_vuelve_a_fallar(
+        monkeypatch):
+    from dnd_sim.rules.classes.fighter import features as fighter_mod
+
+    pj = _fighter(level=9)
+    trait = _trait(pj)
+    monkeypatch.setattr(fighter_mod, "pick", lambda rng, opciones: "si")
+    monkeypatch.setattr(
+        fighter_mod, "saving_throw",
+        lambda target, ability, dc, rng: _saving_nueva(5, False, dc))
+    salida = trait.after_failed_save(pj, "str", _save_fallada(dc=20),
+                                     _ctx(pj))
+    assert salida is not None
+    assert salida.total == 5 + 9  # la nueva tirada manda, no la original
+    assert salida.success is False
+    uso = trait.indomitable_usage
+    assert uso.uses_left == uso.uses_max - 1  # el uso se gasta igualmente
+
+
+def test_indomitable_sin_usos_no_repites_y_no_consume_rng(monkeypatch):
+    import random as _random
+
+    from dnd_sim.rules.classes.fighter import features as fighter_mod
+
+    pj = _fighter(level=9)
+    trait = _trait(pj)
+    trait.indomitable_usage.spend()  # único uso agotado
+    llamadas = []
+
+    def _cuenta(rng, opciones):
+        llamadas.append(tuple(opciones))
+        return "si"
+
+    monkeypatch.setattr(fighter_mod, "pick", _cuenta)
+    salida = trait.after_failed_save(pj, "str", _save_fallada(),
+                                     _ctx(pj, rng=_random.Random(1)))
+    assert salida is None
+    assert llamadas == []
+
+
+def test_indomitable_no_actua_bajo_el_nivel_9(monkeypatch):
+    from dnd_sim.rules.classes.fighter import features as fighter_mod
+
+    llamadas = []
+    monkeypatch.setattr(
+        fighter_mod, "pick", lambda rng, opciones: llamadas.append(1) or "si")
+    pj = _fighter(level=8)
+    assert _trait(pj).after_failed_save(pj, "str", _save_fallada(),
+                                        _ctx(pj)) is None
+    assert llamadas == []
+
+
+def test_indomitable_reset_de_usos_en_combate_nuevo():
+    pj = _fighter(level=13)
+    trait = _trait(pj)
+    trait.indomitable_usage.spend()
+    trait.reset()
+    assert trait.indomitable_usage.uses_left == 2

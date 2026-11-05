@@ -46,10 +46,12 @@ from ....core.classes import (
     MIN_LEVEL,
     action_surge_uses,
     fighter_extra_attacks_for,
+    indomitable_uses,
     second_wind_uses,
 )
 from ....core.dice import roll_dice
 from ....core.log import log_line as _log_line
+from ....core.randomness import pick
 from ....core.skills import normalize_skill
 from ....model.actions import (
     ActionType,
@@ -58,6 +60,7 @@ from ....model.actions import (
     MultiattackAction,
     TurnResources,
 )
+from ...saves import SaveResult, saving_throw
 from ...traits.base import Trait
 from ...usage import ActionUsage, UsageKind
 
@@ -81,12 +84,56 @@ class FighterFeatures(Trait):
         default=None, repr=False, compare=False)
     # ¿Ya se usó Oleada en el turno actual? (máximo 1 por turno).
     surge_used_this_turn: bool = False
+    # Usos de Indomitable (nivel 9+; None por debajo).
+    indomitable_usage: ActionUsage | None = field(
+        default=None, repr=False, compare=False)
     # Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
 
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         # «Una vez por turno»: el límite se reinicia al empezar el turno.
         self.surge_used_this_turn = False
+
+    # --- Indomitable (9) -----------------------------------------------------
+    def after_failed_save(self, target: Any, ability: str, result: Any,
+                          ctx: Any = None) -> Any:
+        """Repite la salvación fallida con bonificador = nivel (usos 1/2/3).
+
+        La tirada nueva SUSTITUYE a la original (patrón Fanatical Focus):
+        ``saving_throw`` anida sin re-despachar el hook, así que no hay
+        recursión. Decisión aleatoria con ``pick``; sin usos o sin RNG el
+        rasgo se abstiene sin consumir azar.
+        """
+        if self.level < 9 or target is not self.owner or result is None:
+            return None
+        if (self.indomitable_usage is None
+                or not self.indomitable_usage.available):
+            return None
+        if getattr(result, "auto_fail", False):
+            return None  # el fallo automático no se repite
+        rng = getattr(ctx, "rng", None) if ctx is not None else None
+        if rng is None:
+            return None  # sin RNG el rasgo se abstiene
+        if pick(rng, ("no", "si")) == "no":
+            return None  # decisión aleatoria de repetirla
+        self.indomitable_usage.spend()
+        nuevo = saving_throw(target, result.ability, result.dc, rng)
+        bonus = self.level
+        total = int(nuevo.total) + bonus
+        dc = int(result.dc)
+        salida = SaveResult(
+            ability=result.ability,
+            dc=dc,
+            rolls=list(nuevo.rolls),
+            bonus=int(nuevo.bonus) + bonus,
+            total=total,
+            success=total >= dc,
+            mode=nuevo.mode,
+        )
+        _log_line(ctx, f"{getattr(target, 'name', target)} repite la "
+                       f"salvación {str(result.ability).upper()} con "
+                       f"Indomitable ({total} vs CD {dc})")
+        return salida
 
     # --- Reinicio -----------------------------------------------------------
     def reset(self) -> None:
@@ -96,6 +143,8 @@ class FighterFeatures(Trait):
             self.second_wind_usage.reset()
         if self.action_surge_usage is not None:
             self.action_surge_usage.reset()
+        if self.indomitable_usage is not None:
+            self.indomitable_usage.reset()
 
 
 # --- Utilidades de acciones ---------------------------------------------------
@@ -243,6 +292,8 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
     - Oleada de Acción (2): acción bonus que restaura la acción del
       turno (usos 1/2 por nivel).
     - Extra Attack (5/11/20): 2/3/4 golpes con la acción Atacar.
+    - Indomitable (9): hook ``after_failed_save`` que repite la
+      salvación con bonificador = nivel (usos 1/2/3 por nivel).
     - Añade el rasgo :class:`FighterFeatures` y las acciones de la clase.
     """
     lvl = level if level is not None else getattr(pj, "level", None)
@@ -294,6 +345,9 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
         trait.action_surge_usage = ActionUsage(
             UsageKind.PER_DAY, uses_max=action_surge_uses(lvl))
         acciones.append(ActionSurgeAction())
+    if lvl >= 9:  # Indomitable es del nivel 9 (sin acción propia).
+        trait.indomitable_usage = ActionUsage(
+            UsageKind.PER_DAY, uses_max=indomitable_uses(lvl))
     pj.traits = list(getattr(pj, "traits", None) or []) + [trait]
     pj.actions = list(pj.actions) + acciones
     return trait

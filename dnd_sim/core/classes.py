@@ -66,6 +66,18 @@ def second_wind_uses(level: int) -> int:
     return 4
 
 
+def indomitable_uses(level: int) -> int:
+    """Usos de Indomitable por descanso (0 por debajo del nivel 9)."""
+    lvl = _clamp(level)
+    if lvl < 9:
+        return 0
+    if lvl <= 12:
+        return 1
+    if lvl <= 16:
+        return 2
+    return 3
+
+
 def fighter_extra_attacks_for(level: int) -> int:
     """Golpes de la acción Atacar del Fighter (1/2/3/4 en 1/5/11/20).
 
@@ -177,6 +189,7 @@ __all__ = [
     "action_surge_uses",
     "extra_attacks_for",
     "fighter_extra_attacks_for",
+    "indomitable_uses",
     "rage_damage",
     "rage_uses",
     "second_wind_uses",
