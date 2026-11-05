@@ -66,7 +66,9 @@ from .rules.classes.barbarian.subclasses.world_tree import (
 from .rules.classes.barbarian.subclasses.zealot import (
     WarriorHealAction, ZealotFeatures, ZealousPresenceAction, apply_zealot,
 )
-from .rules.classes.fighter import FighterFeatures, SecondWindAction, apply_fighter
+from .rules.classes.fighter import (
+    ActionSurgeAction, FighterFeatures, SecondWindAction, apply_fighter,
+)
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
                            skill_bonus, skill_check)
@@ -114,7 +116,8 @@ from .data.background_parser import load_background, parse_background
 from .data.race_parser import load_race, parse_race
 
 __all__ = [
-    "Abilities", "ActionType", "ActionUsage", "AncestralGuardianFeatures",
+    "Abilities", "ActionSurgeAction", "ActionType", "ActionUsage",
+    "AncestralGuardianFeatures",
     "AreaSaveAction",
     "AreaTargeting", "Attach", "AttachOnHitEffect", "Attack", "AttackAction",
     "AttackEntry", "AttackModifiers", "AttackRange", "Background",

@@ -173,3 +173,96 @@ def test_second_wind_no_es_elegible_sin_usos():
     uso.spend()
     uso.spend()
     assert not _second_wind(pj).can_use(_ctx(pj))
+
+
+# --- Oleada de Acción ---------------------------------------------------------
+
+def _action_surge(pj):
+    from dnd_sim.rules.classes.fighter import ActionSurgeAction
+
+    return next(a for a in pj.actions
+                if isinstance(a, ActionSurgeAction))
+
+
+def _ctx_recursos(pj, **kwargs):
+    from dnd_sim.model.actions import TurnResources
+
+    ctx = _ctx(pj)
+    ctx.resources = TurnResources(**kwargs)
+    return ctx
+
+
+def test_action_surge_usos_por_nivel_son_1_y_2():
+    from dnd_sim.core.classes import action_surge_uses
+
+    assert [action_surge_uses(l) for l in (1, 2, 16, 17, 20)] == [1, 1, 1, 2, 2]
+    for lvl, usos in ((2, 1), (16, 1), (17, 2)):
+        pj = _fighter(level=lvl)
+        assert _trait(pj).action_surge_usage.uses_max == usos
+
+
+def test_action_surge_no_existe_en_nivel_1():
+    from dnd_sim.rules.classes.fighter import ActionSurgeAction
+
+    pj = _fighter(level=1)
+    assert not any(isinstance(a, ActionSurgeAction) for a in pj.actions)
+    assert _trait(pj).action_surge_usage is None
+
+
+def test_action_surge_ejecutada_restaura_la_accion_y_gasta_un_uso():
+    pj = _fighter(level=2)
+    accion = _action_surge(pj)
+    ctx = _ctx_recursos(pj, action_used=True)
+    assert accion.can_use(ctx.resources, ctx)
+    accion.execute(ctx)
+    assert ctx.resources.action_used is False
+    assert _trait(pj).surge_used_this_turn is True
+    uso = _trait(pj).action_surge_usage
+    assert uso.uses_left == uso.uses_max - 1
+
+
+def test_action_surge_como_maximo_un_vez_por_turno():
+    pj = _fighter(level=17)  # 2 usos: así el segundo turno sigue disponible
+    accion = _action_surge(pj)
+    trait = _trait(pj)
+    ctx = _ctx_recursos(pj, action_used=True)
+    accion.execute(ctx)
+    ctx.resources.action_used = True  # la acción extra del turno ya se gastó
+    assert not accion.can_use(ctx.resources, ctx)
+    trait.on_turn_start(pj, ctx)  # el límite es por turno, no por combate
+    assert accion.can_use(ctx.resources, ctx)
+
+
+def test_action_surge_no_es_elegible_si_la_accion_no_se_ha_gastado():
+    pj = _fighter(level=2)
+    ctx = _ctx_recursos(pj)  # action_used=False: nada que restaurar
+    assert not _action_surge(pj).can_use(ctx.resources, ctx)
+
+
+def test_action_surge_no_es_elegible_sin_usos():
+    pj = _fighter(level=2)
+    ctx = _ctx_recursos(pj, action_used=True)
+    uso = _trait(pj).action_surge_usage
+    uso.spend()
+    assert not _action_surge(pj).can_use(ctx.resources, ctx)
+
+
+def test_action_surge_no_es_elegible_si_la_bonus_ya_se_gasto():
+    pj = _fighter(level=2)
+    ctx = _ctx_recursos(pj, action_used=True, bonus_action_used=True)
+    assert not _action_surge(pj).can_use(ctx.resources, ctx)
+
+
+def test_el_encuentro_ejecuta_la_pasada_de_accion_extra_de_la_oleada():
+    import random
+
+    from dnd_sim import Monster
+    from dnd_sim.engine.combat import run_combat
+
+    pj = _fighter(level=2)  # a PG completos: Tomar Aliento no se ofrece
+    enemigo = Monster(name="Muñeco", max_hp=200, ac=10,
+                      abilities=_abilities(), attacks=[])
+    res = run_combat([pj, enemigo], random.Random(1), verbose=True,
+                     max_rounds=1)
+    assert res.action_uses.get("Oleada de Acción") == 1
+    assert res.action_uses.get("Hacha de batalla", 0) >= 2

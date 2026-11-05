@@ -190,16 +190,23 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
             if combat_finished(order):
                 break
             if not ctx.skip_turn:
-                # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
-                for action_type in (ActionType.ACTION, ActionType.BONUS_ACTION):
+                accion_ejecutada = False
+
+                def _pasada(action_type: ActionType) -> bool:
+                    """Ejecuta como mucho una acción de ``action_type``.
+
+                    Devuelve ``False`` si el turno debe parar (combate
+                    terminado o actor caído) y ``True`` si puede seguir.
+                    """
+                    nonlocal accion_ejecutada
                     # Fin ya decidido (último de un bando caído): no se
                     # lanza ninguna habilidad más, ni siquiera la bonus.
                     if combat_finished(order):
-                        break
+                        return False
                     # Un actor que ha caído en mitad de su turno (p. ej.
                     # represalias) no lanza nada más.
                     if not actor.alive:
-                        break
+                        return False
                     candidates = [
                         a for a in getattr(actor, "actions", [])
                         if getattr(a, "action_type", None) == action_type
@@ -207,7 +214,7 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                         and getattr(actor, "can_act", True)
                     ]
                     if not candidates:
-                        continue
+                        return True
                     chosen = None
                     # Utilitaria: Esquivar sustituye la ACTION si toca.
                     # Disponibilidad primero (hay acción, vivo, puede actuar
@@ -221,6 +228,7 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                         if chosen is None:
                             chosen = pick(rng, candidates)
                     chosen.execute(ctx)
+                    accion_ejecutada = True
                     resources.use(action_type)
                     # El uso limitado se gasta aquí (una vez, aunque el área
                     # afecte a pocos objetivos).
@@ -233,7 +241,17 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                     # Con este golpe puede haber caído el último enemigo
                     # (o el último aliado, vía represalias): fin del combate.
                     if not enemies or combat_finished(order):
-                        break
+                        return False
+                    return True
+
+                # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
+                if _pasada(ActionType.ACTION) and _pasada(ActionType.BONUS_ACTION):
+                    # Oleada de Acción: la acción bonus restauró el recurso
+                    # de acción, así que toca UNA pasada de acción extra.
+                    # Sin Oleada la acción queda gastada y no se entra aquí
+                    # (cero cambio de comportamiento ni de RNG).
+                    if accion_ejecutada and not resources.action_used:
+                        _pasada(ActionType.ACTION)
             else:
                 # Turno perdido. Solo cuenta como incapacitación si la
                 # criatura sigue viva: quien muere al empezar su turno

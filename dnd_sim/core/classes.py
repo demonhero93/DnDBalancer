@@ -51,6 +51,11 @@ def extra_attacks_for(level: int) -> int:
     return 2 if _clamp(level) >= 5 else 1
 
 
+def action_surge_uses(level: int) -> int:
+    """Usos de Oleada de Acción (Action Surge) por descanso según el nivel."""
+    return 2 if _clamp(level) >= 17 else 1
+
+
 def second_wind_uses(level: int) -> int:
     """Usos de Tomar Aliento (Second Wind) por descanso según el nivel."""
     lvl = _clamp(level)
@@ -169,6 +174,7 @@ __all__ = [
     "FIGHTER_SKILLS",
     "MAX_LEVEL",
     "MIN_LEVEL",
+    "action_surge_uses",
     "extra_attacks_for",
     "fighter_extra_attacks_for",
     "rage_damage",
