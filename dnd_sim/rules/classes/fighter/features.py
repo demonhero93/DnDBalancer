@@ -84,6 +84,7 @@ from ....model.actions import (
     TurnResources,
 )
 from ...checks import CheckResult
+from ...mastery import maestria_de
 from ...saves import SaveResult, saving_throw
 from ...traits.base import Trait
 from ...usage import ActionUsage, UsageKind
@@ -122,9 +123,9 @@ class FighterFeatures(Trait):
         default_factory=dict, repr=False, compare=False)
     # Contador de turnos propios (para la caducidad de la línea anterior).
     turno_guerrero: int = 0
-    # Maestría con Armas (1): N armas elegidas como DATO (el motor no
-    # aplica maestría a PJs; ver TODO.md). No es estado de combate:
-    # no se limpia en ``reset``.
+    # Maestría con Armas (1): N armas elegidas (nombres); ``apply_fighter``
+    # marca ``atk.mastery`` de cada ataque elegido con la propiedad de la
+    # tabla. No es estado de combate: no se limpia en ``reset``.
     maestrias: list[str] = field(
         default_factory=list, repr=False, compare=False)
     # Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
@@ -461,9 +462,10 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
       salvación con bonificador = nivel (usos 1/2/3 por nivel).
     - Ataques Estudiados (13): ventaja en el siguiente ataque contra el
       objetivo de una tirada fallida, hasta el fin del siguiente turno.
-    - Maestría con Armas (1): elige N armas (3/4/5/6 por nivel) como
-      dato en ``trait.maestrias``; el motor no aplica maestría a PJs
-      (ver TODO.md).
+    - Maestría con Armas (1): elige N armas (3/4/5/6 por nivel) y
+      marca sus ataques con la propiedad de la tabla de
+      ``rules/mastery.py`` (el motor ya la aplica); armas sin entrada
+      en la tabla quedan sin maestría y sin error.
     - Añade el rasgo :class:`FighterFeatures` y las acciones de la clase.
     """
     lvl = level if level is not None else getattr(pj, "level", None)
@@ -520,10 +522,10 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
 
     trait = FighterFeatures(name="Guerrero", level=lvl, estilo=estilo)
     trait.owner = pj
-    # Maestría con Armas (1): selección de N armas como dato (el motor
-    # no tiene efectos de maestría para PJs; ver TODO.md). Pool de
-    # ``weapons`` o, si el PJ no los usa, de sus ataques; sin ninguno,
-    # lista vacía.
+    # Maestría con Armas (1): selección de N armas y marca de SU clave
+    # de la tabla en el objeto Attack (mutación in-place: las acciones
+    # guardan el mismo objeto). Pool de ``weapons`` o, si el PJ no los
+    # usa, de sus ataques; sin ninguno, lista vacía.
     pool = list(pj.weapons or []) or list(pj.attacks or [])
     trait.maestrias = [
         atk.name for atk in sample(
@@ -532,6 +534,15 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
             weapon_mastery_count(lvl),
         )
     ]
+    # Los ataques elegidos reciben su propiedad (Topple, Sap...). Los no
+    # elegidos NO se tocan (un arma que ya traiga clave la conserva) y un
+    # nombre fuera de la tabla queda sin maestría y sin error.
+    elegidas = set(trait.maestrias)
+    for lista in (pj.attacks, pj.weapons):
+        for atk in lista or ():
+            clave = maestria_de(atk.name)
+            if clave and atk.name in elegidas:
+                atk.mastery = clave
     if estilo == "Defense":
         # Defense (+1 CA): el modelo no guarda armadura equipada, se da
         # por supuesta (mismo criterio que Battlerager con su armadura).

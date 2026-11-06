@@ -924,3 +924,55 @@ def test_el_gancho_after_failed_check_desde_ability_check_con_ctx():
     assert salida.total == 1 + salida.bonus + 10
     assert not salida.success
     assert rasgo.second_wind_usage.uses_left == antes
+
+
+# --- Maestría asignada a los ataques (A3) --------------------------------
+
+_ARMAS_MAESTRIA = [
+    "Espada larga", "Daga", "Arco corto", "Hacha de batalla",
+    "Lanza", "Maza", "Martillo de guerra", "Estoque",
+]
+
+
+def _pj_con_armas(n: int = 8, **kwargs) -> PlayerCharacter:
+    pj = _pj(**kwargs)
+    pj.weapons = [Attack(nombre, "1d8", ability="str")
+                  for nombre in _ARMAS_MAESTRIA[:n]]
+    return pj
+
+
+def test_maestria_asignada_al_ataque_elegido_recibe_su_clave():
+    pj = _pj()
+    apply_fighter(pj)  # "Hacha de batalla" es la única elección
+    atk = pj.attacks[0]
+    assert _trait(pj).maestrias == ["Hacha de batalla"]
+    assert atk.mastery == "topple"
+
+
+def test_maestria_no_eligida_no_recibe_clave():
+    from dnd_sim.rules.mastery import maestria_de
+
+    pj = _pj_con_armas()
+    apply_fighter(pj, level=1)  # 3 de 8 armas
+    elegidas = set(_trait(pj).maestrias)
+    for atk in pj.weapons:
+        esperada = maestria_de(atk.name) if atk.name in elegidas else ""
+        assert atk.mastery == esperada, atk.name
+    assert sum(1 for a in pj.weapons if a.mastery) == 3
+
+
+def test_maestria_asignada_cuenta_3_4_5_6_segun_el_nivel():
+    esperado = {1: 3, 4: 4, 10: 5, 16: 6}
+    for nivel, cuenta in esperado.items():
+        pj = _pj_con_armas()
+        apply_fighter(pj, level=nivel)
+        asignadas = sum(1 for a in pj.weapons if a.mastery)
+        assert asignadas == cuenta, f"nivel {nivel}"
+        assert len(_trait(pj).maestrias) == cuenta
+
+
+def test_maestria_de_armas_sin_entrada_en_la_tabla_no_explota():
+    pj = _pj(attacks=[Attack("Arma rara", "1d6", ability="str")])
+    apply_fighter(pj, level=1)  # elegida (única) pero sin tabla
+    assert _trait(pj).maestrias == ["Arma rara"]
+    assert pj.attacks[0].mastery == ""
