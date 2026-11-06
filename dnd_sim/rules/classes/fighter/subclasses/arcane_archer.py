@@ -15,6 +15,12 @@ Decisiones de simulación documentadas:
   ``fighting_style``). Piercing y Seeking quedan fuera del pool: sus
   ataques sin tirada reemplazarían el flujo de ataque del motor (ver
   TODO.md).
+- **Arcane Shot** (3): una vez por turno, al impactar un ataque a
+  distancia, ``pick`` «no»/«sí» y después ``pick`` entre las opciones
+  conocidas; se gasta un uso solo al aplicar (sin usos, ya usado en el
+  turno o ataque a cuerpo a cuerpo → cero RNG). El daño extra se suma
+  al del ataque (el motor no separa el tipo del bonus) y pasa de 2d6 a
+  4d6 desde el nivel 18. Decisiones de combate uniformes, sin IA.
 - **Ever-Ready Shot** (10): sin efecto (cada combate empieza con usos
   completos); dato de tabla.
 """
@@ -24,9 +30,18 @@ import random
 from dataclasses import dataclass, field
 from typing import Any
 
-from .....core.classes import MAX_LEVEL, MIN_LEVEL, arcane_shot_options_known
+from .....core.classes import (
+    MAX_LEVEL,
+    MIN_LEVEL,
+    arcane_shot_options_known,
+    arcane_shot_uses,
+)
+from .....core.dice import roll_dice
+from .....core.enums import AttackRange
+from .....core.log import log_line as _log_line
 from .....core.randomness import pick, sample
 from ....traits.base import Trait
+from ....usage import ActionUsage, UsageKind
 from ..features import FighterFeatures
 
 #: Pool de opciones de Arcane Shot implementadas (XGE). Piercing y
@@ -72,8 +87,54 @@ class ArcaneArcherFeatures(Trait):
     #: Opciones de Arcane Shot conocidas (nombres de :data:`ARCANE_SHOTS`).
     opciones_conocidas: list[str] = field(
         default_factory=list, repr=False, compare=False)
+    #: Usos de Arcane Shot por descanso (patrón Second Wind).
+    arcane_shot_usage: ActionUsage | None = None
+    #: ¿Ya se aplicó Arcane Shot en el turno actual? (una vez por turno).
+    shot_used_this_turn: bool = False
     #: Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
+
+    def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
+        # «Una vez por turno»: el límite se reinicia al empezar el turno.
+        self.shot_used_this_turn = False
+
+    def reset(self) -> None:
+        """Un combate nuevo = un día descansado: usos de Arcane Shot llenos."""
+        self.shot_used_this_turn = False
+        if self.arcane_shot_usage is not None:
+            self.arcane_shot_usage.reset()
+
+    # --- Arcane Shot (3) ------------------------------------------------------
+    def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
+                            *, crit: bool = False, ctx: Any = None,
+                            rng: Any = None,
+                            atk: Any = None) -> int:
+        """Aplica una opción de Arcane Shot al impactar a distancia.
+
+        Una vez por turno y con usos disponibles; sin usos, sin rng o
+        con ataque a cuerpo a cuerpo → cero RNG y sin efecto. La
+        decisión y la opción son ``pick`` uniforme; el daño extra se
+        suma al del ataque.
+        """
+        if (attacker is not self.owner
+                or target is None
+                or rango is not AttackRange.RANGED
+                or self.arcane_shot_usage is None
+                or not self.arcane_shot_usage.available
+                or self.shot_used_this_turn
+                or rng is None):
+            return 0
+        if pick(rng, ("no", "si")) == "no":
+            return 0
+        opcion = pick(rng, tuple(self.opciones_conocidas))
+        self.arcane_shot_usage.spend()
+        self.shot_used_this_turn = True
+        dados = "4d6" if self.level >= 18 else "2d6"
+        daño = int(roll_dice(dados, rng))
+        _log_line(ctx, f"Arcane Shot ({opcion}): +{daño} de daño")
+        # Efectos de las opciones: Grasping es solo daño en este paso;
+        # el resto de ramas se añaden en los pasos siguientes.
+        return daño
 
 
 def apply_arcane_archer(pj: Any, level: int | None = None,
@@ -125,6 +186,12 @@ def apply_arcane_archer(pj: Any, level: int | None = None,
         opciones_conocidas=opciones,
     )
     trait.owner = pj
+    # Arcane Shot: usos por descanso (0 por debajo del nivel 3 → sin
+    # gancho posible; patrón Second Wind).
+    usos = arcane_shot_uses(lvl)
+    trait.arcane_shot_usage = (
+        ActionUsage(UsageKind.PER_DAY, uses_max=usos) if usos else None
+    )
     pj.traits.append(trait)
     return trait
 

@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import random
+from types import SimpleNamespace
 
 import pytest
 
 from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
 from dnd_sim.core.classes import arcane_shot_options_known, arcane_shot_uses
+from dnd_sim.core.enums import AttackRange
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
     ARCANE_SHOTS,
@@ -150,3 +152,140 @@ def test_arcane_archer_lore_guarda_el_truco_como_dato():
     apply_fighter(pj, level=3)
     trait = apply_arcane_archer(pj, level=3)
     assert trait.truco in ("Prestidigitación", "Druidismo")
+
+
+# --- Arcane Shot: usos y decisión ---------------------------------------------
+
+class _RngSi:
+    """randrange siempre el último elemento («si» / última opción)."""
+
+    def randrange(self, n: int) -> int:
+        return n - 1
+
+    def random(self) -> float:
+        return 1.0
+
+    def randint(self, a: int, b: int) -> int:
+        return b
+
+
+class _RngNo:
+    """randrange siempre 0 («no»)."""
+
+    def randrange(self, n: int) -> int:
+        return 0
+
+
+class _RngExplota:
+    """Cualquier acceso a RNG hace fallar el test."""
+
+    def __getattr__(self, name: str):
+        raise AssertionError(f"RNG no debería usarse: {name}")
+
+
+def _arquero(level: int = 5, **kwargs):
+    pj = _pj(level=level)
+    apply_fighter(pj, level=level)
+    trait = apply_arcane_archer(pj, level=level, **kwargs)
+    return pj, trait
+
+
+def _disparo(trait, rng, rango=AttackRange.RANGED, target=None):
+    return trait.extra_attack_damage(
+        trait.owner, target or SimpleNamespace(name="Blanco"),
+        rango, ctx=None, rng=rng,
+        atk=Attack("Arco corto", "1d6", ability="dex", range_type="ranged"),
+    )
+
+
+def test_arcane_shot_crea_usos_por_nivel():
+    assert _arquero(level=3)[1].arcane_shot_usage.uses_max == 2
+    assert _arquero(level=15)[1].arcane_shot_usage.uses_max == 3
+
+
+def test_arcane_shot_se_gasta_un_uso_al_aplicar():
+    _, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                               "Shadow Arrow"))
+    daño = _disparo(trait, _RngSi())
+    assert daño > 0
+    assert trait.arcane_shot_usage.uses_left == 1
+    assert trait.shot_used_this_turn is True
+
+
+def test_arcane_shot_se_aplica_una_sola_vez_por_turno():
+    _, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                               "Shadow Arrow"))
+    assert _disparo(trait, _RngSi()) > 0
+    assert _disparo(trait, _RngSi()) == 0  # ya usado este turno
+    assert trait.arcane_shot_usage.uses_left == 1  # solo un gasto
+
+
+def test_arcane_shot_se_reinicia_en_on_turn_start():
+    _, trait = _arquero(level=3)
+    trait.shot_used_this_turn = True
+    trait.on_turn_start(trait.owner)
+    assert trait.shot_used_this_turn is False
+
+
+def test_arcane_shot_sin_usos_cero_rng():
+    _, trait = _arquero(level=3)
+    trait.arcane_shot_usage.uses_left = 0
+    assert _disparo(trait, _RngExplota()) == 0
+
+
+def test_ataque_cuerpo_a_cuerpo_cero_rng():
+    _, trait = _arquero(level=3)
+    assert _disparo(trait, _RngExplota(), rango=AttackRange.MELEE) == 0
+
+
+def test_arcane_shot_sin_rng_no_actua():
+    _, trait = _arquero(level=3)
+    assert _disparo(trait, None) == 0
+
+
+def test_decision_no_no_gasta_uso():
+    _, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                               "Shadow Arrow"))
+    assert _disparo(trait, _RngNo()) == 0
+    assert trait.arcane_shot_usage.uses_left == 2
+    assert trait.shot_used_this_turn is False
+
+
+def test_daño_de_arcane_shot_es_2d6_antes_del_18(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.arcane_archer as aa_mod
+
+    vistas: list[str] = []
+
+    def _dado(expr, rng, *args, **kwargs):
+        vistas.append(expr)
+        return 12
+
+    monkeypatch.setattr(aa_mod, "roll_dice", _dado)
+    _, trait = _arquero(level=5, arcane_shots=("Grasping Arrow",
+                                               "Shadow Arrow"))
+    assert _disparo(trait, _RngSi()) == 12
+    assert vistas == ["2d6"]
+
+
+def test_daño_de_arcane_shot_es_4d6_desde_el_18(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.arcane_archer as aa_mod
+
+    vistas: list[str] = []
+
+    def _dado(expr, rng, *args, **kwargs):
+        vistas.append(expr)
+        return 24
+
+    monkeypatch.setattr(aa_mod, "roll_dice", _dado)
+    _, trait = _arquero(level=18)  # pool completo: 6 opciones
+    assert _disparo(trait, _RngSi()) == 24
+    assert vistas == ["4d6"]
+
+
+def test_reset_restaura_los_usos_de_arcane_shot():
+    _, trait = _arquero(level=3)
+    trait.arcane_shot_usage.spend()
+    trait.shot_used_this_turn = True
+    trait.reset()
+    assert trait.arcane_shot_usage.uses_left == 2
+    assert trait.shot_used_this_turn is False
