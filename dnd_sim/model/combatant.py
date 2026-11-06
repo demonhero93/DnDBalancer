@@ -285,6 +285,9 @@ class Combatant:
             self.state.attacked_this_turn = False
             self.state.forced_save_this_turn = False
             self.state.dodging = False
+            # Marcas de maestría (Vex/Sap): un combate nuevo empieza sin ellas.
+            self.state.maestria_ventaja.clear()
+            self.state.maestria_desventaja.clear()
         except Exception:
             pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,

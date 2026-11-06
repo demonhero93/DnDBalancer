@@ -9,7 +9,7 @@ distancia entre varios combatientes.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -53,6 +53,17 @@ class CombatState:
     # Lo pone ``rules.utility.DodgeAction`` y lo limpia ``begin_turn`` y
     # ``Combatant.reset()``; los efectos viven en roll_modifiers.
     dodging: bool = False
+    # Maestría Vex: nombre del objetivo → ronda de caducidad. La marca
+    # quien ACIERTA y la consume su propia tirada siguiente (la guarda el
+    # SUJETO que gana la ventaja). La limpia ``Combatant.reset()``.
+    maestria_ventaja: dict[str, int] = field(
+        default_factory=dict, repr=False, compare=False)
+    # Maestría Sap: nombre del atacante → ronda de caducidad. La marca
+    # quien RECIBE el golpe y da desventaja al SUJETO atacante hasta el
+    # inicio del siguiente turno del marcador. La limpia
+    # ``Combatant.reset()``.
+    maestria_desventaja: dict[str, int] = field(
+        default_factory=dict, repr=False, compare=False)
 
 
 __all__ = ["CombatState"]

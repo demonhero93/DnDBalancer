@@ -393,6 +393,16 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     # Tras resolver la tirada (acierte o falle): p. ej. el ataque extra de
     # las Garras del Path of the Beast, que se dispara «cuando atacas con
     # ellas», no solo cuando impactan.
+    # Maestría con Armas: solo si el arma trae clave (los monstruos/PCs sin
+    # ella no invocan nada → cero coste y cero RNG).
+    if str(getattr(atk, "mastery", "") or "").strip():
+        from ...rules.mastery import al_acertar, al_fallar
+        if hit:
+            al_acertar(attacker, target, atk, damage=dmg, rango=rango,
+                       ctx=ctx, rng=rng, log=log)
+        else:
+            al_fallar(attacker, target, atk, rango=rango, ctx=ctx,
+                      rng=rng, log=log)
     _trigger_after_attack_roll(attacker, target, atk, hit, log, ctx, rng)
 
 

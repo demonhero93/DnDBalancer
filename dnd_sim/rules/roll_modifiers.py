@@ -304,6 +304,12 @@ def attack_modifiers(attacker: Any, target: Any, attack: Any,
                 rasgo.grant_attack_modifiers(mods, attacker, target, rango,
                                              ctx=ctx, rng=rng, atk=attack)
 
+    # 5c. Marcas de maestría (Vex/Sap) pendientes contra este objetivo:
+    #     se consumen al concederse y sin marcas no se toca nada.
+    if attack is not None:
+        from .mastery import consumir_marcas
+        consumir_marcas(mods, attacker, target, ctx)
+
     # 6. Crítico automático: contra un objetivo paralizado o inconsciente,
     #    todo ataque cuerpo a cuerpo que impacte es crítico.
     if rango is AttackRange.MELEE and (Condition.PARALYZED in cond_objetivo
