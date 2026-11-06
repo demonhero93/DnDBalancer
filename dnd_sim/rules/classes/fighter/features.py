@@ -25,6 +25,10 @@ Decisiones de simulación documentadas:
   ``1d10 + nivel`` y nunca supera los PV máximos. Los usos no se
   recuperan en combate (escena única: el descanso se modela como
   ``Combatant.reset()``).
+- **Tactical Mind** (2): al fallar una prueba de característica con
+  ``ctx``, decide con ``pick`` si gasta un uso de Tomar Aliento para
+  sumar ``1d10``; el uso SOLO se gasta si la tirada final tiene éxito
+  (hook ``after_failed_check``; sin usos o sin fallo, sin RNG).
 - **Oleada de Acción**: restaura el recurso de acción del turno
   (``TurnResources.action_used = False``) y el encuentro ejecuta una
   pasada de acción extra; máximo 1 uso por turno, solo si la acción ya
@@ -79,6 +83,7 @@ from ....model.actions import (
     MultiattackAction,
     TurnResources,
 )
+from ...checks import CheckResult
 from ...saves import SaveResult, saving_throw
 from ...traits.base import Trait
 from ...usage import ActionUsage, UsageKind
@@ -240,6 +245,52 @@ class FighterFeatures(Trait):
         _log_line(ctx, f"{getattr(target, 'name', target)} repite la "
                        f"salvación {str(result.ability).upper()} con "
                        f"Indomitable ({total} vs CD {dc})")
+        return salida
+
+    # --- Tactical Mind (2) ---------------------------------------------------
+    def after_failed_check(self, target: Any, ability: str, result: Any,
+                           ctx: Any = None) -> Any:
+        """Tactical Mind: gasta un uso de Tomar Aliento para sumar +1d10.
+
+        Solo pruebas de característica falladas (el hook no se dispara en
+        salvaciones ni ataques). Decisión aleatoria con ``pick``; sin usos
+        de Tomar Aliento, con la prueba ya superada o sin ``ctx``/RNG el
+        rasgo se abstiene sin consumir azar. El uso SOLO se gasta si la
+        tirada final tiene éxito (si aun así falla, el uso queda).
+        """
+        if self.level < 2 or target is not self.owner or result is None:
+            return None
+        if getattr(result, "success", False):
+            return None
+        if (self.second_wind_usage is None
+                or not self.second_wind_usage.available):
+            return None
+        rng = getattr(ctx, "rng", None) if ctx is not None else None
+        if rng is None:
+            return None  # sin RNG el rasgo se abstiene
+        if pick(rng, ("no", "si")) == "no":
+            return None  # decisión aleatoria de intentarlo
+        d10 = int(roll_dice("1d10", rng))
+        dc = int(result.dc)
+        total = int(result.total) + d10
+        salida = CheckResult(
+            ability=result.ability,
+            dc=dc,
+            rolls=[*list(result.rolls), d10],
+            bonus=int(result.bonus),
+            total=total,
+            success=total >= dc,
+            mode=result.mode,
+            skill=getattr(result, "skill", None),
+        )
+        nombre = getattr(target, "name", target)
+        if salida.success:
+            self.second_wind_usage.spend()
+            _log_line(ctx, f"{nombre} usa Tactical Mind y gasta un uso de "
+                           f"Tomar Aliento (+{d10} → {total} vs CD {dc})")
+        else:
+            _log_line(ctx, f"{nombre} usa Tactical Mind (+{d10} → {total} "
+                           f"vs CD {dc}): el uso no se gasta")
         return salida
 
     # --- Reinicio -----------------------------------------------------------

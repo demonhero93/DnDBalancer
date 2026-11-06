@@ -424,14 +424,16 @@ def attempt_escapes(actor: Any, ctx: Any) -> None:
         skills = list(getattr(escape, "skills", ()) or ())
         if skills:
             habilidad = skills[0] if len(skills) == 1 else pick(rng, skills)
-            resultado = skill_check(actor, habilidad, escape.dc, rng)
+            resultado = skill_check(actor, habilidad, escape.dc, rng,
+                                    ctx=ctx)
         else:
             habilidades = list(escape.abilities) or ["str"]
             if len(habilidades) == 1:
                 habilidad = habilidades[0]
             else:
                 habilidad = pick(rng, habilidades)
-            resultado = ability_check(actor, habilidad, escape.dc, rng)
+            resultado = ability_check(actor, habilidad, escape.dc, rng,
+                                      ctx=ctx)
         etiqueta = _label(instance.condition)
         # Estadísticas: intentos y éxitos por condición.
         _contar(ctx, "escape_attempts", instance.condition.value)

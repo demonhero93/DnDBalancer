@@ -786,3 +786,141 @@ def test_plantilla_de_guerrero_de_main_usa_la_clase_fighter():
     guerrero = main._build_party(1)[0]
     assert any(isinstance(t, FighterFeatures) for t in guerrero.traits)
     assert guerrero.save_proficiencies == {"str", "con"}
+
+
+# --- Tactical Mind (2) ----------------------------------------------------------
+
+class _RngSi:
+    """RNG de test: pick → última opción («si») y d10 → 10."""
+
+    def randint(self, a: int, b: int) -> int:
+        return b
+
+    def randrange(self, n: int) -> int:
+        return n - 1
+
+    def random(self) -> float:
+        return 1.0
+
+
+def _check_fallada(dc: int = 15, total: int = 6, ability: str = "str"):
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.rules.checks import CheckResult
+
+    return CheckResult(
+        ability=ability, dc=dc, rolls=[total - 3], bonus=3, total=total,
+        success=total >= dc, mode=RollMode.NORMAL, skill=None)
+
+
+def test_tactical_mind_suma_d10_y_gasta_un_uso_si_la_tirada_final_pasa():
+    pj = _fighter(level=2)
+    pj.hp = 40
+    rasgo = _trait(pj)
+    usage = rasgo.second_wind_usage
+    antes = usage.uses_left
+    ctx = _ctx(pj, _RngSi())  # pick → «si», d10 → 10: 6+10=16 ≥ CD 15
+
+    salida = rasgo.after_failed_check(pj, "str", _check_fallada(15, 6), ctx)
+
+    assert salida.success and salida.total == 16
+    assert 10 in salida.rolls
+    assert usage.uses_left == antes - 1
+
+
+def test_tactical_mind_no_gasta_el_uso_si_aun_asi_falla():
+    pj = _fighter(level=2)
+    pj.hp = 40
+    rasgo = _trait(pj)
+    usage = rasgo.second_wind_usage
+    ctx = _ctx(pj, _RngSi())  # d10 → 10: 2+10=12 < CD 30
+
+    salida = rasgo.after_failed_check(pj, "str", _check_fallada(30, 2), ctx)
+
+    assert salida is not None and salida.total == 12
+    assert not salida.success
+    assert usage.uses_left == usage.uses_max
+
+
+def test_tactical_mind_sin_usos_no_actua_y_no_consume_rng(monkeypatch):
+    pj = _fighter(level=2)
+    pj.hp = 40
+    rasgo = _trait(pj)
+    rasgo.second_wind_usage.uses_left = 0
+    ctx = _ctx(pj, _RngSi())
+    llamadas = []
+
+    import dnd_sim.rules.classes.fighter.features as mod
+
+    original = mod.pick
+    monkeypatch.setattr(mod, "pick",
+                        lambda *a, **k: (llamadas.append(1), original(*a, **k))[1])
+    salida = rasgo.after_failed_check(pj, "str", _check_fallada(), ctx)
+
+    assert salida is None
+    assert llamadas == []
+
+
+def test_tactical_mind_sin_ctx_no_actua():
+    pj = _fighter(level=2)
+    pj.hp = 40
+    rasgo = _trait(pj)
+    antes = rasgo.second_wind_usage.uses_left
+
+    salida = rasgo.after_failed_check(pj, "str", _check_fallada(), None)
+
+    assert salida is None
+    assert rasgo.second_wind_usage.uses_left == antes
+
+
+def test_tactical_mind_no_actua_en_salvaciones():
+    import random
+
+    from dnd_sim.rules.saves import saving_throw
+
+    pj = _fighter(level=2)
+    pj.hp = 40
+    rasgo = _trait(pj)
+    antes = rasgo.second_wind_usage.uses_left
+
+    saving_throw(pj, "con", 30, random.Random(1), ctx=_ctx(pj))
+
+    assert rasgo.second_wind_usage.uses_left == antes
+
+
+def test_el_gancho_after_failed_check_desde_ability_check_con_ctx():
+    from dnd_sim.rules.traits.base import hooks
+
+    pj = _fighter(level=2)
+    pj.hp = 40
+    rasgo = _trait(pj)
+    assert any(hooks(pj.traits, "after_failed_check"))
+    assert rasgo.second_wind_usage.available
+
+    class _RngSecuencia:
+        """d20 → 1 (falla), pick → «si», d10 → 10."""
+
+        def __init__(self):
+            self._valores = [1, 10]
+            self._i = 0
+
+        def randint(self, a: int, b: int) -> int:
+            v = self._valores[self._i] if self._i < len(self._valores) else b
+            self._i += 1
+            return v
+
+        def randrange(self, n: int) -> int:
+            return n - 1
+
+        def random(self) -> float:
+            return 1.0
+
+    from dnd_sim.rules.checks import ability_check
+
+    rng = _RngSecuencia()
+    antes = rasgo.second_wind_usage.uses_left
+    salida = ability_check(pj, "str", 20, rng, ctx=_ctx(pj, rng))
+    # d20=1 (falla) → hook gana el +1d10=10; si aún así falla, no gasta.
+    assert salida.rolls == [1, 10]
+    assert salida.total == 1 + salida.bonus + 10
+    assert not salida.success
+    assert rasgo.second_wind_usage.uses_left == antes

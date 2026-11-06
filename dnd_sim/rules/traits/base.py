@@ -234,6 +234,21 @@ class Trait:
         """
         return None
 
+    def after_failed_check(self, target: Any, ability: str, result: Any,
+                           ctx: Any = None) -> Any:
+        """Hook: ``target`` acaba de FALLAR una prueba de característica.
+
+        Se despacha desde :func:`dnd_sim.rules.checks._avisar_fallo_prueba`
+        (al final de ``ability_check``/``skill_check``) solo si llega
+        ``ctx`` y el resultado sigue fallando. ``ability`` es la
+        característica normalizada y ``result`` el
+        :class:`CheckResult`. Devolver un ``CheckResult`` nuevo
+        **sustituye** al original (p. ej. Tactical Mind con su +1d10);
+        devolver ``None`` lo deja igual. No se aplica a salvaciones ni a
+        tiradas de ataque (ganchos distintos). Por defecto no hace nada.
+        """
+        return None
+
     # --- Condiciones --------------------------------------------------------
     def blocks_condition(self, condition: Any, ctx: Any = None) -> bool:
         """Hook: ¿impide ``condition`` aplicarse al dueño del rasgo?
@@ -349,6 +364,7 @@ HOOK_NAMES: tuple[str, ...] = (
     "modify_save_modifiers",
     "grant_save_modifiers",
     "after_failed_save",
+    "after_failed_check",
     "modify_check_modifiers",
     "modify_incoming_damage",
     "after_damage_taken",

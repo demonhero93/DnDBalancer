@@ -197,7 +197,7 @@ def intentar_desenganche(actor: Any, ctx: Any) -> None:
     from .checks import ability_check
 
     rng = getattr(ctx, "rng", None)
-    resultado = ability_check(actor, "str", DC_DESENGANCHE, rng)
+    resultado = ability_check(actor, "str", DC_DESENGANCHE, rng, ctx=ctx)
     nombre = getattr(actor, "name", actor)
     otro = getattr(enganchador, "name", enganchador)
     if resultado.success:

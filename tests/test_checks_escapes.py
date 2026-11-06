@@ -268,7 +268,7 @@ def _check_fijo(exito: bool):
     """Devuelve una función ability_check con el resultado forzado."""
     from dnd_sim.rules.checks import CheckResult
 
-    def _fake(target, ability, dc, rng, mode=None):
+    def _fake(target, ability, dc, rng, mode=None, ctx=None):
         return CheckResult(ability=ability, dc=dc, rolls=[10], bonus=0,
                            total=10, success=exito, mode=RollMode.NORMAL)
     return _fake

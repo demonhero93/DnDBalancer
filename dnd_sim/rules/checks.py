@@ -141,28 +141,56 @@ def _finish_check(ability: str, skill: str | None, dc: int, rng: Any,
     )
 
 
+def _avisar_fallo_prueba(target: Any, result: CheckResult,
+                         ctx: Any) -> CheckResult:
+    """Despacha el hook ``after_failed_check`` si la prueba falló.
+
+    Patrón espejo de :func:`dnd_sim.rules.saves._avisar_fallo_salvacion`:
+    sin ``ctx``, sin fallo o sin rasgos que sobrescriban el hook no se
+    consulta nada (cero coste y cero RNG). Un rasgo puede **devolver** un
+    ``CheckResult`` nuevo que sustituya al original (p. ej. Tactical
+    Mind); si lo hace, es el valor que devuelven los call sites.
+    """
+    if ctx is None or target is None or result.success:
+        return result
+    traits = getattr(target, "traits", None)
+    if not traits:
+        return result
+    from .traits.base import hooks
+    for rasgo in hooks(traits, "after_failed_check"):
+        nuevo = rasgo.after_failed_check(target, result.ability, result, ctx)
+        if nuevo is not None:
+            result = nuevo
+            if result.success:
+                break
+    return result
+
+
 def ability_check(target: Any, ability: str, dc: int, rng: random.Random,
-                  mode: Any = None) -> CheckResult:
+                  mode: Any = None, ctx: Any = None) -> CheckResult:
     """Tira una prueba de característica.
 
     Usa ventaja/desventaja según :func:`check_modifiers` (y no el 20 natural
-    como éxito automático).
+    como éxito automático). Si falla y llega ``ctx``, despacha el hook
+    ``after_failed_check`` de los rasgos del objetivo (Tactical Mind).
     """
     ab = normalize_ability(ability)
     mods, resolved = _resolve_mods(target, ab, None, mode)
     bonus = ability_check_bonus(target, ab)
     # El hechizo de guía añade +1d4 a una prueba (y se consume).
     bonus += _guia(target, rng)
-    return _finish_check(ab, None, dc, rng, resolved, bonus,
-                         getattr(mods, "minimum_total", None))
+    res = _finish_check(ab, None, dc, rng, resolved, bonus,
+                        getattr(mods, "minimum_total", None))
+    return _avisar_fallo_prueba(target, res, ctx)
 
 
 def skill_check(target: Any, skill: str, dc: int, rng: random.Random,
-                mode: Any = None) -> CheckResult:
+                mode: Any = None, ctx: Any = None) -> CheckResult:
     """Tira una prueba de habilidad (Atletismo, Sigilo, Arcana...).
 
     Usa la característica asociada a la habilidad y el bono completo
-    (modificador + competencia/expertise vía :func:`skill_bonus`).
+    (modificador + competencia/expertise vía :func:`skill_bonus`). Si
+    falla y llega ``ctx``, despacha el hook ``after_failed_check``.
     """
     name = normalize_skill(skill)
     mods, resolved = _resolve_mods(target, skill_ability(name), name, mode)
@@ -172,8 +200,9 @@ def skill_check(target: Any, skill: str, dc: int, rng: random.Random,
     bonus = skill_bonus(target, name, ability=eff_ability)
     # El hechizo de guía añade +1d4 a una prueba (y se consume).
     bonus += _guia(target, rng)
-    return _finish_check(eff_ability, name, dc, rng, resolved, bonus,
-                         getattr(mods, "minimum_total", None))
+    res = _finish_check(eff_ability, name, dc, rng, resolved, bonus,
+                        getattr(mods, "minimum_total", None))
+    return _avisar_fallo_prueba(target, res, ctx)
 
 
 __all__ = ["CheckResult", "ability_check", "ability_check_bonus",
