@@ -1215,3 +1215,10 @@ def test_interception_sin_rng_no_actúa():
     assert _trait(pj).reduce_damage_to_allies(
         _aliado(pj), 20, ctx=ctx) is None
     assert not pj.state.reaction_used
+
+
+def test_los_niveles_de_asi_y_el_don_épico_son_datos_de_tabla():
+    pj = _fighter()
+
+    assert _trait(pj).asi_levels == (4, 6, 8, 12, 14, 16)
+    assert _trait(pj).epic_boon_level == 19

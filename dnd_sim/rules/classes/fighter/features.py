@@ -47,8 +47,9 @@ Decisiones de simulación documentadas:
   Protection (reacción: desventaja al atacante contra un aliado a 5
   pies; exige escudo, dato ``tiene_escudo``) e Interception (reacción:
   reduce el daño a un aliado a 5 pies con ``1d10 + PB``; requiere
-  escudo o arma). Blind/Unarmed/Two-Weapon Fighting: dato sin efecto
-  (TODO.md).
+  escudo o arma). Blind Fighting y Unarmed Fighting: dato sin efecto
+  (sin sistema de visibilidad; el PJ elige armas). Two-Weapon Fighting:
+  dato sin efecto hasta que exista el ataque adicional (TODO.md).
 - **Ataques Estudiados** (13): un fallo marca al objetivo (clave por
   nombre) hasta el final de tu siguiente turno; el PRÓXIMO ataque
   contra él tiene ventaja y la consume, acierte o falle. La caducidad
@@ -138,6 +139,11 @@ class FighterFeatures(Trait):
 
     # Nivel del personaje (manda en las tablas de features).
     level: int = MIN_LEVEL
+    # Niveles de ASI (4/6/8/12/14/16): dato de tabla, sin efecto en el
+    # modelo (el PJ se define en código con sus características finales).
+    asi_levels: tuple[int, ...] = (4, 6, 8, 12, 14, 16)
+    # Nivel del Don Épico (19): dato de tabla, sin efecto (igual que ASI).
+    epic_boon_level: int = 19
     # Estilo de Combate elegido (1): clave en ``FIGHTER_STYLES``.
     estilo: str | None = None
     # ¿Lleva escudo? (dato: el modelo no guarda equipo; quien construye
