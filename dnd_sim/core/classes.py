@@ -191,13 +191,16 @@ FIGHTER_SKILLS: tuple[str, ...] = (
 )
 
 #: Estilos de combate del Fighter con efecto en la simulación (PHB 2024).
-#: El resto (Protection, Interception, Blind Fighting, Unarmed Fighting,
-#: Two-Weapon Fighting) queda como dato sin efecto (ver TODO.md).
+#: Protection e Interception usan la reacción del guardián; el resto
+#: (Blind Fighting, Unarmed Fighting, Two-Weapon Fighting) queda como
+#: dato sin efecto (ver TODO.md).
 FIGHTER_STYLES: tuple[str, ...] = (
     "Archery",
     "Defense",
     "Dueling",
     "Great Weapon Fighting",
+    "Interception",
+    "Protection",
     "Thrown Weapon Fighting",
 )
 

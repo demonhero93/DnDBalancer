@@ -43,9 +43,12 @@ Decisiones de simulación documentadas:
   ``two-handed``, sin saber si hay otra arma en la mano), Great Weapon
   Fighting (dados de 1 o 2 cuentan como 3 en golpes cuerpo a cuerpo con
   arma ``two-handed``; ``versatile`` a dos manos no es modelable),
-  Thrown Weapon Fighting (+2 si el arma tiene la propiedad ``thrown``).
-  Protection/Interception/Blind/Unarmed/Two-Weapon Fighting: dato sin
-  efecto (TODO.md).
+  Thrown Weapon Fighting (+2 si el arma tiene la propiedad ``thrown``),
+  Protection (reacción: desventaja al atacante contra un aliado a 5
+  pies; exige escudo, dato ``tiene_escudo``) e Interception (reacción:
+  reduce el daño a un aliado a 5 pies con ``1d10 + PB``; requiere
+  escudo o arma). Blind/Unarmed/Two-Weapon Fighting: dato sin efecto
+  (TODO.md).
 - **Ataques Estudiados** (13): un fallo marca al objetivo (clave por
   nombre) hasta el final de tu siguiente turno; el PRÓXIMO ataque
   contra él tiene ventaja y la consume, acierte o falle. La caducidad
@@ -74,6 +77,7 @@ from ....core.classes import (
 from ....core.dice import roll_dice
 from ....core.enums import AttackRange
 from ....core.log import log_line as _log_line
+from ....core.proficiency import proficiency_bonus
 from ....core.randomness import pick, sample
 from ....core.skills import normalize_skill
 from ....model.actions import (
@@ -93,6 +97,35 @@ from ...usage import ActionUsage, UsageKind
 #: llamante no pasa ``rng``: crea el personaje siempre igual (reproducible).
 _RNG_CREACION = random.Random(0)
 
+#: Cobertura abstracta de «a 5 pies» para Protection/Interception: el
+#: modelo no guarda posiciones, así que se asume cobertura total
+#: (patrón wild_heart con p=1.0: no consume RNG).
+_COBERTURA_5_PIES = 1.0
+
+
+def _en_5_pies(rng: Any) -> bool:
+    """¿Está a 5 pies? (cobertura abstracta, sin posiciones)."""
+    p = _COBERTURA_5_PIES
+    if p <= 0.0:
+        return False
+    if p >= 1.0:
+        return True
+    if rng is None:
+        return True  # sin RNG: cobertura completa (no inventa tiradas)
+    return rng.random() < p
+
+
+def _es_aliado(owner: Any, criatura: Any) -> bool:
+    """¿``criatura`` es un aliado vivo de ``owner``? (sin cobertura)."""
+    if criatura is None or criatura is owner:
+        return False
+    if not getattr(criatura, "alive", True):
+        return False
+    hostil = getattr(owner, "is_hostile_to", None)
+    if hostil is not None and hostil(criatura):
+        return False
+    return True
+
 
 @dataclass
 class FighterFeatures(Trait):
@@ -107,6 +140,9 @@ class FighterFeatures(Trait):
     level: int = MIN_LEVEL
     # Estilo de Combate elegido (1): clave en ``FIGHTER_STYLES``.
     estilo: str | None = None
+    # ¿Lleva escudo? (dato: el modelo no guarda equipo; quien construye
+    # el PJ lo activa. Protection lo exige; Interception escudo o arma.)
+    tiene_escudo: bool = False
     # Usos de Tomar Aliento (se crea en ``apply_fighter`` con la tabla).
     second_wind_usage: ActionUsage | None = field(
         default=None, repr=False, compare=False)
@@ -173,6 +209,83 @@ class FighterFeatures(Trait):
                 and "two-handed" not in props):
             return 2
         return 0
+
+    def grant_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
+                               rango: Any, ctx: Any = None,
+                               rng: Any = None, atk: Any = None) -> None:
+        """Protection (reacción): desventaja al atacante contra un aliado.
+
+        Requiere escudo (dato ``tiene_escudo``), aliado vivo del
+        guardián a 5 pies (cobertura abstracta), atacante y objetivo
+        distintos del guardián y su reacción libre. La decisión de usar
+        la reacción es un ``pick`` uniforme; sin RNG el rasgo se
+        abstiene sin consumir azar.
+        """
+        if self.estilo != "Protection" or not self.tiene_escudo:
+            return None
+        owner = self.owner
+        if owner is None or attacker is owner or target is owner:
+            return None
+        if not _es_aliado(owner, target):
+            return None
+        estado = getattr(owner, "state", None)
+        if estado is not None and getattr(estado, "reaction_used", False):
+            return None  # su reacción de este turno ya está gastada
+        if rng is None:
+            return None  # sin RNG el rasgo se abstiene
+        if not _en_5_pies(rng):
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None  # decisión aleatoria de gastar la reacción
+        if estado is not None:
+            estado.reaction_used = True
+        mods.disadvantage_sources.append("Protección")
+        _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Protección "
+                       f"contra {getattr(attacker, 'name', attacker)}")
+        return None
+
+    def reduce_damage_to_allies(self, target: Any, amount: int,
+                                damage_type: Any = None,
+                                source: Any = None,
+                                ctx: Any = None) -> int | None:
+        """Interception (reacción): reduce el daño a un aliado con 1d10+PB.
+
+        Requiere escudo o arma en mano (dato ``tiene_escudo`` o ataques
+        del PJ), aliado vivo distinto del guardián a 5 pies (cobertura
+        abstracta) y reacción libre. La decisión de usar la reacción es
+        un ``pick`` uniforme; sin RNG el rasgo se abstiene. Devuelve el
+        daño restante (mínimo 0), como Spirit Shield.
+        """
+        if self.estilo != "Interception":
+            return None
+        owner = self.owner
+        if owner is None or target is None or target is owner:
+            return None
+        if not _es_aliado(owner, target):
+            return None
+        if not (self.tiene_escudo or getattr(owner, "attacks", None)
+                or getattr(owner, "weapons", None)):
+            return None  # sin escudo ni arma no hay con qué interceptar
+        estado = getattr(owner, "state", None)
+        if estado is not None and getattr(estado, "reaction_used", False):
+            return None  # su reacción de este turno ya está gastada
+        rng = getattr(ctx, "rng", None)
+        if rng is None:
+            return None  # sin RNG el rasgo se abstiene
+        if not _en_5_pies(rng):
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None  # decisión aleatoria de gastar la reacción
+        reducido = min(int(amount),
+                       int(roll_dice("1d10", rng)) + proficiency_bonus(self.level))
+        if reducido <= 0:
+            return None
+        if estado is not None:
+            estado.reaction_used = True
+        _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Intercepción: "
+                       f"reduce {reducido} de daño a "
+                       f"{getattr(target, 'name', target)}")
+        return max(0, int(amount) - reducido)
 
     # --- Ataques Estudiados (13) ----------------------------------------------
     def after_attack_roll(self, attacker: Any, target: Any, atk: Any,
@@ -462,7 +575,8 @@ class ActionSurgeAction(CombatAction):
 def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
                   level: int | None = None,
                   rng: random.Random | None = None,
-                  fighting_style: str | None = None) -> FighterFeatures:
+                  fighting_style: str | None = None,
+                  tiene_escudo: bool = False) -> FighterFeatures:
     """Aplica la clase Fighter (Guerrero) a ``pj`` según su nivel.
 
     - Salvaciones: FUE y CON.
@@ -471,6 +585,8 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
     - Estilo de Combate (1): ``fighting_style`` explícito o ``pick``
       uniforme entre los implementados (con ``rng`` del llamante; sin él,
       semilla fija 0 para crear siempre el mismo personaje).
+    - ``tiene_escudo``: dato que quien construye el PJ activa si lleva
+      escudo (Protection lo exige; Interception escudo o arma).
     - Tomar Aliento (1): acción bonus con usos por nivel (2/3/4).
     - Oleada de Acción (2): acción bonus que restaura la acción del
       turno (usos 1/2 por nivel).
@@ -537,7 +653,8 @@ def apply_fighter(pj: Any, skills: tuple[str, ...] = (),
                 restantes.append(multi)
                 pj.actions = restantes
 
-    trait = FighterFeatures(name="Guerrero", level=lvl, estilo=estilo)
+    trait = FighterFeatures(name="Guerrero", level=lvl, estilo=estilo,
+                            tiene_escudo=tiene_escudo)
     trait.owner = pj
     # Maestría con Armas (1): selección de N armas y marca de SU clave
     # de la tabla en el objeto Attack (mutación in-place: las acciones

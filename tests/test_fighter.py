@@ -555,8 +555,9 @@ def test_estilo_de_combate_explícito_se_respeta():
 
 
 def test_estilo_de_combate_invalido_da_value_error():
+    # «Protection» es ahora un estilo válido (A5): se prueba con uno inventado.
     with pytest.raises(ValueError, match="no es un Estilo de Combate"):
-        apply_fighter(_pj(), fighting_style="Protection")
+        apply_fighter(_pj(), fighting_style="Estilo inventado")
 
 
 def test_apply_class_reenvía_el_estilo_de_combate():
@@ -1056,3 +1057,161 @@ def test_la_sustitucion_de_tactical_master_solo_dura_ese_ataque():
 
     assert resolver_maestria(pj, arma, _RngUltimo()) == "slow"
     assert arma.mastery == "sap"  # el objeto no cambia
+
+
+# --- Protection / Interception (reacción) (A5) ---------------------------------
+
+def _aliado(pj, nombre: str = "Aliado"):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(name=nombre, alive=True,
+                           combatant_type=pj.combatant_type)
+
+
+def _enemigo(nombre: str = "Enemigo"):
+    from types import SimpleNamespace
+
+    # Sin combatant_type: is_hostile_to lo trata como bando distinto.
+    return SimpleNamespace(name=nombre, alive=True)
+
+
+def _con_estilo(estilo: str, **kwargs) -> PlayerCharacter:
+    pj = _pj()
+    apply_fighter(pj, fighting_style=estilo, **kwargs)
+    return pj
+
+
+def test_protection_impone_desventaja_al_atacante_contra_un_aliado():
+    pj = _con_estilo("Protection", tiene_escudo=True)
+    mods = _mods()
+
+    _trait(pj).grant_attack_modifiers(
+        mods, _enemigo(), _aliado(pj), None, ctx=None, rng=_RngSi())
+
+    assert "Protección" in mods.disadvantage_sources
+    assert pj.state.reaction_used
+
+
+def test_protection_sin_escudo_no_actúa_y_no_consume_rng():
+    pj = _con_estilo("Protection")  # tiene_escudo=False por defecto
+    mods = _mods()
+
+    _trait(pj).grant_attack_modifiers(
+        mods, _enemigo(), _aliado(pj), None, ctx=None, rng=_RngExplota())
+
+    assert mods.disadvantage_sources == []
+    assert not pj.state.reaction_used
+
+
+def test_protection_no_actúa_con_la_reacción_gastada():
+    pj = _con_estilo("Protection", tiene_escudo=True)
+    pj.state.reaction_used = True
+    mods = _mods()
+
+    _trait(pj).grant_attack_modifiers(
+        mods, _enemigo(), _aliado(pj), None, ctx=None, rng=_RngSi())
+
+    assert mods.disadvantage_sources == []
+
+
+def test_protection_no_actúa_contra_un_no_aliado_ni_con_el_mismo_pj():
+    pj = _con_estilo("Protection", tiene_escudo=True)
+    mods = _mods()
+    rasgo = _trait(pj)
+
+    rasgo.grant_attack_modifiers(
+        mods, _enemigo(), _enemigo("Bando distinto"), None,
+        ctx=None, rng=_RngExplota())
+    rasgo.grant_attack_modifiers(
+        mods, _enemigo(), pj, None, ctx=None, rng=_RngExplota())
+
+    assert mods.disadvantage_sources == []
+    assert not pj.state.reaction_used
+
+
+def test_protection_sin_rng_no_actúa():
+    pj = _con_estilo("Protection", tiene_escudo=True)
+    mods = _mods()
+
+    _trait(pj).grant_attack_modifiers(
+        mods, _enemigo(), _aliado(pj), None, ctx=None, rng=None)
+
+    assert mods.disadvantage_sources == []
+    assert not pj.state.reaction_used
+
+
+def test_las_dos_reacciones_de_protection_no_se_acumulan_en_una_ronda():
+    pj = _con_estilo("Protection", tiene_escudo=True)
+    mods = _mods()
+    rasgo = _trait(pj)
+    kwargs = dict(ctx=None, rng=_RngSi())
+
+    rasgo.grant_attack_modifiers(mods, _enemigo(), _aliado(pj), None, **kwargs)
+    rasgo.grant_attack_modifiers(mods, _enemigo(), _aliado(pj), "B", **kwargs)
+
+    assert mods.disadvantage_sources == ["Protección"]  # solo la primera
+    assert pj.state.reaction_used
+
+
+def test_interception_reduce_el_daño_al_aliado_con_1d10_mas_pb():
+    pj = _con_estilo("Interception")  # sin escudo: bastan sus ataques
+    ctx = _ctx(pj, _RngSi())  # pick → «si», d10 → 10; PB nivel 5 = 3 → 13
+
+    restante = _trait(pj).reduce_damage_to_allies(
+        _aliado(pj), 20, ctx=ctx)
+
+    assert restante == 7  # 20 − (10 + 3)
+    assert pj.state.reaction_used
+
+
+def test_interception_con_un_aliado_no_baja_de_cero_el_daño():
+    pj = _con_estilo("Interception")
+    ctx = _ctx(pj, _RngSi())
+
+    restante = _trait(pj).reduce_damage_to_allies(
+        _aliado(pj), 5, ctx=ctx)
+
+    assert restante == 0  # mínimo 0, aunque la reducción sea mayor
+    assert pj.state.reaction_used
+
+
+def test_interception_sin_arma_ni_escudo_no_actúa_y_no_consume_rng():
+    pj = _pj(attacks=[])
+    apply_fighter(pj, fighting_style="Interception")
+    ctx = _ctx(pj, _RngExplota())
+
+    restante = _trait(pj).reduce_damage_to_allies(
+        _aliado(pj), 20, ctx=ctx)
+
+    assert restante is None
+    assert not pj.state.reaction_used
+
+
+def test_interception_no_actúa_con_la_reacción_gastada():
+    pj = _con_estilo("Interception")
+    pj.state.reaction_used = True
+    ctx = _ctx(pj, _RngSi())
+
+    assert _trait(pj).reduce_damage_to_allies(_aliado(pj), 20, ctx=ctx) is None
+
+
+def test_interception_no_actúa_contra_un_no_aliado_ni_con_el_mismo_pj():
+    pj = _con_estilo("Interception")
+    rasgo = _trait(pj)
+    ctx = _ctx(pj, _RngExplota())
+
+    assert rasgo.reduce_damage_to_allies(
+        _enemigo("Bando distinto"), 20, ctx=ctx) is None
+    assert rasgo.reduce_damage_to_allies(pj, 20, ctx=ctx) is None
+    assert not pj.state.reaction_used
+
+
+def test_interception_sin_rng_no_actúa():
+    from types import SimpleNamespace
+
+    pj = _con_estilo("Interception")
+    ctx = SimpleNamespace(actor=pj, rng=None)
+
+    assert _trait(pj).reduce_damage_to_allies(
+        _aliado(pj), 20, ctx=ctx) is None
+    assert not pj.state.reaction_used
