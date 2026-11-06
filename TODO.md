@@ -1,6 +1,6 @@
 # TODO — DnDBalancer / dnd_sim
 
-Revisar al principio de cada sesión. Última revisión: 2026-11-05.
+Revisar al principio de cada sesión. Última revisión: 2026-11-06.
 Contexto detallado: PASOS-ANTERIORES.txt (secciones 9-13) y ARCHITECTURE.md.
 
 ## Bloque 2026-10-30 (commiteado)
@@ -94,32 +94,70 @@ Decisiones tomadas (detalle en PASOS-ANTERIORES.txt):
 - Two-Weapon Fighting: dato sin efecto — el motor no tiene ataques
   bonus/off-hand que mejorar.
 
-## Fighter: datos sin efecto
+## Fighter: cierre de pendientes
 
-Rasgos del PHB 2024 que el simulador NO modela. Documentados aquí; si
-algún día se necesitan, el punto de entrada está indicado.
+Plan de esta sesión: cierra Tactical Mind, maestrías (motor + asignación
++ Tactical Master) y los estilos Protection/Interception. Cada casilla =
+un commit (una idea). Al final, B deja cerradas como decisión de
+diseño las cosas que NO se implementan.
 
-- **Tactical Mind (2)**: al fallar una prueba de característica gastar 1
-  uso de Tomar Aliento para sumar 1d10. Sin efecto: `checks.py`
-  (`ability_check`/`skill_check`) no recibe `ctx`, no hay gancho
-  `after_failed_check` y no se creó uno solo por esto. Para
-  implementarlo: añadir gancho mínimo en `rules/checks.py` + entrada en
-  `HOOK_NAMES` (patrón `after_failed_save`).
-- **Tactical Shift (5)**: moverse al activar Tomar Aliento. Sin efecto:
-  el simulador no tiene sistema de movimiento/posiciones.
-- **Tactical Master (9)**: sustituir la maestría por Push/Sap/Slow.
-  Sin efecto: el motor no aplica propiedades de maestría a los PJs (la
-  infra `Attack.mastery` solo la usa world_tree en monstruos cargados
-  con esas claves).
-- **Weapon Mastery (1)**: implementado solo como DATO —
-  `weapon_mastery_count` (3/4/5/6 en 1/4/10/16) + `sample` de armas del
-  PJ en `trait.maestrias` (pool `weapons` o, si no, `attacks`). Efectos
-  de maestría: pendientes hasta que haya motor de maestría para PJs.
-- **ASI (4/6/8/12/14/16) y Don Épico (19)**: sin efecto — el modelo de
-  PJ no aplica mejoras de atributo ni dones épicos.
-- **Estilos sin efecto**: Protection, Interception, Blind Fighting,
-  Unarmed Fighting (sin infra de reacciones/visión/sin arma) y
-  Two-Weapon Fighting (ver decisión arriba).
+- [x] A1. Tactical Mind (2): gancho `after_failed_check` en
+      `rules/checks.py` (parámetro `ctx=None` opcional, sin ctx =
+      comportamiento idéntico), método en `Trait` + `HOOK_NAMES`,
+      callers con ctx (escapes en `conditions.py`, desenganche en
+      `attach.py`) y rasgo en FighterFeatures (pick, 1d10, usa Second
+      Wind SOLO si la tirada final pasa). Tests.
+- [x] A2. Motor de maestrías: `rules/mastery.py` (tabla arma→maestría
+      EN+ES, `resolver_maestria`, `al_acertar`/`al_fallar`), llamada
+      desde `engine/combat/attack.py` solo si `atk.mastery` (los
+      monstruos no cambian), marcas Vex/Sap en `CombatState` +
+      consumo en `roll_modifiers.attack_modifiers`. Efectos: Topple,
+      Vex, Sap, Graze; Push/Slow = dato con `# TODO`; Cleave/Nick
+      pendientes abajo. Tests `tests/test_mastery.py`.
+- [x] A3. Asignar maestrías a los PJ: en `apply_fighter`, los ataques
+      cuyo nombre está en `trait.maestrias` reciben `atk.mastery` desde
+      la tabla (sin entrada → vacío, sin error). Bárbaro: seguimiento
+      anotado aquí, NO se implementa. Tests.
+- [x] A4. Tactical Master (9): `sustituir_maestria` en FighterFeatures
+      (pick entre [original, push, sap, slow]; sin RNG sin maestría ni
+      bajo nivel 9) consultado por `mastery.resolver_maestria`. Tests.
+- [x] A5. Protection e Interception: entran en `FIGHTER_STYLES`, dato
+      `tiene_escudo` (default False: el modelo no guarda equipo),
+      `grant_attack_modifiers` (desventaja) y
+      `reduce_damage_to_allies` (1d10+PB) con pick y cobertura abstracta
+      a 5 ft. **AVISO**: `test_estilo_de_combate_invalido_da_value_error`
+      usa hoy "Protection" como estilo inválido → ese test cambiará
+      (se le pone otro nombre inválido); se explica en PASOS antes de
+      tocarlo. Tests.
+- [x] B. Decisiones de diseño documentadas (sin efecto): `asi_levels` y
+      `epic_boon_level` en FighterFeatures + nota en ARCHITECTURE;
+      Blind Fighting / Unarmed Fighting / Tactical Shift cerrados;
+      TODO.md se queda SOLO con pendientes reales (Cleave, Nick,
+      Two-Weapon Fighting, Push/Slow sin efecto, maestrías del
+      bárbaro, subclases Fighter).
+- [x] Docs y verificación final: ARCHITECTURE (mastery, hook,
+      recuentos), bloque Guerrero en PASOS, `pytest
+      tests/test_arquitectura.py`, `pytest`, `python tools/capas.py`,
+      `graphify update .` + commit de grafo.
+
+## Fighter: pendientes reales
+
+Rasgos/estilos que siguen SIN efecto (decisiones cerradas arriba y en
+PASOS-ANTERIORES.txt). Solo queda esto del Fighter:
+
+- **Cleave** (maestría de hacha gigante/mandoble/alabarda): necesita el
+  segundo golpe contra un objetivo adicional (sin motor de objetivos
+  múltiples para maestrías).
+- **Nick** (maestría de arma ligera): permite el ataque extra con
+  acción de ataque; depende de que exista el ataque bonus/off-hand.
+- **Two-Weapon Fighting**: sin efecto hasta que exista el ataque
+  adicional (depende de Nick; el motor no tiene ataques bonus).
+- **Push/Slow** (efecto de maestría): sin posiciones ni movimiento que
+  desplazar (`# TODO` en `rules/mastery.py`).
+- **Maestrías del bárbaro 2024**: seguimiento — la clase bárbaro no
+  asigna `atk.mastery` (solo el Fighter, vía `apply_fighter`).
+- **Subclases Fighter**: receta en «Fighter: cómo añadir una subclase»;
+  candidatas Champion, Battle Master, Eldritch Knight, Psi Warrior.
 
 ## Fighter: cómo añadir una subclase
 

@@ -668,9 +668,156 @@ Fuente: historial git + ARCHITECTURE.md.
       aristas, 96 comunidades; grafo y GRAPH_REPORT.md regenerados en
       graphify-out/).
 
+CIERRE DE PENDIENTES DEL FIGHTER (2026-11-06)
+  - (A1) Tactical Mind (2) con gancho nuevo ``after_failed_check``:
+    checks.py gana ``ctx=None`` en ability_check/skill_check +
+    _avisar_fallo_prueba (espejo de _avisar_fallo_salvacion: sin ctx,
+    sin fallo o sin rasgos → sin RNG; un CheckResult devuelto
+    sustituye). Trait.after_failed_check + entrada en HOOK_NAMES tras
+    after_failed_save (test_traits itera el catálogo ✓). Callers con
+    ctx en scope pasan ctx=ctx: conditions.attempt_escapes (skill y
+    ability) y attach.intentar_desenganche; utility.py no usa checks.
+    Rasgo FighterFeatures.after_failed_check: guards nivel>=2,
+    dueño, no éxito previo, usos de Tomar Aliento disponibles, rng;
+    pick «no/si»; +1d10; el uso SOLO se gasta si la tirada final
+    pasa (si no, el resultado nuevo se devuelve igual con el d10).
+    Ficheros: rules/checks.py, rules/traits/base.py,
+    rules/conditions.py, rules/attach.py,
+    rules/classes/fighter/features.py.
+    Test existente tocado (firma, NO resultado):
+    tests/test_checks_escapes.py _check_fijo ganó ``ctx=None`` en el
+    fake de ability_check — el fake no aceptaba el kwarg nuevo y el
+    escape silenciosamente no veía el resultado parcheado; sin cambio
+    de semillas ni de asserts.
+    tests/test_fighter.py +6 (total 67): gasta si la tirada final
+    pasa, no gasta si aún falla, sin usos → sin RNG (spy de pick),
+    sin ctx nada, salvaciones no disparan el gancho, despacho real
+    desde ability_check con ctx (d20=1 → +1d10 y sin gasto).
+    Suite completa: 1077 passed.
+    Commit 696ec3a.
+  - (A2) Motor de maestrías: módulo nuevo ``rules/mastery.py``
+    (docstring español, desde __future__) con la tabla PHB
+    ``MAESTRIAS`` (34 armas EN + alias ES; ``maestria_de`` normaliza a
+    minúsculas y devuelve "" sin error), ``resolver_maestria`` (base
+    SIEMPRE ``Attack.mastery``, nunca la tabla → monstruos intactos;
+    consulta perezosa ``sustituir_maestria`` de los rasgos del
+    atacante — solo FighterFeatures la define, A4), ``al_acertar``
+    (Topple: pick «no/si», salvación CON CD 8+PB+mod con
+    registrar_resistencia, fallo → PRONE con EscapeCheck str/dex DC 10
+    no-consume-acción, mismo patrón Raíces Golpeadoras; Vex: daño>0 →
+    marca ``state.maestria_ventaja[nombre_obj]=ronda+2``; Sap: marca
+    ``state.maestria_desventaja[nombre_atacante]=ronda+1`` en el SUJETO
+    afectado) y ``al_fallar`` (Graze: daño = mod de la característica
+    con mínimo 0, apply_damage_modifiers + inflict_damage; 0 → sin
+    log). Push/Slow = ``EFECTOS_SIN_EFECTO`` con # TODO (sin
+    movimiento); Cleave/Nick pendientes en TODO. Caducidad: shortcut
+    por ronda de ctx (documentado en el código). Consumo en
+    roll_modifiers.attack_modifiers (bloque 5c,
+    consumir_marcas: consume al conceder, limpia caducadas; sin ctx o
+    sin marcas → nada). Llamada desde engine/combat/attack.py antes de
+    _trigger_after_attack_roll SOLO si ``atk.mastery`` no vacío (sin
+    clave → sin RNG). ``CombatState`` gana ``maestria_ventaja`` y
+    ``maestria_desventaja`` (core no importa rules) y
+    ``Combatant.reset`` las limpia. Fachada dnd_sim/__init__ reexporta
+    MAESTRIAS + al_acertar + al_fallar + consumir_marcas + maestria_de
+    + resolver_maestria (rules no tiene paquete fachada: sin entrada
+    nueva en test_arquitectura).
+    world_tree NO delega en el motor (Battering Roots exige
+    heavy/versatile + turno propio; cambiarlo alteraría resultados):
+    documentado, no tocado.
+    tests/test_mastery.py nuevo (13 tests): mapeo EN/ES, Topple
+    derriba/salva/decisión no, Vex marca/solo-con-daño/consume/caduca,
+    Sap marca y consume, Graze con mod y sin mod, Push/Slow inertes,
+    sin maestría sin RNG (rng que revienta), integración del motor
+    (roll_d20 parcheado → PRONE vía attack_roll).
+    tests/test_arquitectura.py: 3 passed. Suite completa: 1090
+    passed (0 fallos; World Tree y semillas intactas).
+    Commit 658ceaa.
+  - (A3) Asignación de maestrías a los PJ: ``apply_fighter`` marca con
+    mutación in-place ``atk.mastery = maestria_de(atk.name)`` solo en
+    los ataques elegidos (de ``pj.attacks`` y ``pj.weapons``); los no
+    elegidos NO se tocan (una clave preexistente se conserva) y un
+    nombre fuera de la tabla queda en "" sin error. Docstrings de
+    apply_fighter y del campo ``maestrias`` actualizados (ya no es
+    dato puro). Import nuevo ``from ...mastery import maestria_de`` en
+    fighter/features.py (sin ciclos: mastery no importa classes).
+    Bárbaro y monstruos intactos (el loader no rellena ``mastery``):
+    seguimiento «Weapon Mastery del bárbaro 2024» anotado en TODO.md.
+    tests/test_fighter.py +4 (total 71): clave asignada al elegido,
+    no elegida sin clave (y cuenta de las 3/8), 3/4/5/6 por nivel,
+    arma sin entrada en la tabla no explota. Barbario/World Tree en
+    verde. Suite completa: 1094 passed.
+    Commit 731fbcf.
+  - (A4) Tactical Master (9): ``FighterFeatures.sustituir_maestria``
+    devuelve ``pick(rng, (base, "push", "sap", "slow"))`` desde el
+    nivel 9 (bajo 9 o ``rng=None`` → la original sin RNG); lo consulta
+    ``mastery.resolver_maestria`` por duck-typing en cada ataque (NO es
+    hook del catálogo) y la sustitución no muta ``Attack.mastery`` (el
+    objeto queda igual: solo ese ataque). Docstring: como Push/Slow no
+    tienen efecto, solo Sap/original alteran el combate (en TODO.md).
+    tests/test_fighter.py +5 (total 76): nivel 8 sin sustitución (rng
+    que revienta), nivel 9 cubre las 4 opciones, sin rng devuelve la
+    original, resolver sin maestría no consulta al rasgo, sustitución
+    efímera. Suite completa: 1099 passed.
+    Commit 4e8d952.
+  - (A5) Protection e Interception: ``FIGHTER_STYLES`` pasa a 7
+    (se añaden "Protection" e "Interception"; Blind/Unarmed/TWF siguen
+    sin efecto). Campo nuevo ``tiene_escudo: bool = False`` en
+    FighterFeatures + kwarg ``tiene_escudo`` en ``apply_fighter`` (dato
+    que quien construye el PJ activa; el modelo no guarda equipo;
+    default False = cero cambio en tests existentes). Hooks nuevos en el
+    rasgo: ``grant_attack_modifiers`` (Protection: exige escudo, aliado
+    vivo vía ``is_hostile_to``, atacante/objetivo ≠ guardián, reacción
+    libre, cobertura abstracta ``_en_5_pies`` con p=1.0 sin RNG, decisión
+    ``pick(("no","si"))`` → desventaja "Protección" + gasta reacción) y
+    ``reduce_damage_to_allies`` (Interception: exige escudo O arma del
+    PJ, mismos guards, ``reducido = min(amount, 1d10 + PB)`` → devuelve
+    el restante mínimo 0 y gasta la reacción, patrón Spirit Shield).
+    Helpers de módulo ``_en_5_pies`` (patrón wild_heart) y ``_es_aliado``
+    (patrón zealot). Import nuevo ``proficiency_bonus``.
+    **Cambio de test existente (explicado antes de tocarlo)**:
+    ``test_estilo_de_combate_invalido_da_value_error`` usaba
+    "Protection" como estilo inválido → ya no lo es; se le pone
+    "Estilo inventado" (conserva el match). Ningún test mete plantillas
+    de main en combate → el pool de 7 estilos no cambia semillas de
+    combate existentes (verificado: sin aserciones de estilo por
+    defecto). tests/test_fighter.py +11 (total 87): desventaja con
+    aliado + gasta reacción, sin escudo sin RNG (rng que revienta),
+    reacción ya gastada, no-aliado y self sin RNG, sin rng, dos en una
+    ronda solo la primera, Interception reduce 20→7 (d10=10, PB=3),
+    mínimo 0, sin arma/escudo sin RNG, reacción gastada, no-aliado/self,
+    sin rng. Suite completa: 1111 passed.
+    Commit ec86641.
+  - (B) Decisiones de diseño sin efecto: campos de tabla
+    ``asi_levels = (4, 6, 8, 12, 14, 16)`` y ``epic_boon_level = 19``
+    en FighterFeatures (dato puro: el PJ se define en código con sus
+    características finales; nota para ARCHITECTURE). Docstring del
+    módulo: Blind Fighting/Unarmed Fighting = dato sin efecto (sin
+    visibilidad ni elección de arma del PJ), Two-Weapon Fighting hasta
+    que exista el ataque adicional. TODO.md reescrito: la sección
+    «datos sin efecto» pasa a «pendientes reales» y SOLO queda Cleave,
+    Nick, Two-Weapon Fighting, Push/Slow (sin posiciones), maestrías
+    del bárbaro (seguimiento) y subclases Fighter. tests/test_fighter.py
+    +1 (total 89): congela los dos campos. Suite completa pendiente de
+    la verificación final. Commit 4f56e55.
+  - Docs: ARCHITECTURE.md — tabla de carpetas recalculada con
+    [System.IO.File]::ReadAllLines (core 13/899, model 4/1038, rules
+    30/8738 incl. rules/mastery.py, traits 6/1268, spells 5/915,
+    engine 3/224, combat 3/919, data 16/3394, fachada 1/182; total
+    81/17577 + tests 50 ficheros/17848 líneas/1112 tests), fila de
+    traits con HOOK_NAMES (25 hooks, incl. after_failed_check), nota de
+    que el PJ se define en código (asi_levels/epic_boon_level) y
+    «Cómo comprobar» con 1112 tests. PASOS-ANTERIORES.txt: recuentos
+    del ESTADO ACTUAL (81/50/17848/1112, medido 2026-11-06) y bloque
+    Guerrero actualizado con el cierre A1-B. TODO.md: casillas A5 y B
+    [x], sección «datos sin efecto» → «pendientes reales» (solo
+    Cleave, Nick, TWF, Push/Slow, maestrías bárbaro, subclases).
+    Verificación: arquitectura + suite + capas (1 violación conocida
+    model.combatant → rules.conditions) + graphify.
+
 ESTADO ACTUAL
-   - 80 módulos en dnd_sim/; tests/ con 49 ficheros y 17142 líneas
-     (1071 tests en verde, medido 2026-11-05).
+   - 81 módulos en dnd_sim/; tests/ con 50 ficheros y 17848 líneas
+     (1112 tests en verde, medido 2026-11-06).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro; fighter sin subclases aún).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
@@ -759,21 +906,31 @@ ESTADO ACTUAL
      Estilo de Combate (pick en apply; implementados Archery con campo
      nuevo AttackModifiers.bonus, Defense +1 CA, Dueling, Great Weapon
      Fighting con hook nuevo damage_dice_upgrades y roll_dice floor,
-     Thrown Weapon Fighting; Protection/Interception/Blind/Unarmed/TWF
-     sin efecto), Tomar Aliento (bonus action, 1d10+nivel, usos 2/3/4),
+     Thrown Weapon Fighting, Protection (grant_attack_modifiers:
+     desventaja con reacción; exige el dato tiene_escudo) e
+     Interception (reduce_damage_to_allies: 1d10+PB, escudo o arma);
+     Blind/Unarmed/TWF sin efecto), Tomar Aliento (bonus action,
+     1d10+nivel, usos 2/3/4),
      Oleada de Acción (restaura el recurso de acción + 3ª pasada en
      engine/combat/encounter.py, usos 1/2, 1 por turno), Extra Attack
      2/3/4 (fighter_extra_attacks_for: extra_attacks o Multiattack),
      Indomitable (hook after_failed_save patrón Fanatical Focus,
      bono=nivel, usos 1/2/3), Studied Attacks (after_attack_roll marca
      por objetivo y modify_attack_modifiers da ventaja; caduca en 2
-     turnos), Weapon Mastery como dato (weapon_mastery_count 3/4/5/6 +
-     sample en trait.maestrias); Tactical Mind/Shift/Master, ASI y Don
-     Épico sin efecto (TODO.md «Fighter: datos sin efecto»); plantilla
+     turnos), Tactical Mind (hook nuevo after_failed_check en
+     rules/checks.py; gasta Tomar Aliento solo si la tirada final
+     pasa), Tactical Master (sustituir_maestria con pick
+     original/push/sap/slow desde el nivel 9), Weapon Mastery completa
+     (weapon_mastery_count + sample en trait.maestrias + motor
+     rules/mastery.py con Topple/Vex/Sap/Graze y marcas en
+     CombatState; asignación in-place en apply_fighter), ASI y Don
+     Épico como datos de tabla (asi_levels, epic_boon_level), plantilla
      «Guerrero» de main.py con class_name="fighter"; subclases: receta
      y candidatas en TODO.md (registro vacío congelado);
-     tests/test_fighter.py (61) + fixture fighter_levels.json;
-     commits 09ea36e..27532b9 (11 pasos, ver bloque 15).
+     tests/test_fighter.py (89) + tests/test_mastery.py (13) + fixture
+     fighter_levels.json; commits 09ea36e..27532b9 (11 pasos, ver
+     bloque 15) y 696ec3a..4f56e55 (cierre A1-B, ver «CIERRE DE
+     PENDIENTES DEL FIGHTER»).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY
