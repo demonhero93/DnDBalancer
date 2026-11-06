@@ -976,3 +976,83 @@ def test_maestria_de_armas_sin_entrada_en_la_tabla_no_explota():
     apply_fighter(pj, level=1)  # elegida (única) pero sin tabla
     assert _trait(pj).maestrias == ["Arma rara"]
     assert pj.attacks[0].mastery == ""
+
+
+# --- Tactical Master (9) -------------------------------------------------------
+
+class _RngExplota:
+    """RNG que revienta si se consume (para probar «sin RNG»)."""
+
+    def randint(self, a: int, b: int) -> int:
+        raise AssertionError("no debería consumir RNG")
+
+    def randrange(self, n: int) -> int:
+        raise AssertionError("no debería consumir RNG")
+
+    def random(self) -> float:
+        raise AssertionError("no debería consumir RNG")
+
+
+def test_tactical_master_no_sustituye_bajo_el_nivel_9():
+    pj = _fighter(level=8)
+    rasgo = _trait(pj)
+
+    assert rasgo.sustituir_maestria("sap", _RngExplota()) == "sap"
+
+
+def test_tactical_master_nivel_9_elige_entre_original_push_sap_slow():
+    pj = _fighter(level=9)
+    rasgo = _trait(pj)
+
+    class _RngElegido:
+        def randrange(self, n: int) -> int:
+            return min(self.idx, n - 1)
+
+        def randint(self, a: int, b: int) -> int:
+            return b
+
+        def random(self) -> float:
+            return 1.0
+
+    opciones = set()
+    for idx in range(4):
+        rng = _RngElegido()
+        rng.idx = idx
+        opciones.add(rasgo.sustituir_maestria("topple", rng))
+    assert opciones == {"topple", "push", "sap", "slow"}
+
+
+def test_tactical_master_sin_rng_devuelve_la_propiedad_original():
+    pj = _fighter(level=20)
+    rasgo = _trait(pj)
+
+    assert rasgo.sustituir_maestria("vex", None) == "vex"
+
+
+def test_resolver_maestria_sin_maestria_no_consulta_tactical_master():
+    from dnd_sim.rules.mastery import resolver_maestria
+
+    pj = _fighter(level=9)
+    arma = Attack("Espada larga", "1d8", ability="str", mastery="")
+
+    assert resolver_maestria(pj, arma, _RngExplota()) == ""
+
+
+def test_la_sustitucion_de_tactical_master_solo_dura_ese_ataque():
+    from dnd_sim.rules.mastery import resolver_maestria
+
+    pj = _fighter(level=9)
+    arma = Attack("Espada larga", "1d8", ability="str", mastery="sap")
+
+    class _RngUltimo:
+        def randrange(self, n: int) -> int:
+            return n - 1
+
+        def randint(self, a: int, b: int) -> int:
+            return b
+
+        def random(self) -> float:
+            return 1.0
+
+    assert resolver_maestria(pj, arma, _RngUltimo()) == "slow"
+    assert arma.mastery == "sap"  # el objeto no cambia

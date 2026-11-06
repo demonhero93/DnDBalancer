@@ -294,6 +294,23 @@ class FighterFeatures(Trait):
                            f"vs CD {dc}): el uso no se gasta")
         return salida
 
+    # --- Tactical Master (9) -------------------------------------------------
+    def sustituir_maestria(self, base: str, rng: Any = None) -> str:
+        """Tactical Master: sustituye la maestría por Push, Sap o Slow.
+
+        Consultado por :func:`dnd_sim.rules.mastery.resolver_maestria`
+        en CADA ataque con maestría: decide con ``pick`` uniforme entre
+        la propiedad original y ``push``/``sap``/``slow``. Bajo el nivel
+        9 o sin ``rng`` devuelve la original sin consumir azar. La
+        sustitución solo dura ese ataque (el campo ``Attack.mastery`` no
+        cambia). Como Push y Slow no tienen efecto en el motor (sin
+        movimiento ni posiciones), solo Sap y la original alteran el
+        combate (decisión documentada en TODO.md).
+        """
+        if self.level < 9 or rng is None:
+            return base
+        return pick(rng, (base, "push", "sap", "slow"))
+
     # --- Reinicio -----------------------------------------------------------
     def reset(self) -> None:
         """Un combate nuevo = un día descansado: usos de Tomar Aliento llenos."""
