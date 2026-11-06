@@ -42,8 +42,6 @@ y ARCHITECTURE.md.
   adicional (depende de Nick; el motor no tiene ataques bonus).
 - **Push/Slow** (efecto de maestría): sin posiciones ni movimiento que
   desplazar (`# TODO` en `rules/mastery.py`).
-- **Maestrías del bárbaro 2024**: seguimiento — la clase bárbaro no
-  asigna `atk.mastery` (solo el Fighter, vía `apply_fighter`).
 - **Subclases Fighter**: receta en «Fighter: cómo añadir una subclase»;
   candidatas Champion, Battle Master, Eldritch Knight, Psi Warrior.
 

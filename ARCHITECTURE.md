@@ -18,14 +18,14 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 |---|---:|---:|---|
 | `dnd_sim/core/` | 13 | 899 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
 | `dnd_sim/model/` | 4 | 1038 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 30 | 8738 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías. |
+| `dnd_sim/rules/` | 30 | 8782 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías. |
 | `dnd_sim/rules/traits/` | 6 | 1268 | Los rasgos de monstruo (paquete, ver abajo). |
 | `dnd_sim/rules/spells/` | 5 | 915 | Hechizos (paquete). |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
 | `dnd_sim/engine/combat/` | 3 | 919 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
 | `dnd_sim/__init__.py` | 1 | 182 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **81** | **17577** | + `tests/` con 50 ficheros y 17848 líneas (1112 tests). |
+| **Total** | **81** | **17621** | + `tests/` con 50 ficheros y 17882 líneas (1116 tests). |
 
 ## Reglas de dependencia
 
@@ -116,7 +116,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1112 tests
+pytest                              # 1116 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

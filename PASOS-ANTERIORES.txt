@@ -817,9 +817,32 @@ CIERRE DE PENDIENTES DEL FIGHTER (2026-11-06)
     Verificación: arquitectura + suite + capas (1 violación conocida
     model.combatant → rules.conditions) + graphify.
 
+MAESTRÍA CON ARMAS DEL BÁRBARO (2026-11-06)
+  - Weapon Mastery (1) del bárbaro 2024 asigna ``atk.mastery`` igual
+    que el Fighter: ``apply_barbarian`` gana kwarg ``rng`` (default
+    ``_RNG_CREACION`` con semilla 0, reproducible), elige 3 armas con
+    ``sample`` de ``pj.weapons`` o, si no los usa, de ``pj.attacks``
+    (constante ``_MAESTRIAS_BARBARO = 3``: el bárbaro no escala el
+    recuento, a diferencia de ``weapon_mastery_count`` del Fighter) y
+    marca con mutación in-place ``atk.mastery = maestria_de(atk.name)``
+    solo en las elegidas (nombres fuera de la tabla → "" sin error).
+    Campo nuevo ``maestrias`` en BarbarianFeatures (dato, no se limpia
+    en ``reset``). El motor de maestrías (A2) ya existía → los PJ
+    bárbaro ahora usan Topple/Vex/Sap/Graze en combate.
+    Decisión anotada: el recuento 3 es la regla PHB 2024 del bárbaro
+    (fijo, sin tabla por nivel).
+    TODO.md: borrado el punto «Maestrías del bárbaro 2024» (de Fighter
+    quedan solo Cleave, Nick, Two-Weapon Fighting, Push/Slow y
+    subclases).
+    tests/test_barbarian.py +4 (total 43): 3 armas de 6, marca topple
+    de Hacha de batalla, pool de 2 → todas con sus claves (nick/sap),
+    sin armas → []. Suite completa: 1116 passed (0 fallos: ningún test
+    existente cambió resultado). capas: 1 violación conocida.
+    Commit 8fb088c.
+
 ESTADO ACTUAL
-   - 81 módulos en dnd_sim/; tests/ con 50 ficheros y 17848 líneas
-     (1112 tests en verde, medido 2026-11-06).
+   - 81 módulos en dnd_sim/; tests/ con 50 ficheros y 17882 líneas
+     (1116 tests en verde, medido 2026-11-06).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro; fighter sin subclases aún).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
