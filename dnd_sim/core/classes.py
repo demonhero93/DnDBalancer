@@ -90,6 +90,30 @@ def weapon_mastery_count(level: int) -> int:
     return 3
 
 
+def arcane_shot_options_known(level: int) -> int:
+    """Opciones de Arcane Shot conocidas (0/2/3/4/5/6 en <3/3/7/10/15/18)."""
+    lvl = _clamp(level)
+    if lvl >= 18:
+        return 6
+    if lvl >= 15:
+        return 5
+    if lvl >= 10:
+        return 4
+    if lvl >= 7:
+        return 3
+    if lvl >= 3:
+        return 2
+    return 0
+
+
+def arcane_shot_uses(level: int) -> int:
+    """Usos de Arcane Shot por descanso (0 <3, 2 en 3-14, 3 en 15+)."""
+    lvl = _clamp(level)
+    if lvl < 3:
+        return 0
+    return 3 if lvl >= 15 else 2
+
+
 def fighter_extra_attacks_for(level: int) -> int:
     """Golpes de la acción Atacar del Fighter (1/2/3/4 en 1/5/11/20).
 
@@ -214,6 +238,8 @@ __all__ = [
     "MAX_LEVEL",
     "MIN_LEVEL",
     "action_surge_uses",
+    "arcane_shot_options_known",
+    "arcane_shot_uses",
     "extra_attacks_for",
     "fighter_extra_attacks_for",
     "indomitable_uses",

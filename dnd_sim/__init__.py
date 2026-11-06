@@ -67,7 +67,8 @@ from .rules.classes.barbarian.subclasses.zealot import (
     WarriorHealAction, ZealotFeatures, ZealousPresenceAction, apply_zealot,
 )
 from .rules.classes.fighter import (
-    ActionSurgeAction, FighterFeatures, SecondWindAction, apply_fighter,
+    ActionSurgeAction, ArcaneArcherFeatures, FighterFeatures,
+    SecondWindAction, apply_arcane_archer, apply_fighter,
 )
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
@@ -121,6 +122,7 @@ from .data.race_parser import load_race, parse_race
 
 __all__ = [
     "Abilities", "ActionSurgeAction", "ActionType", "ActionUsage",
+    "ArcaneArcherFeatures",
     "AncestralGuardianFeatures",
     "AreaSaveAction",
     "AreaTargeting", "Attach", "AttachOnHitEffect", "Attack", "AttackAction",
@@ -159,7 +161,7 @@ __all__ = [
     "ability_check", "ability_check_bonus",
     "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
     "apply_battlerager", "apply_beast", "apply_berserker", "apply_class",
-    "apply_condition", "apply_fighter", "apply_giant", "apply_storm_herald",
+    "apply_arcane_archer", "apply_condition", "apply_fighter", "apply_giant", "apply_storm_herald",
     "apply_wild_heart", "apply_wild_magic", "apply_world_tree",
     "apply_zealot",
     "al_acertar", "al_fallar",

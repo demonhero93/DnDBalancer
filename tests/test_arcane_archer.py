@@ -1,0 +1,152 @@
+"""Subclase Arcane Archer (Arquero Arcano, XGE): registro, Lore y tablas."""
+from __future__ import annotations
+
+import random
+
+import pytest
+
+from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
+from dnd_sim.core.classes import arcane_shot_options_known, arcane_shot_uses
+from dnd_sim.rules.classes import CLASSES, apply_fighter
+from dnd_sim.rules.classes.fighter import (
+    ARCANE_SHOTS,
+    ArcaneArcherFeatures,
+    apply_arcane_archer,
+)
+
+
+def _abilities(**kwargs) -> Abilities:
+    base = dict(str=16, dex=14, con=16, int=10, wis=12, cha=10)
+    base.update(kwargs)
+    return Abilities(**base)
+
+
+def _pj(**kwargs) -> PlayerCharacter:
+    defaults = dict(
+        name="Legolas", max_hp=70, ac=15, level=5, abilities=_abilities(),
+        attacks=[Attack("Arco corto", "1d6", ability="dex", range_type="ranged")],
+    )
+    defaults.update(kwargs)
+    return PlayerCharacter(**defaults)
+
+
+def _firmas(pj) -> tuple:
+    """(rasgos, acciones, salvaciones, habilidades, CA) para comparar."""
+    return (
+        [type(t).__name__ for t in pj.traits],
+        [type(a).__name__ for a in pj.actions],
+        set(pj.save_proficiencies),
+        set(pj.skill_proficiencies),
+        pj.ac,
+    )
+
+
+def _trait(pj) -> ArcaneArcherFeatures:
+    for trait in pj.traits:
+        if isinstance(trait, ArcaneArcherFeatures):
+            return trait
+    raise AssertionError("falta ArcaneArcherFeatures")
+
+
+# --- Registro y equivalencia --------------------------------------------------
+
+def test_registro_arcane_archer_bajo_fighter():
+    subclases = CLASSES["fighter"].subclasses
+    assert set(subclases) == {"arcane_archer"}
+    sub = subclases["arcane_archer"]
+    assert sub.class_name == "fighter"
+    assert sub.min_level == 3
+
+
+def test_apply_class_equivalente_a_apply_arcane_archer(monkeypatch):
+    """Misma semilla en los dos RNG de creación: resultados idénticos."""
+    import dnd_sim.rules.classes.fighter.features as fighter_mod
+    import dnd_sim.rules.classes.fighter.subclasses.arcane_archer as aa_mod
+
+    a = _pj()
+    b = _pj()
+    monkeypatch.setattr(fighter_mod, "_RNG_CREACION", random.Random(0))
+    monkeypatch.setattr(aa_mod, "_RNG_CREACION", random.Random(0))
+    apply_class(a, "fighter", "arcane_archer", level=5)
+    monkeypatch.setattr(fighter_mod, "_RNG_CREACION", random.Random(0))
+    monkeypatch.setattr(aa_mod, "_RNG_CREACION", random.Random(0))
+    apply_fighter(b)
+    apply_arcane_archer(b, level=5)
+    assert _firmas(a) == _firmas(b)
+    assert _trait(a).opciones_conocidas == _trait(b).opciones_conocidas
+
+
+def test_apply_arcane_archer_exige_la_clase_fighter():
+    with pytest.raises(ValueError, match="Primero aplica la clase guerrero"):
+        apply_arcane_archer(_pj())
+
+
+def test_arcane_archer_requiere_nivel_3():
+    with pytest.raises(ValueError, match=">= 3"):
+        apply_class(_pj(level=2), "fighter", "arcane_archer")
+
+
+# --- Tablas -------------------------------------------------------------------
+
+def test_tabla_de_opciones_conocidas_por_nivel():
+    esperado = {1: 0, 2: 0, 3: 2, 6: 2, 7: 3, 9: 3, 10: 4, 14: 4,
+                15: 5, 17: 5, 18: 6, 20: 6}
+    assert {lvl: arcane_shot_options_known(lvl) for lvl in esperado} == esperado
+
+
+def test_tabla_de_usos_de_arcane_shot_por_nivel():
+    esperado = {1: 0, 2: 0, 3: 2, 14: 2, 15: 3, 20: 3}
+    assert {lvl: arcane_shot_uses(lvl) for lvl in esperado} == esperado
+
+
+# --- Opciones conocidas -------------------------------------------------------
+
+def test_opciones_conocidas_segun_nivel():
+    casos = {3: 2, 10: 4, 18: 6}
+    for nivel, cuenta in casos.items():
+        pj = _pj(level=nivel)
+        apply_fighter(pj, level=nivel)
+        trait = apply_arcane_archer(pj, level=nivel)
+        assert len(trait.opciones_conocidas) == cuenta
+        assert len(set(trait.opciones_conocidas)) == cuenta
+        assert set(trait.opciones_conocidas) <= set(ARCANE_SHOTS)
+
+
+def test_kwarg_de_opciones_explicitas_valido():
+    pj = _pj(level=3)
+    apply_fighter(pj, level=3)
+    elegidas = ("Grasping Arrow", "Shadow Arrow")
+    trait = apply_arcane_archer(pj, level=3, arcane_shots=elegidas)
+    assert trait.opciones_conocidas == list(elegidas)
+
+
+def test_kwarg_de_opciones_invalidas_da_value_error():
+    pj = _pj(level=3)
+    apply_fighter(pj, level=3)
+    with pytest.raises(ValueError, match="no es una opción de Arcane Shot"):
+        apply_arcane_archer(pj, level=3,
+                            arcane_shots=("Piercing Arrow", "Grasping Arrow"))
+
+
+def test_kwarg_con_recuento_equivocado_da_value_error():
+    pj = _pj(level=3)
+    apply_fighter(pj, level=3)
+    with pytest.raises(ValueError, match="se esperaban 2 opciones"):
+        apply_arcane_archer(pj, level=3, arcane_shots=("Grasping Arrow",))
+
+
+# --- Arcane Archer Lore -------------------------------------------------------
+
+def test_arcane_archer_lore_da_competencia():
+    pj = _pj(level=3)
+    apply_fighter(pj, level=3)
+    trait = apply_arcane_archer(pj, level=3)
+    assert trait.competencia in ("arcana", "nature")
+    assert trait.competencia in pj.skill_proficiencies
+
+
+def test_arcane_archer_lore_guarda_el_truco_como_dato():
+    pj = _pj(level=3)
+    apply_fighter(pj, level=3)
+    trait = apply_arcane_archer(pj, level=3)
+    assert trait.truco in ("Prestidigitación", "Druidismo")

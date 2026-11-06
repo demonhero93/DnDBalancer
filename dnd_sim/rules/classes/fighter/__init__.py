@@ -1,23 +1,29 @@
-"""Paquete de la clase Fighter (Guerrero): registro sin subclases aún.
+"""Paquete de la clase Fighter (Guerrero): código base + sus subclases.
 
 :mod:`features` concentra el código base (Second Wind, Action Surge,
 Extra Attack...). Este ``__init__`` reexporta la API (``from
 dnd_sim.rules.classes.fighter import apply_fighter``) y declara la
 clase en el registro genérico de :mod:`dnd_sim.rules.classes.base` con
-la tabla de subclases vacía, lista para crecer.
+su tabla de subclases (Arcane Archer; ver ``TODO.md`` para la receta).
 """
 from __future__ import annotations
 
-from ..base import ClassDef, register_class
+from ..base import ClassDef, SubclassDef, register_class
 from .features import ActionSurgeAction, FighterFeatures, SecondWindAction, apply_fighter
+from .subclasses import ARCANE_SHOTS, ArcaneArcherFeatures, apply_arcane_archer
 
-#: Registro de la clase Fighter (la tabla de subclases queda vacía por
-#: ahora; cada subclase añade aquí su ``SubclassDef``).
+#: Registro de la clase Fighter con sus subclases (claves normalizadas).
 FIGHTER_CLASS = register_class(ClassDef(
     name="fighter",
     apply=apply_fighter,
-    subclasses={},
+    subclasses={
+        "arcane_archer": SubclassDef(
+            name="Arcane Archer", class_name="fighter",
+            min_level=3, apply=apply_arcane_archer,
+        ),
+    },
 ))
 
-__all__ = ["ActionSurgeAction", "FIGHTER_CLASS", "FighterFeatures",
-           "SecondWindAction", "apply_fighter"]
+__all__ = ["ActionSurgeAction", "ARCANE_SHOTS", "ArcaneArcherFeatures",
+           "FIGHTER_CLASS", "FighterFeatures", "SecondWindAction",
+           "apply_arcane_archer", "apply_fighter"]

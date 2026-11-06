@@ -39,9 +39,10 @@ def _firmas(pj) -> tuple:
     )
 
 
-def test_clase_fighter_esta_registrada_sin_subclases():
+def test_clase_fighter_esta_registrada_con_arcane_archer():
     assert "fighter" in CLASSES
-    assert CLASSES["fighter"].subclasses == {}
+    # Cambio esperado con Arcane Archer: la tabla deja de estar vacía.
+    assert set(CLASSES["fighter"].subclasses) == {"arcane_archer"}
 
 
 def test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter():
@@ -78,7 +79,7 @@ def test_apply_fighter_rechaza_habilidades_fuera_de_la_lista():
 
 
 def test_subclase_de_fighter_inexistente_da_value_error():
-    """La tabla de subclases de fighter está vacía: cualquier clave falla."""
+    """Solo existe arcane_archer: cualquier otra clave falla."""
     with pytest.raises(ValueError, match="no es una subclase"):
         apply_class(_pj(), "fighter", "champion")
 
