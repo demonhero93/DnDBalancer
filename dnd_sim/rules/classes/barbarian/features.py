@@ -12,9 +12,13 @@ Decisiones de simulación documentadas:
   primera tirada de ataque de FUE del turno propio, nunca en
   reacciones ni en turnos ajenos. **Brutal Strike** renuncia siempre a
   la ventaja que da.
-- **Instinctive Pounce** (media velocidad), **Fast Movement**, **Weapon
-  Mastery**, **Epic Boon** y los efectos de movimiento de Brutal Strike
-  (push/slow) no están modelados: no hay sistema de distancia/velocidad.
+- **Instinctive Pounce** (media velocidad), **Fast Movement**, **Epic
+  Boon** y los efectos de movimiento de Brutal Strike (push/slow) no
+  están modelados: no hay sistema de distancia/velocidad.
+- **Weapon Mastery** (1): ``apply_barbarian`` elige 3 armas (el bárbaro
+  no escala el recuento, a diferencia del Fighter) y marca
+  ``atk.mastery`` con su clave de la tabla; el motor ya aplica la
+  propiedad (Topple, Vex...).
 - **Primal Champion** (nivel 20) no aplica +4 a PUE: los valores de
   carácter del PJ ya se dan por reflejados (mismo criterio que razas).
 - **Unarmored Defense** se aplica como ``ac = max(ac, 10+DEX+CON)`` porque
@@ -22,6 +26,7 @@ Decisiones de simulación documentadas:
 """
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -37,8 +42,10 @@ from ....core.classes import (
 from ....core.dice import roll_dice
 from ....core.enums import AttackRange
 from ....core.log import log_line as _log_line
+from ....core.randomness import sample
 from ....core.skills import normalize_skill
 from ....model.actions import ActionType, AttackEntry, CombatAction, MultiattackAction
+from ...mastery import maestria_de
 from ...saves import saving_throw
 from ...traits.base import Trait, hooks
 from ...usage import ActionUsage, UsageKind
@@ -47,6 +54,14 @@ from ...usage import ActionUsage, UsageKind
 #: 0.5: ni siempre ni nunca, para que la simulación no asuma la política
 #: óptima de la feature; configurable con ``--reckless-p`` en main.py.
 RECKLESS_USE_PROBABILITY = 0.5
+
+#: Armas con Maestría del bárbaro (nivel 1): 3 y no escala con el nivel
+#: (a diferencia de ``weapon_mastery_count``, que es la tabla del Fighter).
+_MAESTRIAS_BARBARO = 3
+
+#: RNG con semilla fija para elegir las armas de Maestría cuando el
+#: llamante no pasa ``rng``: crea el personaje siempre igual.
+_RNG_CREACION = random.Random(0)
 
 
 @dataclass
@@ -78,6 +93,11 @@ class BarbarianFeatures(Trait):
     brutal_used_this_turn: bool = False
     # Usos de Furia Inaguantable (sube el CD +5 de cada uso siguiente).
     relentless_uses: int = 0
+    # Maestría con Armas (1): 3 armas elegidas (nombres); ``apply_barbarian``
+    # marca ``atk.mastery`` de cada una con la propiedad de la tabla. No es
+    # estado de combate: no se limpia en ``reset``.
+    maestrias: list[str] = field(
+        default_factory=list, repr=False, compare=False)
     # Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
 
@@ -437,7 +457,8 @@ class ExtendRageAction(CombatAction):
 # --- Aplicación de la clase a un PJ ------------------------------------------
 
 def apply_barbarian(pj: Any, skills: tuple[str, ...] = (),
-                    level: int | None = None) -> BarbarianFeatures:
+                    level: int | None = None,
+                    rng: Any = None) -> BarbarianFeatures:
     """Aplica la clase bárbaro a ``pj`` según su nivel.
 
     - Salvaciones: FUE y CON.
@@ -445,6 +466,8 @@ def apply_barbarian(pj: Any, skills: tuple[str, ...] = (),
       está; el recuento de elecciones lo decide quien llama).
     - Unarmored Defense: ``ac = max(ac, 10+DEX+CON)`` (sin sistema de
       armaduras, solo se sube la CA si sale mejor).
+    - Maestría con Armas (1): 3 armas elegidas con ``sample`` y marca de
+      su clave en el objeto ``Attack``.
     - Nivel 5: la acción Atacar pasa a golpear 2 veces (Extra Attack).
     - Nivel 7: iniciativa con ventaja (Feral Instinct).
     - Añade el rasgo :class:`BarbarianFeatures` y las acciones de Furia.
@@ -500,6 +523,27 @@ def apply_barbarian(pj: Any, skills: tuple[str, ...] = (),
 
     trait = BarbarianFeatures(name="Bárbaro", level=lvl)
     trait.owner = pj
+    # Maestría con Armas (1): 3 armas y marca de SU clave de la tabla en
+    # el objeto Attack (mutación in-place: las acciones guardan el mismo
+    # objeto). Pool de ``weapons`` o, si el PJ no los usa, de sus
+    # ataques; sin ninguno, lista vacía.
+    pool = list(pj.weapons or []) or list(pj.attacks or [])
+    trait.maestrias = [
+        atk.name for atk in sample(
+            rng if rng is not None else _RNG_CREACION,
+            pool,
+            _MAESTRIAS_BARBARO,
+        )
+    ]
+    # Los ataques elegidos reciben su propiedad (Topple, Sap...). Los no
+    # elegidos NO se tocan y un nombre fuera de la tabla queda sin
+    # maestría y sin error.
+    elegidas = set(trait.maestrias)
+    for lista in (pj.attacks, pj.weapons):
+        for atk in lista or ():
+            clave = maestria_de(atk.name)
+            if clave and atk.name in elegidas:
+                atk.mastery = clave
     pj.traits = list(getattr(pj, "traits", None) or []) + [trait]
     pj.actions = list(pj.actions) + [
         RageAction(uses=rage_uses(lvl)),

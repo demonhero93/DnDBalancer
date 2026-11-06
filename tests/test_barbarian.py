@@ -157,6 +157,40 @@ def test_apply_anade_acciones_de_furia():
     assert any(isinstance(t, BarbarianFeatures) for t in pj.traits)
 
 
+# --- Maestría con Armas -------------------------------------------------------
+
+def test_maestria_del_bárbaro_elige_tres_armas():
+    armas = [Attack(f"Arma {i}", "1d8", ability="str") for i in range(6)]
+    pj = _pj(attacks=armas)
+    trait = apply_barbarian(pj, level=1)
+    assert len(trait.maestrias) == 3
+    assert len(set(trait.maestrias)) == 3
+    assert set(trait.maestrias) <= {a.name for a in armas}
+
+
+def test_maestria_del_bárbaro_marca_atk_mastery():
+    pj = _pj()  # Hacha de batalla
+    trait = apply_barbarian(pj)
+    assert trait.maestrias == ["Hacha de batalla"]
+    assert pj.attacks[0].mastery == "topple"
+
+
+def test_maestria_del_bárbaro_pool_pequeño_elige_todas():
+    armas = [Attack("Daga", "1d4", ability="str"),
+             Attack("Maza", "1d6", ability="str")]
+    pj = _pj(attacks=armas)
+    trait = apply_barbarian(pj)
+    assert sorted(trait.maestrias) == ["Daga", "Maza"]
+    assert armas[0].mastery == "nick"
+    assert armas[1].mastery == "sap"
+
+
+def test_maestria_del_bárbaro_sin_armas_es_lista_vacía():
+    pj = _pj(attacks=[])
+    trait = apply_barbarian(pj)
+    assert trait.maestrias == []
+
+
 # --- Furia: activación y usos ------------------------------------------------
 
 def test_rage_action_gasta_usos():
