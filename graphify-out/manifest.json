@@ -888,9 +888,9 @@
     "semantic_hash": ""
   },
   "ARCHITECTURE.md": {
-    "mtime": 1793978254.1077254,
-    "seen": 1793978374.5338938,
-    "ast_hash": "0f32f78513d0d7f9178cacb874f4d8a2",
+    "mtime": 1793980060.5674977,
+    "seen": 1793980087.817879,
+    "ast_hash": "02d29b194045aa3b8b563285baeb041f",
     "semantic_hash": ""
   },
   "tests/test_death.py": {
@@ -1044,9 +1044,9 @@
     "semantic_hash": ""
   },
   "tests/test_barbarian.py": {
-    "mtime": 1793612995.5814795,
-    "seen": 1793613182.1138816,
-    "ast_hash": "d2cc44a29a967a33d730ce1c2020e991",
+    "mtime": 1793979912.1474097,
+    "seen": 1793980087.817879,
+    "ast_hash": "f260e25a80c99190f50b3060a03994e4",
     "semantic_hash": ""
   },
   "tests/test_battlerager.py": {
@@ -1074,9 +1074,9 @@
     "semantic_hash": ""
   },
   "PASOS-ANTERIORES.txt": {
-    "mtime": 1793978280.6731489,
-    "seen": 1793978374.5338938,
-    "ast_hash": "14687962cb8387e218639096ad87d47e",
+    "mtime": 1793980060.532964,
+    "seen": 1793980087.817879,
+    "ast_hash": "089300c891b292b147c18d64137845d1",
     "semantic_hash": ""
   },
   "REGLAS-DEL-PROYECTO.txt": {
@@ -1092,9 +1092,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/features.py": {
-    "mtime": 1793809474.5400634,
-    "seen": 1793810568.4076948,
-    "ast_hash": "fc26e38aacaea710e4ece62c30787083",
+    "mtime": 1793979885.6160293,
+    "seen": 1793980087.817879,
+    "ast_hash": "71e68d59ea138df09b2552af65adc99f",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/__init__.py": {
@@ -1170,9 +1170,9 @@
     "semantic_hash": ""
   },
   "TODO.md": {
-    "mtime": 1793978280.6907327,
-    "seen": 1793978374.5338938,
-    "ast_hash": "a10312352edade3efda2c2b2135026d3",
+    "mtime": 1793980060.532964,
+    "seen": 1793980087.817879,
+    "ast_hash": "5e17e31abbb4fdfe253717db304dd3b6",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/berserker.py": {
