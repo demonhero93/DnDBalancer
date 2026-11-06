@@ -38,7 +38,7 @@ Fuente: historial git + ARCHITECTURE.md.
    - 99ebee7: tests de subclase Battlerager, bonos de competencia, razas y
      habilidades.
 
-7. REGISTRO DE CLASES Y PATH OF THE BEAST (2026-10-30)  [SIN COMMITEAR]
+7. REGISTRO DE CLASES Y PATH OF THE BEAST (2026-10-30)
    - Registro genérico de clases/subclases en rules/classes/base.py:
      CLASSES, register_class, apply_class(pj, clase, subclase, **kwargs)
      con validación de existencia y nivel ANTES de aplicar.
@@ -55,6 +55,8 @@ Fuente: historial git + ARCHITECTURE.md.
      allow_friendly en attack_roll; Combatant.dynamic_weapons.
    - Tests nuevos: tests/test_clases.py (10) y tests/test_beast.py (50).
    - Suite completa en verde: 671 tests.
+   - Commits: ff30aac (registro de clases + Path of the Beast),
+     667bc0a (docs: reglas, log de sesión y TODO), 37b2806 (grafo).
 
 8. TEMERARIO, BERSERKER Y UTILITARIAS (2026-11-02)  [SIN COMMITEAR]
    - Ataque Temerario aleatorio (revisión del TODO): constante
