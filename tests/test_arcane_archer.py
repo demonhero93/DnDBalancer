@@ -654,3 +654,51 @@ def test_reset_borra_la_marca_de_curving():
     trait.reset()
     assert trait.curving_atk is None
     assert trait.curving_contra is None
+
+
+# --- Integración ---------------------------------------------------------------
+
+def test_run_combat_con_arquero_es_reproducible():
+    from dnd_sim.engine.combat import run_combat
+
+    def _duelo():
+        pj, _ = _arquero(7)
+        enemigo = Monster(name="Muñeco", max_hp=150, ac=10,
+                          abilities=_abilities(), attacks=[])
+        return pj, enemigo
+
+    pj1, enemigo1 = _duelo()
+    res1 = run_combat([pj1, enemigo1], random.Random(4), verbose=True,
+                      max_rounds=5)
+    pj2, enemigo2 = _duelo()
+    res2 = run_combat([pj2, enemigo2], random.Random(4), verbose=True,
+                      max_rounds=5)
+    assert res1.log == res2.log
+    assert res1.action_uses == res2.action_uses
+    assert enemigo1.hp == enemigo2.hp
+    assert enemigo1.hp < enemigo1.max_hp  # el arquero sí ataca
+
+
+def test_sin_subclase_no_se_ejecuta_codigo_de_arcane_archer(monkeypatch):
+    from dnd_sim.engine.combat import run_combat
+    from dnd_sim.rules.classes.fighter.subclasses import (
+        arcane_archer as aa_mod,
+    )
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError(
+            "Arcane Archer no debe ejecutarse sin la subclase")
+
+    monkeypatch.setattr(aa_mod.ArcaneArcherFeatures,
+                        "extra_attack_damage", _revienta)
+    monkeypatch.setattr(aa_mod.ArcaneArcherFeatures,
+                        "after_attack_roll", _revienta)
+    monkeypatch.setattr(aa_mod.ArcaneArcherFeatures,
+                        "grant_attack_modifiers", _revienta)
+    pj = _pj(level=7)
+    apply_fighter(pj, level=7)  # SIN subclase: los hooks no existen
+    assert not any(isinstance(a, aa_mod.CurvingShotAction)
+                   for a in pj.actions)
+    enemigo = Monster(name="Muñeco", max_hp=150, ac=10,
+                      abilities=_abilities(), attacks=[])
+    run_combat([pj, enemigo], random.Random(1), max_rounds=3)
