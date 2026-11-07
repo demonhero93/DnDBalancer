@@ -284,6 +284,13 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             # resistencia del objetivo también le afectan.
             raw_dmg += _bonus_de_rasgos(attacker, target, rango, crit,
                                         ctx, rng, log, atk=atk)
+            # Enfeebling Arrow (Arcane Archer): mientras la marca siga
+            # vigente, el daño de los ataques con arma del afectado va a
+            # la mitad (los ataques mágicos —hechizos— quedan fuera).
+            if (raw_dmg > 0 and not getattr(atk, "magical", False)
+                    and attacker.state.enfeeble_mitiga(
+                        getattr(ctx, "round", None))):
+                raw_dmg = raw_dmg // 2
         dt = atk.damage_type
         # Única fuente de inmunidad/resistencia/vulnerabilidad (y de la
         # resistencia por estar petrificado): la regla se aplicaba **dos

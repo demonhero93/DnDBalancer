@@ -6,15 +6,17 @@ from types import SimpleNamespace
 
 import pytest
 
-from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
+from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import arcane_shot_options_known, arcane_shot_uses
 from dnd_sim.core.enums import AttackRange
+from dnd_sim.core.proficiency import proficiency_bonus
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
     ARCANE_SHOTS,
     ArcaneArcherFeatures,
     apply_arcane_archer,
 )
+from dnd_sim.rules.conditions import Condition
 
 
 def _abilities(**kwargs) -> Abilities:
@@ -183,6 +185,19 @@ class _RngExplota:
         raise AssertionError(f"RNG no debería usarse: {name}")
 
 
+class _RngFalla:
+    """«si» a la decisión, última opción conocida y d20 siempre 1."""
+
+    def randrange(self, n: int) -> int:
+        return n - 1
+
+    def random(self) -> float:
+        return 1.0
+
+    def randint(self, a: int, b: int) -> int:
+        return a
+
+
 def _arquero(level: int = 5, **kwargs):
     pj = _pj(level=level)
     apply_fighter(pj, level=level)
@@ -190,10 +205,12 @@ def _arquero(level: int = 5, **kwargs):
     return pj, trait
 
 
-def _disparo(trait, rng, rango=AttackRange.RANGED, target=None):
+def _disparo(trait, rng, rango=AttackRange.RANGED, target=None, ctx=None):
+    if target is None:
+        # Las opciones tiran salvaciones: hace falta un combatiente real.
+        target = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
     return trait.extra_attack_damage(
-        trait.owner, target or SimpleNamespace(name="Blanco"),
-        rango, ctx=None, rng=rng,
+        trait.owner, target, rango, ctx=ctx, rng=rng,
         atk=Attack("Arco corto", "1d6", ability="dex", range_type="ranged"),
     )
 
@@ -289,3 +306,140 @@ def test_reset_restaura_los_usos_de_arcane_shot():
     trait.reset()
     assert trait.arcane_shot_usage.uses_left == 2
     assert trait.shot_used_this_turn is False
+
+
+# --- Efectos de las opciones (salvaciones y condiciones) ----------------------
+
+def test_cd_de_arcane_shot_es_8_mas_pb_mas_int():
+    _, trait = _arquero(level=3)
+    assert trait._cd() == (8 + proficiency_bonus(3)
+                            + trait.owner.abilities.mod("int"))
+
+
+def test_banishing_arrow_falla_la_salvacion_y_deja_incapacitado():
+    _, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                               "Banishing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    assert _disparo(trait, _RngFalla(), target=objetivo) > 0
+    assert objetivo.conditions.has(Condition.INCAPACITATED)
+    assert trait.arcane_shot_usage.uses_left == 1
+
+
+def test_banishing_arrow_salvacion_exitosa_no_aplica_condicion():
+    _, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                               "Banishing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    assert _disparo(trait, _RngSi(), target=objetivo) > 0  # d20 = 20
+    assert not objetivo.conditions.has(Condition.INCAPACITATED)
+    assert trait.arcane_shot_usage.uses_left == 1
+
+
+def test_beguiling_arrow_hechiza_y_termina_si_el_aliado_ataca():
+    pj, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                                "Beguiling Arrow"))
+    aliado = _pj(name="Arwen")
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, aliado, objetivo], round=1)
+    assert _disparo(trait, _RngFalla(), target=objetivo, ctx=ctx) > 0
+    assert objetivo.conditions.has(Condition.CHARMED)
+    assert trait.beguiling.get(objetivo.name) is aliado
+    # El aliado ataca a la víctima: el hechizo termina y la marca cae.
+    mods = SimpleNamespace(advantage_sources=[], disadvantage_sources=[])
+    trait.grant_attack_modifiers(mods, aliado, objetivo,
+                                 AttackRange.RANGED, ctx=ctx)
+    assert not objetivo.conditions.has(Condition.CHARMED)
+    assert trait.beguiling == {}
+
+
+def test_beguiling_sin_aliados_no_tira_salvacion(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.arcane_archer as aa_mod
+
+    pj, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                                "Beguiling Arrow"))
+    enemigo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, enemigo], round=1)
+
+    def _no_debe_llamarse(*args, **kwargs):
+        raise AssertionError("sin aliados no se tira salvación")
+
+    monkeypatch.setattr(aa_mod, "saving_throw", _no_debe_llamarse)
+    assert _disparo(trait, _RngSi(), target=enemigo, ctx=ctx) > 0
+    assert enemigo.conditions.instances == []
+    assert trait.arcane_shot_usage.uses_left == 1  # el daño sí se aplicó
+
+
+def test_enfeebling_arrow_marca_el_dano_mitigado():
+    pj, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                                "Enfeebling Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=3)
+    assert _disparo(trait, _RngFalla(), target=objetivo, ctx=ctx) > 0
+    assert objetivo.state.enfeeble_hasta_ronda == {pj.name: 4}
+
+
+def test_enfeebling_salvacion_exitosa_no_marca():
+    pj, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                                "Enfeebling Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=3)
+    assert _disparo(trait, _RngSi(), target=objetivo, ctx=ctx) > 0
+    assert objetivo.state.enfeeble_hasta_ronda == {}
+
+
+def test_shadow_arrow_solo_tira_salvacion_sin_condicion():
+    _, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                               "Shadow Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    assert _disparo(trait, _RngFalla(), target=objetivo) > 0
+    assert objetivo.conditions.instances == []
+    assert trait.arcane_shot_usage.uses_left == 1
+
+
+def test_reset_borra_las_marcas_de_beguiling():
+    _, trait = _arquero(level=3)
+    trait.beguiling["Blanco"] = object()
+    trait.reset()
+    assert trait.beguiling == {}
+
+
+def test_la_marca_de_enfeebling_mitiga_por_ronda():
+    from dnd_sim.core.combat_state import CombatState
+
+    estado = CombatState()
+    assert estado.enfeeble_mitiga(1) is False
+    estado.enfeeble_hasta_ronda["Legolas"] = 4
+    assert estado.enfeeble_mitiga(3) is True
+    assert estado.enfeeble_mitiga(4) is True
+    assert estado.enfeeble_mitiga(5) is False
+    assert estado.enfeeble_mitiga(None) is False
+
+
+def test_el_motor_mitiga_el_dano_con_la_marca_de_enfeebling(monkeypatch):
+    import random
+
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    atk = Attack("Hacha de batalla", "1d12", ability="str")
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 10)
+
+    pj = _pj()
+    sin_marca = Monster("Muñeco", max_hp=100, ac=10, abilities=_abilities(),
+                        attacks=[])
+    atk_mod.attack_roll(pj, sin_marca, atk, random.Random(1),
+                        ctx=SimpleNamespace(round=1,
+                                            combatants=[pj, sin_marca]))
+    pj.state.enfeeble_hasta_ronda["Arquero"] = 99
+    con_marca = Monster("Muñeco", max_hp=100, ac=10, abilities=_abilities(),
+                        attacks=[])
+    atk_mod.attack_roll(pj, con_marca, atk, random.Random(1),
+                        ctx=SimpleNamespace(round=1,
+                                            combatants=[pj, con_marca]))
+
+    esperado = 10 + pj.abilities.mod("str")  # dado fijo + mod FUE
+    assert sin_marca.hp == sin_marca.max_hp - esperado
+    assert con_marca.hp == con_marca.max_hp - esperado // 2

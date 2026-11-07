@@ -21,6 +21,20 @@ Decisiones de simulación documentadas:
   turno o ataque a cuerpo a cuerpo → cero RNG). El daño extra se suma
   al del ataque (el motor no separa el tipo del bonus) y pasa de 2d6 a
   4d6 desde el nivel 18. Decisiones de combate uniformes, sin IA.
+- **Efectos de las opciones** (3): tras el daño, cada opción tira
+  salvación con CD 8+PB+mod INT. Banishing (CAR) → Incapacitado 2
+  rondas («hasta el final de tu siguiente turno» ≈ duración del
+  afectado; la inatacabilidad no está modelada, TODO.md). Beguiling
+  (aliado vivo con ``pick`` —sin posiciones: sin aliados solo daño y
+  sin RNG—; SAB → Hechizado 2 rondas con fuente=aliado; el hechizo
+  termina si el aliado ataca a la víctima, vía
+  ``grant_attack_modifiers``). Enfeebling (CON) → marca en el estado
+  del afectado que mitiga a la mitad el daño de sus ataques con arma
+  (``CombatState.enfeeble_hasta_ronda``, consumida en ``attack.py``;
+  los ataques mágicos quedan fuera). Shadow (SAB) → solo daño y
+  salvación: la visión a 5 pies no depende de la distancia por ataque
+  (TODO.md). Grasping sigue siendo solo daño (velocidad/moverse: sin
+  sistema de movimiento).
 - **Ever-Ready Shot** (10): sin efecto (cada combate empieza con usos
   completos); dato de tabla.
 """
@@ -39,7 +53,10 @@ from .....core.classes import (
 from .....core.dice import roll_dice
 from .....core.enums import AttackRange
 from .....core.log import log_line as _log_line
+from .....core.proficiency import proficiency_bonus
 from .....core.randomness import pick, sample
+from ....conditions import Condition, apply_condition
+from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
 from ..features import FighterFeatures
@@ -91,6 +108,10 @@ class ArcaneArcherFeatures(Trait):
     arcane_shot_usage: ActionUsage | None = None
     #: ¿Ya se aplicó Arcane Shot en el turno actual? (una vez por turno).
     shot_used_this_turn: bool = False
+    #: Beguiling Arrow: nombre de la víctima → aliado hechizador. La
+    #: borra el propio rasgo cuando el aliado ataca a la víctima.
+    beguiling: dict[str, Any] = field(
+        default_factory=dict, repr=False, compare=False)
     #: Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
 
@@ -101,6 +122,7 @@ class ArcaneArcherFeatures(Trait):
     def reset(self) -> None:
         """Un combate nuevo = un día descansado: usos de Arcane Shot llenos."""
         self.shot_used_this_turn = False
+        self.beguiling.clear()
         if self.arcane_shot_usage is not None:
             self.arcane_shot_usage.reset()
 
@@ -132,9 +154,109 @@ class ArcaneArcherFeatures(Trait):
         dados = "4d6" if self.level >= 18 else "2d6"
         daño = int(roll_dice(dados, rng))
         _log_line(ctx, f"Arcane Shot ({opcion}): +{daño} de daño")
-        # Efectos de las opciones: Grasping es solo daño en este paso;
-        # el resto de ramas se añaden en los pasos siguientes.
+        self._efecto_de_opcion(opcion, target, ctx, rng)
         return daño
+
+    def _cd(self) -> int:
+        """CD de las salvaciones de Arcane Shot: 8 + PB + mod INT."""
+        owner = self.owner
+        mod_int = owner.abilities.mod("int") if owner is not None else 0
+        return 8 + proficiency_bonus(self.level) + int(mod_int)
+
+    def _aliado_para_beguiling(self, ctx: Any, rng: Any) -> Any:
+        """Aliado vivo del dueño para Beguiling (o None, sin RNG).
+
+        Sin posiciones: vale cualquier aliado vivo del contexto. Sin
+        aliados no hay efecto posible y no se consume azar.
+        """
+        combatientes = getattr(ctx, "combatants", None) or []
+        hostil = getattr(self.owner, "is_hostile_to", None)
+        aliados = [
+            c for c in combatientes
+            if c is not self.owner
+            and getattr(c, "alive", True)
+            and (hostil is None or not hostil(c))
+        ]
+        if not aliados:
+            return None
+        return pick(rng, aliados)
+
+    def _efecto_de_opcion(self, opcion: str, target: Any, ctx: Any,
+                          rng: Any) -> None:
+        """Salvación y condición de la opción elegida (tras el daño).
+
+        Cada rama tira con la CD del rasgo; si la salvación se pasa no
+        hay condición. Grasping es solo daño (velocidad y moverse: sin
+        sistema de movimiento) y Bursting se añade en el paso 4.
+        """
+        if opcion == "Banishing Arrow":
+            sr = saving_throw(target, "cha", self._cd(), rng)
+            registrar_resistencia(ctx, target, sr)
+            if not sr.success:
+                # «Hasta el final de tu siguiente turno» ≈ 2 rondas del
+                # afectado (la duración tickea al fin de SU turno); la
+                # inatacabilidad del objetivo no está modelada (TODO.md).
+                apply_condition(target, Condition.INCAPACITATED, ctx,
+                                source=self.owner, duration_rounds=2)
+        elif opcion == "Beguiling Arrow":
+            aliado = self._aliado_para_beguiling(ctx, rng)
+            if aliado is None:
+                return  # sin aliados: solo daño, sin RNG extra
+            sr = saving_throw(target, "wis", self._cd(), rng)
+            registrar_resistencia(ctx, target, sr)
+            if not sr.success:
+                instancia = apply_condition(
+                    target, Condition.CHARMED, ctx, source=aliado,
+                    duration_rounds=2)
+                if instancia is not None:
+                    self.beguiling[getattr(target, "name", "")] = aliado
+        elif opcion == "Enfeebling Arrow":
+            sr = saving_throw(target, "con", self._cd(), rng)
+            registrar_resistencia(ctx, target, sr)
+            ronda = getattr(ctx, "round", None)
+            estado = getattr(target, "state", None)
+            if not sr.success and ronda is not None and estado is not None:
+                # Mitad del daño de SUS armas hasta el inicio del
+                # siguiente turno del arquero ≈ ronda+1 (attack.py).
+                estado.enfeeble_hasta_ronda[self.owner.name] = ronda + 1
+        elif opcion == "Shadow Arrow":
+            sr = saving_throw(target, "wis", self._cd(), rng)
+            registrar_resistencia(ctx, target, sr)
+            if not sr.success:
+                # Solo daño + salvación: la visión a 5 pies no depende
+                # de la distancia por ataque (TODO.md).
+                _log_line(ctx, f"{getattr(target, 'name', target)} no ve "
+                               f"a más de 5 pies (sin efecto de visión)")
+        # Grasping Arrow: solo daño (velocidad/moverse: sin movimiento).
+
+    def grant_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
+                               rango: Any, ctx: Any = None,
+                               rng: Any = None, atk: Any = None) -> None:
+        """Beguiling: el hechizo termina si el aliado fuente ataca.
+
+        El hook se despacha en cada tirada; sin marcas no hace nada
+        (cero coste). También se borra la marca si la condición ya
+        caducó por tiempo.
+        """
+        if not self.beguiling or target is None:
+            return None
+        nombre = getattr(target, "name", None)
+        aliado = self.beguiling.get(nombre)
+        if aliado is None or attacker is not aliado:
+            return None
+        tracker = getattr(target, "conditions", None)
+        if tracker is not None:
+            for instancia in list(tracker.instances):
+                if (instancia.condition is Condition.CHARMED
+                        and instancia.source is aliado):
+                    tracker.remove_instance(instancia)
+                    _log_line(
+                        ctx,
+                        f"El hechizo de {getattr(aliado, 'name', aliado)} "
+                        f"sobre {nombre} termina (el aliado ataca)")
+                    break
+        self.beguiling.pop(nombre, None)
+        return None
 
 
 def apply_arcane_archer(pj: Any, level: int | None = None,

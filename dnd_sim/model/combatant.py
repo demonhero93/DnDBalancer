@@ -288,6 +288,8 @@ class Combatant:
             # Marcas de maestría (Vex/Sap): un combate nuevo empieza sin ellas.
             self.state.maestria_ventaja.clear()
             self.state.maestria_desventaja.clear()
+            # Marca de Enfeebling (Arcane Archer): un combate nuevo sin ella.
+            self.state.enfeeble_hasta_ronda.clear()
         except Exception:
             pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,

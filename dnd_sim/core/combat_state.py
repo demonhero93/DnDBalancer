@@ -64,6 +64,24 @@ class CombatState:
     # ``Combatant.reset()``.
     maestria_desventaja: dict[str, int] = field(
         default_factory=dict, repr=False, compare=False)
+    # Enfeebling Arrow (Arcane Archer): nombre del arquero → ronda de
+    # caducidad. La marca quien RECIBE la salvación fallida y mitiga a la
+    # mitad el daño de SUS ataques con arma mientras siga vigente (lo
+    # consume ``engine/combat/attack.py``). La limpia ``Combatant.reset()``.
+    enfeeble_hasta_ronda: dict[str, int] = field(
+        default_factory=dict, repr=False, compare=False)
+
+    def enfeeble_mitiga(self, ronda: int | None) -> bool:
+        """¿Vigente la marca de Enfeebling en ``ronda``?
+
+        Caducidad por ronda (aproximación de «hasta el inicio de tu
+        siguiente turno»): se marca en ``ronda + 1`` y deja de aplicar
+        dos rondas después. Sin ``ronda`` no hay efecto.
+        """
+        if ronda is None:
+            return False
+        return any(hasta >= ronda
+                   for hasta in self.enfeeble_hasta_ronda.values())
 
 
 __all__ = ["CombatState"]
