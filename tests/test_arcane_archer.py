@@ -395,6 +395,44 @@ def test_shadow_arrow_solo_tira_salvacion_sin_condicion():
     assert trait.arcane_shot_usage.uses_left == 1
 
 
+def test_bursting_arrow_dana_a_los_vecinos_sin_salvacion():
+    pj, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                                "Bursting Arrow"))
+    aliado = _pj(name="Arwen")
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    vecino = Monster("Vecino", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, aliado, objetivo, vecino],
+                          round=1)
+    assert _disparo(trait, _RngFalla(), target=objetivo, ctx=ctx) > 0
+    # 2d6 con el RNG del test (siempre 1s) = 2 de fuerza al vecino.
+    assert vecino.hp == vecino.max_hp - 2
+    # Sin salvación ni condición; el aliado no recibe nada.
+    assert objetivo.conditions.instances == []
+    assert vecino.conditions.instances == []
+    assert aliado.hp == aliado.max_hp
+    assert trait.arcane_shot_usage.uses_left == 1
+
+
+def test_bursting_sin_vecinos_no_tira_dados_extra(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.arcane_archer as aa_mod
+
+    _, trait = _arquero(level=3, arcane_shots=("Grasping Arrow",
+                                               "Bursting Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[_pj(), objetivo], round=1)
+    vistas: list[str] = []
+    original = aa_mod.roll_dice
+
+    def _espia(expr, rng, *args, **kwargs):
+        vistas.append(expr)
+        return original(expr, rng, *args, **kwargs)
+
+    monkeypatch.setattr(aa_mod, "roll_dice", _espia)
+    assert _disparo(trait, _RngFalla(), target=objetivo, ctx=ctx) > 0
+    # Solo el daño base del shot: sin vecinos no hay tirada de 2d6 extra.
+    assert vistas == ["2d6"]
+
+
 def test_reset_borra_las_marcas_de_beguiling():
     _, trait = _arquero(level=3)
     trait.beguiling["Blanco"] = object()

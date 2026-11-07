@@ -33,8 +33,12 @@ Decisiones de simulación documentadas:
   (``CombatState.enfeeble_hasta_ronda``, consumida en ``attack.py``;
   los ataques mágicos quedan fuera). Shadow (SAB) → solo daño y
   salvación: la visión a 5 pies no depende de la distancia por ataque
-  (TODO.md). Grasping sigue siendo solo daño (velocidad/moverse: sin
-  sistema de movimiento).
+  (TODO.md). Bursting (fuerza, sin salvación): el objetivo ya recibió
+  el 2d6 base y todos los demás enemigos vivos del arquero —«a 10
+  pies» abstracto, sin posiciones— reciben 2d6 de fuerza con una sola
+  tirada compartida (patrón de área del sim: nunca aliados; sin RNG
+  en la selección). Grasping sigue siendo solo daño
+  (velocidad/moverse: sin sistema de movimiento).
 - **Ever-Ready Shot** (10): sin efecto (cada combate empieza con usos
   completos); dato de tabla.
 """
@@ -51,11 +55,13 @@ from .....core.classes import (
     arcane_shot_uses,
 )
 from .....core.dice import roll_dice
-from .....core.enums import AttackRange
+from .....core.enums import AttackRange, parse_damage_type
 from .....core.log import log_line as _log_line
 from .....core.proficiency import proficiency_bonus
 from .....core.randomness import pick, sample
+from .....core.targeting import valid_targets
 from ....conditions import Condition, apply_condition
+from ....damage import apply_damage_modifiers, inflict_damage
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
@@ -187,7 +193,7 @@ class ArcaneArcherFeatures(Trait):
 
         Cada rama tira con la CD del rasgo; si la salvación se pasa no
         hay condición. Grasping es solo daño (velocidad y moverse: sin
-        sistema de movimiento) y Bursting se añade en el paso 4.
+        sistema de movimiento).
         """
         if opcion == "Banishing Arrow":
             sr = saving_throw(target, "cha", self._cd(), rng)
@@ -227,6 +233,24 @@ class ArcaneArcherFeatures(Trait):
                 # de la distancia por ataque (TODO.md).
                 _log_line(ctx, f"{getattr(target, 'name', target)} no ve "
                                f"a más de 5 pies (sin efecto de visión)")
+        elif opcion == "Bursting Arrow":
+            # «Cada criatura a 10 pies» sin posiciones: todos los
+            # enemigos vivos del arquero salvo el objetivo (patrón de
+            # área del sim: nunca aliados). Sin RNG en la selección y
+            # una sola tirada de 2d6 compartida por los vecinos.
+            vecinos = [c for c in valid_targets(self.owner, ctx)
+                       if c is not target and getattr(c, "alive", True)]
+            if not vecinos:
+                return
+            dado = int(roll_dice("2d6", rng))
+            fuerza = parse_damage_type("force")
+            for vecino in vecinos:
+                dano = apply_damage_modifiers(dado, fuerza, vecino,
+                                              magical=True)
+                inflict_damage(vecino, dano, fuerza, source=self.owner,
+                               ctx=ctx, rng=rng, magical=True)
+            _log_line(ctx, f"Bursting Arrow: {len(vecinos)} criatura(s) "
+                           f"a 10 pies reciben {dado} de daño de fuerza")
         # Grasping Arrow: solo daño (velocidad/moverse: sin movimiento).
 
     def grant_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
