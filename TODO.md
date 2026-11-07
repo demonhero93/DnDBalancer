@@ -33,17 +33,66 @@ y ARCHITECTURE.md.
 
 ## Fighter: pendientes reales
 
-- **Cleave** (maestría de hacha gigante/mandoble/alabarda): necesita el
-  segundo golpe contra un objetivo adicional (sin motor de objetivos
-  múltiples para maestrías).
-- **Nick** (maestría de arma ligera): permite el ataque extra con
-  acción de ataque; depende de que exista el ataque bonus/off-hand.
-- **Two-Weapon Fighting**: sin efecto hasta que exista el ataque
-  adicional (depende de Nick; el motor no tiene ataques bonus).
-- **Push/Slow** (efecto de maestría): sin posiciones ni movimiento que
-  desplazar (`# TODO` en `rules/mastery.py`).
-- **Subclases Fighter**: receta en «Fighter: cómo añadir una subclase»;
-  candidatas Champion, Battle Master, Eldritch Knight, Psi Warrior.
+- **Subclases Fighter**: candidatas Champion, Battle Master, Eldritch
+  Knight, Psi Warrior (Arcane Archer implementado, ver plan abajo).
+- **Arcane Archer — Piercing/Seeking**: fuera del pool (`ARCANE_SHOTS`
+  = 6 opciones). Ambas reemplazan la tirada de ataque («instead of
+  making an attack roll») y el motor no tiene ningún gancho previo a
+  `attack_roll` (el primer gancho del flujo es `extra_attack_damage`,
+  que exige impactar); además su geometría (línea 1 ft × 30 ft / punto
+  visto) no existe sin posiciones. Implementarlas exige un gancho nuevo
+  antes de la tirada + área con posición → más allá del «gancho
+  mínimo». Si se retoman: hook previo a la tirada, `pick` entre
+  conocidas y salvación DES.
+- **Arcane Archer — Ever-Ready Shot (10)**: sin efecto, dato de tabla
+  documentado en el docstring de `arcane_archer.py` (cada combate
+  empieza con los usos de Arcane Shot completos).
+
+## Arcane Archer: plan de sesión
+
+Cada casilla = un commit. Registro tras cada paso en
+PASOS-ANTERIORES.txt. NO tocar la API (reglas en el prompt de la tarea).
+
+- [x] 1. Estructura y datos: tablas `arcane_shot_options_known` /
+  `arcane_shot_uses` en `core/classes.py`; `subclasses/arcane_archer.py`
+  con `ArcaneArcherFeatures` + `apply_arcane_archer` (valida clase
+  fighter y nivel ≥3; Arcane Archer Lore: competencia Arcanos/Naturaleza
+  con `pick` + truco dato; pool de opciones con kwarg explícito
+  validado); registro `"arcane_archer"` en `fighter/__init__.py`;
+  reexports (subclasses/__init__, fachada `dnd_sim/__init__.py`);
+  `tests/test_arquitectura.py` si procede; tests registro/equivalencia/
+  errores/tablas/Lore/pool. **Test existente que cambia (explicado)**:
+  `tests/test_fighter.py` que congela tabla vacía → exige
+  `{"arcane_archer"}` (el de `"champion"` sigue válido).
+- [x] 2. Arcane Shot base: usos 2/3 (`arcane_shot_uses`), flag «una vez
+  por turno» con reinicio en `on_turn_start` (patrón Oleada de Acción),
+  decisión `pick` «no/sí» solo al impactar a distancia (cero RNG si no
+  corresponde), `pick` entre opciones conocidas, gasto de uso, CD =
+  8+PB+INT; primera opción: Grasping Arrow (daño 2d6 veneno puro,
+  4d6 desde nivel 18).
+- [x] 3. Opciones con salvación: Banishing (CAR → incapacitado con
+  duración, sin inatacabilidad), Beguiling (SAB → Hechizado por aliado
+  `pick`, termina si el aliado le ataca), Enfeebling (CON → marca que
+  mitiga el daño de sus ataques, patrón `maestria_desventaja`), Shadow
+  (SAB → solo daño + salvación, visión sin efecto `# TODO`).
+- [x] 4. Bursting Arrow: 2d6 fuerza al objetivo y vecinos a 10 ft sin
+  salvación, con `select_area_targets`/`AreaTargeting` (patrón
+  Intimidating Presence).
+- [x] 5. Magic Arrow (≥7: marca `magical` in-place en arco corto/largo
+  EN/ES) + Curving Shot (bonus action re-tira contra otro enemigo
+  `pick`, patrón Unstable Backlash; sin bonus libre u otro objetivo →
+  sin RNG).
+- [x] 6. Piercing/Seeking: implementar solo si cabe con gancho mínimo;
+  si no, a «pendientes reales» con el motivo exacto y fuera del pool.
+  Ever-Ready Shot: dato de tabla documentado (sin efecto en el sim).
+- [ ] 7. Tests de integración: `run_combat` con semilla fija, cero RNG
+  sin la subclase; suite completa.
+- [ ] 8. Docs: `TODO.md` (candidata marcada + pendientes reales con
+  motivos), `PASOS-ANTERIORES.txt` (bloque ARCANE ARCHER en ESTADO
+  ACTUAL), `ARCHITECTURE.md` (fila + grafo + recuentos).
+- [ ] 9. Verificación final: arquitectura, suite, `capas.py`,
+  `graphify update .`; commit final del grafo.
+
 
 ## Fighter: cómo añadir una subclase
 
