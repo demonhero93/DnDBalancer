@@ -1,23 +1,23 @@
-# Graph Report - DnDBalancer  (2026-11-06)
+# Graph Report - DnDBalancer  (2026-11-07)
 
 ## Corpus Check
-- 219 files · ~175,074 words
+- 221 files · ~181,669 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 2 file(s) not represented in the graph (top: (none) 1, .ini 1)
 
 ## Summary
-- 3348 nodes · 12141 edges · 100 communities (87 shown, 13 thin omitted)
-- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 749 edges (avg confidence: 0.92)
+- 3475 nodes · 12639 edges · 101 communities (82 shown, 19 thin omitted)
+- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 788 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c88079c0`
+- Built from commit: `b5468875`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - _trait
-- inflict_damage
+- test_attach.py
 - AttackRange
 - test_giant.py
 - test_world_tree.py
@@ -25,298 +25,292 @@
 - test_proficiency.py
 - test_legendary.py
 - test_beast.py
-- parse_spell
-- test_traits.py
-- combat/attack.py
+- test_spells.py
+- RollMode
+- Monster
 - test_utility.py
 - test_wild_magic.py
 - Trait
-- spell_parser.py
-- Combatant
-- simulate
+- _elementos_por_nivel
+- inflict_damage
+- StormHeraldFeatures
 - test_ancestral_guardian.py
-- test_loader_actions.py
-- CombatContext
-- run_combat
+- PlayerCharacter
+- dnd_sim/__init__.py
+- ArcaneArcherFeatures
 - ActionUsage
 - apply_barbarian
 - test_martial_advantage.py
 - ZealotFeatures
 - test_zealot.py
 - test_death.py
-- json
-- TurnResources
+- _trait
+- test_magical.py
 - attack_roll
 - test_superior_invisibility.py
-- fighter/features.py
+- FighterFeatures
 - BeastFeatures
 - test_skills.py
-- trait_parser.py
-- area.py
+- test_undead_fortitude.py
+- ConditionAction
 - test_multiattack.py
-- valid_targets
-- _duelo
+- _load
+- test_relentless.py
 - test_mastery.py
 - BarbarianFeatures
 - apply_condition
-- conditions.py
+- pick
 - test_area.py
 - random
 - Condition
-- dnd_sim/__init__.py
-- _pj
+- CheckResult
+- build_spell_actions
 - Regeneration
 - test_checks_escapes.py
 - load_monster
 - _con_estilo
 - saving_throw
 - test_condition_immunities.py
-- SaveResult
-- WarriorHealAction
+- normalize_ability
+- _ctx
 - test_magic_resistance.py
 - begin_turn
 - parse_escape
 - traits/__init__.py
-- legendary_parser.py
+- loader.py
 - test_storm_herald.py
 - save_modifiers
 - test_backgrounds.py
-- test_spells.py
+- SpellFixedDamageAction
 - Attack
-- .on_turn_start
-- pathlib
-- BattleragerFeatures
-- RollMode
+- WorldTreeFeatures
+- test_arquitectura.py
+- barbarian/subclasses/__init__.py
+- test_pack_tactics.py
 - test_lair.py
-- ConditionTracker
+- ConditionInstance
 - tactics.py
 - test_races.py
 - test_enlarge.py
-- loader.py
+- _condicion_posicional
 - Any
-- _ctx_recursos
-- Any
-- casting.py
-- Abilities
-- TODO — DnDBalancer / dnd_sim
-- _RngBajo
-- AttackAction
+- test_fighter.py
+- .alive
+- spell_action
+- apply_damage_modifiers
+- NaturalWeapon
+- _RngMax
+- _estado
 - test_la_sustitucion_de_tactical_master_solo_dura_ese_ataque
-- condition_parser.py
-- resolve_attack_range
+- _dados_hasta
+- check_modifiers
+- _slot_table
 - multiattack_parser.py
-- race_parser.py
-- background_parser.py
+- barbarian/__init__.py
+- _tabla_cantrip
+- Background
 - Spellcasting
-- load_race
+- _contar
+- test_resistance_probability_medio_convierte_about_50_por_ciento
+- test_el_cli_tiene_las_opciones_legendarias
 - test_el_gancho_after_failed_check_desde_ability_check_con_ctx
-- test_tactical_master_nivel_9_elige_entre_original_push_sap_slow
-- test_sin_autoexito_ni_autofallo_en_pruebas
 
 ## God Nodes (most connected - your core abstractions)
-1. `Attack` - 187 edges
-2. `Condition` - 167 edges
-3. `apply_condition()` - 150 edges
-4. `Abilities` - 145 edges
-5. `attack_roll()` - 138 edges
-6. `load_monster()` - 135 edges
-7. `AttackRange` - 131 edges
-8. `PlayerCharacter` - 128 edges
-9. `Monster` - 117 edges
-10. `apply_barbarian()` - 96 edges
+1. `Attack` - 195 edges
+2. `Condition` - 173 edges
+3. `apply_condition()` - 152 edges
+4. `Abilities` - 147 edges
+5. `attack_roll()` - 142 edges
+6. `Monster` - 141 edges
+7. `AttackRange` - 139 edges
+8. `load_monster()` - 135 edges
+9. `PlayerCharacter` - 130 edges
+10. `run_combat()` - 99 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `Guaridas: política fija` --references--> `pick()`  [INFERRED]
   ARCHITECTURE.md → dnd_sim/core/randomness.py
 - `TODOs en código (marcados `# TODO`)` --references--> `pick()`  [INFERRED]
   TODO.md → dnd_sim/core/randomness.py
+- `Excepción única admitida` --references--> `Combatant`  [INFERRED]
+  ARCHITECTURE.md → dnd_sim/model/combatant.py
 - `Fighter: cómo añadir una subclase` --references--> `SubclassDef`  [INFERRED]
   TODO.md → dnd_sim/rules/classes/base.py
-- `Paquetes con fachada` --references--> `CombatResult`  [INFERRED]
-  ARCHITECTURE.md → dnd_sim/engine/combat/encounter.py
-- `Carpetas` --references--> `Combatant`  [INFERRED]
-  ARCHITECTURE.md → dnd_sim/model/combatant.py
+- `Fighter: pendientes reales` --references--> `pick()`  [INFERRED]
+  TODO.md → dnd_sim/core/randomness.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (100 total, 13 thin omitted)
+## Communities (101 total, 19 thin omitted)
 
 ### Community 0 - "_trait"
-Cohesion: 0.10
-Nodes (39): second_wind_uses(), _check_fallada(), _ctx(), _fighter(), _objetivo(), _RngMax, _save_fallada(), _saving_nueva() (+31 more)
+Cohesion: 0.12
+Nodes (34): second_wind_uses(), _check_fallada(), _ctx(), _fighter(), _mods(), _save_fallada(), _saving_nueva(), _second_wind() (+26 more)
 
-### Community 1 - "inflict_damage"
-Cohesion: 0.05
-Nodes (63): AttachOnHitEffect, desenganchar(), enganchador_de(), intentar_desenganche(), _ya_cegado_por(), _absorber_pv_temporales(), _hooks(), inflict_damage() (+55 more)
+### Community 1 - "test_attach.py"
+Cohesion: 0.09
+Nodes (32): parse_attach_effects(), Attach, AttachOnHitEffect, desenganchar(), enganchador_de(), intentar_desenganche(), _ya_cegado_por(), _atacar() (+24 more)
 
 ### Community 2 - "AttackRange"
 Cohesion: 0.07
-Nodes (56): AttackRange, RageAction, apply_berserker(), _armas_melee_de(), _de(), _furia_de(), _golpe_sin_armas(), IntimidatingPresenceAction (+48 more)
+Nodes (55): AttackRange, RageAction, apply_berserker(), _de(), _furia_de(), _golpe_sin_armas(), IntimidatingPresenceAction, _abilities() (+47 more)
 
 ### Community 3 - "test_giant.py"
 Cohesion: 0.08
 Nodes (37): apply_giant(), _de(), GiantFeatures, MightyImpelAction, _objetivos_impel(), _orden_de(), _abilities(), _barbaro() (+29 more)
 
 ### Community 4 - "test_world_tree.py"
-Cohesion: 0.12
-Nodes (38): _abilities(), _aliado(), _barbaro(), _ctx(), _decision(), _elige_candidato(), espia(), _furia() (+30 more)
+Cohesion: 0.11
+Nodes (39): apply_world_tree(), _abilities(), _aliado(), _barbaro(), _ctx(), _decision(), _elige_candidato(), espia() (+31 more)
 
 ### Community 5 - "test_wild_heart.py"
 Cohesion: 0.08
 Nodes (48): apply_wild_heart(), _con_beneficio(), _de(), _en_5_pies(), _hostil(), _orden_de(), WildHeartFeatures, _abilities() (+40 more)
 
 ### Community 6 - "test_proficiency.py"
-Cohesion: 0.16
+Cohesion: 0.18
 Nodes (20): ability_check_bonus(), _abilities(), _pj(), test_ability_check_bonus_delega_en_check_bonus(), test_ability_check_bonus_sin_metodo_check_bonus(), test_ability_check_usa_el_bono_completo(), test_check_bonus_con_competencia(), test_check_bonus_sin_competencia() (+12 more)
 
 ### Community 7 - "test_legendary.py"
-Cohesion: 0.07
-Nodes (59): legendary_phase(), LegendaryAction, _contexto(), _data(), _estado(), _legendaria(), _load(), _pj() (+51 more)
+Cohesion: 0.09
+Nodes (53): legendary_phase(), _contexto(), _data(), _legendaria(), _load(), _pj(), test_cada_accion_omitida_avisa_con_monstruo_accion_y_motivo(), test_con_un_punto_solo_son_asequibles_las_de_coste_uno() (+45 more)
 
 ### Community 8 - "test_beast.py"
 Cohesion: 0.10
-Nodes (66): WeaponAttackAction, _abilities(), _barb(), _beast(), _ctx(), _en_furia(), _espiar_attack_roll(), spy() (+58 more)
+Nodes (65): _abilities(), _barb(), _beast(), _ctx(), _en_furia(), _espiar_attack_roll(), spy(), _forma() (+57 more)
 
-### Community 9 - "parse_spell"
-Cohesion: 0.14
-Nodes (27): parse_spell(), spell_action(), _spell_data(), _spellcasting(), test_al_recibir_dano_en_un_ataque_se_dispara_la_reaccion(), test_el_dano_de_un_hechizo_con_slot_escala_con_el_slot(), test_el_dano_del_cantrip_escala_con_el_nivel_del_lanzador(), test_el_daño_extra_del_hechizo_verdadero_no_baja_de_cinco() (+19 more)
+### Community 9 - "test_spells.py"
+Cohesion: 0.13
+Nodes (31): parse_spell(), _tipo_de_dano(), _spell_data(), _spellcasting(), test_al_recibir_dano_en_un_ataque_se_dispara_la_reaccion(), test_el_dano_de_un_hechizo_con_slot_escala_con_el_slot(), test_el_dano_del_cantrip_escala_con_el_nivel_del_lanzador(), test_el_daño_extra_del_hechizo_verdadero_no_baja_de_cinco() (+23 more)
 
-### Community 10 - "test_traits.py"
-Cohesion: 0.11
-Nodes (24): attack_modifiers(), _ataque_melee(), _ctx(), _datos(), _pj(), _RasgoDePrueba, _RasgoDeSalvacion, _sahuagin() (+16 more)
+### Community 10 - "RollMode"
+Cohesion: 0.09
+Nodes (26): RollMode, attack_modifiers(), _instancias(), _ataque_melee(), _ctx(), _datos(), _pj(), _RasgoDePrueba (+18 more)
 
-### Community 11 - "combat/attack.py"
-Cohesion: 0.08
-Nodes (14): _agrandado(), _bonus_de_rasgos(), _bonus_de_tamano(), _bonus_defensivo(), _dados_de_ataque(), _piso_dados_rasgos(), _trigger_after_attack_roll(), _trigger_after_being_hit() (+6 more)
+### Community 11 - "Monster"
+Cohesion: 0.05
+Nodes (72): CombatState, TurnResources, Monster, apply_arcane_archer(), CurvingShotAction, _abilities(), _arco(), _arquero() (+64 more)
 
 ### Community 12 - "test_utility.py"
-Cohesion: 0.18
-Nodes (24): ConditionInstance, _abilities(), _ctx(), _mon(), _pj(), _siempre_falla(), test_actor_no_disponible_no_consulta_la_probabilidad(), test_agarrar_admite_hasta_un_tamano_mayor() (+16 more)
+Cohesion: 0.13
+Nodes (29): _agarrando(), ataque_utilitario(), _condiciones(), debe_usar_utilitaria(), hay_utilitaria_accion(), _orden_tamano(), _abilities(), _ctx() (+21 more)
 
 ### Community 13 - "test_wild_magic.py"
-Cohesion: 0.13
-Nodes (38): _abilities(), _barbaro(), _con_cola(), _con_efecto(), espia(), _ctx(), _furia(), _mon() (+30 more)
+Cohesion: 0.11
+Nodes (42): apply_wild_magic(), _sombra(), WildSurgeAction, _abilities(), _barbaro(), _con_cola(), _con_efecto(), espia() (+34 more)
 
 ### Community 14 - "Trait"
 Cohesion: 0.05
-Nodes (5): Trait, BloodFrenzy, test_el_catalogo_cubre_hooks_que_los_rasgos_aun_no_usan(), test_hooks_con_un_nombre_fuera_del_catalogo_lanza_error(), test_hooks_solo_devuelve_los_que_sobrescriben_el_hook()
+Nodes (3): Trait, BloodFrenzy, test_hooks_solo_devuelve_los_que_sobrescriben_el_hook()
 
-### Community 15 - "spell_parser.py"
+### Community 16 - "inflict_damage"
 Cohesion: 0.07
-Nodes (16): Paquetes con fachada, _avisar(), _condicion_con_salvacion(), _condiciones_de_frase(), _dados_hasta(), _elementos_por_nivel(), _elementos_totales(), _extender_tabla() (+8 more)
+Nodes (13): parse_damage_type(), _absorber_pv_temporales(), _hooks(), inflict_damage(), _mark_dead_if_down(), _mitigacion_de_otros(), _notify_damage_dealt(), _notify_damage_taken() (+5 more)
 
-### Community 16 - "Combatant"
-Cohesion: 0.07
-Nodes (9): Arquitectura de `dnd_sim`, Excepción única admitida, Guaridas: política fija, Imports diferidos, Reglas de dependencia, resolve_roll_mode(), Combatant, _mark_dead_if_down() (+1 more)
-
-### Community 17 - "simulate"
-Cohesion: 0.21
-Nodes (9): print_report(), simulate(), build_parser(), _load_party(), main(), _parse_monster_token(), _guerrero_y_ogro(), test_danio_medio_por_combatiente_y_equipo() (+1 more)
+### Community 17 - "StormHeraldFeatures"
+Cohesion: 0.09
+Nodes (8): _aliados_en_aura(), _cd(), _dado_mar(), _de(), _en_aura(), _enemigos_en_aura(), _escalado(), StormHeraldFeatures
 
 ### Community 18 - "test_ancestral_guardian.py"
-Cohesion: 0.18
-Nodes (26): _abilities(), _aliado(), _ataque_fijo(), _barbaro(), _ctx(), _danio_al_aliado(), _escudo(), _esperado() (+18 more)
+Cohesion: 0.10
+Nodes (28): AncestralGuardianFeatures, apply_ancestral_guardian(), _abilities(), _aliado(), _ataque_fijo(), _barbaro(), _ctx(), _danio_al_aliado() (+20 more)
 
-### Community 19 - "test_loader_actions.py"
-Cohesion: 0.14
-Nodes (14): is_area_action(), _area_action(), _data(), _load(), _raw_action(), test_accion_con_dc_sin_dano_sigue_ignorada(), test_accion_con_usage_desconocido_se_omite(), test_aliento_mapeado_a_area_con_recarga() (+6 more)
+### Community 19 - "PlayerCharacter"
+Cohesion: 0.07
+Nodes (33): Carpetas, _tag_modificadores(), print_report(), simulate(), PlayerCharacter, build_parser(), _build_party(), _load_party() (+25 more)
 
-### Community 20 - "CombatContext"
-Cohesion: 0.08
-Nodes (13): pick(), _reaccion_si_procede(), _tag_modificadores(), _nuevo_ctx(), actor_is_alive(), CombatContext, _en_accion_de_ataque(), _living_enemies() (+5 more)
+### Community 20 - "dnd_sim/__init__.py"
+Cohesion: 0.04
+Nodes (39): DamageType, combat_finished(), living_teams(), _objetivo_enganche(), valid_targets(), resolve_roll_mode(), CombatResult, _invoke_policy() (+31 more)
 
-### Community 21 - "run_combat"
-Cohesion: 0.14
-Nodes (14): CombatResult, _invoke_policy(), roll_initiative(), run_combat(), _run_combat(), _pasada(), _summarize_damage(), _agarrando() (+6 more)
+### Community 21 - "ArcaneArcherFeatures"
+Cohesion: 0.11
+Nodes (4): proficiency_bonus(), ArcaneArcherFeatures, _de(), _otros_enemigos()
 
 ### Community 22 - "ActionUsage"
 Cohesion: 0.08
 Nodes (25): ActionUsage, UsageKind, _breath(), _eventos(), _FixedRandom, _load_fixture(), _player(), test_aliento_se_usa_en_una_fraccion_plausible_de_turnos() (+17 more)
 
 ### Community 23 - "apply_barbarian"
-Cohesion: 0.06
-Nodes (66): apply_barbarian(), apply_class(), CheckModifiers, SaveModifiers, _abilities(), _ctx(), _pj(), _resultado() (+58 more)
+Cohesion: 0.14
+Nodes (28): rage_uses(), apply_barbarian(), _pj(), test_apply_anade_acciones_de_furia(), test_apply_extra_attack_sin_ataques_no_explota(), test_apply_extra_attack_sustituye_ataques_por_multiataque(), test_apply_feral_instinct_nivel_7(), test_apply_habilidad_fuera_de_lista_lanza_error() (+20 more)
 
 ### Community 24 - "test_martial_advantage.py"
 Cohesion: 0.26
 Nodes (14): _aliado(), _ctx(), _datos(), _espada(), _hobgoblin(), _pj(), test_con_aliados_el_daño_extra_es_aleatorio(), test_el_daño_extra_aparece_en_el_log_del_ataque() (+6 more)
 
 ### Community 25 - "ZealotFeatures"
-Cohesion: 0.07
-Nodes (12): apply_zealot(), _de(), _en_60_pies(), _es_aliado(), _reserva_dados(), ZealotFeatures, ZealousPresenceAction, test_apply_anade_trait_y_dos_acciones_bonus() (+4 more)
+Cohesion: 0.09
+Nodes (9): apply_zealot(), _de(), _en_60_pies(), _es_aliado(), _reserva_dados(), ZealotFeatures, ZealousPresenceAction, test_apply_anade_trait_y_dos_acciones_bonus() (+1 more)
 
 ### Community 26 - "test_zealot.py"
-Cohesion: 0.12
-Nodes (28): _furia_de(), _abilities(), _aliado(), _barbaro(), _decision(), _forma(), _presencia(), test_fanatical_decision_negativa_no_repiten() (+20 more)
+Cohesion: 0.07
+Nodes (77): _furia_de(), WarriorHealAction, _abilities(), _accion(), _aliado(), _barbaro(), _ctx(), _decision() (+69 more)
 
 ### Community 27 - "test_death.py"
 Cohesion: 0.16
 Nodes (16): _BonusQueAnota, _ctx(), _npc(), _pj(), _RepresaliaMortal, test_el_ataque_que_remata_deja_el_objetivo_a_cero(), test_el_combate_termina_en_el_mismo_golpe_cuando_cae_el_ultimo_enemigo(), test_el_combate_terminado_se_detecta_al_momento() (+8 more)
 
-### Community 28 - "json"
-Cohesion: 0.15
-Nodes (9): _cache_path(), get_background(), _get_entry(), get_monster(), get_race(), get_spell(), get_trait(), MonsterNotFoundError (+1 more)
+### Community 28 - "_trait"
+Cohesion: 0.14
+Nodes (15): CheckModifiers, SaveModifiers, _abilities(), test_brutal_strike_2d10_desde_nivel_17(), test_brutal_strike_renuncia_a_la_ventaja_y_paga_1d10(), test_brutal_strike_sin_fue_no_aplica(), test_danger_sense_da_ventaja_en_salvaciones_de_des(), test_danger_sense_no_funciona_incapacitado() (+7 more)
 
-### Community 29 - "TurnResources"
-Cohesion: 0.10
-Nodes (20): TurnResources, _ctx(), _pj(), _spell_data(), _spellcasting(), test_ataque_con_magical_true_dana_completo_al_ghost(), test_bestial_solo_marca_las_armas_magicas_desde_el_nivel_6(), test_el_log_del_ataque_dice_dano_no_magico() (+12 more)
+### Community 29 - "test_magical.py"
+Cohesion: 0.16
+Nodes (14): apply_beast(), _ctx(), _pj(), test_ataque_con_magical_true_dana_completo_al_ghost(), test_ataque_magico_contra_un_bárbaro_en_furia_se_reduce_a_la_mitad(), test_bestial_solo_marca_las_armas_magicas_desde_el_nivel_6(), test_inflict_damage_registra_la_bandera_magical(), test_las_armas_dinamicas_de_la_furia_heredan_el_flag() (+6 more)
 
 ### Community 30 - "attack_roll"
-Cohesion: 0.07
-Nodes (60): D20Result, _actualizar_distancia(), attack_roll(), _mode_tag(), DamageRecorder, _ataque_melee(), _ataque_ranged(), _azer() (+52 more)
+Cohesion: 0.06
+Nodes (68): D20Result, _actualizar_distancia(), attack_roll(), _mode_tag(), DamageRecorder, HeatedBody, _ataque_melee(), _ataque_ranged() (+60 more)
 
 ### Community 31 - "test_superior_invisibility.py"
 Cohesion: 0.16
 Nodes (19): _entradas(), parse_traits(), remove_invisibility_on_action(), test_el_parry_de_una_ficha_sin_api_se_parsea_desde_el_srd(), test_otros_monstruos_con_regeneracion_usan_su_propia_cantidad(), test_el_umbral_se_saca_de_cada_descripcion(), _accion(), _ctx() (+11 more)
 
-### Community 32 - "fighter/features.py"
-Cohesion: 0.05
-Nodes (17): action_surge_uses(), _clamp(), extra_attacks_for(), fighter_extra_attacks_for(), indomitable_uses(), rage_uses(), weapon_mastery_count(), AttackEntry (+9 more)
+### Community 32 - "FighterFeatures"
+Cohesion: 0.09
+Nodes (6): ActionSurgeAction, _contexto(), _en_5_pies(), FighterFeatures, _rasgo(), SecondWindAction
 
 ### Community 34 - "test_skills.py"
-Cohesion: 0.11
-Nodes (24): skill_bonus(), _abilities(), _ctx(), _load_fixture(), _pj(), _SoloMod, test_ability_check_no_suma_competencia_de_habilidad(), test_attempt_escapes_tira_la_habilidad() (+16 more)
+Cohesion: 0.08
+Nodes (28): _clean(), normalize_skill(), skill_ability(), skill_bonus(), skill_check(), _abilities(), _ctx(), _load_fixture() (+20 more)
 
-### Community 35 - "trait_parser.py"
+### Community 35 - "test_undead_fortitude.py"
 Cohesion: 0.20
-Nodes (6): _declara_uso(), _usage(), parse_usage(), UnknownUsageError, test_usage_parser_cada_tipo(), test_usage_parser_tipo_desconocido_avisa()
-
-### Community 36 - "area.py"
-Cohesion: 0.11
-Nodes (8): AreaSaveAction, _log_target(), ConditionAction, RepeatSave, _mode_tag(), _outcome_tag(), _log_line_outcome(), test_la_resistencia_funciona_en_todas_las_rutas()
+Nodes (15): _ctx(), _datos(), _pj(), _salva(), test_a_un_zombi_ya_caido_no_le_vuelven_a_salvar(), test_el_danyo_radiante_no_da_salvacion(), test_el_zombi_carga_su_undead_fortitude_con_su_dc(), test_la_cd_es_cinco_mas_el_danyo_recibido() (+7 more)
 
 ### Community 37 - "test_multiattack.py"
-Cohesion: 0.11
-Nodes (17): _data(), _load(), _pj(), _raw_multiattack(), test_el_aliento_de_la_quimera_no_compite_como_accion_suelta(), test_el_aliento_dentro_del_multiataque_gasta_su_uso(), test_el_dragon_hace_tres_ataques_por_turno(), test_la_quimera_hace_tres_ataques_por_turno() (+9 more)
+Cohesion: 0.22
+Nodes (12): _data(), _load(), _pj(), _raw_multiattack(), test_el_aliento_de_la_quimera_no_compite_como_accion_suelta(), test_el_aliento_dentro_del_multiataque_gasta_su_uso(), test_el_dragon_hace_tres_ataques_por_turno(), test_la_quimera_hace_tres_ataques_por_turno() (+4 more)
 
-### Community 38 - "valid_targets"
-Cohesion: 0.10
-Nodes (13): combat_finished(), living_teams(), _objetivo_enganche(), valid_targets(), _accion_utilizable(), _acciones_asequibles(), _contar_accion(), _contar_puntos() (+5 more)
-
-### Community 39 - "_duelo"
+### Community 38 - "_load"
 Cohesion: 0.15
-Nodes (17): _ataque(), _duelo(), _tasa_de_impacto(), test_atacante_afectado_tiene_desventaja(), test_critico_automatico_contra_paralizado_a_cuerpo_a_cuerpo(), test_dos_ventajas_y_una_desventaja_se_anulan(), test_los_indicadores_estaticos_siguen_funcionando_y_se_combinan(), test_melee_or_ranged_consume_rng_siempre() (+9 more)
+Nodes (13): _data(), _load(), test_cada_fixture_tiene_un_tipo_de_ataque_coherente(), test_el_ghoul_paraliza_con_diez_rondas_y_salvacion_de_repeticion(), test_el_hechizado_ahora_si_se_aplica(), test_el_lobo_derriba_con_la_salvacion_del_json(), test_el_lobo_no_derriba_si_el_ataque_falla(), test_el_lobo_solo_derriba_si_falla_la_salvacion() (+5 more)
+
+### Community 39 - "test_relentless.py"
+Cohesion: 0.27
+Nodes (12): _ctx(), _datos(), _jabali(), _pj(), test_el_jabali_carga_su_relentless_con_umbral_y_uso(), test_relentless_no_necesita_contexto_ni_rng(), test_reset_reestablece_el_umbral_y_los_usos(), test_solo_puede_salvarse_una_vez_por_combate() (+4 more)
 
 ### Community 40 - "test_mastery.py"
-Cohesion: 0.09
+Cohesion: 0.10
 Nodes (29): al_acertar(), al_fallar(), _cd_topple(), consumir_marcas(), _log(), _nombre(), resolver_maestria(), _arma() (+21 more)
 
 ### Community 41 - "BarbarianFeatures"
-Cohesion: 0.04
-Nodes (22): BarbarianFeatures, ExtendRageAction, _rasgo(), AncestralGuardianFeatures, apply_ancestral_guardian(), apply_battlerager(), _nuevo_ataque(), SpikedArmorAction (+14 more)
+Cohesion: 0.09
+Nodes (5): BarbarianFeatures, ExtendRageAction, _rasgo(), test_reckless_active_this_turn_refleja_el_estado(), test_las_armas_de_furia_no_distinguen_magical()
 
 ### Community 42 - "apply_condition"
-Cohesion: 0.11
-Nodes (38): apply_condition(), end_turn(), _label(), _ctx(), _data(), _load(), _pj(), test_cada_fixture_tiene_un_tipo_de_ataque_coherente() (+30 more)
+Cohesion: 0.10
+Nodes (46): Abilities, _apply_condition_riders(), apply_condition(), end_turn(), RepeatSave, _ataque(), _ctx(), _duelo() (+38 more)
 
-### Community 43 - "conditions.py"
+### Community 43 - "pick"
 Cohesion: 0.06
-Nodes (14): rage_damage(), roll_dice(), DamageType, parse_damage_type(), log_line(), CombatAction, _contexto(), _bolstering() (+6 more)
+Nodes (14): arcane_shot_options_known(), arcane_shot_uses(), _clamp(), extra_attacks_for(), fighter_extra_attacks_for(), rage_damage(), weapon_mastery_count(), roll_dice() (+6 more)
 
 ### Community 44 - "test_area.py"
-Cohesion: 0.19
-Nodes (23): sample(), AreaTargeting, select_area_targets(), _default_targeting(), SaveDamage, _area_action(), _ctx(), _npc() (+15 more)
+Cohesion: 0.08
+Nodes (32): _check_fields(), _construir(), _error(), AreaSaveAction, AreaTargeting, select_area_targets(), _default_targeting(), SaveDamage (+24 more)
 
 ### Community 45 - "random"
 Cohesion: 0.11
@@ -326,187 +320,175 @@ Nodes (49): AttackModifiers, _abilities(), _accion_puas(), _ataque(), _barb(), _
 Cohesion: 0.19
 Nodes (26): Condition, test_el_enum_no_contiene_condiciones_excluidas(), _accion(), _ataque(), _ctx(), _datos(), _duergar(), _pj() (+18 more)
 
-### Community 47 - "dnd_sim/__init__.py"
-Cohesion: 0.06
-Nodes (18): ability_mod(), normalize_ability(), CombatState, d20(), roll_d20(), proficiency_bonus(), _clean(), normalize_skill() (+10 more)
+### Community 47 - "CheckResult"
+Cohesion: 0.20
+Nodes (6): _avisar_fallo_prueba(), CheckResult, _finish_check(), _guia(), _check_fijo(), _fake()
 
-### Community 48 - "_pj"
-Cohesion: 0.22
-Nodes (19): espia(), _espiar_divine(), _furia(), _mon(), _pj(), test_determinismo_misma_semilla_mismos_resultados(), corrida(), test_divine_fury_elige_radiante_con_pick() (+11 more)
+### Community 48 - "build_spell_actions"
+Cohesion: 0.26
+Nodes (8): _avisar(), build_spell_actions(), _desde_fixture(), _monstruo_lanzador(), test_gastar_un_uso_no_afecta_a_los_otros_hechizos(), test_max_spell_level_limita_el_nivel_cargado(), test_se_cargan_hechizos_de_todos_los_niveles_con_uso_propio(), test_un_hechizo_a_voluntad_se_puede_lanzar_en_cada_turno()
 
 ### Community 49 - "Regeneration"
 Cohesion: 0.13
-Nodes (4): _es_radiante(), _guardar_salvacion(), Regeneration, Relentless
+Nodes (3): _es_radiante(), Regeneration, Relentless
 
 ### Community 50 - "test_checks_escapes.py"
-Cohesion: 0.11
-Nodes (38): ability_check(), attempt_escapes(), EscapeCheck, _check_fijo(), _fake(), _ctx(), _load(), _pj() (+30 more)
+Cohesion: 0.10
+Nodes (38): ability_check(), attempt_escapes(), EscapeCheck, _ctx(), _data(), _load(), _pj(), test_con_dos_caracteristicas_se_elige_una_al_azar() (+30 more)
 
 ### Community 51 - "load_monster"
-Cohesion: 0.10
-Nodes (19): _armor_class_value(), load_monster(), _norm_name(), _parse_condition_immunities(), _parse_damage_modifiers(), test_una_condicion_desconocida_de_la_api_avisa(), test_fixture_sintetica_carga(), test_monstruo_no_legendario_no_carga_guaridas() (+11 more)
+Cohesion: 0.06
+Nodes (24): doblar_dados(), _cache_path(), get_background(), get_monster(), get_spell(), MonsterNotFoundError, NetworkError, load_lair() (+16 more)
 
 ### Community 52 - "_con_estilo"
-Cohesion: 0.15
-Nodes (19): _aliado(), _con_estilo(), _enemigo(), _mods(), _RngExplota, _RngSi, test_interception_con_un_aliado_no_baja_de_cero_el_daño(), test_interception_no_actúa_con_la_reacción_gastada() (+11 more)
+Cohesion: 0.14
+Nodes (19): _aliado(), _con_estilo(), _enemigo(), _RngExplota, _RngSi, test_interception_con_un_aliado_no_baja_de_cero_el_daño(), test_interception_no_actúa_con_la_reacción_gastada(), test_interception_no_actúa_contra_un_no_aliado_ni_con_el_mismo_pj() (+11 more)
 
 ### Community 53 - "saving_throw"
-Cohesion: 0.13
-Nodes (12): _apply_condition_riders(), apply_save_damage(), _as_combat_context(), _avisar_fallo_salvacion(), _con_resistencia_legendaria(), _inflict_for_save(), _reaccion_si_procede(), registrar_resistencia() (+4 more)
+Cohesion: 0.04
+Nodes (39): d20(), roll_d20(), _agrandado(), _bonus_de_rasgos(), _bonus_de_tamano(), _bonus_defensivo(), _dados_de_ataque(), _piso_dados_rasgos() (+31 more)
 
 ### Community 54 - "test_condition_immunities.py"
-Cohesion: 0.13
-Nodes (15): _ctx(), _ghoul(), _InmuneMientrasActivo, _pj(), test_apply_condition_no_crea_instancia_si_el_objetivo_es_inmune(), test_apply_condition_no_cuenta_la_condicion_bloqueada_en_stats(), test_el_bando_pj_tambien_puede_ser_inmune(), test_el_cargador_carga_las_inmunidades_del_fixture() (+7 more)
+Cohesion: 0.10
+Nodes (18): ConditionEffect, test_una_condicion_sin_salvacion_ni_escape_lanza_value_error(), _ctx(), _ghoul(), _InmuneMientrasActivo, _pj(), test_apply_condition_no_crea_instancia_si_el_objetivo_es_inmune(), test_apply_condition_no_cuenta_la_condicion_bloqueada_en_stats() (+10 more)
 
-### Community 57 - "SaveResult"
-Cohesion: 0.16
-Nodes (19): SaveResult, fake_saving_throw(), falla(), espia(), stub(), stub(), _fallos(), _guarda_con() (+11 more)
-
-### Community 59 - "WarriorHealAction"
-Cohesion: 0.25
-Nodes (15): WarriorHealAction, _accion(), _ctx(), test_fanatical_no_activo_sin_furia(), test_nivel_3_no_recibe_rasgos_superiores(), test_warrior_curacion_gasta_un_dado_y_suma_pv(), test_warrior_curacion_no_supera_el_maximo(), test_warrior_de_los_dioses_reserva_por_nivel() (+7 more)
+### Community 59 - "_ctx"
+Cohesion: 0.22
+Nodes (9): _ctx(), _resultado(), test_furia_persistente_15_no_decae_ni_termina_por_incapacitado(), test_furia_se_extiende_sola_si_forzo_salvacion(), test_furia_se_extiende_sola_si_hubo_ataque(), test_furia_termina_si_no_se_extendio(), test_relentless_rage_fallo_y_sin_furia(), test_relentless_rage_sube_pv_y_sube_el_cd() (+1 more)
 
 ### Community 60 - "test_magic_resistance.py"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (24): _ctx(), _objetivo(), _pj(), _spell_data(), _spellcasting(), _tasa(), test_aturdido_falla_fue_des_sin_tirar_dados_y_con_ventaja_en_sab(), test_condition_action_de_hechizo_pasa_magical() (+16 more)
 
 ### Community 61 - "begin_turn"
-Cohesion: 0.30
-Nodes (14): begin_turn(), _ctx(), _datos(), _pj(), test_el_acido_o_el_fuego_bloquea_un_solo_inicio_de_turno(), test_el_daño_normal_no_bloquea_la_regeneracion(), test_el_estado_de_la_regeneracion_se_reinicia_en_cada_combate(), test_el_troll_a_0_pv_no_regenera_y_muere_en_su_turno() (+6 more)
+Cohesion: 0.27
+Nodes (15): begin_turn(), _ctx(), _datos(), _pj(), test_el_acido_o_el_fuego_bloquea_un_solo_inicio_de_turno(), test_el_daño_normal_no_bloquea_la_regeneracion(), test_el_estado_de_la_regeneracion_se_reinicia_en_cada_combate(), test_el_troll_a_0_pv_no_regenera_y_muere_en_su_turno() (+7 more)
 
 ### Community 62 - "parse_escape"
-Cohesion: 0.15
-Nodes (8): has_escape_text(), parse_escape(), _skills_for(), _data(), test_el_fixture_de_la_constriccion_tiene_escape_y_avisa_de_grappled(), test_el_fixture_de_la_telaraña_carga_restrained_con_escape(), test_escape_de_telaraña_usa_atletismo(), test_escape_sin_caracteristica_usa_atletismo_y_acrobacias()
+Cohesion: 0.33
+Nodes (4): parse_escape(), _skills_for(), test_escape_de_telaraña_usa_atletismo(), test_escape_sin_caracteristica_usa_atletismo_y_acrobacias()
 
 ### Community 63 - "traits/__init__.py"
-Cohesion: 0.06
-Nodes (12): DamageTransfer, _empuna_arma_melee(), HeatedBody, Parry, TurnResistance, _ve_al_atacante(), aliados_capaces(), _condicion_posicional() (+4 more)
-
-### Community 64 - "legendary_parser.py"
 Cohesion: 0.09
-Nodes (14): parse_range_type(), _coincide_nombre(), _con_nombre_limpio(), _condicion_de(), _coste_y_nombre(), _motivo_omision(), _nombres_candidatas(), parse_legendary() (+6 more)
+Nodes (6): StateEffect, TurnResistance, MartialAdvantage, PackTactics, SuperiorInvisibility, UndeadFortitude
+
+### Community 64 - "loader.py"
+Cohesion: 0.03
+Nodes (43): is_area_action(), _condition_from_phrase(), _duration_rounds(), has_condition_text(), parse_condition_effects(), parse_range_type(), _sentence_with(), has_escape_text() (+35 more)
 
 ### Community 65 - "test_storm_herald.py"
-Cohesion: 0.06
-Nodes (46): _aliados_en_aura(), apply_storm_herald(), _cd(), _dado_mar(), _de(), _en_aura(), _enemigos_en_aura(), _escalado() (+38 more)
+Cohesion: 0.12
+Nodes (40): apply_storm_herald(), _abilities(), _aliado(), _barbaro(), _ctx(), _fijar_fallo_reaccion(), falla(), _fijar_salvacion() (+32 more)
 
 ### Community 66 - "save_modifiers"
-Cohesion: 0.24
-Nodes (9): save_modifiers(), _datos(), _lich(), _pj(), test_con_ventaja_acierta_mas_que_sin_ella(), test_da_ventaja_si_la_salvacion_es_de_conversion(), test_el_lich_carga_su_turn_resistance(), test_sin_el_tipo_de_efecto_no_aplica() (+1 more)
+Cohesion: 0.20
+Nodes (10): _condiciones(), save_modifiers(), _datos(), _lich(), _pj(), test_con_ventaja_acierta_mas_que_sin_ella(), test_da_ventaja_si_la_salvacion_es_de_conversion(), test_el_lich_carga_su_turn_resistance() (+2 more)
 
 ### Community 67 - "test_backgrounds.py"
 Cohesion: 0.16
-Nodes (17): Background, load_background(), parse_background(), _abilities(), _pj(), test_apply_background_añade_las_competencias(), test_apply_background_no_duplica_competencias_existentes(), test_apply_background_sin_competencias_es_inofensivo() (+9 more)
+Nodes (16): load_background(), parse_background(), _abilities(), _pj(), test_apply_background_añade_las_competencias(), test_apply_background_no_duplica_competencias_existentes(), test_apply_background_sin_competencias_es_inofensivo(), test_el_transfondo_no_toca_las_salvaciones() (+8 more)
 
-### Community 68 - "test_spells.py"
-Cohesion: 0.10
-Nodes (27): build_spell_actions(), SpellFixedDamageAction, _ctx(), _desde_fixture(), _monstruo_lanzador(), _npc(), _pj(), test_el_hechizado_ataca_a_los_de_su_propio_bando() (+19 more)
+### Community 68 - "SpellFixedDamageAction"
+Cohesion: 0.15
+Nodes (16): SpellFixedDamageAction, _ctx(), _npc(), _pj(), test_el_hechizado_ataca_a_los_de_su_propio_bando(), test_el_hechizado_invierte_los_objetivos_de_ataque(), test_el_hechizo_de_hechizar_deja_el_estado_hechizado(), test_el_hechizo_verdadero_es_un_ataque_real_con_dano_extra() (+8 more)
 
 ### Community 69 - "Attack"
+Cohesion: 0.10
+Nodes (39): Attack, apply_fighter(), maestria_de(), _abilities(), _objetivo(), _pj(), _pj_con_armas(), test_apply_class_reenvía_el_estilo_de_combate() (+31 more)
+
+### Community 71 - "test_arquitectura.py"
+Cohesion: 0.13
+Nodes (11): Arquitectura de `dnd_sim`, Cómo comprobar que todo sigue en orden, Excepción única admitida, Guaridas: política fija, Imports diferidos, Reglas de dependencia, _capa(), _modulo_y_paquete() (+3 more)
+
+### Community 72 - "barbarian/subclasses/__init__.py"
 Cohesion: 0.09
-Nodes (41): Attack, apply_fighter(), maestria_de(), _abilities(), _firmas(), _pj(), _pj_con_armas(), test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter() (+33 more)
+Nodes (7): apply_battlerager(), BattleragerFeatures, _de(), _nuevo_ataque(), SpikedArmorAction, BerserkerFeatures, StormAuraAction
 
-### Community 70 - ".on_turn_start"
-Cohesion: 0.19
-Nodes (3): _aliados_heridos(), _cd_ataque(), _en_10_pies()
-
-### Community 71 - "pathlib"
-Cohesion: 0.19
-Nodes (6): Cómo comprobar que todo sigue en orden, _capa(), _modulo_y_paquete(), test_las_capas_no_se_miran_hacia_arriba(), test_las_excepciones_siguen_existiendo(), test_los_paquetes_con_fachada_reexportan_su_api()
-
-### Community 73 - "RollMode"
-Cohesion: 0.19
-Nodes (15): RollMode, _aliado(), _ctx(), _datos(), _lobo(), _mods_con_estado(), _mordisco(), _pj() (+7 more)
+### Community 73 - "test_pack_tactics.py"
+Cohesion: 0.23
+Nodes (14): _aliado(), _ctx(), _datos(), _lobo(), _mods_con_estado(), _mordisco(), _pj(), test_con_aliados_la_ventaja_se_sortea() (+6 more)
 
 ### Community 74 - "test_lair.py"
-Cohesion: 0.08
-Nodes (29): lair_phase(), LairAction, LegendaryState, _ctx(), _dragon(), _enemigo(), lairs_dir(), _orden_con() (+21 more)
+Cohesion: 0.07
+Nodes (33): lair_phase(), LairAction, LegendaryState, _ctx(), _dragon(), _enemigo(), lairs_dir(), _orden_con() (+25 more)
+
+### Community 75 - "ConditionInstance"
+Cohesion: 0.22
+Nodes (3): ConditionInstance, ConditionTracker, test_implicaciones_de_las_condiciones()
 
 ### Community 76 - "tactics.py"
 Cohesion: 0.38
 Nodes (3): _extract(), first_target_policy(), random_policy()
 
 ### Community 77 - "test_races.py"
-Cohesion: 0.15
-Nodes (18): Race, parse_race(), _abilities(), _fiendish_legacy(), _keen_senses(), _pj(), test_apply_race_añade_competencias_fijas(), test_apply_race_con_habilidad_pedida() (+10 more)
+Cohesion: 0.08
+Nodes (29): Race, _get_entry(), get_race(), get_trait(), load_race(), parse_race(), _skill_name(), _spells_from_description() (+21 more)
 
 ### Community 78 - "test_enlarge.py"
-Cohesion: 0.14
-Nodes (25): doblar_dados(), _accion(), _ataque(), _ctx(), _datos(), _duergar(), _ogro(), _pj() (+17 more)
-
-### Community 79 - "loader.py"
-Cohesion: 0.10
-Nodes (9): parse_attach_effects(), _damage_type(), build_condition_action(), build_save_action(), build_save_effect(), damage_dice_of(), damage_options(), damage_type_of() (+1 more)
+Cohesion: 0.15
+Nodes (24): _accion(), _ataque(), _ctx(), _datos(), _duergar(), _ogro(), _pj(), _spell_data() (+16 more)
 
 ### Community 80 - "Any"
-Cohesion: 0.20
-Nodes (5): _as_condition(), _condicion_bloqueada(), _contar(), _queda_accion(), remove_condition()
+Cohesion: 0.29
+Nodes (4): _as_condition(), _condicion_bloqueada(), _label(), remove_condition()
 
-### Community 81 - "_ctx_recursos"
-Cohesion: 0.48
-Nodes (7): _action_surge(), _ctx_recursos(), test_action_surge_como_maximo_un_vez_por_turno(), test_action_surge_ejecutada_restaura_la_accion_y_gasta_un_uso(), test_action_surge_no_es_elegible_si_la_accion_no_se_ha_gastado(), test_action_surge_no_es_elegible_si_la_bonus_ya_se_gasto(), test_action_surge_no_es_elegible_sin_usos()
-
-### Community 82 - "Any"
-Cohesion: 0.11
-Nodes (9): apply_wild_magic(), _cd(), _de(), _en_30_pies(), _enemigos(), _sombra(), WildMagicFeatures, WildSurgeAction (+1 more)
-
-### Community 83 - "casting.py"
+### Community 81 - "test_fighter.py"
 Cohesion: 0.09
-Nodes (9): HealAction, SpellAction, SpellAttackAction, dado_por_nivel(), duracion_en_rondas(), apply_concentration(), HealEffect, StateEffect (+1 more)
+Nodes (18): action_surge_uses(), indomitable_uses(), _action_surge(), _ctx_recursos(), _firmas(), _RngBajo, test_action_surge_como_maximo_un_vez_por_turno(), test_action_surge_ejecutada_restaura_la_accion_y_gasta_un_uso() (+10 more)
 
-### Community 84 - "Abilities"
-Cohesion: 0.11
-Nodes (27): Carpetas, Abilities, Monster, PlayerCharacter, apply_damage_modifiers(), _is_petrified(), _build_party(), test_sin_condiciones_el_dano_no_cambia() (+19 more)
+### Community 82 - ".alive"
+Cohesion: 0.04
+Nodes (18): _armas_melee_de(), _bolstering(), _cd(), _de(), _en_30_pies(), _enemigos(), _espiritu(), _flores() (+10 more)
 
-### Community 85 - "TODO — DnDBalancer / dnd_sim"
-Cohesion: 0.25
-Nodes (7): Fighter: cómo añadir una subclase, Fighter: pendientes reales, Grafo y verificación, Pendientes generales, Rutina sugerida al abrir sesión, TODO — DnDBalancer / dnd_sim, TODOs en código (marcados `# TODO`)
+### Community 83 - "spell_action"
+Cohesion: 0.08
+Nodes (17): Paquetes con fachada, _uso_de_entrada(), SaveAction, HealAction, SpellAttackAction, dado_por_nivel(), duracion_en_rondas(), Spell (+9 more)
 
-### Community 87 - "AttackAction"
-Cohesion: 0.15
-Nodes (9): _check_fields(), _construir(), _error(), load_lair(), AttackAction, SaveAction, test_esquema_invalido(), test_targeting_fuera_de_rango() (+1 more)
+### Community 84 - "apply_damage_modifiers"
+Cohesion: 0.14
+Nodes (13): apply_damage_modifiers(), _is_petrified(), _target(), test_immunity_zero(), test_invalid_damage_type_raises(), test_no_modifiers_unchanged(), test_resistance_halves_damage_floor(), test_resistance_then_vulnerability_same_type() (+5 more)
 
-### Community 89 - "condition_parser.py"
-Cohesion: 0.15
-Nodes (6): _condition_from_phrase(), _duration_rounds(), has_condition_text(), parse_condition_effects(), _sentence_with(), ConditionEffect
+### Community 87 - "_estado"
+Cohesion: 0.50
+Nodes (3): _estado(), test_el_estado_legendario_rellena_gasta_y_reinicia(), test_use_probability_medio_se_usa_about_50_por_ciento()
 
-### Community 90 - "resolve_attack_range"
-Cohesion: 0.25
-Nodes (8): resolve_attack_range(), _ataque(), _duelo(), _tasa_de_impacto(), test_contra_un_objetivo_a_distancia_baja_el_impacto(), test_melee_or_ranged_consume_rng_siempre_y_el_estado_lo_sigue(), test_objetivo_derribado_y_melee_or_ranged_depende_del_modo(), test_un_ataque_a_distancia_pone_al_atacante_a_distancia()
+### Community 90 - "check_modifiers"
+Cohesion: 0.13
+Nodes (12): _resolve_mods(), check_modifiers(), effective_ac(), resolve_attack_range(), _ataque(), _duelo(), _tasa_de_impacto(), test_contra_un_objetivo_a_distancia_baja_el_impacto() (+4 more)
 
 ### Community 92 - "multiattack_parser.py"
 Cohesion: 0.18
-Nodes (5): _extract_multiattack_alternatives(), extract_multiattack_alternatives(), _norm_name(), _opcion_a_entrada(), resolve_multiattack()
+Nodes (6): _extract_multiattack_alternatives(), extract_multiattack_alternatives(), _norm_name(), _opcion_a_entrada(), resolve_multiattack(), AttackEntry
 
-### Community 94 - "race_parser.py"
-Cohesion: 0.20
-Nodes (3): _skill_name(), _spells_from_description(), _trait_skills()
+### Community 93 - "barbarian/__init__.py"
+Cohesion: 0.11
+Nodes (19): FormOfTheBeast, apply_class(), ClassDef, normalize_class_name(), register_class(), SubclassDef, _abilities(), _firmas() (+11 more)
+
+### Community 95 - "Background"
+Cohesion: 0.23
+Nodes (3): Background, normalize_tool(), _add()
 
 ### Community 96 - "Spellcasting"
-Cohesion: 0.15
-Nodes (7): parse_spellcasting(), Spellcasting, test_el_lanzador_se_lee_de_los_actions(), test_initialize_slots_usa_la_tabla_local_de_un_lanzador_completo(), test_la_curacion_usa_el_modificador_de_caracteristica_no_el_bono_completo(), test_un_hechizo_de_accion_bonus_se_comprueba_en_su_fase(), test_un_monstruo_sin_lanzar_hechizos_no_tiene_estado()
-
-### Community 99 - "load_race"
-Cohesion: 0.33
-Nodes (5): load_race(), test_load_race_descarga_la_raza_y_sus_rasgos(), _rasgo(), _raza(), test_load_race_propaga_el_error_de_la_api()
+Cohesion: 0.18
+Nodes (6): parse_spellcasting(), Spellcasting, test_el_lanzador_se_lee_de_los_actions(), test_initialize_slots_usa_la_tabla_local_de_un_lanzador_completo(), test_la_curacion_usa_el_modificador_de_caracteristica_no_el_bono_completo(), test_un_monstruo_sin_lanzar_hechizos_no_tiene_estado()
 
 ## Knowledge Gaps
-- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **19 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Attack` connect `Attack` to `inflict_damage`, `AttackRange`, `test_giant.py`, `test_world_tree.py`, `test_wild_heart.py`, `test_proficiency.py`, `test_legendary.py`, `test_beast.py`, `parse_spell`, `test_traits.py`, `combat/attack.py`, `test_utility.py`, `test_wild_magic.py`, `Combatant`, `simulate`, `test_ancestral_guardian.py`, `CombatContext`, `apply_barbarian`, `test_zealot.py`, `test_death.py`, `TurnResources`, `attack_roll`, `test_superior_invisibility.py`, `area.py`, `_duelo`, `test_mastery.py`, `BarbarianFeatures`, `apply_condition`, `conditions.py`, `random`, `Condition`, `dnd_sim/__init__.py`, `_pj`, `test_checks_escapes.py`, `load_monster`, `_con_estilo`, `test_magic_resistance.py`, `begin_turn`, `legendary_parser.py`, `test_storm_herald.py`, `test_spells.py`, `RollMode`, `test_enlarge.py`, `loader.py`, `casting.py`, `Abilities`, `AttackAction`, `test_la_sustitucion_de_tactical_master_solo_dura_ese_ataque`, `resolve_attack_range`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
+- **Why does `Attack` connect `Attack` to `test_attach.py`, `AttackRange`, `test_giant.py`, `test_world_tree.py`, `test_wild_heart.py`, `test_proficiency.py`, `test_legendary.py`, `test_beast.py`, `test_spells.py`, `RollMode`, `Monster`, `test_utility.py`, `test_wild_magic.py`, `test_ancestral_guardian.py`, `PlayerCharacter`, `dnd_sim/__init__.py`, `apply_barbarian`, `test_zealot.py`, `test_death.py`, `_trait`, `test_magical.py`, `attack_roll`, `test_superior_invisibility.py`, `test_undead_fortitude.py`, `ConditionAction`, `test_relentless.py`, `test_mastery.py`, `apply_condition`, `pick`, `test_area.py`, `random`, `Condition`, `test_checks_escapes.py`, `load_monster`, `_con_estilo`, `saving_throw`, `test_magic_resistance.py`, `begin_turn`, `loader.py`, `test_storm_herald.py`, `SpellFixedDamageAction`, `barbarian/subclasses/__init__.py`, `test_pack_tactics.py`, `test_enlarge.py`, `test_fighter.py`, `spell_action`, `NaturalWeapon`, `test_la_sustitucion_de_tactical_master_solo_dura_ese_ataque`, `check_modifiers`, `barbarian/__init__.py`?**
+  _High betweenness centrality (0.057) - this node is a cross-community bridge._
 - **Are the 9 inferred relationships involving `Attack` (e.g. with `attack_roll()` and `AttackRange`) actually correct?**
   _`Attack` has 9 INFERRED edges - model-reasoned connections that need verification._
 - **Should `_trait` be split into smaller, more focused modules?**
-  _Cohesion score 0.10241545893719807 - nodes in this community are weakly interconnected._
-- **Why does `Condition` connect `Condition` to `inflict_damage`, `AttackRange`, `test_giant.py`, `test_world_tree.py`, `test_wild_heart.py`, `test_legendary.py`, `test_beast.py`, `parse_spell`, `test_traits.py`, `combat/attack.py`, `test_utility.py`, `spell_parser.py`, `Combatant`, `run_combat`, `attack_roll`, `test_superior_invisibility.py`, `test_skills.py`, `test_mastery.py`, `BarbarianFeatures`, `apply_condition`, `conditions.py`, `dnd_sim/__init__.py`, `test_checks_escapes.py`, `load_monster`, `test_condition_immunities.py`, `test_magic_resistance.py`, `traits/__init__.py`, `test_storm_herald.py`, `save_modifiers`, `test_spells.py`, `RollMode`, `test_lair.py`, `ConditionTracker`, `test_enlarge.py`, `loader.py`, `Any`, `casting.py`, `Abilities`, `condition_parser.py`?**
-  _High betweenness centrality (0.045) - this node is a cross-community bridge._
-- **Are the 108 inferred relationships involving `Condition` (e.g. with `_condition_from_phrase()` and `parse_condition_effects()`) actually correct?**
-  _`Condition` has 108 INFERRED edges - model-reasoned connections that need verification._
-- **Should `inflict_damage` be split into smaller, more focused modules?**
-  _Cohesion score 0.050793650793650794 - nodes in this community are weakly interconnected._
-- **Why does `attack_roll()` connect `attack_roll` to `inflict_damage`, `test_giant.py`, `test_wild_heart.py`, `test_legendary.py`, `test_beast.py`, `parse_spell`, `test_traits.py`, `combat/attack.py`, `Combatant`, `test_ancestral_guardian.py`, `CombatContext`, `run_combat`, `test_martial_advantage.py`, `test_zealot.py`, `test_death.py`, `TurnResources`, `test_superior_invisibility.py`, `BeastFeatures`, `area.py`, `_duelo`, `test_mastery.py`, `apply_condition`, `conditions.py`, `Condition`, `dnd_sim/__init__.py`, `_pj`, `test_checks_escapes.py`, `saving_throw`, `test_magic_resistance.py`, `test_spells.py`, `Attack`, `test_enlarge.py`, `Abilities`, `resolve_attack_range`?**
-  _High betweenness centrality (0.038) - this node is a cross-community bridge._
+  _Cohesion score 0.11794871794871795 - nodes in this community are weakly interconnected._
+- **Why does `Condition` connect `Condition` to `test_attach.py`, `AttackRange`, `test_giant.py`, `test_world_tree.py`, `test_wild_heart.py`, `test_legendary.py`, `test_beast.py`, `test_spells.py`, `RollMode`, `Monster`, `test_utility.py`, `inflict_damage`, `StormHeraldFeatures`, `PlayerCharacter`, `dnd_sim/__init__.py`, `ArcaneArcherFeatures`, `attack_roll`, `test_superior_invisibility.py`, `test_skills.py`, `test_mastery.py`, `BarbarianFeatures`, `apply_condition`, `pick`, `CheckResult`, `test_checks_escapes.py`, `saving_throw`, `test_condition_immunities.py`, `test_magic_resistance.py`, `traits/__init__.py`, `loader.py`, `test_storm_herald.py`, `save_modifiers`, `SpellFixedDamageAction`, `WorldTreeFeatures`, `barbarian/subclasses/__init__.py`, `test_pack_tactics.py`, `test_lair.py`, `ConditionInstance`, `test_enlarge.py`, `Any`, `spell_action`, `apply_damage_modifiers`, `check_modifiers`?**
+  _High betweenness centrality (0.057) - this node is a cross-community bridge._
+- **Are the 112 inferred relationships involving `Condition` (e.g. with `_condition_from_phrase()` and `parse_condition_effects()`) actually correct?**
+  _`Condition` has 112 INFERRED edges - model-reasoned connections that need verification._
+- **Should `test_attach.py` be split into smaller, more focused modules?**
+  _Cohesion score 0.09288824383164006 - nodes in this community are weakly interconnected._
+- **Why does `PlayerCharacter` connect `PlayerCharacter` to `test_attach.py`, `AttackRange`, `test_giant.py`, `test_world_tree.py`, `test_wild_heart.py`, `test_proficiency.py`, `test_legendary.py`, `test_beast.py`, `test_spells.py`, `RollMode`, `Monster`, `test_utility.py`, `test_wild_magic.py`, `test_ancestral_guardian.py`, `dnd_sim/__init__.py`, `ActionUsage`, `apply_barbarian`, `test_martial_advantage.py`, `test_zealot.py`, `test_death.py`, `test_magical.py`, `attack_roll`, `test_superior_invisibility.py`, `test_skills.py`, `test_undead_fortitude.py`, `test_multiattack.py`, `test_relentless.py`, `test_mastery.py`, `BarbarianFeatures`, `apply_condition`, `test_area.py`, `random`, `Condition`, `test_checks_escapes.py`, `load_monster`, `_con_estilo`, `test_condition_immunities.py`, `test_magic_resistance.py`, `begin_turn`, `test_storm_herald.py`, `save_modifiers`, `test_backgrounds.py`, `SpellFixedDamageAction`, `Attack`, `test_pack_tactics.py`, `test_lair.py`, `test_races.py`, `test_enlarge.py`, `test_fighter.py`, `spell_action`, `barbarian/__init__.py`, `Background`?**
+  _High betweenness centrality (0.046) - this node is a cross-community bridge._

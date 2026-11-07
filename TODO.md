@@ -90,7 +90,7 @@ PASOS-ANTERIORES.txt. NO tocar la API (reglas en el prompt de la tarea).
 - [x] 8. Docs: `TODO.md` (candidata marcada + pendientes reales con
   motivos), `PASOS-ANTERIORES.txt` (bloque ARCANE ARCHER en ESTADO
   ACTUAL), `ARCHITECTURE.md` (fila + grafo + recuentos).
-- [ ] 9. Verificación final: arquitectura, suite, `capas.py`,
+- [x] 9. Verificación final: arquitectura, suite, `capas.py`,
   `graphify update .`; commit final del grafo.
 
 

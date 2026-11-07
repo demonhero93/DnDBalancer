@@ -1002,7 +1002,13 @@ ARCANE ARCHER (2026-11-06)
     ficheros / 18589 líneas / 1168 tests, «1168 tests» en Cómo
     comprobar); PASOS-ANTERIORES (recuentos y registro de clases del
     ESTADO ACTUAL, bloque Guerrero con Arcane Archer, esta entrada).
-    Commit <hash>.
+    Commit b546887.
+  - (9) Verificación final: ``pytest tests/test_arquitectura.py`` →
+    3 passed; suite completa → 1168 passed (0 fallos);
+    ``python tools/capas.py`` (PYTHONIOENCODING=utf-8) → 1 violación
+    conocida ``model.combatant → rules.conditions``; ``graphify update
+    .`` → 3475 nodos, 12639 aristas, 101 comunidades; backup
+    ``graphify-out/2026-11-07/``. Commit final con grafo.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 51 ficheros y 18589 líneas
