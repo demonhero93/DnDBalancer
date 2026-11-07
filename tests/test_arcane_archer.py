@@ -16,7 +16,11 @@ from dnd_sim.rules.classes.fighter import (
     ArcaneArcherFeatures,
     apply_arcane_archer,
 )
+from dnd_sim.rules.classes.fighter.subclasses.arcane_archer import (
+    CurvingShotAction,
+)
 from dnd_sim.rules.conditions import Condition
+from dnd_sim.model.actions import TurnResources
 
 
 def _abilities(**kwargs) -> Abilities:
@@ -481,3 +485,172 @@ def test_el_motor_mitiga_el_dano_con_la_marca_de_enfeebling(monkeypatch):
     esperado = 10 + pj.abilities.mod("str")  # dado fijo + mod FUE
     assert sin_marca.hp == sin_marca.max_hp - esperado
     assert con_marca.hp == con_marca.max_hp - esperado // 2
+
+
+# --- Magic Arrow y Curving Shot (7) ------------------------------------------
+
+def _arco(magical: bool = False, name: str = "Arco corto") -> Attack:
+    atk = Attack(name, "1d6", ability="dex",
+                 range_type=AttackRange.RANGED)
+    atk.magical = magical
+    return atk
+
+
+def _curving(pj) -> CurvingShotAction:
+    for accion in pj.actions:
+        if isinstance(accion, CurvingShotAction):
+            return accion
+    raise AssertionError("falta CurvingShotAction")
+
+
+def _ctx_curving(pj, rng, enemigos) -> SimpleNamespace:
+    return SimpleNamespace(actor=pj, rng=rng,
+                           combatants=[pj, *enemigos], log=None)
+
+
+def test_magic_arrow_vuelve_magico_el_arco_desde_el_nivel_7():
+    pj, _ = _arquero(7)
+    assert pj.attacks and all(atk.magical for atk in pj.attacks)
+
+
+def test_magic_arrow_no_toca_armas_que_no_sean_arcos():
+    pj = _pj(level=7,
+             attacks=[Attack("Hacha de batalla", "1d12", ability="str")])
+    apply_fighter(pj, level=7)
+    apply_arcane_archer(pj, level=7)
+    assert not pj.attacks[0].magical
+
+
+def test_magic_arrow_solo_desde_el_7_y_acepta_nombres_en_ingles():
+    pj5, _ = _arquero(6)
+    assert not any(atk.magical for atk in pj5.attacks)
+    pj = _pj(level=7, attacks=[
+        Attack("Longbow", "1d8", ability="dex",
+               range_type=AttackRange.RANGED)])
+    apply_fighter(pj, level=7)
+    apply_arcane_archer(pj, level=7)
+    assert pj.attacks[0].magical
+
+
+def test_curving_marca_el_fallo_con_arco_magico():
+    pj, trait = _arquero(7)
+    atk = _arco(magical=True)
+    blanco = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    trait.after_attack_roll(pj, blanco, atk, False)
+    assert trait.curving_atk is atk
+    assert trait.curving_contra == "Blanco"
+
+
+def test_curving_no_marca_acierto_melee_sin_magia_o_antes_del_7():
+    pj, trait = _arquero(7)
+    blanco = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    trait.after_attack_roll(pj, blanco, _arco(magical=True), True)
+    assert trait.curving_atk is None
+    trait.after_attack_roll(pj, blanco, _arco(magical=False), False)
+    assert trait.curving_atk is None
+    melee = Attack("Daga", "1d4", ability="str")
+    melee.magical = True
+    trait.after_attack_roll(pj, blanco, melee, False)
+    assert trait.curving_atk is None
+    pj5, trait5 = _arquero(6)
+    trait5.after_attack_roll(pj5, blanco, _arco(magical=True), False)
+    assert trait5.curving_atk is None
+
+
+def test_accion_curving_se_anade_desde_el_nivel_7():
+    pj5, _ = _arquero(5)
+    assert not any(isinstance(a, CurvingShotAction) for a in pj5.actions)
+    pj7, _ = _arquero(7)
+    assert any(isinstance(a, CurvingShotAction) for a in pj7.actions)
+
+
+def test_curving_can_use_requiere_bonus_libre():
+    pj, trait = _arquero(7)
+    trait.curving_atk = _arco(magical=True)
+    trait.curving_contra = "Blanco"
+    enemigos = [Monster("Blanco", max_hp=50, ac=15, abilities=_abilities()),
+                Monster("Otro", max_hp=50, ac=15, abilities=_abilities())]
+    recursos = TurnResources(bonus_action_used=True)
+    assert not _curving(pj).can_use(
+        recursos, _ctx_curving(pj, _RngExplota(), enemigos))
+
+
+def test_curving_sin_otro_enemigo_cero_rng():
+    pj, trait = _arquero(7)
+    trait.curving_atk = _arco(magical=True)
+    trait.curving_contra = "Blanco"
+    solo = [Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())]
+    assert not _curving(pj).can_use(
+        TurnResources(), _ctx_curving(pj, _RngExplota(), solo))
+
+
+def test_curving_sin_marca_cero_rng():
+    pj, _ = _arquero(7)
+    enemigos = [Monster("Blanco", max_hp=50, ac=15, abilities=_abilities()),
+                Monster("Otro", max_hp=50, ac=15, abilities=_abilities())]
+    assert not _curving(pj).can_use(
+        TurnResources(), _ctx_curving(pj, _RngExplota(), enemigos))
+
+
+def test_curving_decision_no_no_re_tira():
+    pj, trait = _arquero(7)
+    trait.curving_atk = _arco(magical=True)
+    trait.curving_contra = "Blanco"
+    enemigos = [Monster("Blanco", max_hp=50, ac=15, abilities=_abilities()),
+                Monster("Otro", max_hp=50, ac=15, abilities=_abilities())]
+    assert not _curving(pj).can_use(
+        TurnResources(), _ctx_curving(pj, _RngNo(), enemigos))
+
+
+def test_curving_can_use_si_con_la_decision_si():
+    pj, trait = _arquero(7)
+    trait.curving_atk = _arco(magical=True)
+    trait.curving_contra = "Blanco"
+    enemigos = [Monster("Blanco", max_hp=50, ac=15, abilities=_abilities()),
+                Monster("Otro", max_hp=50, ac=15, abilities=_abilities())]
+    assert _curving(pj).can_use(
+        TurnResources(), _ctx_curving(pj, _RngSi(), enemigos))
+
+
+def test_curving_re_tira_contra_otro_enemigo(monkeypatch):
+    pj, trait = _arquero(7)
+    atk = _arco(magical=True)
+    trait.curving_atk = atk
+    trait.curving_contra = "Blanco"
+    enemigos = [Monster("Blanco", max_hp=50, ac=15, abilities=_abilities()),
+                Monster("Otro", max_hp=50, ac=15, abilities=_abilities())]
+    registrados = []
+    monkeypatch.setattr(
+        "dnd_sim.engine.combat.attack_roll",
+        lambda a, t, k, r, log=None, ctx=None: registrados.append((a, t, k)),
+    )
+    _curving(pj).execute(_ctx_curving(pj, random.Random(1), enemigos))
+    assert len(registrados) == 1
+    assert registrados[0][0] is pj
+    assert registrados[0][1].name == "Otro"
+    assert registrados[0][2] is atk
+    assert trait.curving_atk is None
+    assert trait.curving_contra is None
+
+
+def test_curving_execute_sin_otro_enemigo_no_llama_nada(monkeypatch):
+    pj, trait = _arquero(7)
+    trait.curving_atk = _arco(magical=True)
+    trait.curving_contra = "Blanco"
+    solo = [Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())]
+
+    def _no_llamar(*args, **kwargs):
+        raise AssertionError("no debería re-tirar sin otro enemigo")
+
+    monkeypatch.setattr("dnd_sim.engine.combat.attack_roll", _no_llamar)
+    _curving(pj).execute(_ctx_curving(pj, _RngExplota(), solo))
+    assert trait.curving_atk is not None  # la marca se conserva
+
+
+def test_reset_borra_la_marca_de_curving():
+    _, trait = _arquero(7)
+    trait.curving_atk = _arco(magical=True)
+    trait.curving_contra = "Blanco"
+    trait.reset()
+    assert trait.curving_atk is None
+    assert trait.curving_contra is None

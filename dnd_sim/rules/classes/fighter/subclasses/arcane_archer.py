@@ -39,6 +39,17 @@ Decisiones de simulación documentadas:
   tirada compartida (patrón de área del sim: nunca aliados; sin RNG
   en la selección). Grasping sigue siendo solo daño
   (velocidad/moverse: sin sistema de movimiento).
+- **Magic Arrow** (7): los arcos corto/largo del PJ (nombres EN/ES,
+  normalización a minúsculas) se marcan ``magical=True`` in-place al
+  crear el personaje (las acciones guardan el mismo objeto ``Attack``);
+  solo desde el nivel 7.
+- **Curving Shot** (7): al FALLAR un ataque a distancia con un arco
+  mágico se guarda la marca (``curving_atk``/``curving_contra``); la
+  acción bonus «Disparo Curvo» solo es elegible con bonus libre, marca
+  presente y OTRO enemigo vivo («60 pies» abstracto: sin posiciones y
+  sin RNG en la selección), con decisión ``pick`` «no»/«sí» (cero RNG
+  si no es elegible); al ejecutar gasta la marca y vuelve a tirar con
+  ``attack_roll`` contra el enemigo elegido.
 - **Ever-Ready Shot** (10): sin efecto (cada combate empieza con usos
   completos); dato de tabla.
 """
@@ -60,12 +71,13 @@ from .....core.log import log_line as _log_line
 from .....core.proficiency import proficiency_bonus
 from .....core.randomness import pick, sample
 from .....core.targeting import valid_targets
+from .....model.actions import ActionType, CombatAction
 from ....conditions import Condition, apply_condition
 from ....damage import apply_damage_modifiers, inflict_damage
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
-from ..features import FighterFeatures
+from ..features import FighterFeatures, _contexto
 
 #: Pool de opciones de Arcane Shot implementadas (XGE). Piercing y
 #: Seeking no están: reemplazan la tirada de ataque (ver TODO.md).
@@ -83,6 +95,11 @@ ARCANE_ARCHER_SKILLS: tuple[str, ...] = ("arcana", "nature")
 
 #: Trucos de Arcane Archer Lore (dato sin efecto en el sim).
 ARCANE_ARCHER_CANTRIPS: tuple[str, ...] = ("Prestidigitación", "Druidismo")
+
+#: Nombres de arco que Magic Arrow vuelve mágicos (EN y ES, en
+#: minúsculas; misma normalización que ``rules/mastery.py``).
+_ARCOS: frozenset[str] = frozenset(
+    {"arco corto", "arco largo", "shortbow", "longbow"})
 
 #: RNG con semilla fija para Lore y opciones cuando no pasa ``rng``:
 #: crea el personaje siempre igual (reproducible).
@@ -118,6 +135,11 @@ class ArcaneArcherFeatures(Trait):
     #: borra el propio rasgo cuando el aliado ataca a la víctima.
     beguiling: dict[str, Any] = field(
         default_factory=dict, repr=False, compare=False)
+    #: Curving Shot: ataque mágico fallado pendiente de re-tirar y
+    #: nombre del objetivo que lo falló (para elegir a OTRO enemigo).
+    curving_atk: Any = field(default=None, repr=False, compare=False)
+    curving_contra: str | None = field(
+        default=None, repr=False, compare=False)
     #: Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
 
@@ -129,6 +151,8 @@ class ArcaneArcherFeatures(Trait):
         """Un combate nuevo = un día descansado: usos de Arcane Shot llenos."""
         self.shot_used_this_turn = False
         self.beguiling.clear()
+        self.curving_atk = None
+        self.curving_contra = None
         if self.arcane_shot_usage is not None:
             self.arcane_shot_usage.reset()
 
@@ -282,6 +306,83 @@ class ArcaneArcherFeatures(Trait):
         self.beguiling.pop(nombre, None)
         return None
 
+    # --- Curving Shot (7) -----------------------------------------------------
+    def after_attack_roll(self, attacker: Any, target: Any, atk: Any,
+                          hit: bool, ctx: Any = None,
+                          rng: Any = None) -> None:
+        """Marca el fallo con un arco mágico para poder re-tirar."""
+        if self.level < 7 or hit or attacker is not self.owner:
+            return None
+        if getattr(atk, "range_type", None) is not AttackRange.RANGED:
+            return None
+        if not getattr(atk, "magical", False):
+            return None  # solo con Magic Arrow (arcos marcados al crear)
+        nombre = getattr(target, "name", None)
+        if not nombre:
+            return None
+        self.curving_atk = atk
+        self.curving_contra = nombre
+        return None
+
+
+def _otros_enemigos(actor: Any, ctx: Any, contra: str | None) -> list:
+    """Enemigos vivos distintos de ``contra`` («60 pies» sin posiciones)."""
+    return [c for c in valid_targets(actor, ctx)
+            if getattr(c, "alive", True)
+            and getattr(c, "name", None) != contra]
+
+
+class CurvingShotAction(CombatAction):
+    """Disparo Curvo (acción bonus, nivel 7+): re-tira tras un fallo.
+
+    Solo es elegible con bonus libre, marca de fallo con arco mágico y
+    OTRO enemigo vivo; la decisión de re-tirar es un ``pick`` «no»/«sí»
+    (cero RNG si no es elegible). Al ejecutar gasta la marca y vuelve a
+    tirar con ``attack_roll`` (el re-tiro es un ataque normal: puede
+    aplicar Arcane Shot si aún no se usó en el turno).
+    """
+
+    def __init__(self) -> None:
+        self.name = "Disparo Curvo"
+        self.action_type = ActionType.BONUS_ACTION
+        self.usage = None  # sin usos limitados: el límite es el bonus
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None:
+            return False
+        trait = _de(actor, ArcaneArcherFeatures)
+        if trait is None or trait.curving_atk is None:
+            return False
+        if not _otros_enemigos(actor, ctx, trait.curving_contra):
+            return False  # sin otro objetivo: cero RNG
+        rng = getattr(ctx, "rng", None)
+        if rng is None:
+            return False  # sin RNG el rasgo se abstiene
+        if pick(rng, ("no", "si")) == "no":
+            return False  # decisión aleatoria de re-tirar
+        return True
+
+    def execute(self, context: Any) -> None:
+        actor = context.actor
+        trait = _de(actor, ArcaneArcherFeatures)
+        rng = getattr(context, "rng", None)
+        if trait is None or trait.curving_atk is None or rng is None:
+            return
+        otros = _otros_enemigos(actor, context, trait.curving_contra)
+        if not otros:
+            return
+        atk = trait.curving_atk
+        objetivo = pick(rng, otros)
+        trait.curving_atk = None
+        trait.curving_contra = None
+        from .....engine.combat import attack_roll  # local: evita ciclo
+        log = getattr(context, "log", None)
+        attack_roll(actor, objetivo, atk, rng, log, ctx=context)
+
 
 def apply_arcane_archer(pj: Any, level: int | None = None,
                         arcane_shots: tuple[str, ...] | None = None,
@@ -339,8 +440,18 @@ def apply_arcane_archer(pj: Any, level: int | None = None,
         ActionUsage(UsageKind.PER_DAY, uses_max=usos) if usos else None
     )
     pj.traits.append(trait)
+    if lvl >= 7:
+        # Magic Arrow (7): los arcos se vuelven mágicos. Mutación
+        # in-place porque las acciones guardan el MISMO objeto Attack.
+        for lista in (pj.attacks, pj.weapons):
+            for atk in lista or []:
+                if str(getattr(atk, "name", "")).strip().lower() in _ARCOS:
+                    atk.magical = True
+        # Curving Shot (7): acción bonus disponible desde el nivel 7.
+        pj.actions.append(CurvingShotAction())
     return trait
 
 
 __all__ = ["ARCANE_ARCHER_CANTRIPS", "ARCANE_ARCHER_SKILLS", "ARCANE_SHOTS",
-           "ArcaneArcherFeatures", "apply_arcane_archer"]
+           "ArcaneArcherFeatures", "CurvingShotAction",
+           "apply_arcane_archer"]
