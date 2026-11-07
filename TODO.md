@@ -1,6 +1,6 @@
 # TODO — DnDBalancer / dnd_sim
 
-Revisar al principio de cada sesión. Última revisión: 2026-11-06.
+Revisar al principio de cada sesión. Última revisión: 2026-11-07.
 Solo tareas SIN implementar. Lo ya hecho: PASOS-ANTERIORES.txt
 (bloque 15 «Clase Fighter», bloque «CIERRE DE PENDIENTES DEL FIGHTER»)
 y ARCHITECTURE.md.
@@ -85,9 +85,9 @@ PASOS-ANTERIORES.txt. NO tocar la API (reglas en el prompt de la tarea).
 - [x] 6. Piercing/Seeking: implementar solo si cabe con gancho mínimo;
   si no, a «pendientes reales» con el motivo exacto y fuera del pool.
   Ever-Ready Shot: dato de tabla documentado (sin efecto en el sim).
-- [ ] 7. Tests de integración: `run_combat` con semilla fija, cero RNG
+- [x] 7. Tests de integración: `run_combat` con semilla fija, cero RNG
   sin la subclase; suite completa.
-- [ ] 8. Docs: `TODO.md` (candidata marcada + pendientes reales con
+- [x] 8. Docs: `TODO.md` (candidata marcada + pendientes reales con
   motivos), `PASOS-ANTERIORES.txt` (bloque ARCANE ARCHER en ESTADO
   ACTUAL), `ARCHITECTURE.md` (fila + grafo + recuentos).
 - [ ] 9. Verificación final: arquitectura, suite, `capas.py`,
@@ -111,8 +111,8 @@ Receta (patrón bárbaro, ver `barbarian/subclasses/`):
    bloque Guerrero de `PASOS-ANTERIORES.txt`.
 
 Pendientes (candidatas PHB 2024): Champion, Battle Master, Eldritch
-Knight, Psi Warrior. Ninguna implementada; `CLASSES["fighter"].subclasses`
-está vacío (test congelado en `tests/test_fighter.py`).
+Knight, Psi Warrior. Arcane Archer YA está implementado
+(`CLASSES["fighter"].subclasses` = `{"arcane_archer"}`).
 
 ## Grafo y verificación
 

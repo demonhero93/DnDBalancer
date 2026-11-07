@@ -840,11 +840,175 @@ MAESTRÍA CON ARMAS DEL BÁRBARO (2026-11-06)
     existente cambió resultado). capas: 1 violación conocida.
     Commit 8fb088c.
 
+ARCANE ARCHER (2026-11-06)
+  - (1) Estructura, registro y datos: tablas nuevas en
+    ``core/classes.py`` ``arcane_shot_options_known`` (0/2/3/4/5/6 en
+    <3/3/7/10/15/18) y ``arcane_shot_uses`` (0/2/3 en <3/3-14/15+).
+    Módulo nuevo ``rules/classes/fighter/subclasses/arcane_archer.py``
+    (docstring español con decisiones): constantes ``ARCANE_SHOTS`` (6
+    opciones implementables; Piercing/Seeking fuera del pool por ahora),
+    ``ARCANE_ARCHER_SKILLS`` (arcana/nature), ``ARCANE_ARCHER_CANTRIPS``
+    (dato), ``_RNG_CREACION`` (semilla 0) y ``_de`` (patrón
+    battlerager). ``ArcaneArcherFeatures(Trait)`` con level,
+    competencia, truco, ``opciones_conocidas`` y owner.
+    ``apply_arcane_archer(pj, level=None, arcane_shots=None, rng=None)``
+    : exige FighterFeatures (ValueError «Primero aplica la clase
+    guerrero», patrón battlerager), Lore con ``pick`` (competencia +
+    truco; añade la competencia a skill_proficiencies), opciones con
+    ``sample`` del pool o kwarg explícito validado (ValueError por
+    nombre inválido y por recuento ≠ tabla del nivel).
+    Registro: ``fighter/__init__.py`` gana ``SubclassDef(name="Arcane
+    Archer", class_name="fighter", min_level=3)`` en la clave
+    ``"arcane_archer"``; reexport en ``fighter/subclasses/__init__.py``
+    y fachada ``dnd_sim/__init__.py`` (ArcaneArcherFeatures,
+    apply_arcane_archer); entrada nueva en test_arquitectura para
+    ``dnd_sim.rules.classes.fighter.subclasses``.
+    **Tests existentes tocados (explicados antes)**:
+    ``test_clase_fighter_esta_registrada_sin_subclases`` →
+    ``..._con_arcane_archer`` exigiendo ``{"arcane_archer"}`` (la tabla
+    ya no está vacía); docstring de ``test_subclase_de_fighter_
+    inexistente_da_value_error`` actualizado (champion sigue fallando).
+    tests/test_arcane_archer.py nuevo (12): registro, equivalencia
+    apply_class/apply_arcane_archer (monkeypatch de ambos
+    _RNG_CREACION a Random(0), patrón 6.2), exige clase fighter,
+    nivel<3, tablas, opciones por nivel, kwarg válido/inválido/recuento,
+    Lore competencia y truco. Suite completa: 1128 passed (0 fallos).
+    Commit b222ed3.
+  - (2) Arcane Shot base: campos ``arcane_shot_usage`` (ActionUsage
+    PER_DAY creado en apply con ``arcane_shot_uses``: None si nivel<3)
+    y ``shot_used_this_turn``; ``on_turn_start`` reinicia el flag y
+    ``reset`` limpia flag + usos (patrón Oleada de Acción). Hook
+    ``extra_attack_damage``: guards (dueño, target, rango RANGED,
+    usage disponible, sin flag, rng) → ``pick(("no","si"))`` →
+    ``pick`` entre opciones conocidas → spend + flag → daño
+    ``roll_dice("2d6"|"4d6", rng)`` (4d6 desde nivel 18) con log;
+    sin usos/melee/sin rng → cero RNG. El daño extra se suma al del
+    ataque (tipo no separado: documentado). Grasping Arrow es solo
+    daño en este paso; resto de ramas en pasos siguientes.
+    tests/test_arcane_archer.py +11 (total 23): usos 2/3 por nivel,
+    gasto, una vez por turno, reinicio en on_turn_start, sin usos/melee/
+    sin rng → cero RNG (rng que revienta), decisión «no» no gasta,
+    2d6 antes del 18 y 4d6 desde el 18 (roll_dice parcheado en el
+    módulo que lo usa), reset restaura usos. Suite completa: 1139
+    passed (0 fallos).
+    Commit e5cb3cd.
+  - (3) Opciones con salvación y condiciones: imports nuevos en
+    ``arcane_archer.py`` (``proficiency_bonus``, ``Condition``,
+    ``apply_condition``, ``registrar_resistencia``, ``saving_throw``).
+    Campo ``beguiling`` (nombre de la víctima → aliado hechizador;
+    ``reset`` lo limpia) y CD ``_cd()`` = 8+PB+mod INT. Hook
+    ``_efecto_de_opcion`` tras el daño de ``extra_attack_damage``:
+    Banishing (CAR → Incapacitado 2 rondas; «hasta el final de tu
+    siguiente turno» ≈ duración del afectado, inatacabilidad sin
+    modelar), Beguiling (``_aliado_para_beguiling``: aliado vivo con
+    ``pick`` —sin posiciones, sin aliados solo daño y sin RNG—; SAB →
+    Hechizado 2 rondas con fuente=aliado y marca en ``beguiling``),
+    Enfeebling (CON → ``state.enfeeble_hasta_ronda[fuente] = ronda+1``)
+    y Shadow (SAB → solo daño + salvación + log de visión, sin
+    condición: la visión no depende de la distancia por ataque, TODO).
+    Grasping sigue solo daño; Bursting pendiente de paso 4.
+    Romper Beguiling: ``grant_attack_modifiers`` del rasgo (sin marcas
+    → return inmediato) quita la instancia CHARMED con fuente=aliado y
+    la marca cuando el aliado ataca a la víctima.
+    ``core/combat_state.py``: campo ``enfeeble_hasta_ronda`` +
+    ``enfeeble_mitiga(ronda)`` (caducidad por ronda). ``attack.py``:
+    bloque mínimo tras los bonus de ``raw_dmg`` — si la marca está
+    vigente y el ataque no es mágico (hechizos), ``raw_dmg //= 2``
+    (sin marca → cero cambio). ``Combatant.reset`` limpia la marca.
+    **Tests existentes tocados (explicados antes)**: el helper
+    ``_disparo`` de tests/test_arcane_archer.py pasa de
+    ``SimpleNamespace(name="Blanco")`` a ``Monster`` real (las
+    opciones ahora tiran salvaciones: ``saving_throw`` necesita
+    ``abilities`` y ``apply_condition`` necesita ``conditions``);
+    aserciones sin cambio. Añade kwarg ``ctx`` al helper.
+    tests/test_arcane_archer.py +11 (total 34): CD 8+PB+INT,
+    Banishing falla→Incapacitado / éxito→sin condición, Beguiling
+    hechiza y termina si el aliado ataca (y sin aliados no se tira
+    salvación, saving_throw parcheado para revienta), Enfeebling
+    marca ronda+1 / éxito→sin marca, Shadow sin condición, reset
+    borra marcas, ``enfeeble_mitiga`` por ronda y motor (d20=15,
+    roll_dice=10, marca activa → 13→6 de daño). Suite completa: 1150
+    passed (0 fallos).
+    Commit de50501.
+  - (4) Bursting Arrow: rama en ``_efecto_de_opcion`` (sin salvación).
+    Vecinos = ``valid_targets(owner, ctx)`` menos el objetivo (patrón
+    de área del sim: nunca aliados; «a 10 pies» abstracto = todos los
+    enemigos vivos del arquero salvo el objetivo; SIN RNG en la
+    selección — ``select_area_targets`` no sirve: sortea un subconjunto
+    con k aleatorio, no «cada criatura»). Una sola tirada ``2d6``
+    compartida → ``apply_damage_modifiers(magical=True)`` →
+    ``inflict_damage`` (fuerza) por vecino + log; sin vecinos → sin
+    tirada extra. Imports nuevos: ``parse_damage_type``,
+    ``valid_targets``, ``apply_damage_modifiers``, ``inflict_damage``.
+    El objetivo ya recibió el 2d6 base en el paso 2.
+    tests/test_arcane_archer.py +2 (total 36): vecino recibe 2 (RNG
+    del test = siempre 1s) con aliado intacto y sin condiciones, y sin
+    vecinos solo hay una tirada ``2d6`` (espía). Suite completa: 1152
+    passed (0 fallos).
+    Commit a13698f.
+  - (5) Magic Arrow y Curving Shot (7): constante ``_ARCOS`` (arco
+    corto/largo, shortbow/longbow; normalización a minúsculas estilo
+    ``rules/mastery.py``). En ``apply_arcane_archer``, si nivel >= 7:
+    los arcos de ``pj.attacks``/``pj.weapons`` ganan ``magical=True``
+    in-place (las acciones guardan el MISMO objeto Attack) y se añade
+    ``CurvingShotAction()`` a ``pj.actions``. Campos nuevos
+    ``curving_atk``/``curving_contra`` (limpia en ``reset``). Hook
+    ``after_attack_roll``: marca el fallo si nivel>=7, atacante=dueño,
+    ``range_type is AttackRange.RANGED`` y ``atk.magical`` (solo con
+    Magic Arrow; el hook no recibe rango → se usa el del arma).
+    ``CurvingShotAction`` (BONUS, sin usos): ``can_use`` = super
+    (bonus libre) + marca + ``_otros_enemigos`` no vacío (cero RNG si
+    sin otro objetivo) + ``pick(("no","si"))``; ``execute`` = elige
+    ``pick`` entre los otros enemigos vivos («60 pies» abstracto: sin
+    posiciones), gasta la marca y ``attack_roll`` local (patrón
+    berserker/beast: import perezoso de engine.combat; el re-tiro es un
+    ataque normal — puede aplicar Arcane Shot si aún no se usó en el
+    turno). Helper ``_otros_enemigos`` con ``valid_targets``.
+    tests/test_arcane_archer.py +14 (total 50): marca de arcos por
+    nivel/nombre (EN y ES) y sin tocar no-arcos; marca de Curving con
+    fallo y no-marca con acierto/melee/sin magia/nivel<7; acción dada
+    de alta solo desde el 7; can_use con bonus gastado / sin otro
+    enemigo / sin marca → cero RNG (rng que revienta), decisión «no»
+    y «sí»; re-tiro contra el OTRO enemigo con attack_roll parcheado
+    (módulo que lo define) y marca consumida; sin otro enemigo no se
+    llama nada y la marca se conserva; reset limpia la marca.
+    Suite completa: 1166 passed (0 fallos).
+    Commit 4dbc3b8.
+  - (6) Piercing/Seeking y Ever-Ready: SIN código. Decisión: Piercing
+    y Seeking quedan FUERA del pool (``ARCANE_SHOTS`` = 6; ya
+    decidido en el paso 1) y se documentan en TODO.md con el motivo
+    exacto: reemplazan la tirada de ataque («instead of making an
+    attack roll») y el motor no tiene gancho previo a ``attack_roll``
+    (el primero del flujo es ``extra_attack_damage``, que exige
+    impactar) + su geometría (línea 1 ft × 30 ft / punto visto) no
+    existe sin posiciones → más allá del «gancho mínimo». Ever-Ready
+    Shot (10): dato de tabla, ya documentado en el docstring del
+    módulo (cada combate empieza con usos completos).
+    Commit 444e707 (solo TODO.md; PASOS se commitea en el paso 8).
+  - (7) Tests de integración: ``run_combat`` con el arquero nivel 7 y
+    semilla fija dos veces → mismo log, mismos ``action_uses`` y mismo
+    PV final del enemigo (reproducibilidad; el arquero sí ataca). Y
+    ``run_combat`` de un Guerrero SIN subclase con los hooks de
+    ``ArcaneArcherFeatures`` parcheados a «revienta» → no se ejecuta
+    ningún código de la subclase (además: sin ``CurvingShotAction`` en
+    las acciones). tests/test_arcane_archer.py +2 (total 52). Suite
+    completa: 1168 passed (0 fallos).
+    Commit 9fdc2ad.
+  - (8) Docs: TODO.md (casilla 8, Piercing/Seeking + Ever-Ready en
+    «Fighter: pendientes reales», receta de subclase corregida — ya no
+    hay registro vacío — y fecha de revisión 2026-11-07);
+    ARCHITECTURE.md (fila rules/classes con fighter/subclasses/
+    {arcane_archer}, recuentos 82 módulos / 18141 líneas, tests 51
+    ficheros / 18589 líneas / 1168 tests, «1168 tests» en Cómo
+    comprobar); PASOS-ANTERIORES (recuentos y registro de clases del
+    ESTADO ACTUAL, bloque Guerrero con Arcane Archer, esta entrada).
+    Commit <hash>.
+
 ESTADO ACTUAL
-   - 81 módulos en dnd_sim/; tests/ con 50 ficheros y 17882 líneas
-     (1116 tests en verde, medido 2026-11-06).
+   - 82 módulos en dnd_sim/; tests/ con 51 ficheros y 18589 líneas
+     (1168 tests en verde, medido 2026-11-07).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
-     subclases bárbaro; fighter sin subclases aún).
+     subclases bárbaro y Arcane Archer del fighter).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities
@@ -927,7 +1091,7 @@ ESTADO ACTUAL
      propia; clave "world_tree" en el registro y fachada;
      tests/test_world_tree.py (27).
    - Clase Fighter (Guerrero, PHB 2024) en rules/classes/fighter/
-     (init + features + subclasses/ vacío), clave "fighter" SIN alias:
+     (init + features + subclasses/ con Arcane Archer), clave "fighter" SIN alias:
      Estilo de Combate (pick en apply; implementados Archery con campo
      nuevo AttackModifiers.bonus, Defense +1 CA, Dueling, Great Weapon
      Fighting con hook nuevo damage_dice_upgrades y roll_dice floor,
@@ -950,12 +1114,17 @@ ESTADO ACTUAL
      rules/mastery.py con Topple/Vex/Sap/Graze y marcas en
      CombatState; asignación in-place en apply_fighter), ASI y Don
      Épico como datos de tabla (asi_levels, epic_boon_level), plantilla
-     «Guerrero» de main.py con class_name="fighter"; subclases: receta
-     y candidatas en TODO.md (registro vacío congelado);
-     tests/test_fighter.py (89) + tests/test_mastery.py (13) + fixture
-     fighter_levels.json; commits 09ea36e..27532b9 (11 pasos, ver
-     bloque 15) y 696ec3a..4f56e55 (cierre A1-B, ver «CIERRE DE
-     PENDIENTES DEL FIGHTER»).
+     «Guerrero» de main.py con class_name="fighter"; subclase Arcane
+     Archer (XGE) en fighter/subclasses/arcane_archer.py: Lore,
+     Arcane Shot (6 opciones con salvación/condiciones + Bursting),
+     Magic Arrow y Curving Shot; Piercing/Seeking y Ever-Ready en
+     TODO.md; receta de subclases y candidatas en TODO.md;
+     tests/test_fighter.py (89) + tests/test_mastery.py (13) +
+     tests/test_arcane_archer.py (52) + fixture fighter_levels.json;
+     commits 09ea36e..27532b9 (11 pasos, ver bloque 15),
+     696ec3a..4f56e55 (cierre A1-B, ver «CIERRE DE PENDIENTES DEL
+     FIGHTER») y b222ed3..9fdc2ad (Arcane Archer, ver bloque ARCANE
+     ARCHER).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY

@@ -16,16 +16,16 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 
 | Carpeta | Mód. | Líneas | Contenido |
 |---|---:|---:|---|
-| `dnd_sim/core/` | 13 | 899 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
-| `dnd_sim/model/` | 4 | 1038 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 30 | 8782 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías. |
+| `dnd_sim/core/` | 13 | 943 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
+| `dnd_sim/model/` | 4 | 1040 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
+| `dnd_sim/rules/` | 31 | 9247 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías. |
 | `dnd_sim/rules/traits/` | 6 | 1268 | Los rasgos de monstruo (paquete, ver abajo). |
 | `dnd_sim/rules/spells/` | 5 | 915 | Hechizos (paquete). |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
-| `dnd_sim/engine/combat/` | 3 | 919 | El motor: tirada de ataque y bucle de rondas (paquete). |
+| `dnd_sim/engine/combat/` | 3 | 926 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
-| `dnd_sim/__init__.py` | 1 | 182 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **81** | **17621** | + `tests/` con 50 ficheros y 17882 líneas (1116 tests). |
+| `dnd_sim/__init__.py` | 1 | 184 | Fachada: reexporta la API pública ordenada por capa. |
+| **Total** | **82** | **18141** | + `tests/` con 51 ficheros y 18589 líneas (1168 tests). |
 
 ## Reglas de dependencia
 
@@ -60,7 +60,7 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (25 hooks, incl. `after_failed_check`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con las subclases del bárbaro. |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the… y Arcane Archer). |
 | `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos, daño, represalias) e iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
@@ -116,7 +116,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1116 tests
+pytest                              # 1168 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```
