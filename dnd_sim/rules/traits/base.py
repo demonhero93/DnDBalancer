@@ -415,3 +415,17 @@ def hooks(traits: Any, nombre: str) -> list[Any]:
         if si_propio:
             activos.append(rasgo)
     return activos
+
+
+@dataclass
+class AtaqueSustituido:
+    """Resultado no-None de ``sustituir_ataque``: el ataque NO se tira.
+
+    Si un rasgo del atacante define ``sustituir_ataque(...)`` y devuelve
+    este objeto, :func:`dnd_sim.engine.combat.attack.attack_roll` lo devuelve
+    tal cual: sin d20, sin ``after_attack_roll`` ni maestrías (el efecto
+    queda documentado en ``motivo``). No es un hook de HOOK_NAMES (patrón
+    ``resolver_maestria``: el motor consulta por duck-typing).
+    """
+
+    motivo: str = ""

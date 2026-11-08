@@ -213,10 +213,32 @@ def daño_base_arma(attacker: Combatant, target: Combatant, atk: Attack,
     return raw_dmg
 
 
+def _sustituir_ataque(attacker: Any, target: Any, atk: Any, rango: Any,
+                      ctx: Any, rng: Any) -> Any:
+    """Primer resultado no-None de ``sustituir_ataque`` de los rasgos.
+
+    Duck-typing (patrón ``resolver_maestria``, sin hook HOOK_NAMES): cada
+    rasgo del atacante puede definir
+    ``sustituir_ataque(attacker, target, atk, rango, *, ctx, rng)`` y
+    devolver un resultado (p. ej. ``AtaqueSustituido``) para que
+    :func:`attack_roll` lo devuelva sin tirar d20. Si ningún rasgo lo
+    define o todos devuelven ``None``, devuelve ``None`` **sin consumir
+    RNG**: el flujo posterior es idéntico al de siempre.
+    """
+    for rasgo in (getattr(attacker, "traits", None) or []):
+        metodo = getattr(rasgo, "sustituir_ataque", None)
+        if metodo is None:
+            continue
+        resultado = metodo(attacker, target, atk, rango, ctx=ctx, rng=rng)
+        if resultado is not None:
+            return resultado
+    return None
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
                 verbose: bool = False, ctx: Any = None,
-                allow_friendly: bool = False) -> None:
+                allow_friendly: bool = False) -> Any:
     """Resuelve un ataque.
 
     Secuencia (documentada):
@@ -241,6 +263,9 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     que **fuerza** a un combatiente a atacar a su propio bando (p. ej. la
     rama de venganza de la Fiereza infecciosa); el valor por defecto
     ``False`` conserva el guard en todas las llamadas normales.
+
+    Devuelve el resultado de un ``sustituir_ataque`` de los rasgos (si lo
+    hay) en el paso 2b; en ese caso no tira d20 y devuelve ese objeto.
     """
     if not allow_friendly and not attacker.is_hostile_to(target):
         raise ValueError(
@@ -258,6 +283,13 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     rango = resolve_attack_range(atk, rng)
     # (2) Estado de distancia del atacante.
     _actualizar_distancia(attacker, rango, log)
+    # (2b) Sustitución del ataque por duck-typing: si un rasgo del
+    # atacante decide reemplazar esta tirada (Piercing/Seeking Arrow),
+    # devuelve su resultado aquí SIN d20, sin ``after_attack_roll`` ni
+    # maestrías. Sin rasgos o ``None`` → flujo idéntico sin RNG.
+    sustituido = _sustituir_ataque(attacker, target, atk, rango, ctx, rng)
+    if sustituido is not None:
+        return sustituido
     # (3) Modificadores (el rango ya está decidido). Un atacante invisible
     # ataca **con ventaja**; la invisibilidad se quita **después** de
     # resolver el golpe entero, no aquí: «until it attacks» significa que
