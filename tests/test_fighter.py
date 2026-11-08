@@ -45,10 +45,20 @@ def test_clase_fighter_esta_registrada_con_arcane_archer():
     assert set(CLASSES["fighter"].subclasses) == {"arcane_archer"}
 
 
-def test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter():
+def test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter(
+        monkeypatch):
+    # Reseed: el estilo se sortea con el Random(0) global de creación, que
+    # avanza con cada PJ del suite; sin reseed, dos draws consecutivos
+    # podrían dar estilos distintos (p. ej. Defense) y falsear la igualdad.
+    import random
+
+    import dnd_sim.rules.classes.fighter.features as fighter_mod
+
     a = _pj()
     b = _pj()
+    monkeypatch.setattr(fighter_mod, "_RNG_CREACION", random.Random(0))
     apply_class(a, "fighter")
+    monkeypatch.setattr(fighter_mod, "_RNG_CREACION", random.Random(0))
     apply_fighter(b)
     assert _firmas(a) == _firmas(b)
 

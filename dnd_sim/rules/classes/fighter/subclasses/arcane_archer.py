@@ -27,6 +27,15 @@ Decisiones de simulación documentadas:
   de impacto se suma al del ataque (el motor no separa el tipo del
   bonus) y pasa de 2d6 a 4d6 desde el nivel 18. Decisiones de combate
   uniformes, sin IA.
+- **Piercing y Seeking** (3): se ejecutan en ``sustituir_ataque`` SIN
+  tirada de ataque. Daño del arma con ``daño_base_arma`` UNA vez + extra
+  1d6 (2d6 desde el 18) UNA vez; cada objetivo tira salvación DES (CD
+  8+PB+INT, con las MISMAS funciones de salvación que los hechizos; la
+  salvación NO suma cobertura) y recibe mitad si la supera, en tipo
+  aparte del arma. Piercing: hasta 3 criaturas con ``pick`` (convenio
+  de fuego amigo de Bursting; el objetivo original puede entrar).
+  Seeking: una criatura con ``pick``; «aprendes la ubicación» y el
+  caso «sin camino» = dato sin efecto (sin posiciones, TODO.md).
 - **Efectos de las opciones** (3): tras el daño, cada opción tira
   salvación con CD 8+PB+mod INT. Banishing (CAR) → Incapacitado 2
   rondas («hasta el final de tu siguiente turno» ≈ duración del
@@ -80,7 +89,8 @@ from .....core.targeting import valid_targets
 from .....model.actions import ActionType, CombatAction
 from ....conditions import Condition, apply_condition
 from ....damage import apply_damage_modifiers, inflict_damage
-from ....saves import registrar_resistencia, saving_throw
+from ....saves import (SaveDamage, apply_save_damage, registrar_resistencia,
+                       saving_throw)
 from ....traits.base import AtaqueSustituido, Trait
 from ....usage import ActionUsage, UsageKind
 from ..features import FighterFeatures, _contexto
@@ -127,6 +137,32 @@ def _de(actor: Any, clase: type) -> Any:
         if isinstance(trait, clase):
             return trait
     return None
+
+
+class _CtxConRng:
+    """Portador de ``ctx`` que aporta ``rng`` para ``apply_save_damage``.
+
+    El motor ya pasa un ctx con rng; los tests pasan ctx sin rng. El
+    resto de atributos se reenvían al ctx original (si es ``None``,
+    ``AttributeError`` — igual que acceder a ``None``, y ``getattr`` con
+    default lo tolera).
+    """
+
+    def __init__(self, ctx: Any, rng: Any) -> None:
+        self._ctx = ctx
+        self.rng = rng
+
+    def __getattr__(self, nombre: str) -> Any:
+        if self._ctx is None:
+            raise AttributeError(nombre)
+        return getattr(self._ctx, nombre)
+
+
+def _ctx_con_rng(ctx: Any, rng: Any) -> Any:
+    """``ctx`` con ``rng`` garantizado (sin duplicar si ya lo trae)."""
+    if ctx is not None and getattr(ctx, "rng", None) is not None:
+        return ctx
+    return _CtxConRng(ctx, rng)
 
 
 @dataclass
@@ -214,11 +250,13 @@ class ArcaneArcherFeatures(Trait):
             return None
         opcion = pick(rng, pool)
         if opcion in ARCANE_SHOTS_SIN_TIRADA:
-            # Reemplaza la tirada: el uso se gasta AHORA (sin d20 ni
-            # after_attack_roll). Daño y salvación: _ejecutar_* (A4/A5).
-            self.arcane_shot_usage.spend()
-            self.shot_used_this_turn = True
-            return AtaqueSustituido(motivo=opcion)
+            # Reemplaza la tirada: sin d20, sin after_attack_roll ni
+            # maestrías. El uso se gasta al ejecutarse (si hay elegibles).
+            if opcion == "Piercing Arrow":
+                hecho = self._ejecutar_piercing(target, atk, rango, ctx, rng)
+            else:
+                hecho = self._ejecutar_seeking(target, atk, rango, ctx, rng)
+            return AtaqueSustituido(motivo=opcion) if hecho else None
         self.opcion_pendiente = opcion
         return None
 
@@ -341,6 +379,88 @@ class ArcaneArcherFeatures(Trait):
             _log_line(ctx, f"Bursting Arrow: {len(vecinos)} criatura(s) "
                            f"a 10 pies reciben {dado} de daño de fuerza")
         # Grasping Arrow: solo daño (velocidad/moverse: sin movimiento).
+
+    # --- Piercing y Seeking (sin tirada de ataque) ----------------------------
+    def _ejecutar_piercing(self, target: Any, atk: Any, rango: Any,
+                           ctx: Any, rng: Any) -> bool:
+        """Piercing Arrow: línea (sin posiciones) con hasta 3 criaturas.
+
+        Objetivos = ``valid_targets`` (mismo convenio de fuego amigo que
+        Bursting; el atacante nunca sale; el objetivo original puede
+        entrar). ``k`` con ``pick`` 1-3 limitado por los elegibles. Sin
+        elegibles → ``False`` SIN gastar uso. El daño del arma y los
+        dados extra se tiran UNA sola vez (``_danar_con_salvacion``).
+        """
+        elegibles = list(valid_targets(self.owner, ctx))
+        if not elegibles:
+            return False
+        self.arcane_shot_usage.spend()
+        self.shot_used_this_turn = True
+        k = min(pick(rng, (1, 2, 3)), len(elegibles))
+        elegidos: list[Any] = []
+        resto = elegibles
+        for _ in range(k):
+            elegido = pick(rng, resto)
+            elegidos.append(elegido)
+            resto = [c for c in resto if c is not elegido]
+        self._danar_con_salvacion(
+            "Piercing Arrow", elegidos, target, atk, rango,
+            "piercing", ctx, rng)
+        return True
+
+    def _ejecutar_seeking(self, target: Any, atk: Any, rango: Any,
+                          ctx: Any, rng: Any) -> bool:
+        """Seeking Arrow: una criatura vista, salvación DES.
+
+        «Sabes su ubicación» y «si no hay camino, la flecha desaparece»
+        = dato sin efecto (sin posiciones, TODO.md). Sin elegibles →
+        ``False`` SIN gastar uso.
+        """
+        elegibles = valid_targets(self.owner, ctx)
+        if not elegibles:
+            return False
+        self.arcane_shot_usage.spend()
+        self.shot_used_this_turn = True
+        elegido = pick(rng, elegibles)
+        self._danar_con_salvacion(
+            "Seeking Arrow", [elegido], target, atk, rango,
+            "force", ctx, rng)
+        return True
+
+    def _danar_con_salvacion(self, opcion: str, elegidos: list, target: Any,
+                             atk: Any, rango: Any, tipo_extra: str,
+                             ctx: Any, rng: Any) -> None:
+        """Daño del arma (una tirada) + extra (una tirada) con salvación DES.
+
+        Cada objetivo tira su propia salvación con ``apply_save_damage``
+        (misma función que los hechizos: mitad ANTES de resistencias,
+        ``registrar_resistencia`` dentro) usando el arma ya tirada; los
+        dados extra (1d6, 2d6 desde el 18) se mitigan con la MISMA
+        tirada y en tipo aparte (mitad por tipo, 5e). La resistencia
+        mágica del arma es ``atk.magical``; el extra siempre es mágico.
+        """
+        # Local: patrón CurvingShotAction (evita ciclo con el motor).
+        from .....engine.combat.attack import daño_base_arma
+        arma = daño_base_arma(self.owner, target, atk, rango, crit=False,
+                              ctx=ctx, rng=rng, log=None)
+        dados = "1d6" if self.level < 18 else "2d6"
+        extra = int(roll_dice(dados, rng))
+        _log_line(ctx, f"Arcane Shot ({opcion}): +{arma + extra} de daño")
+        ctx_r = _ctx_con_rng(ctx, rng)
+        tipo = parse_damage_type(tipo_extra)
+        efecto = SaveDamage(
+            ability="dex", dc=self._cd(), damage="0",
+            damage_type=atk.damage_type, on_success="half",
+            magical=bool(getattr(atk, "magical", False)),
+        )
+        for elegido in elegidos:
+            salida = apply_save_damage(
+                self.owner, elegido, efecto, arma, ctx_r)
+            bruto = extra // 2 if salida.save.success else extra
+            final = apply_damage_modifiers(bruto, tipo, elegido,
+                                           magical=True)
+            inflict_damage(elegido, final, tipo, source=self.owner,
+                           ctx=ctx, rng=rng, magical=True)
 
     def grant_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
                                rango: Any, ctx: Any = None,

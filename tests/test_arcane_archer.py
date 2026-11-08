@@ -8,7 +8,7 @@ import pytest
 
 from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import arcane_shot_options_known, arcane_shot_uses
-from dnd_sim.core.enums import AttackRange
+from dnd_sim.core.enums import AttackRange, parse_damage_type
 from dnd_sim.core.proficiency import proficiency_bonus
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
@@ -429,6 +429,200 @@ def test_sustitucion_sin_usos_o_melee_cero_rng():
     assert trait.sustituir_ataque(
         trait.owner, objetivo, atk, AttackRange.MELEE,
         ctx=ctx, rng=_RngExplota()) is None
+
+
+# --- Piercing Arrow (sin tirada de ataque) -----------------------------------
+
+def test_piercing_falla_la_salvacion_y_dana_arma_mas_1d6():
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Piercing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=1)
+    res = _disparo(trait, _RngFalla(), target=objetivo, ctx=ctx)
+    assert isinstance(res, AtaqueSustituido)
+    assert res.motivo == "Piercing Arrow"
+    # Arma: 1d6(mín)=1 + mod DES(14)=2 → 3; extra 1d6(mín)=1 → 4.
+    assert objetivo.hp == objetivo.max_hp - 4
+    assert trait.arcane_shot_usage.uses_left == 1
+    assert trait.shot_used_this_turn is True
+
+
+def test_piercing_salvacion_exitosa_da_la_mitad():
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Piercing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=1)
+    # d20 = 20: mitad de la arma ((6+2)//2=4) y del extra (6//2=3).
+    _disparo(trait, _RngSi(), target=objetivo, ctx=ctx)
+    assert objetivo.hp == objetivo.max_hp - 7
+
+
+def test_piercing_los_dados_extra_se_tiran_una_sola_vez(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.arcane_archer as aa_mod
+
+    vistas: list[str] = []
+
+    def _dado(expr, rng, *args, **kwargs):
+        vistas.append(expr)
+        return 12
+
+    monkeypatch.setattr(aa_mod, "roll_dice", _dado)
+    # Nivel 18 (6 opciones) con Piercing la última (RngSi la elige).
+    pj, trait = _arquero(
+        18, arcane_shots=("Banishing Arrow", "Beguiling Arrow",
+                          "Bursting Arrow", "Enfeebling Arrow",
+                          "Grasping Arrow", "Piercing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    vecino = Monster("Vecino", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo, vecino], round=1)
+    res = _disparo(trait, _RngSi(), target=objetivo, ctx=ctx)
+    assert isinstance(res, AtaqueSustituido)
+    # Una sola tirada de extra compartida; la del arma va por engine.
+    assert vistas == ["2d6"]
+
+
+def test_piercing_k_uniforme_y_atacante_nunca_es_objetivo():
+    class _RngK1:
+        """«si» y última opción (n=2→1), k=1 (n=3→0 → elemento 1)."""
+
+        def randrange(self, n: int) -> int:
+            return 1 if n == 2 else 0
+
+        def randint(self, a: int, b: int) -> int:
+            return a
+
+        def random(self) -> float:
+            return 1.0
+
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Piercing Arrow"))
+    enemigos = [Monster(f"E{i}", max_hp=50, ac=15, abilities=_abilities())
+                for i in range(3)]
+    ctx = SimpleNamespace(combatants=[pj, *enemigos], round=1)
+    _disparo(trait, _RngK1(), target=enemigos[0], ctx=ctx)
+    danados = [c for c in enemigos if c.hp < c.max_hp]
+    assert len(danados) == 1
+    assert pj.hp == pj.max_hp  # el atacante nunca es objetivo
+
+
+def test_piercing_k_se_limita_a_los_elegibles():
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Piercing Arrow"))
+    enemigos = [Monster(f"E{i}", max_hp=50, ac=15, abilities=_abilities())
+                for i in range(2)]
+    ctx = SimpleNamespace(combatants=[pj, *enemigos], round=1)
+    # RngFalla pide k = 3 (último elemento de (1,2,3)): solo hay 2.
+    _disparo(trait, _RngFalla(), target=enemigos[0], ctx=ctx)
+    danados = [c for c in enemigos if c.hp < c.max_hp]
+    assert len(danados) == 2
+
+
+def test_piercing_sin_elegibles_no_gasta_uso():
+    _, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                         "Piercing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[trait.owner], round=1)
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    hecho = trait._ejecutar_piercing(
+        objetivo, atk, AttackRange.RANGED, ctx, _RngExplota())
+    assert hecho is False
+    assert trait.arcane_shot_usage.uses_left == 2
+    assert trait.shot_used_this_turn is False
+
+
+def test_las_salvaciones_de_piercing_no_suman_cobertura(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.arcane_archer as aa_mod
+
+    capturas = []
+    original = aa_mod.apply_save_damage
+
+    def _espia(source, target, effect, rolled_damage, ctx, on_resolved=None):
+        salida = original(source, target, effect, rolled_damage, ctx,
+                          on_resolved)
+        capturas.append(salida)
+        return salida
+
+    monkeypatch.setattr(aa_mod, "apply_save_damage", _espia)
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Piercing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=1)
+    _disparo(trait, _RngFalla(), target=objetivo, ctx=ctx)
+    assert len(capturas) == 1
+    sr = capturas[0].save
+    # Solo el mod de DES: sin cobertura, sin ventaja (una tirada).
+    assert sr.bonus == objetivo.abilities.mod("dex")
+    assert len(sr.rolls) == 1
+
+
+def test_piercing_respeta_la_resistencia_al_perforante():
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Piercing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    objetivo.resistances = {parse_damage_type("piercing")}
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=1)
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged",
+                 damage_type="piercing")
+    trait.sustituir_ataque(
+        pj, objetivo, atk, AttackRange.RANGED, ctx=ctx, rng=_RngFalla())
+    # Arma 3 → resistencia → 1; extra 1 → resistencia → 0.
+    assert objetivo.hp == objetivo.max_hp - 1
+
+
+# --- Seeking Arrow (sin tirada de ataque) ------------------------------------
+
+def test_seeking_falla_la_salvacion_y_dana_arma_mas_1d6():
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Seeking Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=1)
+    res = _disparo(trait, _RngFalla(), target=objetivo, ctx=ctx)
+    assert isinstance(res, AtaqueSustituido)
+    assert res.motivo == "Seeking Arrow"
+    assert objetivo.hp == objetivo.max_hp - 4
+    assert trait.arcane_shot_usage.uses_left == 1
+
+
+def test_seeking_salvacion_exitosa_da_la_mitad():
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Seeking Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=1)
+    _disparo(trait, _RngSi(), target=objetivo, ctx=ctx)
+    # d20 = 20: mitad de la arma ((6+2)//2=4) y del extra (6//2=3).
+    assert objetivo.hp == objetivo.max_hp - 7
+
+
+def test_seeking_2d6_de_extra_desde_el_18(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.arcane_archer as aa_mod
+
+    vistas: list[str] = []
+
+    def _dado(expr, rng, *args, **kwargs):
+        vistas.append(expr)
+        return 12
+
+    monkeypatch.setattr(aa_mod, "roll_dice", _dado)
+    pj, trait = _arquero(
+        18, arcane_shots=("Banishing Arrow", "Beguiling Arrow",
+                          "Bursting Arrow", "Enfeebling Arrow",
+                          "Grasping Arrow", "Seeking Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=1)
+    res = _disparo(trait, _RngSi(), target=objetivo, ctx=ctx)
+    assert isinstance(res, AtaqueSustituido)
+    assert vistas == ["2d6"]
+
+
+def test_seeking_respeta_la_resistencia_a_la_fuerza():
+    pj, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                          "Seeking Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    objetivo.resistances = {parse_damage_type("force")}
+    ctx = SimpleNamespace(combatants=[pj, objetivo], round=1)
+    _disparo(trait, _RngFalla(), target=objetivo, ctx=ctx)
+    # Arma (corte, sin resistencia) 3 completa; extra de fuerza 1 → 0.
+    assert objetivo.hp == objetivo.max_hp - 3
 
 
 # --- Efectos de las opciones (salvaciones y condiciones) ----------------------
