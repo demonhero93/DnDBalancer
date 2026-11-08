@@ -1,6 +1,6 @@
 # TODO — DnDBalancer / dnd_sim
 
-Revisar al principio de cada sesión. Última revisión: 2026-11-07.
+Revisar al principio de cada sesión. Última revisión: 2026-11-08.
 Solo tareas SIN implementar. Lo ya hecho: PASOS-ANTERIORES.txt
 (bloque 15 «Clase Fighter», bloque «CIERRE DE PENDIENTES DEL FIGHTER»)
 y ARCHITECTURE.md.
@@ -35,64 +35,50 @@ y ARCHITECTURE.md.
 
 - **Subclases Fighter**: candidatas Champion, Battle Master, Eldritch
   Knight, Psi Warrior (Arcane Archer implementado, ver plan abajo).
-- **Arcane Archer — Piercing/Seeking**: fuera del pool (`ARCANE_SHOTS`
-  = 6 opciones). Ambas reemplazan la tirada de ataque («instead of
-  making an attack roll») y el motor no tiene ningún gancho previo a
-  `attack_roll` (el primer gancho del flujo es `extra_attack_damage`,
-  que exige impactar); además su geometría (línea 1 ft × 30 ft / punto
-  visto) no existe sin posiciones. Implementarlas exige un gancho nuevo
-  antes de la tirada + área con posición → más allá del «gancho
-  mínimo». Si se retoman: hook previo a la tirada, `pick` entre
-  conocidas y salvación DES.
-- **Arcane Archer — Ever-Ready Shot (10)**: sin efecto, dato de tabla
-  documentado en el docstring de `arcane_archer.py` (cada combate
-  empieza con los usos de Arcane Shot completos).
+- **Arcane Archer**: Piercing/Seeking implementados (2026-11-08, ver
+  plan abajo y PASOS). Efectos parciales restantes (motivo en el
+  docstring de `arcane_archer.py`):
+  - Grasping Arrow: velocidad -10 y 2d6 al moverse → sin sistema de
+    movimiento; hoy solo daño.
+  - Shadow Arrow: «no ve a más de 5 pies» → sin modelo de visión;
+    hoy solo daño + salvación DES.
+  - Banishing Arrow: la inatacabilidad del destino no está modelada;
+    hoy incapacitado 2 rondas.
+  - Seeking Arrow: «aprendes la ubicación» y «sin camino → la flecha
+    desaparece» → sin posiciones; daño + salvación completos.
+  - Enfeebling Arrow (aproximación documentada): mitad solo de ataques
+    con arma no mágicos y hasta la ronda+1 («hasta el inicio de tu
+    siguiente turno»).
+  - Ever-Ready Shot (10): decisión de diseño (NO deuda), congelada en
+    `test_ever_ready_shot_no_cambia_los_usos_al_empezar_un_combate`:
+    cada combate empieza con los usos completos. Reabrir solo si el
+    sim modela más de un combate por descanso.
 
-## Arcane Archer: plan de sesión
 
-Cada casilla = un commit. Registro tras cada paso en
-PASOS-ANTERIORES.txt. NO tocar la API (reglas en el prompt de la tarea).
+## Arcane Archer: Piercing y Seeking
 
-- [x] 1. Estructura y datos: tablas `arcane_shot_options_known` /
-  `arcane_shot_uses` en `core/classes.py`; `subclasses/arcane_archer.py`
-  con `ArcaneArcherFeatures` + `apply_arcane_archer` (valida clase
-  fighter y nivel ≥3; Arcane Archer Lore: competencia Arcanos/Naturaleza
-  con `pick` + truco dato; pool de opciones con kwarg explícito
-  validado); registro `"arcane_archer"` en `fighter/__init__.py`;
-  reexports (subclasses/__init__, fachada `dnd_sim/__init__.py`);
-  `tests/test_arquitectura.py` si procede; tests registro/equivalencia/
-  errores/tablas/Lore/pool. **Test existente que cambia (explicado)**:
-  `tests/test_fighter.py` que congela tabla vacía → exige
-  `{"arcane_archer"}` (el de `"champion"` sigue válido).
-- [x] 2. Arcane Shot base: usos 2/3 (`arcane_shot_uses`), flag «una vez
-  por turno» con reinicio en `on_turn_start` (patrón Oleada de Acción),
-  decisión `pick` «no/sí» solo al impactar a distancia (cero RNG si no
-  corresponde), `pick` entre opciones conocidas, gasto de uso, CD =
-  8+PB+INT; primera opción: Grasping Arrow (daño 2d6 veneno puro,
-  4d6 desde nivel 18).
-- [x] 3. Opciones con salvación: Banishing (CAR → incapacitado con
-  duración, sin inatacabilidad), Beguiling (SAB → Hechizado por aliado
-  `pick`, termina si el aliado le ataca), Enfeebling (CON → marca que
-  mitiga el daño de sus ataques, patrón `maestria_desventaja`), Shadow
-  (SAB → solo daño + salvación, visión sin efecto `# TODO`).
-- [x] 4. Bursting Arrow: 2d6 fuerza al objetivo y vecinos a 10 ft sin
-  salvación, con `select_area_targets`/`AreaTargeting` (patrón
-  Intimidating Presence).
-- [x] 5. Magic Arrow (≥7: marca `magical` in-place en arco corto/largo
-  EN/ES) + Curving Shot (bonus action re-tira contra otro enemigo
-  `pick`, patrón Unstable Backlash; sin bonus libre u otro objetivo →
-  sin RNG).
-- [x] 6. Piercing/Seeking: implementar solo si cabe con gancho mínimo;
-  si no, a «pendientes reales» con el motivo exacto y fuera del pool.
-  Ever-Ready Shot: dato de tabla documentado (sin efecto en el sim).
-- [x] 7. Tests de integración: `run_combat` con semilla fija, cero RNG
-  sin la subclase; suite completa.
-- [x] 8. Docs: `TODO.md` (candidata marcada + pendientes reales con
-  motivos), `PASOS-ANTERIORES.txt` (bloque ARCANE ARCHER en ESTADO
-  ACTUAL), `ARCHITECTURE.md` (fila + grafo + recuentos).
-- [x] 9. Verificación final: arquitectura, suite, `capas.py`,
-  `graphify update .`; commit final del grafo.
+Plan de sesión (una casilla = un commit):
 
+- [x] A1 — Helper `daño_base_arma` en `engine/combat/attack.py`
+  (extraer el cálculo del daño bruto; refactor sin cambio de
+  resultados, suite verde antes de seguir).
+- [x] A2 — Punto de sustitución del ataque: `sustituir_ataque` por
+  duck-typing en `attack_roll` (patrón `resolver_maestria`, sin hook
+  nuevo en HOOK_NAMES; tipo de retorno mínimo `AtaqueSustituido`).
+- [x] A3 — Decisión única de Arcane Shot ANTES de la tirada (un solo
+  `pick` «no/sí» + `pick` entre conocidas) y `ARCANE_SHOTS` con las 8
+  opciones (Piercing/Seeking entran al pool; RNG de AA cambia → tests
+  de `test_arcane_archer.py` explicados en PASOS antes de tocarlos).
+- [x] A4 — Piercing Arrow: k con `pick` 1-3 limitado, daño del arma
+  una sola vez, salvación DES por objetivo (mitad si supera).
+- [x] A5 — Seeking Arrow: enemigo vivo con `pick`, daño + salvación
+  DES; ubicación/alcance = dato sin efecto (`# TODO`).
+- [x] B — Ever-Ready Shot como decisión de diseño (test que lo
+  congela) y TODO.md solo con pendientes reales de Arcane Archer.
+- [ ] Docs — ARCHITECTURE.md (punto de sustitución, helper, recuentos,
+  Ever-Ready) + PASOS-ANTERIORES.txt (bloque y ESTADO ACTUAL).
+- [ ] Verificación + grafo (`pytest` arquitectura, suite, `capas.py`,
+  `graphify update .`, commit final).
 
 ## Fighter: cómo añadir una subclase
 

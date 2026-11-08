@@ -66,7 +66,8 @@ Decisiones de simulación documentadas:
   si no es elegible); al ejecutar gasta la marca y vuelve a tirar con
   ``attack_roll`` contra el enemigo elegido.
 - **Ever-Ready Shot** (10): sin efecto (cada combate empieza con usos
-  completos); dato de tabla.
+  completos); dato de tabla. Reabrir solo si el sim modela más de un
+  combate por descanso.
 """
 from __future__ import annotations
 

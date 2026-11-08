@@ -326,6 +326,21 @@ def test_reset_restaura_los_usos_de_arcane_shot():
     assert trait.shot_used_this_turn is False
 
 
+def test_ever_ready_shot_no_cambia_los_usos_al_empezar_un_combate():
+    """Ever-Ready (10): cada combate empieza con los usos completos.
+
+    Como el sim hace un combate por descanso, la ventaja (iniciativa
+    con los usos ya llenos) es inalcanzable por diseño: se congela aquí
+    y se reabre solo si hay más de un combate por descanso.
+    """
+    _, trait = _arquero(10)
+    trait.arcane_shot_usage.spend()
+    trait.arcane_shot_usage.spend()
+    trait.reset()  # un combate nuevo = un día descansado
+    assert (trait.arcane_shot_usage.uses_left
+            == trait.arcane_shot_usage.uses_max)
+
+
 # --- Decisión única antes de la tirada ---------------------------------------
 
 def test_piercing_y_seeking_estan_en_el_pool():
