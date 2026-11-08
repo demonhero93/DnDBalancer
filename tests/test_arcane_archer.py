@@ -17,9 +17,11 @@ from dnd_sim.rules.classes.fighter import (
     apply_arcane_archer,
 )
 from dnd_sim.rules.classes.fighter.subclasses.arcane_archer import (
+    ARCANE_SHOTS_SIN_TIRADA,
     CurvingShotAction,
 )
 from dnd_sim.rules.conditions import Condition
+from dnd_sim.rules.traits.base import AtaqueSustituido
 from dnd_sim.model.actions import TurnResources
 
 
@@ -133,7 +135,8 @@ def test_kwarg_de_opciones_invalidas_da_value_error():
     apply_fighter(pj, level=3)
     with pytest.raises(ValueError, match="no es una opción de Arcane Shot"):
         apply_arcane_archer(pj, level=3,
-                            arcane_shots=("Piercing Arrow", "Grasping Arrow"))
+                            arcane_shots=("Flecha inventada",
+                                          "Grasping Arrow"))
 
 
 def test_kwarg_con_recuento_equivocado_da_value_error():
@@ -213,9 +216,14 @@ def _disparo(trait, rng, rango=AttackRange.RANGED, target=None, ctx=None):
     if target is None:
         # Las opciones tiran salvaciones: hace falta un combatiente real.
         target = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    # Decisión única antes de la tirada (paso 2b del motor).
+    sustituido = trait.sustituir_ataque(
+        trait.owner, target, atk, rango, ctx=ctx, rng=rng)
+    if sustituido is not None:
+        return sustituido  # Piercing/Seeking: sin daño en el hook
     return trait.extra_attack_damage(
-        trait.owner, target, rango, ctx=ctx, rng=rng,
-        atk=Attack("Arco corto", "1d6", ability="dex", range_type="ranged"),
+        trait.owner, target, rango, ctx=ctx, rng=rng, atk=atk,
     )
 
 
@@ -298,7 +306,13 @@ def test_daño_de_arcane_shot_es_4d6_desde_el_18(monkeypatch):
         return 24
 
     monkeypatch.setattr(aa_mod, "roll_dice", _dado)
-    _, trait = _arquero(level=18)  # pool completo: 6 opciones
+    # Pool de 6 opciones SOLO de impacto (RngSi elegiría la última del
+    # pool completo, que ahora puede ser Piercing/Seeking).
+    _, trait = _arquero(
+        level=18,
+        arcane_shots=("Banishing Arrow", "Beguiling Arrow", "Bursting Arrow",
+                      "Enfeebling Arrow", "Grasping Arrow", "Shadow Arrow"),
+    )
     assert _disparo(trait, _RngSi()) == 24
     assert vistas == ["4d6"]
 
@@ -310,6 +324,111 @@ def test_reset_restaura_los_usos_de_arcane_shot():
     trait.reset()
     assert trait.arcane_shot_usage.uses_left == 2
     assert trait.shot_used_this_turn is False
+
+
+# --- Decisión única antes de la tirada ---------------------------------------
+
+def test_piercing_y_seeking_estan_en_el_pool():
+    assert len(ARCANE_SHOTS) == 8
+    assert "Piercing Arrow" in ARCANE_SHOTS
+    assert "Seeking Arrow" in ARCANE_SHOTS
+    assert set(ARCANE_SHOTS_SIN_TIRADA) == {"Piercing Arrow",
+                                            "Seeking Arrow"}
+
+
+def test_todas_las_opciones_del_pool_son_elegibles():
+    """Con RngSi (última opción) cada una del pool puede salir elegida."""
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    for opcion in ARCANE_SHOTS:
+        shots = tuple([x for x in ARCANE_SHOTS if x != opcion][:5]) + (opcion,)
+        _, trait = _arquero(18, arcane_shots=shots)
+        ctx = SimpleNamespace(combatants=[trait.owner, objetivo], round=1)
+        res = trait.sustituir_ataque(
+            trait.owner, objetivo, atk, AttackRange.RANGED,
+            ctx=ctx, rng=_RngSi())
+        if opcion in ARCANE_SHOTS_SIN_TIRADA:
+            assert isinstance(res, AtaqueSustituido), opcion
+            assert res.motivo == opcion
+        else:
+            assert res is None, opcion
+            assert trait.opcion_pendiente == opcion
+
+
+def test_decision_de_impacto_no_gasta_el_uso_hasta_impactar():
+    _, trait = _arquero(3, arcane_shots=("Grasping Arrow", "Shadow Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[trait.owner, objetivo], round=1)
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    res = trait.sustituir_ataque(
+        trait.owner, objetivo, atk, AttackRange.RANGED, ctx=ctx, rng=_RngSi())
+    assert res is None
+    assert trait.opcion_pendiente == "Shadow Arrow"
+    assert trait.arcane_shot_usage.uses_left == 2  # sin gastar aún
+    assert trait.shot_used_this_turn is False
+
+
+def test_piercing_gasta_el_uso_al_sustituir():
+    _, trait = _arquero(3, arcane_shots=("Grasping Arrow", "Piercing Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[trait.owner, objetivo], round=1)
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    res = trait.sustituir_ataque(
+        trait.owner, objetivo, atk, AttackRange.RANGED, ctx=ctx, rng=_RngSi())
+    assert isinstance(res, AtaqueSustituido)
+    assert res.motivo == "Piercing Arrow"
+    assert trait.arcane_shot_usage.uses_left == 1
+    assert trait.shot_used_this_turn is True
+    assert trait.opcion_pendiente is None
+
+
+def test_sustitucion_sin_elegibles_no_actua_para_piercing():
+    """Pool solo P/S y sin enemigos: None SIN RNG y sin gastar uso."""
+    _, trait = _arquero(3, arcane_shots=("Piercing Arrow", "Seeking Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[trait.owner], round=1)
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    res = trait.sustituir_ataque(
+        trait.owner, objetivo, atk, AttackRange.RANGED,
+        ctx=ctx, rng=_RngExplota())
+    assert res is None
+    assert trait.arcane_shot_usage.uses_left == 2
+
+
+def test_sustitucion_hace_un_solo_par_de_picks():
+    class _Cuenta:
+        def __init__(self):
+            self.n = 0
+
+        def randrange(self, n: int) -> int:
+            self.n += 1
+            return n - 1
+
+    _, trait = _arquero(3, arcane_shots=("Grasping Arrow", "Shadow Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[trait.owner, objetivo], round=1)
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    rng = _Cuenta()
+    res = trait.sustituir_ataque(
+        trait.owner, objetivo, atk, AttackRange.RANGED, ctx=ctx, rng=rng)
+    assert res is None
+    assert trait.opcion_pendiente == "Shadow Arrow"
+    assert rng.n == 2  # «si» + opción: un solo par de picks
+
+
+def test_sustitucion_sin_usos_o_melee_cero_rng():
+    _, trait = _arquero(3, arcane_shots=("Grasping Arrow", "Shadow Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[trait.owner, objetivo], round=1)
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    trait.arcane_shot_usage.uses_left = 0
+    assert trait.sustituir_ataque(
+        trait.owner, objetivo, atk, AttackRange.RANGED,
+        ctx=ctx, rng=_RngExplota()) is None
+    trait.arcane_shot_usage.uses_left = 2
+    assert trait.sustituir_ataque(
+        trait.owner, objetivo, atk, AttackRange.MELEE,
+        ctx=ctx, rng=_RngExplota()) is None
 
 
 # --- Efectos de las opciones (salvaciones y condiciones) ----------------------
@@ -691,6 +810,8 @@ def test_sin_subclase_no_se_ejecuta_codigo_de_arcane_archer(monkeypatch):
 
     monkeypatch.setattr(aa_mod.ArcaneArcherFeatures,
                         "extra_attack_damage", _revienta)
+    monkeypatch.setattr(aa_mod.ArcaneArcherFeatures,
+                        "sustituir_ataque", _revienta)
     monkeypatch.setattr(aa_mod.ArcaneArcherFeatures,
                         "after_attack_roll", _revienta)
     monkeypatch.setattr(aa_mod.ArcaneArcherFeatures,

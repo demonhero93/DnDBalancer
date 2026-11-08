@@ -12,15 +12,21 @@ Decisiones de simulación documentadas:
 - **Arcane Shot**: las opciones conocidas se eligen al crear el PJ con
   ``sample`` del pool :data:`ARCANE_SHOTS` (cuenta según el nivel);
   admite kwarg explícito ``arcane_shots`` validado (patrón
-  ``fighting_style``). Piercing y Seeking quedan fuera del pool: sus
-  ataques sin tirada reemplazarían el flujo de ataque del motor (ver
-  TODO.md).
-- **Arcane Shot** (3): una vez por turno, al impactar un ataque a
-  distancia, ``pick`` «no»/«sí» y después ``pick`` entre las opciones
-  conocidas; se gasta un uso solo al aplicar (sin usos, ya usado en el
-  turno o ataque a cuerpo a cuerpo → cero RNG). El daño extra se suma
-  al del ataque (el motor no separa el tipo del bonus) y pasa de 2d6 a
-  4d6 desde el nivel 18. Decisiones de combate uniformes, sin IA.
+  ``fighting_style``). El pool tiene las 8 opciones: Piercing y Seeking
+  entran (sus ataques sin tirada se resuelven en el punto de
+  sustitución del motor, ver ``sustituir_ataque``).
+- **Arcane Shot** (3): una vez por turno, la decisión es UN solo punto
+  ANTES de la tirada de ataque: ``sustituir_ataque`` (paso 2b de
+  ``attack_roll``) hace ``pick`` «no»/«sí» y después ``pick`` entre las
+  opciones conocidas (sin usos, ya usado en el turno o ataque a cuerpo
+  a cuerpo → cero RNG). Una opción de impacto (Banishing, Beguiling,
+  Bursting, Enfeebling, Grasping, Shadow) se guarda en
+  ``opcion_pendiente`` y se aplica SOLO si el ataque impacta (el uso se
+  gasta al aplicar); Piercing y Seeking reemplazan la tirada: se
+  ejecutan en la sustitución y el uso se gasta entonces. El daño extra
+  de impacto se suma al del ataque (el motor no separa el tipo del
+  bonus) y pasa de 2d6 a 4d6 desde el nivel 18. Decisiones de combate
+  uniformes, sin IA.
 - **Efectos de las opciones** (3): tras el daño, cada opción tira
   salvación con CD 8+PB+mod INT. Banishing (CAR) → Incapacitado 2
   rondas («hasta el final de tu siguiente turno» ≈ duración del
@@ -75,12 +81,12 @@ from .....model.actions import ActionType, CombatAction
 from ....conditions import Condition, apply_condition
 from ....damage import apply_damage_modifiers, inflict_damage
 from ....saves import registrar_resistencia, saving_throw
-from ....traits.base import Trait
+from ....traits.base import AtaqueSustituido, Trait
 from ....usage import ActionUsage, UsageKind
 from ..features import FighterFeatures, _contexto
 
-#: Pool de opciones de Arcane Shot implementadas (XGE). Piercing y
-#: Seeking no están: reemplazan la tirada de ataque (ver TODO.md).
+#: Pool de opciones de Arcane Shot implementadas (XGE): las 8. Piercing
+#: y Seeking se ejecutan en el punto de sustitución (sin tirada).
 ARCANE_SHOTS: tuple[str, ...] = (
     "Banishing Arrow",
     "Beguiling Arrow",
@@ -88,6 +94,15 @@ ARCANE_SHOTS: tuple[str, ...] = (
     "Enfeebling Arrow",
     "Grasping Arrow",
     "Shadow Arrow",
+    "Piercing Arrow",
+    "Seeking Arrow",
+)
+
+#: Opciones que REEMPLAZAN la tirada de ataque (sin d20): se ejecutan en
+#: ``sustituir_ataque`` en lugar de guardarse como ``opcion_pendiente``.
+ARCANE_SHOTS_SIN_TIRADA: tuple[str, ...] = (
+    "Piercing Arrow",
+    "Seeking Arrow",
 )
 
 #: Competencias que da Arcane Archer Lore (XGE: Arcanos o Naturaleza).
@@ -131,6 +146,11 @@ class ArcaneArcherFeatures(Trait):
     arcane_shot_usage: ActionUsage | None = None
     #: ¿Ya se aplicó Arcane Shot en el turno actual? (una vez por turno).
     shot_used_this_turn: bool = False
+    #: Opción de impacto decidida ANTES de la tirada y aún no aplicada:
+    #: solo se gasta el uso si el ataque llega a impactar. Se limpia al
+    #: empezar el turno (decisión caducada).
+    opcion_pendiente: str | None = field(
+        default=None, repr=False, compare=False)
     #: Beguiling Arrow: nombre de la víctima → aliado hechizador. La
     #: borra el propio rasgo cuando el aliado ataca a la víctima.
     beguiling: dict[str, Any] = field(
@@ -146,10 +166,13 @@ class ArcaneArcherFeatures(Trait):
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         # «Una vez por turno»: el límite se reinicia al empezar el turno.
         self.shot_used_this_turn = False
+        # Una pendiente sin impactar no viaja al turno siguiente.
+        self.opcion_pendiente = None
 
     def reset(self) -> None:
         """Un combate nuevo = un día descansado: usos de Arcane Shot llenos."""
         self.shot_used_this_turn = False
+        self.opcion_pendiente = None
         self.beguiling.clear()
         self.curving_atk = None
         self.curving_contra = None
@@ -157,16 +180,19 @@ class ArcaneArcherFeatures(Trait):
             self.arcane_shot_usage.reset()
 
     # --- Arcane Shot (3) ------------------------------------------------------
-    def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
-                            *, crit: bool = False, ctx: Any = None,
-                            rng: Any = None,
-                            atk: Any = None) -> int:
-        """Aplica una opción de Arcane Shot al impactar a distancia.
+    def sustituir_ataque(self, attacker: Any, target: Any, atk: Any,
+                         rango: Any, *, ctx: Any = None,
+                         rng: Any = None) -> Any:
+        """Punto ÚNICO de decisión de Arcane Shot, antes de la tirada.
 
-        Una vez por turno y con usos disponibles; sin usos, sin rng o
-        con ataque a cuerpo a cuerpo → cero RNG y sin efecto. La
-        decisión y la opción son ``pick`` uniforme; el daño extra se
-        suma al del ataque.
+        Lo llama el motor en el paso 2b de ``attack_roll`` (duck-typing).
+        Guards primero (sin usos, ya usado en el turno, pendiente sin
+        resolver, sin rng o ataque a cuerpo a cuerpo → ``None`` SIN RNG).
+        Con elegibles: ``pick`` «no»/«sí» y ``pick`` uniforme entre las
+        opciones conocidas. Piercing/Seeking (solo con enemigos vivos en
+        el pool) se ejecutan aquí y devuelven ``AtaqueSustituido``; las
+        opciones de impacto se guardan en ``opcion_pendiente`` y el uso
+        se gasta SOLO al impactar (``extra_attack_damage``).
         """
         if (attacker is not self.owner
                 or target is None
@@ -174,11 +200,50 @@ class ArcaneArcherFeatures(Trait):
                 or self.arcane_shot_usage is None
                 or not self.arcane_shot_usage.available
                 or self.shot_used_this_turn
+                or self.opcion_pendiente is not None
+                or rng is None):
+            return None
+        elegibles = valid_targets(self.owner, ctx)
+        pool = tuple(
+            o for o in self.opciones_conocidas
+            if o not in ARCANE_SHOTS_SIN_TIRADA or elegibles
+        )
+        if not pool:
+            return None  # sin elegibles: cero RNG
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        opcion = pick(rng, pool)
+        if opcion in ARCANE_SHOTS_SIN_TIRADA:
+            # Reemplaza la tirada: el uso se gasta AHORA (sin d20 ni
+            # after_attack_roll). Daño y salvación: _ejecutar_* (A4/A5).
+            self.arcane_shot_usage.spend()
+            self.shot_used_this_turn = True
+            return AtaqueSustituido(motivo=opcion)
+        self.opcion_pendiente = opcion
+        return None
+
+    def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
+                            *, crit: bool = False, ctx: Any = None,
+                            rng: Any = None,
+                            atk: Any = None) -> int:
+        """Aplica la opción de impacto pendiente al impactar a distancia.
+
+        La decisión ya se tomó en ``sustituir_ataque``; aquí solo se
+        aplica si hay pendiente. Sin pendiente, sin usos, ya usado en el
+        turno, sin rng o ataque a cuerpo a cuerpo → 0 SIN RNG. El daño
+        extra se suma al del ataque.
+        """
+        if (attacker is not self.owner
+                or target is None
+                or rango is not AttackRange.RANGED
+                or self.opcion_pendiente is None
+                or self.arcane_shot_usage is None
+                or not self.arcane_shot_usage.available
+                or self.shot_used_this_turn
                 or rng is None):
             return 0
-        if pick(rng, ("no", "si")) == "no":
-            return 0
-        opcion = pick(rng, tuple(self.opciones_conocidas))
+        opcion = self.opcion_pendiente
+        self.opcion_pendiente = None
         self.arcane_shot_usage.spend()
         self.shot_used_this_turn = True
         dados = "4d6" if self.level >= 18 else "2d6"
@@ -453,5 +518,5 @@ def apply_arcane_archer(pj: Any, level: int | None = None,
 
 
 __all__ = ["ARCANE_ARCHER_CANTRIPS", "ARCANE_ARCHER_SKILLS", "ARCANE_SHOTS",
-           "ArcaneArcherFeatures", "CurvingShotAction",
-           "apply_arcane_archer"]
+           "ARCANE_SHOTS_SIN_TIRADA", "ArcaneArcherFeatures",
+           "CurvingShotAction", "apply_arcane_archer"]
