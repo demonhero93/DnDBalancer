@@ -625,6 +625,19 @@ def test_seeking_respeta_la_resistencia_a_la_fuerza():
     assert objetivo.hp == objetivo.max_hp - 3
 
 
+def test_seeking_sin_elegibles_no_gasta_uso():
+    _, trait = _arquero(3, arcane_shots=("Grasping Arrow",
+                                         "Seeking Arrow"))
+    objetivo = Monster("Blanco", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(combatants=[trait.owner], round=1)
+    atk = Attack("Arco corto", "1d6", ability="dex", range_type="ranged")
+    hecho = trait._ejecutar_seeking(
+        objetivo, atk, AttackRange.RANGED, ctx, _RngExplota())
+    assert hecho is False
+    assert trait.arcane_shot_usage.uses_left == 2
+    assert trait.shot_used_this_turn is False
+
+
 # --- Efectos de las opciones (salvaciones y condiciones) ----------------------
 
 def test_cd_de_arcane_shot_es_8_mas_pb_mas_int():
