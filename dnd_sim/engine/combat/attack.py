@@ -173,6 +173,46 @@ def _bonus_defensivo(target: Any, attacker: Any, rango: Any, total: int,
     return total_bonus
 
 
+def daño_base_arma(attacker: Combatant, target: Combatant, atk: Attack,
+                   rango: Any, *, crit: bool, ctx: Any, rng: Any,
+                   log: list[str] | None = None) -> int:
+    """Daño bruto del arma de un golpe, antes de resistencias.
+
+    Extraído de :func:`attack_roll` sin cambiar el orden de las llamadas
+    a ``roll_dice`` ni al RNG. Incluye los dados (con piso GWF si lo
+    hay), el mod de característica, el bonus de tamaño, los bonus de
+    rasgos (``extra_attack_damage``) y la mitigación de Enfeebling. Lo
+    usan el camino normal del ataque y las opciones Piercing/Seeking
+    («daño como si hubiera impactado»).
+    """
+    raw_dmg = 0
+    if str(getattr(atk, "damage", "") or "").strip() not in ("", "0"):
+        # Un ataque sin daño (p. ej. la Telaraña) no tira dados. Con la
+        # condición ENLARGADA se usan los dados agrandados de la ficha
+        # (o se añade el +1d4 del hechizo Enlarge/Reduce).
+        dados = _dados_de_ataque(attacker, atk)
+        piso = _piso_dados_rasgos(attacker, atk, rango, ctx, rng)
+        # Sin piso se llama igual que siempre (compatibilidad con los
+        # roll_dice parcheados en los tests y cero cambio de resultado).
+        dados_dmg = (roll_dice(dados, rng, crit=crit, floor=piso)
+                     if piso else roll_dice(dados, rng, crit=crit))
+        raw_dmg = max(0, dados_dmg + attacker.dmg_bonus(atk))
+        raw_dmg += _bonus_de_tamano(attacker, atk, rng)
+        # Daño extra de los rasgos del atacante (p. ej. Martial
+        # Advantage): entra en el bruto, así que la inmunidad y la
+        # resistencia del objetivo también le afectan.
+        raw_dmg += _bonus_de_rasgos(attacker, target, rango, crit,
+                                    ctx, rng, log, atk=atk)
+        # Enfeebling Arrow (Arcane Archer): mientras la marca siga
+        # vigente, el daño de los ataques con arma del afectado va a
+        # la mitad (los ataques mágicos —hechizos— quedan fuera).
+        if (raw_dmg > 0 and not getattr(atk, "magical", False)
+                and attacker.state.enfeeble_mitiga(
+                    getattr(ctx, "round", None))):
+            raw_dmg = raw_dmg // 2
+    return raw_dmg
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
                 verbose: bool = False, ctx: Any = None,
@@ -266,31 +306,8 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         log.append(f"  {attacker.name} deja de estar invisible (ataca)")
     log_enabled = log is not None
     if hit:
-        raw_dmg = 0
-        if str(getattr(atk, "damage", "") or "").strip() not in ("", "0"):
-            # Un ataque sin daño (p. ej. la Telaraña) no tira dados. Con la
-            # condición ENLARGED se usan los dados agrandados de la ficha
-            # (o se añade el +1d4 del hechizo Enlarge/Reduce).
-            dados = _dados_de_ataque(attacker, atk)
-            piso = _piso_dados_rasgos(attacker, atk, rango, ctx, rng)
-            # Sin piso se llama igual que siempre (compatibilidad con los
-            # roll_dice parcheados en los tests y cero cambio de resultado).
-            dados_dmg = (roll_dice(dados, rng, crit=crit, floor=piso)
-                         if piso else roll_dice(dados, rng, crit=crit))
-            raw_dmg = max(0, dados_dmg + attacker.dmg_bonus(atk))
-            raw_dmg += _bonus_de_tamano(attacker, atk, rng)
-            # Daño extra de los rasgos del atacante (p. ej. Martial
-            # Advantage): entra en el bruto, así que la inmunidad y la
-            # resistencia del objetivo también le afectan.
-            raw_dmg += _bonus_de_rasgos(attacker, target, rango, crit,
-                                        ctx, rng, log, atk=atk)
-            # Enfeebling Arrow (Arcane Archer): mientras la marca siga
-            # vigente, el daño de los ataques con arma del afectado va a
-            # la mitad (los ataques mágicos —hechizos— quedan fuera).
-            if (raw_dmg > 0 and not getattr(atk, "magical", False)
-                    and attacker.state.enfeeble_mitiga(
-                        getattr(ctx, "round", None))):
-                raw_dmg = raw_dmg // 2
+        raw_dmg = daño_base_arma(attacker, target, atk, rango, crit=crit,
+                                 ctx=ctx, rng=rng, log=log)
         dt = atk.damage_type
         # Única fuente de inmunidad/resistencia/vulnerabilidad (y de la
         # resistencia por estar petrificado): la regla se aplicaba **dos
