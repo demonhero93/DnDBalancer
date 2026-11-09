@@ -1010,11 +1010,108 @@ ARCANE ARCHER (2026-11-06)
     .`` → 3475 nodos, 12639 aristas, 101 comunidades; backup
     ``graphify-out/2026-11-07/``. Commit final con grafo.
 
+ARCANE ARCHER: PIERCING Y SEEKING (2026-11-08)
+  - (1) Helper de daño del arma: en ``engine/combat/attack.py``,
+    ``daño_base_arma(attacker, target, atk, rango, *, crit, ctx, rng,
+    log)`` extrae sin cambios el bloque de ``raw_dmg`` de
+    ``attack_roll`` (dados con piso GWF, ``dmg_bonus``, bonus de
+    tamaño, bonus de rasgos y mitigación Enfeebling; ``raw_dmg=0`` si
+    el arma sin daño). El camino normal de ataque la llama con el
+    mismo orden de ``roll_dice``/RNG → cero cambio de resultados.
+    Suite completa: 1168 passed (0 fallos). Commit ba5c843.
+  - (2) Punto de sustitución: ``AtaqueSustituido(motivo)`` en
+    ``rules/traits/base.py`` (dataclass, sin HOOK_NAMES ni reexport en
+    fachada) y helper ``_sustituir_ataque`` en ``engine/combat/attack.py``
+    (duck-typing patrón ``resolver_maestria``: itera los rasgos del
+    atacante y llama ``sustituir_ataque(attacker, target, atk, rango,
+    ctx=, rng=)`` si lo definen; primer resultado no-None). En
+    ``attack_roll``, paso 2b tras ``_actualizar_distancia`` y antes de
+    ``attack_modifiers``: si hay resultado se devuelve SIN d20, sin
+    ``after_attack_roll`` ni maestrías; sin rasgos o ``None`` → flujo
+    idéntico sin RNG. Firma de ``attack_roll`` → ``-> Any``. Tests
+    nuevos ``tests/test_sustituir_ataque.py`` (3): sin rasgo sin RNG,
+    ``None`` conserva PV/log con la misma semilla, resultado con RNG que
+    revienta. Suite completa: 1171 passed (0 fallos).
+    Commit d0524ac.
+  - (3) Decisión única ANTES de la tirada + pool de 8 opciones: en
+    ``arcane_archer.py``, ``ARCANE_SHOTS`` gana «Piercing Arrow» y
+    «Seeking Arrow» al final (8) y la constante
+    ``ARCANE_SHOTS_SIN_TIRADA``. Campo ``opcion_pendiente`` (se limpia en
+    ``on_turn_start`` y ``reset``). Método ``sustituir_ataque`` (punto
+    de decisión del paso 2b): guards primero (owner, rango RANGED, usos,
+    una vez por turno, pendiente sin resolver, rng → ``None`` SIN RNG);
+    pool = conocidas filtrando P/S solo con enemigos vivos
+    (``valid_targets``, cero RNG; pool vacío → ``None`` sin RNG); ``pick``
+    «no»/«sí» + ``pick`` de la opción; P/S → gastan el uso AHORA y
+    devuelven ``AtaqueSustituido`` (daño: pasos A4/A5); impacto → se
+    guarda en ``opcion_pendiente``. ``extra_attack_damage`` reescrito:
+    solo aplica la pendiente (gasto al impactar, 2d6/4d6, log, efecto);
+    sin pendiente → 0 SIN RNG. **Tests existentes tocados (cambios
+    previstos, solo en test_arcane_archer.py)**: (a)
+    ``test_kwarg_de_opciones_invalidas_da_value_error`` usaba
+    «Piercing Arrow» como inválido → ahora válido → «Flecha inventada»;
+    (b) ``test_daño_de_arcane_shot_es_4d6_desde_el_18``: pool completo
+    ahora 8 y RngSi elegiría P/S → fija las 6 opciones de impacto;
+    (c) helper ``_disparo`` llama ``sustituir_ataque`` antes de
+    ``extra_attack_damage`` (mismo consumo de RNG: 2 randrange en el
+    mismo orden que antes); (d) ``test_sin_subclase...`` añade el espía
+    ``sustituir_ataque`` (aditivo). Ningún test de otra clase cambia.
+    Tests nuevos (7): pool 8, equiprobabilidad de las 8 con RngSi,
+    impacto no gasta hasta impactar, P/S gastan al sustituir, sin
+    elegibles P/S sin RNG, un solo par de picks, sin usos/melee sin RNG.
+    Suite completa: 1178 passed (0 fallos). Commit c97ce88.
+  - (4) Piercing Arrow sin tirada de ataque: en ``arcane_archer.py``,
+    ``_ejecutar_piercing`` (objetivos = ``valid_targets``, mismo convenio
+    de fuego amigo que Bursting; ``k`` con ``pick`` 1-3 limitado por los
+    elegibles; sin elegibles → ``False`` SIN gastar), ``_danar_con_salvacion``
+    (daño del arma con ``daño_base_arma`` UNA vez + extra 1d6/2d6 UNA vez;
+    cada objetivo tira su salvación DES con ``apply_save_damage`` —misma
+    función que los hechizos, mitad antes de resistencias, sin cobertura—
+    y el extra se mitiga con la MISMA tirada en tipo aparte; arma =
+    ``atk.magical``, extra = mágico) y ``_ctx_con_rng``/``_CtxConRng``
+    (portador que aporta ``rng`` cuando el ctx de test no lo trae; el
+    motor ya lo lleva). P/S pasan a gastar el uso al ejecutarse (defensa
+    de elegibles delante del gasto). Docstring de módulo con el detalle.
+    **Test existente tocado (explicado ANTES en chat)**:
+    ``tests/test_fighter.py::test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter``
+    falló (CA 13 vs 12): dependía del estado global de
+    ``_RNG_CREACION`` (Random(0) avanza con cada PJ del suite) y los
+    tests nuevos A3/A4 de ``_arquero`` (``test_arcane_archer.py`` corre
+    antes) desplazaron la secuencia → los dos draws consecutivos daban
+    estilos distintos. Arreglo: reseed con ``monkeypatch`` antes de cada
+    apply (patrón del test equivalente de Arcane Archer); intención del
+    test intacta, producción sin cambios. Tests nuevos A4 (11):
+    Piercing fallo=arma+1d6 / éxito mitad (7 = (6+2)//2 + 6//2), extra
+    una sola vez con 2 objetivos, k uniforme 1 (``_RngK1``) y k limitado
+    por elegibles, atacante nunca objetivo, sin elegibles sin gasto,
+    salvación sin cobertura (bonus = mod DES, una tirada), resistencia
+    perforante; Seeking fallo/mitad/2d6 nivel 18/resistencia a fuerza.
+    Suite completa: 1190 passed (0 fallos). Commit b4c0aa3.
+  - (5) Seeking Arrow: el código (``_ejecutar_seeking`` + tests de
+    fallo/mitad/2d6/resistencia) entró en el commit b4c0aa3 junto con
+    Piercing (comparten ``_danar_con_salvacion``: misma salvación DES,
+    mismo extra en tipo aparte; «ubicación»/«sin camino» = dato sin
+    efecto, ya documentado en el docstring). Esta casilla solo añade el
+    test simétrico ``test_seeking_sin_elegibles_no_gasta_uso`` (defensa
+    interna: ``False`` con RNG que revienta y sin gastar). Suite
+    completa: 1191 passed (0 fallos). Commit bbf714e.
+  - (6) Ever-Ready Shot cerrado como decisión de diseño: test
+    ``test_ever_ready_shot_no_cambia_los_usos_al_empezar_un_combate``
+    (gasta los usos de nivel 10, ``reset`` = combate nuevo → usos
+    completos; reabrir solo si hay >1 combate por descanso), docstring
+    de ``arcane_archer.py`` con la condición de reapertura y TODO.md
+    reescrito: fuera Piercing/Seeking (ya implementados) y fuera
+    Ever-Ready de pendientes; quedan SOLO efectos parciales con motivo
+    (Grasping/Shadow/Banishing/ubicación de Seeking) más la
+    aproximación de Enfeebling. Fecha de revisión de TODO → 2026-11-08.
+    Suite completa: 1192 passed (0 fallos). Commit c614c41.
+
 ESTADO ACTUAL
-   - 82 módulos en dnd_sim/; tests/ con 51 ficheros y 18589 líneas
-     (1168 tests en verde, medido 2026-11-07).
+   - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas
+     (1192 tests en verde, medido 2026-11-08).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
-     subclases bárbaro y Arcane Archer del fighter).
+     subclases bárbaro y Arcane Archer del fighter, con las 8 opciones
+     de Arcane Shot: Piercing/Seeking sin tirada vía sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities

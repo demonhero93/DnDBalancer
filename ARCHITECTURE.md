@@ -22,10 +22,10 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 | `dnd_sim/rules/traits/` | 6 | 1268 | Los rasgos de monstruo (paquete, ver abajo). |
 | `dnd_sim/rules/spells/` | 5 | 915 | Hechizos (paquete). |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
-| `dnd_sim/engine/combat/` | 3 | 926 | El motor: tirada de ataque y bucle de rondas (paquete). |
+| `dnd_sim/engine/combat/` | 3 | 975 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
 | `dnd_sim/__init__.py` | 1 | 184 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **82** | **18141** | + `tests/` con 51 ficheros y 18589 líneas (1168 tests). |
+| **Total** | **82** | **18390** | + `tests/` con 52 ficheros y 19034 líneas (1192 tests). |
 
 ## Reglas de dependencia
 
@@ -61,7 +61,7 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (25 hooks, incl. `after_failed_check`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
 | `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the… y Arcane Archer). |
-| `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos, daño, represalias) e iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
+| `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
 
@@ -112,11 +112,28 @@ puede romper por sí sola. Por eso sí pueden apuntar hacia arriba
 violaciones de capa. El criterio (solo nivel de módulo) está congelado en
 `tests/test_arquitectura.py`.
 
+## Arcane Archer (XGE)
+
+- **Punto de sustitución del ataque**: `sustituir_ataque` en el paso 2b
+  de `attack_roll` (patrón `resolver_maestria`, duck-typing, NO hook en
+  `HOOK_NAMES`). Sin rasgos o con `None` → flujo idéntico sin RNG; con
+  resultado (`rules.traits.base.AtaqueSustituido`) → se devuelve sin
+  d20, sin `after_attack_roll` ni maestrías. Lo usan Piercing/Seeking.
+- **Helper de daño**: `daño_base_arma` en `engine/combat/attack.py`
+  extrae el daño bruto del arma (misma función para un impacto normal
+  y para «daño como si hubiera impactado»), sin cambiar el orden de
+  `roll_dice`/RNG.
+- **Ever-Ready Shot (10) es una decisión de diseño, NO deuda**: cada
+  combate empieza con los usos de Arcane Shot completos, así que su
+  ventaja es inalcanzable por diseño. Congelada en
+  `test_ever_ready_shot_no_cambia_los_usos_al_empezar_un_combate`;
+  reabrir solo si el sim modela más de un combate por descanso.
+
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1168 tests
+pytest                              # 1192 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

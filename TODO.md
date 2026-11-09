@@ -75,7 +75,7 @@ Plan de sesión (una casilla = un commit):
   DES; ubicación/alcance = dato sin efecto (`# TODO`).
 - [x] B — Ever-Ready Shot como decisión de diseño (test que lo
   congela) y TODO.md solo con pendientes reales de Arcane Archer.
-- [ ] Docs — ARCHITECTURE.md (punto de sustitución, helper, recuentos,
+- [x] Docs — ARCHITECTURE.md (punto de sustitución, helper, recuentos,
   Ever-Ready) + PASOS-ANTERIORES.txt (bloque y ESTADO ACTUAL).
 - [ ] Verificación + grafo (`pytest` arquitectura, suite, `capas.py`,
   `graphify update .`, commit final).
