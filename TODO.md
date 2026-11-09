@@ -77,7 +77,7 @@ Plan de sesión (una casilla = un commit):
   congela) y TODO.md solo con pendientes reales de Arcane Archer.
 - [x] Docs — ARCHITECTURE.md (punto de sustitución, helper, recuentos,
   Ever-Ready) + PASOS-ANTERIORES.txt (bloque y ESTADO ACTUAL).
-- [ ] Verificación + grafo (`pytest` arquitectura, suite, `capas.py`,
+- [x] Verificación + grafo (`pytest` arquitectura, suite, `capas.py`,
   `graphify update .`, commit final).
 
 ## Fighter: cómo añadir una subclase

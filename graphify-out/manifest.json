@@ -702,9 +702,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/engine/combat/attack.py": {
-    "mtime": 1794087826.6950195,
-    "seen": 1794090371.6237166,
-    "ast_hash": "9742d29afac1277261451741d30cac81",
+    "mtime": 1794160086.2453911,
+    "seen": 1794210671.077231,
+    "ast_hash": "70c84ba69cb896fdd89fc8934a4c4744",
     "semantic_hash": ""
   },
   "dnd_sim/engine/combat/encounter.py": {
@@ -840,9 +840,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/traits/base.py": {
-    "mtime": 1793976262.7395253,
-    "seen": 1793978374.5338938,
-    "ast_hash": "a0feb87c1dc8fe849887131d7a5be668",
+    "mtime": 1794160069.579901,
+    "seen": 1794210671.077231,
+    "ast_hash": "d608c7d58db2b731fd4b2132d28172ea",
     "semantic_hash": ""
   },
   "dnd_sim/rules/traits/defense.py": {
@@ -888,9 +888,9 @@
     "semantic_hash": ""
   },
   "ARCHITECTURE.md": {
-    "mtime": 1794090140.4140792,
-    "seen": 1794090371.6237166,
-    "ast_hash": "c6be2402c4f71d8ee4b04bb6fd8b8044",
+    "mtime": 1794210542.4960947,
+    "seen": 1794210671.077231,
+    "ast_hash": "b9d28bfe21dbc5f16d10a1bbeed3984f",
     "semantic_hash": ""
   },
   "tests/test_death.py": {
@@ -1074,9 +1074,9 @@
     "semantic_hash": ""
   },
   "PASOS-ANTERIORES.txt": {
-    "mtime": 1794090287.5988994,
-    "seen": 1794090371.6237166,
-    "ast_hash": "595d9721c252f543fed977079f9e0cb2",
+    "mtime": 1794210586.8406715,
+    "seen": 1794210671.077231,
+    "ast_hash": "10fab2727820c013244309ba85f70dda",
     "semantic_hash": ""
   },
   "REGLAS-DEL-PROYECTO.txt": {
@@ -1170,9 +1170,9 @@
     "semantic_hash": ""
   },
   "TODO.md": {
-    "mtime": 1794090075.287176,
-    "seen": 1794090371.6237166,
-    "ast_hash": "ae73e17f6fb89e2a528f52e9f6035fd6",
+    "mtime": 1794210586.851487,
+    "seen": 1794210671.077231,
+    "ast_hash": "c2ec44de6aebc3b41ebaa9a6971ca792",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/berserker.py": {
@@ -1302,9 +1302,9 @@
     "semantic_hash": ""
   },
   "tests/test_fighter.py": {
-    "mtime": 1793981366.7042928,
-    "seen": 1794090371.6237166,
-    "ast_hash": "687195a49d5c0e7ad542f371681977bd",
+    "mtime": 1794161491.9162028,
+    "seen": 1794210671.077231,
+    "ast_hash": "fa0e0ecd9f935fd6bbe1720ac4f0d085",
     "semantic_hash": ""
   },
   "tests/test_zealot.py": {
@@ -1326,15 +1326,27 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/subclasses/arcane_archer.py": {
-    "mtime": 1794089287.0280254,
-    "seen": 1794090371.6237166,
-    "ast_hash": "ca1b7892e8f2bb3559ba26d45ee68dbe",
+    "mtime": 1794161790.893669,
+    "seen": 1794210671.077231,
+    "ast_hash": "f2dbe4a255f0aa3320b33d2dfaf56c19",
     "semantic_hash": ""
   },
   "tests/test_arcane_archer.py": {
-    "mtime": 1794089820.2855103,
-    "seen": 1794090371.6237166,
-    "ast_hash": "7a27240719d091453b953f0473d3c074",
+    "mtime": 1794161790.893669,
+    "seen": 1794210671.077231,
+    "ast_hash": "8fd8e9c56507799250152781546969e6",
+    "semantic_hash": ""
+  },
+  "tests/test_sustituir_ataque.py": {
+    "mtime": 1794160150.5842326,
+    "seen": 1794210671.077231,
+    "ast_hash": "c83e5d5c081a9a207b6d964cbc99424d",
+    "semantic_hash": ""
+  },
+  "ARGUMENTOS-CLI.md": {
+    "mtime": 1794157175.6491032,
+    "seen": 1794210671.077231,
+    "ast_hash": "f524ae3b99e60fe68ef11a194a488fcb",
     "semantic_hash": ""
   }
 }

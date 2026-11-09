@@ -1105,6 +1105,19 @@ ARCANE ARCHER: PIERCING Y SEEKING (2026-11-08)
     (Grasping/Shadow/Banishing/ubicación de Seeking) más la
     aproximación de Enfeebling. Fecha de revisión de TODO → 2026-11-08.
     Suite completa: 1192 passed (0 fallos). Commit c614c41.
+  - (7) Docs y verificación final: ARCHITECTURE.md (fila engine/combat
+    con ``daño_base_arma`` y el punto de sustitución; recuentos 82
+    módulos / 18390 líneas / tests 52 ficheros / 19034 líneas / 1192
+    tests; sección «Arcane Archer (XGE)» con el punto de sustitución,
+    el helper y la decisión de Ever-Ready); PASOS ESTADO ACTUAL
+    actualizado (mismos recuentos, fecha 2026-11-08, nota de las 8
+    opciones) y casillas del plan. Commit 02ee052. Verificación:
+    ``pytest tests/test_arquitectura.py`` → 3 passed; suite completa →
+    1192 passed (0 fallos); ``python tools/capas.py``
+    (PYTHONIOENCODING=utf-8) → 1 violación conocida
+    ``model.combatant → rules.conditions``; ``graphify update .`` →
+    3563 nodos, 12939 aristas, 110 comunidades; backup
+    ``graphify-out/2026-11-09/``. Commit final con grafo.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas
