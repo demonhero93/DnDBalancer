@@ -89,7 +89,7 @@ Plan de sesión (una casilla = un commit):
   Student of War (habilidad con `pick`) y Know Your Enemy (dato); tests.
 - [x] A3. Punto de decisión único por ataque (duck-typing desde `attack.py`),
   gasto de dado al ejecutar, una maniobra por ataque, Relentless; tests.
-- [ ] A4. Maniobras de impacto con daño y salvación (Disarming, Goading,
+- [x] A4. Maniobras de impacto con daño y salvación (Disarming, Goading,
   Lunging, Maneuvering, Menacing, Pushing, Trip); tests.
 - [ ] A5. Marcas Distracting / Goading / Feinting en `CombatState`; tests.
 - [ ] A6. Precision Attack y Sweeping Attack; tests.

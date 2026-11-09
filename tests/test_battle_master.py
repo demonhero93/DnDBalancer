@@ -280,7 +280,7 @@ def _completa(elegidas: tuple, level: int) -> tuple:
     """Rellena las maniobras pedidas hasta el recuento del nivel."""
     elegidas = list(elegidas)
     resto = [m for m in BATTLE_MASTER_MANEUVERS if m not in elegidas]
-    falta = maneuvers_known_count(level) - len(elegidas)
+    falta = max(0, maneuvers_known_count(level) - len(elegidas))
     return tuple(elegidas + resto[:falta])
 
 
@@ -452,3 +452,128 @@ def test_relentless_el_dado_es_siempre_d8(monkeypatch):
         trait.owner, objetivo, AttackRange.MELEE, ctx=ctx, rng=_RngSi(),
         atk=Attack("Espada larga", "1d8", ability="str"))
     assert vistas == ["1d8"]  # nivel 18: dado d12, Relentless tira d8
+
+
+# --- Maniobras con salvación (A4) ----------------------------------------------
+
+class _RngFalla:
+    """«si» a la decisión, d20 siempre 1 (salvación fallida)."""
+
+    def randrange(self, n: int) -> int:
+        return n - 1
+
+    def random(self) -> float:
+        return 1.0
+
+    def randint(self, a: int, b: int) -> int:
+        return a
+
+
+def _ejecuta(trait, target, ctx, rng, opcion,
+             rango=AttackRange.MELEE) -> int:
+    """Ejecuta ``opcion`` directamente (decisión ya tomada)."""
+    trait.maniobra_pendiente = opcion
+    return trait.extra_attack_damage(
+        trait.owner, target, rango, ctx=ctx, rng=rng,
+        atk=Attack("Espada larga", "1d8", ability="str"))
+
+
+def _tiene(target, cond) -> bool:
+    return bool(target.conditions.has(cond))
+
+
+def test_menacing_attack_asusta_si_falla_la_salvacion_de_sabiduria():
+    from dnd_sim.rules.conditions import Condition
+
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Menacing Attack",))
+    daño = _ejecuta(trait, objetivo, ctx, _RngFalla(), "Menacing Attack")
+    assert daño > 0
+    assert _tiene(objetivo, Condition.FRIGHTENED)
+
+
+def test_menacing_attack_no_asusta_si_pasa_la_salvacion():
+    from dnd_sim.rules.conditions import Condition
+
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Menacing Attack",))
+    daño = _ejecuta(trait, objetivo, ctx, _RngSi(), "Menacing Attack")
+    assert daño > 0
+    assert not _tiene(objetivo, Condition.FRIGHTENED)
+
+
+def test_goading_attack_marca_al_objetivo_si_falla_la_salvacion():
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Goading Attack",))
+    _ejecuta(trait, objetivo, ctx, _RngFalla(), "Goading Attack")
+    assert objetivo.state.goading == {trait.owner.name: 3}  # ronda 1 + 2
+
+
+def test_goading_attack_no_marca_si_pasa_la_salvacion():
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Goading Attack",))
+    _ejecuta(trait, objetivo, ctx, _RngSi(), "Goading Attack")
+    assert objetivo.state.goading == {}
+
+
+def test_trip_attack_derriba_si_es_grande_o_menor():
+    from dnd_sim.rules.conditions import Condition
+
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Trip Attack",))
+    assert objetivo.size == "medium"
+    daño = _ejecuta(trait, objetivo, ctx, _RngFalla(), "Trip Attack")
+    assert daño > 0
+    assert _tiene(objetivo, Condition.PRONE)
+
+
+def test_trip_attack_no_derriba_si_pasa_la_salvacion():
+    from dnd_sim.rules.conditions import Condition
+
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Trip Attack",))
+    _ejecuta(trait, objetivo, ctx, _RngSi(), "Trip Attack")
+    assert not _tiene(objetivo, Condition.PRONE)
+
+
+def test_trip_attack_no_tira_salvacion_contra_un_objetivo_enorme():
+    from dnd_sim.rules.conditions import Condition
+
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Trip Attack",))
+    objetivo.size = "huge"
+    daño = _ejecuta(trait, objetivo, ctx, _RngFalla(), "Trip Attack")
+    # Con salvación, el d20=1 derribaría; sin ella no hay PRONE.
+    assert daño > 0
+    assert not _tiene(objetivo, Condition.PRONE)
+
+
+def test_disarming_attack_no_altera_el_combate_mas_que_el_dano():
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Disarming Attack",))
+    daño = _ejecuta(trait, objetivo, ctx, _RngFalla(), "Disarming Attack")
+    assert daño > 0
+    assert objetivo.hp == objetivo.max_hp  # el daño lo aplica el motor
+    assert objetivo.conditions.instances == []
+    assert objetivo.state.goading == {}
+
+
+def test_efectos_sin_implementacion_no_alteran_el_combate():
+    _, trait, objetivo, ctx = _atacado(
+        level=7,
+        maneuvers=("Disarming Attack", "Pushing Attack", "Maneuvering Attack",
+                   "Lunging Attack"))
+    total = 0
+    for opcion in ("Disarming Attack", "Pushing Attack",
+                   "Maneuvering Attack", "Lunging Attack"):
+        total += _ejecuta(trait, objetivo, ctx, _RngFalla(), opcion)
+    assert total > 0  # cada maniobra aporta su dado (el motor lo suma al golpe)
+    assert objetivo.conditions.instances == []
+    assert objetivo.state.goading == {}
+    assert objetivo.state.at_range is False  # sin movimiento/empuje
+    assert objetivo.alive
+    assert trait.dados_restantes == 1  # 5 dados en nivel 7 → 4 gastos
+
+
+def test_el_dano_de_la_maniobra_se_suma_una_sola_vez():
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Menacing Attack",))
+    primera = _ejecuta(trait, objetivo, ctx, _RngFalla(), "Menacing Attack")
+    assert primera > 0
+    assert trait.dados_restantes == 3
+    segunda = trait.extra_attack_damage(
+        trait.owner, objetivo, AttackRange.MELEE, ctx=ctx,
+        rng=_RngFalla(), atk=Attack("Espada larga", "1d8", ability="str"))
+    assert segunda == 0  # sin pendiente: no se vuelve a aplicar
+    assert trait.dados_restantes == 3

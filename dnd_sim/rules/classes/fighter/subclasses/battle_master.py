@@ -24,6 +24,12 @@ Decisiones de simulación documentadas:
   (sin RNG si nivel < 15 o ya usado este turno); si es «sí» se tira
   1d8 —siempre d8, aunque el dado del PJ sea mayor— y NO se gasta
   ningún dado. El flag se reinicia en ``on_turn_start``.
+- **Maniobras con salvación** (3): CD = 8 + PB + max(mod FUE, mod DES);
+  Menacing (SAB) → Asustado 2 rondas; Trip (FUE, solo Grande o menor)
+  → PRONE con el código de Topple; Goading (SAB) → marca en el estado
+  del afectado; Disarming/Pushing (FUE) → solo log (objeto/empuje sin
+  modelar); Distracting/Feinting son marcas (ver arriba) y
+  Lunging/Maneuvering son solo daño.
 - Los efectos sin movimiento/posiciones/objetos (empuje, objeto
   soltado, alcance, movimiento del aliado) son dato sin efecto
   (``# TODO``): solo daño y salvación. Bait and Switch y Evasive
@@ -51,14 +57,28 @@ from .....core.classes import (
 from .....core.dice import roll_dice
 from .....core.enums import AttackRange
 from .....core.log import log_line as _log_line
+from .....core.proficiency import proficiency_bonus
 from .....core.randomness import pick, sample
 from .....core.targeting import valid_targets
+from ....conditions import Condition, EscapeCheck, apply_condition
+from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ..features import FighterFeatures
 
 #: RNG con semilla fija para Student of War y maniobras cuando no pasa
 #: ``rng``: crea el personaje siempre igual (reproducible).
 _RNG_CREACION = random.Random(0)
+
+#: Orden de tamaños PHB (límite de Trip: Grande o menor; patrón utility).
+_TAMANOS = ("tiny", "small", "medium", "large", "huge", "gargantuan")
+
+
+def _orden_tamano(combatiente: Any) -> int:
+    """Posición del tamaño del combatiente (desconocido = medium)."""
+    tamaño = str(getattr(combatiente, "size", None) or "medium").strip().lower()
+    if tamaño not in _TAMANOS:
+        return _TAMANOS.index("medium")
+    return _TAMANOS.index(tamaño)
 
 #: Maniobras que se ejecutan al impactar (punto de decisión único).
 #: Precision ataca el fallo (A6) y Feinting es acción bonus (A5).
@@ -230,12 +250,76 @@ class BattleMasterFeatures(Trait):
             valor = int(roll_dice(f"1d{self.dados_lados}", rng, crit=crit))
         if gastar:
             self.dados_restantes -= 1
-        # A4: salvaciones y condiciones con ``valor`` ya tirado.
-        # A5: marcas Distracting/Goading.
+        # A5: marcas Distracting/Goading (Goading se MARCA en su rama de
+        # salvación; su consumo vive en consumir_marcas).
         # A6: Sweeping reparte ``valor`` al segundo objetivo (0 propio).
         sufijo = "" if gastar else " (Relentless: sin gastar dado)"
         _log_line(ctx, f"Battle Master ({opcion}): +{valor} de daño{sufijo}")
+        self._efecto_de_maniobra(opcion, target, ctx, rng)
         return valor
+
+    # --- Salvaciones y condiciones de las maniobras (4) ------------------------
+    def _cd(self) -> int:
+        """CD de las maniobras: 8 + PB + max(mod FUE, mod DES)."""
+        owner = self.owner
+        if owner is None:
+            return 8
+        mod = max(int(owner.abilities.mod("str")),
+                  int(owner.abilities.mod("dex")))
+        return 8 + proficiency_bonus(self.level) + mod
+
+    def _efecto_de_maniobra(self, opcion: str, target: Any, ctx: Any,
+                            rng: Any) -> None:
+        """Salvación y efecto de la maniobra ejecutada (tras el dado).
+
+        Cada rama tira su propia salvación con la CD del rasgo; el dado
+        de superioridad ya está tirado (``extra_attack_damage``) y no se
+        vuelve a tirar. Efectos sin implementación (objeto soltado,
+        empuje) son solo log + ``# TODO``: no alteran el combate.
+        Lunging/Maneuvering son solo daño (sin alcance ni movimiento).
+        """
+        if opcion == "Disarming Attack":
+            sr = saving_throw(target, "str", self._cd(), rng)
+            registrar_resistencia(ctx, target, sr)
+            if not sr.success:
+                # TODO: el sim no modela objetos: solo la salvación.
+                _log_line(ctx, f"{getattr(target, 'name', target)} suelta "
+                               f"un objeto (dato sin efecto)")
+        elif opcion == "Goading Attack":
+            sr = saving_throw(target, "wis", self._cd(), rng)
+            registrar_resistencia(ctx, target, sr)
+            ronda = getattr(ctx, "round", None)
+            estado = getattr(target, "state", None)
+            if not sr.success and ronda is not None and estado is not None:
+                # shortcut: caduca a las 2 rondas («hasta el final de tu
+                # siguiente turno»); la desventaja vive en el SUJETO y se
+                # consume en consumir_marcas (A5).
+                estado.goading[self.owner.name] = ronda + 2
+        elif opcion == "Menacing Attack":
+            sr = saving_throw(target, "wis", self._cd(), rng)
+            registrar_resistencia(ctx, target, sr)
+            if not sr.success:
+                # «Hasta el final de tu siguiente turno» ≈ 2 rondas del
+                # afectado (mismo criterio que Banishing/Intimidating).
+                apply_condition(target, Condition.FRIGHTENED, ctx,
+                                source=self.owner, duration_rounds=2)
+        elif opcion == "Pushing Attack":
+            sr = saving_throw(target, "str", self._cd(), rng)
+            registrar_resistencia(ctx, target, sr)
+            if not sr.success:
+                # TODO: el empuje de 15 ft no está modelado (sin movimiento).
+                _log_line(ctx, f"{getattr(target, 'name', target)} es "
+                               f"empujado 15 ft (dato sin efecto)")
+        elif opcion == "Trip Attack":
+            if _orden_tamano(target) <= _TAMANOS.index("large"):
+                sr = saving_throw(target, "str", self._cd(), rng)
+                registrar_resistencia(ctx, target, sr)
+                if not sr.success:
+                    apply_condition(
+                        target, Condition.PRONE, ctx, source=self.owner,
+                        escape=EscapeCheck(abilities=("str", "dex"), dc=10,
+                                           consumes_action=False))
+                # Enorme o mayor: sin salvación (solo daño).
 
 
 def apply_battle_master(pj: Any, level: int | None = None,

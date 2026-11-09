@@ -290,6 +290,8 @@ class Combatant:
             self.state.maestria_desventaja.clear()
             # Marca de Enfeebling (Arcane Archer): un combate nuevo sin ella.
             self.state.enfeeble_hasta_ronda.clear()
+            # Marca de Goading (Battle Master): un combate nuevo sin ella.
+            self.state.goading.clear()
         except Exception:
             pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,

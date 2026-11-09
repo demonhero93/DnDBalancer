@@ -70,6 +70,13 @@ class CombatState:
     # consume ``engine/combat/attack.py``). La limpia ``Combatant.reset()``.
     enfeeble_hasta_ronda: dict[str, int] = field(
         default_factory=dict, repr=False, compare=False)
+    # Goading Attack (Battle Master): nombre del Maestro de Batalla →
+    # ronda de caducidad. La marca quien RECIBE la salvación fallida y da
+    # desventaja a ESE SUJETO al atacar a cualquiera que no sea su
+    # marcador; NO se consume (solo caduca; lo aplica
+    # ``rules.mastery.consumir_marcas``). La limpia ``Combatant.reset()``.
+    goading: dict[str, int] = field(
+        default_factory=dict, repr=False, compare=False)
 
     def enfeeble_mitiga(self, ronda: int | None) -> bool:
         """¿Vigente la marca de Enfeebling en ``ronda``?

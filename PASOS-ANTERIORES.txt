@@ -1182,6 +1182,26 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
     RNG, integración ``attack_roll`` (gasta el dado con pick parcheado),
     Relentless (d8 sin gastar, una vez por turno, sin ``pick`` con <15,
     siempre d8). Suite completa: 1224 passed (0 fallos). Commit de A3.
+  - (4) Maniobras con salvación: en ``battle_master.py``,
+    ``_cd`` (8 + PB + max(mod FUE, mod DES)) y ``_efecto_de_maniobra``
+    llamado tras tirar el dado en ``extra_attack_damage`` —el dado NO se
+    vuelve a tirar—. Ramas: Disarming (FUE; fallo = solo log, objeto sin
+    modelar ``# TODO``), Goading (SAB; fallo → marca
+    ``CombatState.goading[nombre_marcador] = ronda + 2`` en el SUJETO,
+    shortcut «hasta el final de tu siguiente turno»; el consumo entra en
+    A5), Menacing (SAB; fallo → ``FRIGHTENED`` 2 rondas con el patrón
+    de duración de Intimidating Presence/Banishing), Pushing (FUE;
+    fallo = solo log, empuje ``# TODO``), Trip (FUE SOLO si el objetivo
+    es Grande o menor con ``_orden_tamano`` local patrón utility; fallo
+    → ``PRONE`` con ``EscapeCheck`` de Topple; Enorme+ sin salvación).
+    Lunging/Maneuvering solo daño. Campo nuevo ``CombatState.goading``
+    (core; ``compare=False``) limpiado en ``Combatant.reset``. Módulo
+    docstring con la CD y el reparto. Tests nuevos A4 (10): Menacing
+    fallo/éxito, Goading marca/no marca (ronda+2), Trip derriba/no
+    derriba/no salva con objetivo enorme, Disarming solo daño, efectos
+    sin implementación no alteran el combate (daño devuelto 4 veces,
+    sin condiciones/marcas/movimiento), daño una sola vez. Suite
+    completa: 1234 passed (0 fallos). Commit de A4.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas
