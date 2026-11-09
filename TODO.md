@@ -93,7 +93,7 @@ Plan de sesión (una casilla = un commit):
   Lunging, Maneuvering, Menacing, Pushing, Trip); tests.
 - [x] A5. Marcas Distracting / Goading / Feinting en `CombatState`; tests.
 - [x] A6. Precision Attack y Sweeping Attack; tests.
-- [ ] A7. Cierre de pool: Relentless, Know Your Enemy dato, Bait and Switch
+- [x] A7. Cierre de pool: Relentless, Know Your Enemy dato, Bait and Switch
   fuera si no hay CA temporal; tests.
 - [ ] B. Decisiones de diseño y cambio de test existente explicado (subclases
   registradas pasa a `{"arcane_archer", "battle_master"}`).

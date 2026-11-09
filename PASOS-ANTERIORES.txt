@@ -1251,6 +1251,15 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
     dado/no daña si la tirada no cubre la CA/no elegible sin segundo
     enemigo ni a distancia (cero RNG). Suite completa: 1253 passed
     (0 fallos). Commit de A6.
+  - (7) Cierre de pool: Bait and Switch FUERA — inspección previa
+    confirma que no hay CA temporal con caducidad (``CombatState``
+    solo tiene ``at_range``/``dodging`` y el hook
+    ``defensive_ac_bonus`` es instantáneo por tirada, sin expiración);
+    Evasive Footwork FUERA (exige modelo de movimiento). Relentless
+    (tests A3: d8 sin gastar, una vez por turno, <15 sin ``pick``)
+    y Know Your Enemy (test A2: dato bool desde el nivel 7) ya están
+    cerrados. Test nuevo: pool sin Bait and Switch ni Evasive
+    Footwork (62 tests en el fichero). Commit de A7.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas

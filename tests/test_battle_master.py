@@ -86,6 +86,14 @@ def test_el_pool_solo_contiene_las_maniobras_implementadas():
     assert len(set(BATTLE_MASTER_MANEUVERS)) == len(BATTLE_MASTER_MANEUVERS)
 
 
+def test_bait_and_switch_y_evasive_footwork_quedan_fuera_del_pool():
+    # Bait and Switch: exige un bonificador de CA temporal con caducidad y
+    # el sim no tiene ninguno (solo defensive_ac_bonus instantáneo).
+    # Evasive Footwork: exige modelo de movimiento (fuera de alcance).
+    assert "Bait and Switch" not in BATTLE_MASTER_MANEUVERS
+    assert "Evasive Footwork" not in BATTLE_MASTER_MANEUVERS
+
+
 # --- Registro y equivalencia --------------------------------------------------
 
 def test_registro_battle_master_bajo_fighter():
