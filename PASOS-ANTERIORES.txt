@@ -1129,6 +1129,33 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
     de PJ con semilla fija). Tests nuevos ``tests/test_battle_master.py``
     (4): las 3 tablas por nivel y el pool (11, sin Parry, sin
     duplicados). Commit de A1 (suite entera al cerrar A2).
+  - (2) Esqueleto y registro: ``rules/classes/fighter/subclasses/battle_master.py``
+    con ``BattleMasterFeatures`` (dados restantes, tamaño del dado,
+    maniobras conocidas, flag Relentless por turno, datos de Know Your
+    Enemy y Student of War, pendientes de maniobra/Feinting) y
+    ``apply_battle_master`` (exige ``FighterFeatures`` y nivel >= 3;
+    ``rng`` por defecto con semilla 0; kwarg ``maneuvers`` explícito
+    validado con el patrón ``fighting_style``; Student of War con
+    ``pick`` de ``FIGHTER_SKILLS`` sin repetir —sin candidatas, sin
+    cambio y sin RNG—; herramientas de artesano y Know Your Enemy como
+    dato). ``reset`` rellena los dados (patrón Second Wind) y
+    ``on_turn_start`` limpia flags/pendientes. Registro
+    ``"battle_master"`` en ``fighter/__init__.py`` (``SubclassDef``
+    min_level 3) + reexport en ``fighter/subclasses/__init__.py``,
+    ``rules/classes/__init__.py`` y fachada ``dnd_sim/__init__.py``.
+    **Tests existentes tocados (explicados ANTES en chat)**:
+    ``tests/test_fighter.py`` y ``tests/test_arcane_archer.py``
+    congelan el registro de subclases del fighter → pasan de
+    ``{"arcane_archer"}`` a ``{"arcane_archer", "battle_master"}``
+    (mismo hecho congelado en dos ficheros; ningún otro resultado
+    cambia). ``tests/test_arquitectura.py`` añade
+    ``BattleMasterFeatures``/``apply_battle_master`` al paquete de
+    reexport. Tests nuevos A2 (16): registro, equivalencia
+    ``apply_class``/``apply_battle_master`` con reseed, errores de
+    clase/nivel, maniobras por nivel (3/5/7/9), kwarg válido/inválido/
+    recuento, Student of War (añade/no candidatas/herramientas), Know
+    Your Enemy, dados por nivel, ``reset`` y ``on_turn_start`` sin RNG.
+    Suite completa: 1212 passed (0 fallos). Commit de A2.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas

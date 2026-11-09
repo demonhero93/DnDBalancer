@@ -85,7 +85,7 @@ Plan de sesión (una casilla = un commit):
 - [x] A1. Tablas `superiority_dice_count` / `superiority_die_sides` /
   `maneuvers_known_count` y pool `BATTLE_MASTER_MANEUVERS` en `core/classes.py`
   + tests por nivel.
-- [ ] A2. Esqueleto `battle_master.py`, registro `"battle_master"` y reexportes;
+- [x] A2. Esqueleto `battle_master.py`, registro `"battle_master"` y reexportes;
   Student of War (habilidad con `pick`) y Know Your Enemy (dato); tests.
 - [ ] A3. Punto de decisión único por ataque (duck-typing desde `attack.py`),
   gasto de dado al ejecutar, una maniobra por ataque, Relentless; tests.

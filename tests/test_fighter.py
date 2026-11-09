@@ -42,7 +42,8 @@ def _firmas(pj) -> tuple:
 def test_clase_fighter_esta_registrada_con_arcane_archer():
     assert "fighter" in CLASSES
     # Cambio esperado con Arcane Archer: la tabla deja de estar vacía.
-    assert set(CLASSES["fighter"].subclasses) == {"arcane_archer"}
+    assert set(CLASSES["fighter"].subclasses) == {"arcane_archer",
+                                                  "battle_master"}
 
 
 def test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter(
