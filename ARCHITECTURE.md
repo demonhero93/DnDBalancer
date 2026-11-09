@@ -25,7 +25,7 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 | `dnd_sim/engine/combat/` | 3 | 975 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
 | `dnd_sim/__init__.py` | 1 | 184 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **82** | **18390** | + `tests/` con 52 ficheros y 19034 líneas (1192 tests). |
+| **Total** | **83** | **19089** | + `tests/` con 53 ficheros y 19927 líneas (1253 tests). |
 
 ## Reglas de dependencia
 
@@ -60,7 +60,7 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (25 hooks, incl. `after_failed_check`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the… y Arcane Archer). |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer y Battle Master). |
 | `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
@@ -133,7 +133,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1192 tests
+pytest                              # 1253 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

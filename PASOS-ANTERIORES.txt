@@ -1293,11 +1293,12 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
       semilla fija: anotarlo aquí y reseedar los tests afectados.
 
 ESTADO ACTUAL
-   - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas
-     (1192 tests en verde, medido 2026-11-08).
+   - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas
+     (1253 tests en verde, medido 2026-11-09).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
-     subclases bárbaro y Arcane Archer del fighter, con las 8 opciones
-     de Arcane Shot: Piercing/Seeking sin tirada vía sustituir_ataque).
+     subclases bárbaro y Arcane Archer/Battle Master del fighter, con
+     las 8 opciones de Arcane Shot: Piercing/Seeking sin tirada vía
+     sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities
@@ -1413,7 +1414,26 @@ ESTADO ACTUAL
      commits 09ea36e..27532b9 (11 pasos, ver bloque 15),
      696ec3a..4f56e55 (cierre A1-B, ver «CIERRE DE PENDIENTES DEL
      FIGHTER») y b222ed3..9fdc2ad (Arcane Archer, ver bloque ARCANE
-     ARCHER).
+     ARCHER) y abdcc55..93aa6f3 (Battle Master sesión 1, ver
+     bloque BATTLE MASTER (SESIÓN 1)).
+   - Subclase Battle Master (Maestro de Batalla, PHB 2024) en
+     fighter/subclasses/battle_master.py (540 líneas, módulo único):
+     tablas superiority_dice_count/sides/maneuvers_known_count en
+     core/classes.py; Combat Superiority (4/5/6 dados, d8/d10/d12 en
+     10/18) con reset por combate, Student of War (pick sin repetir),
+     Know Your Enemy (dato), Relentless (15, 1d8 sin gastar, flag en
+     on_turn_start); 11 maniobras en pool BATTLE_MASTER_MANEUVERS
+     (9 de impacto + Precision + Feinting) con punto de decisión
+     ÚNICO por ataque (decidir_maniobra, duck-typing en attack.py
+     paso 6b) y gasto del dado en extra_attack_damage con la regla de
+     críticos del motor; CD 8+PB+max(FUE,DES); salvaciones Menacing
+     (FRIGHTENED 2 rondas)/Trip (PRONE con EscapeCheck)/Goading;
+     marcas Distracting/Goading en CombatState vía
+     rules/mastery.consumir_marcas; FeintingAttackAction (bonus);
+     Bait and Switch y Evasive Footwork FUERA del pool; clave
+     "battle_master" en el registro, reexports y fachada;
+     tests/test_battle_master.py (62);
+     commits abdcc55..93aa6f3 (ver bloque BATTLE MASTER (SESIÓN 1)).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY

@@ -1,6 +1,6 @@
 # TODO — DnDBalancer / dnd_sim
 
-Revisar al principio de cada sesión. Última revisión: 2026-11-08.
+Revisar al principio de cada sesión. Última revisión: 2026-11-09.
 Solo tareas SIN implementar. Lo ya hecho: PASOS-ANTERIORES.txt
 (bloque 15 «Clase Fighter», bloque «CIERRE DE PENDIENTES DEL FIGHTER»)
 y ARCHITECTURE.md.
@@ -33,8 +33,9 @@ y ARCHITECTURE.md.
 
 ## Fighter: pendientes reales
 
-- **Subclases Fighter**: candidatas Champion, Battle Master, Eldritch
-  Knight, Psi Warrior (Arcane Archer implementado, ver plan abajo).
+- **Subclases Fighter**: candidatas Champion, Eldritch Knight, Psi
+  Warrior (Arcane Archer y Battle Master implementados, ver planes
+  abajo).
 - **Arcane Archer**: Piercing/Seeking implementados (2026-11-08, ver
   plan abajo y PASOS). Efectos parciales restantes (motivo en el
   docstring de `arcane_archer.py`):
@@ -97,29 +98,53 @@ Plan de sesión (una casilla = un commit):
   fuera si no hay CA temporal; tests.
 - [x] B. Decisiones de diseño y cambio de test existente explicado (subclases
   registradas pasa a `{"arcane_archer", "battle_master"}`).
-- [ ] Docs. `ARCHITECTURE.md`, `PASOS-ANTERIORES.txt`, `TODO.md` (sesión 2).
+- [x] Docs. `ARCHITECTURE.md`, `PASOS-ANTERIORES.txt`, `TODO.md` (sesión 2).
 - [ ] Verificación. `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` y commit final del grafo.
 
+## Battle Master: sesión 2 (pendiente)
+
+Ampliar el pool `BATTLE_MASTER_MANEUVERS` (hoy 11): **cambia el
+`sample` de PJ con semilla fija** → reseedar
+`test_apply_class_equivalente_a_apply_battle_master` y revisar todo
+test que cree un Battle Master sin kwarg `maneuvers` explícito.
+
+Pendientes por implementar (solo apuntar):
+
+- Parry (reacción: dado al recibir un golpe cuerpo a cuerpo).
+- Riposte (reacción: contraataque al fallar un ataque contra ti).
+- Commander's Strike (acción bonus: un aliado ataca con tu dado).
+- Ambush (añade el dado a iniciativa o a un ataque desde sigilo).
+- Commanding Presence (acción bonus: ventaja de un aliado + salvación).
+- Rally (acción bonus: PV temporales a un aliado).
+- Bait and Switch (solo si al final hay bonificador CA temporal con
+  caducidad; hoy FUERA, ver A7).
+
 ## Fighter: cómo añadir una subclase
 
-Receta (patrón bárbaro, ver `barbarian/subclasses/`):
+Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de
+fighter: `arcane_archer.py` y `battle_master.py`):
 
 1. Crear `rules/classes/fighter/subclasses/<clave>.py` con un
-   `SubclassDef(name="<clave>", class_name="fighter", min_level=3,
-   apply=...)` y su rasgo (`Trait`) con los hooks necesarios.
+   `SubclassDef(name="<nombre visible>", class_name="fighter",
+   min_level=3, apply=...)` y su rasgo (`Trait`) con los hooks
+   necesarios. Si supera ~700 líneas, paquete `battle_master/` con
+   reexport y ajustar `tests/test_arquitectura.py`.
 2. Registrar en `rules/classes/fighter/__init__.py`: importar la
    `SubclassDef` y añadirla al dict `subclasses` del `FIGHTER_CLASS`.
-3. Reexportar la API en la fachada `dnd_sim/__init__.py` (import +
-   `__all__`) si expone símbolos nuevos.
+3. Reexportar la API en `rules/classes/__init__.py` y en la fachada
+   `dnd_sim/__init__.py` (import + `__all__`) si expone símbolos
+   nuevos.
 4. Tests: `tests/test_<clave>.py` en español (registro, apply por
    `apply_class("fighter", subclass_name="<clave>", level=3)`, rasgos).
+   Si un test existente congela el registro de subclases del fighter,
+   explicarlo ANTES de tocarlo.
 5. Actualizar `ARCHITECTURE.md` (tabla de paquetes con fachada) y el
    bloque Guerrero de `PASOS-ANTERIORES.txt`.
 
-Pendientes (candidatas PHB 2024): Champion, Battle Master, Eldritch
-Knight, Psi Warrior. Arcane Archer YA está implementado
-(`CLASSES["fighter"].subclasses` = `{"arcane_archer"}`).
+Pendientes (candidatas PHB 2024): Champion, Eldritch Knight, Psi
+Warrior. Arcane Archer y Battle Master YA están implementados
+(`CLASSES["fighter"].subclasses` = `{"arcane_archer", "battle_master"}`).
 
 ## Grafo y verificación
 
