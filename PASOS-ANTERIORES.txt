@@ -1297,6 +1297,21 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
     ``graphify update .`` → 3720 nodos, 13481 aristas, 112 comunidades;
     backup ``graphify-out/2026-11-09/``. Commit final con grafo.
 
+BATTLE MASTER (SESIÓN 2) (2026-11-09)
+  - (1) Pool y tablas: ``BATTLE_MASTER_MANEUVERS`` de 11 a 14 con
+    «Commander's Strike», «Parry» y «Riposte» (orden alfabético del
+    pool; Rally entra en B1). **Test existente tocado (explicado ANTES
+    en chat)**: ``test_el_pool_solo_contiene_las_maniobras_implementadas``
+    congelaba ``len == 11`` y ``"Parry" not in`` (hechos de la sesión 1
+    que A1 cambia a propósito) → ``len == 14`` y presencia de las 3
+    nuevas. NINGÚN otro test cambia: la equivalencia
+    ``apply_class``/``apply_battle_master`` sigue en verde porque el
+    monkeypatch reseedea ``_RNG_CREACION`` en los dos módulos y
+    ``test_maniobras_conocidas_segun_nivel`` ya comprobaba
+    recuento + pertenencia al pool. Test nuevo (1): kwarg explícito
+    con las 3 maniobras de reacción es válido. Suite completa:
+    1255 passed (0 fallos). Commit de A1.
+
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas
      (1254 tests en verde, medido 2026-11-09).

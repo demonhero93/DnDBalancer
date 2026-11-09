@@ -102,23 +102,45 @@ Plan de sesión (una casilla = un commit):
 - [x] Verificación. `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` y commit final del grafo.
 
-## Battle Master: sesión 2 (pendiente)
+## Battle Master: plan de sesión 2
 
-Ampliar el pool `BATTLE_MASTER_MANEUVERS` (hoy 11): **cambia el
-`sample` de PJ con semilla fija** → reseedar
-`test_apply_class_equivalente_a_apply_battle_master` y revisar todo
-test que cree un Battle Master sin kwarg `maneuvers` explícito.
+(una casilla = un commit; entrada en PASOS tras cada paso)
 
-Pendientes por implementar (solo apuntar):
+- [x] A1 — Pool y tablas: `parry`, `riposte` y `commanders_strike`
+  en `BATTLE_MASTER_MANEUVERS` (11→14) + tests (pool, `sample`,
+  kwarg) + reseed de los tests afectados por el cambio de `sample`
+  (cada test tocado, explicado en PASOS ANTES de tocarlo).
+- [ ] A2 — Parry: consulta duck-typing
+  `reducir_dano_recibido(target, attacker, rango, *, dmg, ctx, rng,
+  log)` desde `attack.py` antes de `inflict_damage`; reduce
+  `dado + max(mod FUE, mod DES)` con mínimo 0; guards (cuerpo a
+  cuerpo, daño > 0, reacción libre, dado/Relentless, maniobra
+  conocida); tests.
+- [ ] A3 — Riposte: consulta duck-typing `reaccionar_al_fallo(...)`
+  en la rama de fallo de `attack_roll`; ataque de reacción patrón
+  Retaliation (`r_ctx.is_reaction`); el dado viaja en
+  `ctx.dano_reaccion` y lo suma `daño_base_arma` (plano); guard de
+  reentrada `is_reaction` en `decidir_maniobra`; tests.
+- [ ] A4 — Commander's Strike: `sustituir_ataque` propio (guard
+  `is_reaction`); pick previo «no/sí» + pick de aliado elegible y de
+  su objetivo; el aliado gasta SU reacción y el dado del dueño va en
+  `ctx.dano_reaccion`; sesgo documentado (docstring + ARCHITECTURE +
+  TODO); tests.
+- [ ] B1 — Rally: `BattleMasterRallyAction` (bonus, `usage=None`,
+  elegibilidad sin RNG) y `rally` al pool (14→15, reseed explicado);
+  PV temporales `dado + mod CAR` (mínimo 1) sin acumular; tests.
+- [ ] B2 — Bait and Switch: re-inspección de CA temporal con
+  caducidad (Defense, Shielding Storm, Protection); si no existe →
+  FUERA del pool con motivo en PASOS (+ test si cambia el pool).
+- [ ] Docs — `ARCHITECTURE.md` (reacciones nuevas en el motor,
+  Commander's Strike y su sesgo, recuentos), `PASOS-ANTERIORES.txt`
+  (bloque «BATTLE MASTER (SESIÓN 2)» + ESTADO ACTUAL), `TODO.md`
+  (sesión cerrada y pendientes reales).
+- [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
+  `python tools/capas.py`, `graphify update .` y commit final.
 
-- Parry (reacción: dado al recibir un golpe cuerpo a cuerpo).
-- Riposte (reacción: contraataque al fallar un ataque contra ti).
-- Commander's Strike (acción bonus: un aliado ataca con tu dado).
-- Ambush (añade el dado a iniciativa o a un ataque desde sigilo).
-- Commanding Presence (acción bonus: ventaja de un aliado + salvación).
-- Rally (acción bonus: PV temporales a un aliado).
-- Bait and Switch (solo si al final hay bonificador CA temporal con
-  caducidad; hoy FUERA, ver A7).
+Fuera de esta sesión (siguen pendientes): Ambush y Commanding
+Presence no tienen casilla en los bloques A/B de la tarea.
 
 ## Fighter: cómo añadir una subclase
 

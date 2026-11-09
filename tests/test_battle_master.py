@@ -79,10 +79,13 @@ def test_tabla_de_maniobras_conocidas_por_nivel():
 
 
 def test_el_pool_solo_contiene_las_maniobras_implementadas():
-    assert len(BATTLE_MASTER_MANEUVERS) == 11
+    assert len(BATTLE_MASTER_MANEUVERS) == 14
     assert "Precision Attack" in BATTLE_MASTER_MANEUVERS
     assert "Feinting Attack" in BATTLE_MASTER_MANEUVERS
-    assert "Parry" not in BATTLE_MASTER_MANEUVERS  # sesión 2
+    # Reacciones de la sesión 2.
+    assert "Parry" in BATTLE_MASTER_MANEUVERS
+    assert "Riposte" in BATTLE_MASTER_MANEUVERS
+    assert "Commander's Strike" in BATTLE_MASTER_MANEUVERS
     assert len(set(BATTLE_MASTER_MANEUVERS)) == len(BATTLE_MASTER_MANEUVERS)
 
 
@@ -157,6 +160,14 @@ def test_kwarg_de_maniobras_explicitas_valido():
     pj = _pj(level=3)
     apply_fighter(pj, level=3)
     elegidas = ("Menacing Attack", "Trip Attack", "Precision Attack")
+    trait = apply_battle_master(pj, level=3, maneuvers=elegidas)
+    assert trait.maneuvers == list(elegidas)
+
+
+def test_kwarg_con_las_maniobras_de_reaccion_de_sesion_2_es_valido():
+    pj = _pj(level=3)
+    apply_fighter(pj, level=3)
+    elegidas = ("Parry", "Riposte", "Commander's Strike")
     trait = apply_battle_master(pj, level=3, maneuvers=elegidas)
     assert trait.maneuvers == list(elegidas)
 
