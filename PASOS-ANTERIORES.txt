@@ -1226,6 +1226,31 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
     marcas; Feinting elegibilidad con decisión aleatoria/sin datos sin
     RNG/ventaja+gasto del dado al impactar/pendiente en fallo. Suite
     completa: 1244 passed (0 fallos). Commit de A5.
+  - (6) Precision y Sweeping: en ``battle_master.py``,
+    ``MANEUVERS_ON_MISS = ("Precision Attack",)``. Rama de fallo en
+    ``decidir_maniobra``: sin 1 natural y si ``total + dados_lados >=
+    ca`` (el dado MÁXIMO alcanza la CA); ``pick`` «no»/«sí» +
+    ``pick`` uniforme; ejecuta con el helper NUEVO ``_tirar_dado``
+    (Relentless compartido: pick «no»/«sí» → 1d8 sin gastar; si no,
+    gasta y tira el dado con la regla de críticos), suma el valor al
+    TOTAL (NO al daño), convierte el impacto y no deja pendiente.
+    Sweeping: rama en ``extra_attack_damage`` —el dado NO se suma al
+    golpe propio (return 0)— vía ``_ejecutar_sweeping``: segundo
+    enemigo con ``_otro_enemigo``/``valid_targets`` (sin él no se
+    decide: ya filtrado en A3) y ``self.maniobra_total >=
+    effective_ac(segundo)`` → daño con
+    ``apply_damage_modifiers``/``inflict_damage`` (tipo y mágico del
+    arma); si no cubre la CA, log y sin daño (el dado YA se gastó).
+    Refactor: ``extra_attack_damage`` usa ``_tirar_dado`` (mismo
+    comportamiento, tests de Relentless en verde). Imports nuevos:
+    ``parse_damage_type``, ``apply_damage_modifiers``/``inflict_damage``,
+    ``effective_ac`` (capa rules→rules, sin ciclo). Tests nuevos A6
+    (9): Precision convierte fallo/no alcanza con el dado máximo/1
+    natural sin RNG/Relentless sin gastar/integración motor
+    (9+3<CA 14 → +5 → impacta); Sweeping daña al segundo y gasta un
+    dado/no daña si la tirada no cubre la CA/no elegible sin segundo
+    enemigo ni a distancia (cero RNG). Suite completa: 1253 passed
+    (0 fallos). Commit de A6.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas

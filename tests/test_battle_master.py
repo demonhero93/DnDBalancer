@@ -302,10 +302,10 @@ def _atacado(level: int = 5, **kwargs) -> tuple:
 
 
 def _decide(trait, target, ctx, rng, *, hit=True, total=15, ca=12,
-            rango=AttackRange.MELEE):
+            rango=AttackRange.MELEE, roll=10):
     atk = Attack("Espada larga", "1d8", ability="str")
     return trait.decidir_maniobra(
-        trait.owner, target, atk, rango, roll=10, total=total, ca=ca,
+        trait.owner, target, atk, rango, roll=roll, total=total, ca=ca,
         hit=hit, ctx=ctx, rng=rng)
 
 
@@ -751,3 +751,133 @@ def test_feinting_sin_impacto_no_gasta_el_dado():
     assert trait.feinting_pendiente is False
     assert trait.maniobra_pendiente is None
     assert trait.dados_restantes == 4
+
+
+# --- Precision y Sweeping (A6) ------------------------------------------------
+
+def test_precision_convierte_un_fallo_en_impacto(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 3)
+    _, trait, objetivo, ctx = _atacado(
+        maneuvers=("Precision Attack", "Feinting Attack", "Menacing Attack"))
+    hit, total = _decide(trait, objetivo, ctx, _RngIdx(1, 0),
+                         hit=False, total=10, ca=12)
+    assert hit is True
+    assert total == 13  # 10 + 3 del dado de superioridad
+    assert trait.dados_restantes == 3  # Precision gasta su dado
+    assert trait.maniobra_pendiente is None  # y no añade daño
+
+
+def test_precision_no_actua_si_el_dado_maximo_no_alcanza_la_ca():
+    _, trait, objetivo, ctx = _atacado(
+        maneuvers=("Precision Attack", "Feinting Attack", "Menacing Attack"))
+    hit, total = _decide(trait, objetivo, ctx, _ExplotaSiUsaRng(),
+                         hit=False, total=1, ca=20)  # 1 + d8 máximo = 9
+    assert (hit, total) == (False, 1)
+    assert trait.dados_restantes == 4
+    assert trait.maniobra_pendiente is None
+
+
+def test_precision_no_actua_en_un_1_natural():
+    _, trait, objetivo, ctx = _atacado(
+        maneuvers=("Precision Attack", "Feinting Attack", "Menacing Attack"))
+    hit, total = _decide(trait, objetivo, ctx, _ExplotaSiUsaRng(),
+                         hit=False, total=10, ca=12, roll=1)
+    assert (hit, total) == (False, 10)
+    assert trait.dados_restantes == 4
+
+
+def test_precision_con_relevelless_no_gasta_el_dado():
+    _, trait, objetivo, ctx = _atacado(
+        level=15,
+        maneuvers=("Precision Attack", "Feinting Attack", "Menacing Attack"))
+    hit, total = _decide(trait, objetivo, ctx, _RngSi(),
+                         hit=False, total=10, ca=12)
+    assert hit is True
+    assert total >= 18  # 10 + 1d8 (Relentless)
+    assert trait.dados_restantes == 6  # sin gastar el dado
+    assert trait.relentless_used_this_turn is True
+
+
+def test_precision_actua_en_el_motor_tras_un_fallo(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    # sin Precision: 9+3=12 < CA 14 → falla; con Precision: +5 → 17 ≥ 14.
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 5)
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=9, rolls=[9],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    pj, trait, objetivo, _ = _atacado(
+        maneuvers=("Precision Attack", "Feinting Attack", "Menacing Attack"))
+    objetivo.ac = 14
+    ctx = SimpleNamespace(round=1, combatants=[pj, objetivo])
+    atk = Attack("Espada larga", "1d8", ability="str")
+    atk_mod.attack_roll(pj, objetivo, atk, random.Random(1), ctx=ctx)
+    assert trait.dados_restantes == 3
+    assert objetivo.hp < objetivo.max_hp  # el fallo se convirtió en impacto
+
+
+def _atacado_dos_enemigos(**kwargs) -> tuple:
+    """PJ Battle Master con DOS enemigos (para Sweeping)."""
+    if "maneuvers" in kwargs:
+        kwargs["maneuvers"] = _completa(kwargs["maneuvers"], 5)
+    pj, trait = _bm(**kwargs)
+    objetivo = Monster("Muñeco", max_hp=60, ac=15, abilities=_abilities())
+    segunda = Monster("Segunda", max_hp=50, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, objetivo, segunda])
+    return pj, trait, objetivo, segunda, ctx
+
+
+def _conoce_sweeping() -> tuple:
+    return _atacado_dos_enemigos(
+        maneuvers=("Sweeping Attack", "Feinting Attack", "Precision Attack"))
+
+
+def test_sweeping_dana_al_segundo_si_la_tirada_cubre_su_ca():
+    _, trait, objetivo, segunda, ctx = _conoce_sweeping()
+    hit, _ = _decide(trait, objetivo, ctx, _RngIdx(1, 0), total=20)
+    assert hit is True
+    assert trait.maniobra_pendiente == "Sweeping Attack"
+    assert trait.maniobra_total == 20
+    hp_primera = objetivo.hp
+    daño = trait.extra_attack_damage(
+        trait.owner, objetivo, AttackRange.MELEE, ctx=ctx, rng=_RngFalla(),
+        atk=Attack("Espada larga", "1d8", ability="str"))
+    assert daño == 0  # el dado NO se suma al golpe propio
+    assert objetivo.hp == hp_primera
+    assert segunda.hp < segunda.max_hp  # pero SÍ al segundo objetivo
+    assert trait.dados_restantes == 3  # un solo gasto
+
+
+def test_sweeping_no_dana_si_la_tirada_no_cubre_la_ca_del_segundo():
+    _, trait, objetivo, segunda, ctx = _conoce_sweeping()
+    hit, _ = _decide(trait, objetivo, ctx, _RngIdx(1, 0), total=5)
+    assert hit is True
+    daño = trait.extra_attack_damage(
+        trait.owner, objetivo, AttackRange.MELEE, ctx=ctx, rng=_RngFalla(),
+        atk=Attack("Espada larga", "1d8", ability="str"))
+    assert daño == 0
+    assert segunda.hp == segunda.max_hp
+    assert trait.dados_restantes == 3  # el dado se gasta aunque falle la CA
+
+
+def test_sweeping_no_es_elegible_sin_segundo_enemigo():
+    _, trait, objetivo, ctx = _atacado(
+        maneuvers=("Sweeping Attack", "Feinting Attack", "Precision Attack"))
+    hit, _ = _decide(trait, objetivo, ctx, _ExplotaSiUsaRng(), hit=True)
+    assert hit is True
+    assert trait.maniobra_pendiente is None  # sin elegibles: cero RNG
+
+
+def test_sweeping_no_es_elegible_a_distancia():
+    _, trait, objetivo, _, ctx = _conoce_sweeping()
+    hit, _ = _decide(trait, objetivo, ctx, _ExplotaSiUsaRng(),
+                     hit=True, rango=AttackRange.RANGED)
+    assert hit is True
+    assert trait.maniobra_pendiente is None  # solo cuerpo a cuerpo: cero RNG

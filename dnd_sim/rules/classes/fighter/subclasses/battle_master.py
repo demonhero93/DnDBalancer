@@ -30,6 +30,11 @@ Decisiones de simulación documentadas:
   del afectado; Disarming/Pushing (FUE) → solo log (objeto/empuje sin
   modelar); Distracting/Feinting son marcas (ver arriba) y
   Lunging/Maneuvering son solo daño.
+- **Precision Attack** (3): solo con fallo (sin 1 natural) y si el
+  dado máximo alcanza la CA; sube el TOTAL de la tirada —no el daño—
+  y puede convertir el impacto. **Sweeping Attack** (3): solo cuerpo
+  a cuerpo y con OTRO enemigo; el dado NO se suma al golpe propio: va
+  al segundo objetivo si el TOTAL original cubre su CA efectiva.
 - Los efectos sin movimiento/posiciones/objetos (empuje, objeto
   soltado, alcance, movimiento del aliado) son dato sin efecto
   (``# TODO``): solo daño y salvación. Bait and Switch y Evasive
@@ -55,13 +60,15 @@ from .....core.classes import (
     superiority_die_sides,
 )
 from .....core.dice import roll_dice
-from .....core.enums import AttackRange
+from .....core.enums import AttackRange, parse_damage_type
 from .....core.log import log_line as _log_line
 from .....core.proficiency import proficiency_bonus
 from .....core.randomness import pick, sample
 from .....core.targeting import valid_targets
 from .....model.actions import ActionType, CombatAction
 from ....conditions import Condition, EscapeCheck, apply_condition
+from ....damage import apply_damage_modifiers, inflict_damage
+from ....roll_modifiers import effective_ac
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ..features import FighterFeatures, _contexto
@@ -82,7 +89,7 @@ def _orden_tamano(combatiente: Any) -> int:
     return _TAMANOS.index(tamaño)
 
 #: Maniobras que se ejecutan al impactar (punto de decisión único).
-#: Precision ataca el fallo (A6) y Feinting es acción bonus (A5).
+#: Feinting es acción bonus (A5) y no entra aquí.
 MANEUVERS_ON_HIT: tuple[str, ...] = (
     "Disarming Attack",
     "Distracting Strike",
@@ -99,6 +106,9 @@ MANEUVERS_ON_HIT: tuple[str, ...] = (
 #: Lunging y la geometría de Sweeping no están en el modelo).
 MANEUVERS_MELEE_ONLY: frozenset[str] = frozenset(
     {"Lunging Attack", "Sweeping Attack"})
+
+#: Maniobras que se ejecutan tras un FALLO (solo Precision hoy).
+MANEUVERS_ON_MISS: tuple[str, ...] = ("Precision Attack",)
 
 
 def _de(actor: Any, clase: type) -> Any:
@@ -217,7 +227,25 @@ class BattleMasterFeatures(Trait):
                 or self.maniobra_pendiente is not None):
             return hit, total
         if not hit:
-            return hit, total  # A6: Precision Attack (fallo → total)
+            # Precision Attack (fallo): suma el dado a la tirada y, si
+            # ahora llega a la CA, el ataque impacta. Se ejecuta aquí
+            # (una maniobra por ataque; el dado NO se suma al daño).
+            if roll == 1:
+                return hit, total  # 1 natural: nunca (sin RNG)
+            elegibles = tuple(
+                m for m in self.maneuvers
+                if m in MANEUVERS_ON_MISS
+                and total + self.dados_lados >= ca)
+            if not elegibles or pick(rng, ("no", "si")) == "no":
+                return hit, total  # sin elegibles: cero RNG
+            opcion = pick(rng, elegibles)
+            valor, gastar = self._tirar_dado(rng)
+            total += valor
+            hit = total >= ca  # roll != 1 ya comprobado
+            sufijo = "" if gastar else " (Relentless: sin gastar dado)"
+            _log_line(ctx, f"Battle Master ({opcion}): +{valor} a la "
+                           f"tirada (total {total}){sufijo}")
+            return hit, total
         elegibles = self._elegibles(target, rango, ctx)
         if not elegibles:
             return hit, total  # sin elegibles: cero RNG
@@ -248,25 +276,61 @@ class BattleMasterFeatures(Trait):
             return 0
         opcion = self.maniobra_pendiente
         self.maniobra_pendiente = None  # se ejecuta una sola vez
-        # Relentless (15): 1d8 en lugar de gastar el dado; una vez por
-        # turno y sin RNG por debajo del nivel 15 o si ya se usó.
-        gastar = True
-        if (self.level >= 15 and not self.relentless_used_this_turn
-                and pick(rng, ("no", "si")) == "si"):
-            valor = int(roll_dice("1d8", rng, crit=crit))
-            self.relentless_used_this_turn = True
-            gastar = False
-        else:
-            valor = int(roll_dice(f"1d{self.dados_lados}", rng, crit=crit))
-        if gastar:
-            self.dados_restantes -= 1
+        valor, gastar = self._tirar_dado(rng, crit=crit)
+        if opcion == "Sweeping Attack":
+            # Sweeping: el dado NO se suma al golpe propio; se reparte al
+            # segundo objetivo si el TOTAL original cubre su CA.
+            self._ejecutar_sweeping(target, valor, ctx, rng, atk)
+            sufijo = "" if gastar else " (Relentless: sin gastar dado)"
+            _log_line(ctx, f"Battle Master (Sweeping Attack): {valor} al "
+                           f"segundo objetivo{sufijo}")
+            return 0
         # A5: marcas Distracting/Goading (Goading se MARCA en su rama de
         # salvación; su consumo vive en consumir_marcas).
-        # A6: Sweeping reparte ``valor`` al segundo objetivo (0 propio).
         sufijo = "" if gastar else " (Relentless: sin gastar dado)"
         _log_line(ctx, f"Battle Master ({opcion}): +{valor} de daño{sufijo}")
         self._efecto_de_maniobra(opcion, target, ctx, rng)
         return valor
+
+    def _tirar_dado(self, rng: Any, *, crit: bool = False) -> tuple[int, bool]:
+        """Tira el dado de la maniobra y gasta el uso.
+
+        Relentless (15): ``pick`` «no»/«sí» (sin RNG por debajo del
+        nivel 15 o si ya se usó este turno); si es «sí» tira 1d8
+        —siempre d8, aunque el dado del PJ sea mayor— y NO gasta nada.
+        Devuelve ``(valor, gastado)``. El dado sigue la regla de
+        críticos del motor (``crit`` lo duplica).
+        """
+        if (self.level >= 15 and not self.relentless_used_this_turn
+                and pick(rng, ("no", "si")) == "si"):
+            self.relentless_used_this_turn = True
+            return int(roll_dice("1d8", rng, crit=crit)), False
+        self.dados_restantes -= 1
+        return int(roll_dice(f"1d{self.dados_lados}", rng, crit=crit)), True
+
+    def _ejecutar_sweeping(self, target: Any, valor: int, ctx: Any,
+                           rng: Any, atk: Any) -> None:
+        """Sweeping: daño = dado al segundo enemigo si el TOTAL cubre su CA.
+
+        Shortcut: si la tirada original no llega a la CA efectiva del
+        segundo objetivo no hay daño (el dado ya se gastó al usar la
+        maniobra). Sin segundo objetivo no hace nada.
+        """
+        segundo = self._otro_enemigo(ctx, target)
+        if segundo is None:
+            return  # sin elegibles no se decide (no debería llegar)
+        if self.maniobra_total < effective_ac(segundo):
+            _log_line(ctx, f"Sweeping Attack: la tirada no cubre la CA de "
+                           f"{getattr(segundo, 'name', segundo)}")
+            return
+        tipo = parse_damage_type(getattr(atk, "damage_type", None) or "")
+        magical = bool(getattr(atk, "magical", False))
+        cantidad = apply_damage_modifiers(valor, tipo, segundo,
+                                          magical=magical)
+        inflict_damage(segundo, cantidad, tipo, source=self.owner, ctx=ctx,
+                       rng=rng, magical=magical)
+        _log_line(ctx, f"Sweeping Attack: {cantidad} de daño a "
+                       f"{getattr(segundo, 'name', segundo)}")
 
     # --- Feinting Attack (5): ventaja en el siguiente ataque ------------------
     def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
