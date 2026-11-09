@@ -95,7 +95,7 @@ Plan de sesión (una casilla = un commit):
 - [x] A6. Precision Attack y Sweeping Attack; tests.
 - [x] A7. Cierre de pool: Relentless, Know Your Enemy dato, Bait and Switch
   fuera si no hay CA temporal; tests.
-- [ ] B. Decisiones de diseño y cambio de test existente explicado (subclases
+- [x] B. Decisiones de diseño y cambio de test existente explicado (subclases
   registradas pasa a `{"arcane_archer", "battle_master"}`).
 - [ ] Docs. `ARCHITECTURE.md`, `PASOS-ANTERIORES.txt`, `TODO.md` (sesión 2).
 - [ ] Verificación. `pytest tests/test_arquitectura.py`, `pytest`,

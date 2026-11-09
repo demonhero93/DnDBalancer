@@ -1260,6 +1260,37 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
     y Know Your Enemy (test A2: dato bool desde el nivel 7) ya están
     cerrados. Test nuevo: pool sin Bait and Switch ni Evasive
     Footwork (62 tests en el fichero). Commit de A7.
+  - (B) Decisiones de diseño y cambios de test existente:
+    * Cambios de test explicados ANTES en el chat (A2): solo
+      ``tests/test_fighter.py`` y ``tests/test_arcane_archer.py``
+      congelan el registro de subclases del fighter → pasan de
+      ``{"arcane_archer"}`` a ``{"arcane_archer", "battle_master"}``;
+      ``tests/test_arquitectura.py`` suma
+      ``BattleMasterFeatures``/``apply_battle_master`` al paquete de
+      reexport. Verificado con ``git diff abdcc55^..HEAD --stat --
+      tests/``: NINGÚN otro fichero de test cambió (los demás 1192+
+      tests conservan su resultado; todo lo nuevo vive en
+      ``tests/test_battle_master.py``).
+    * Precision no vuelve a consultar el bonificador defensivo del
+      defensor (Parry ya resuelto antes): simplificación documentada
+      en el docstring de ``_decidir_maniobra``.
+    * Caducias de marcas (shortcut): Goading ``ronda+2`` («hasta el
+      final de tu siguiente turno»), Distracting ``ronda+1`` («antes
+      del inicio de tu siguiente turno»); Feinting es flag del rasgo
+      y caduca en ``on_turn_start``.
+    * Goading se parte A4/A5: la rama de salvación MARCA (A4) y el
+      consumo vive en ``consumir_marcas`` (A5).
+    * Relentless comparte ``_tirar_dado`` con Precision y Sweeping
+      (una sola implementación del gasto/d8).
+    * Una maniobra por ataque = ``maniobra_pendiente`` único; la rama
+      Feinting corta el resto SIN RNG.
+    * Dato sin efecto: Know Your Enemy, herramientas de artesano,
+      Disarming (objeto), Pushing (empuje), Maneuvering/Lunging
+      (alcance/movimiento) — log + ``# TODO``.
+    * Ampliar el pool con las maniobras de la sesión 2 (Parry,
+      Riposte, Commander's Strike, Ambush, Commanding Presence,
+      Rally, quizá Bait and Switch) cambiará el ``sample`` de PJ con
+      semilla fija: anotarlo aquí y reseedar los tests afectados.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas
