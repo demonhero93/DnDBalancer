@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import random
+from types import SimpleNamespace
 
 import pytest
 
-from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
+from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import (
     BATTLE_MASTER_MANEUVERS,
     FIGHTER_SKILLS,
@@ -13,6 +14,7 @@ from dnd_sim.core.classes import (
     superiority_die_sides,
     superiority_dice_count,
 )
+from dnd_sim.core.enums import AttackRange
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
     BattleMasterFeatures,
@@ -239,3 +241,214 @@ class _ExplotaSiUsaRng:
 
     def __getattr__(self, name: str):
         raise AssertionError(f"RNG no debería usarse: {name}")
+
+
+# --- Punto de decisión único y gasto del dado (A3) ----------------------------
+
+class _RngSi:
+    """randrange siempre el último elemento («si» / última opción)."""
+
+    def randrange(self, n: int) -> int:
+        return n - 1
+
+    def random(self) -> float:
+        return 1.0
+
+    def randint(self, a: int, b: int) -> int:
+        return b
+
+
+class _RngIdx:
+    """Devuelve los índices dados en orden (y «si» cuando se acaban)."""
+
+    def __init__(self, *idxs: int) -> None:
+        self.idxs = list(idxs)
+        self.llamadas = 0
+
+    def randrange(self, n: int) -> int:
+        self.llamadas += 1
+        if not self.idxs:
+            return n - 1
+        i = self.idxs.pop(0)
+        return i if i < n else n - 1
+
+    def random(self) -> float:
+        return 1.0
+
+
+def _completa(elegidas: tuple, level: int) -> tuple:
+    """Rellena las maniobras pedidas hasta el recuento del nivel."""
+    elegidas = list(elegidas)
+    resto = [m for m in BATTLE_MASTER_MANEUVERS if m not in elegidas]
+    falta = maneuvers_known_count(level) - len(elegidas)
+    return tuple(elegidas + resto[:falta])
+
+
+def _atacado(level: int = 5, **kwargs) -> tuple:
+    """PJ Battle Master + objetivo, para probar la decisión."""
+    if "maneuvers" in kwargs:
+        kwargs["maneuvers"] = _completa(kwargs["maneuvers"], level)
+    pj, trait = _bm(level=level, **kwargs)
+    objetivo = Monster("Muñeco", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, objetivo])
+    return pj, trait, objetivo, ctx
+
+
+def _decide(trait, target, ctx, rng, *, hit=True, total=15, ca=12,
+            rango=AttackRange.MELEE):
+    atk = Attack("Espada larga", "1d8", ability="str")
+    return trait.decidir_maniobra(
+        trait.owner, target, atk, rango, roll=10, total=total, ca=ca,
+        hit=hit, ctx=ctx, rng=rng)
+
+
+def test_la_decision_es_un_solo_par_de_picks():
+    _, trait, objetivo, ctx = _atacado(
+        maneuvers=("Disarming Attack", "Menacing Attack", "Trip Attack"))
+    cuenta = _RngIdx(1, 2)
+    hit, total = _decide(trait, objetivo, ctx, cuenta)
+    assert (hit, total) == (True, 15)
+    assert cuenta.llamadas == 2  # «no/sí» + elección uniforme
+    assert trait.maniobra_pendiente == "Trip Attack"
+
+
+def test_las_elegibles_son_equiprobables_con_rng_controlado():
+    conocidas = ("Disarming Attack", "Menacing Attack", "Trip Attack")
+    for i, esperada in enumerate(conocidas):
+        _, trait, objetivo, ctx = _atacado(maneuvers=conocidas)
+        _decide(trait, objetivo, ctx, _RngIdx(1, i))
+        assert trait.maniobra_pendiente == esperada
+
+
+def test_las_solo_cuerpo_a_cuerpo_no_son_elegibles_a_distancia():
+    _, trait, objetivo, ctx = _atacado(
+        maneuvers=("Lunging Attack", "Menacing Attack", "Trip Attack"))
+    _decide(trait, objetivo, ctx, _RngIdx(1, 2), rango=AttackRange.RANGED)
+    # Lunging filtra (rango a distancia): el pool de 2 → índice 1 final.
+    assert trait.maniobra_pendiente == "Trip Attack"
+
+
+def test_el_uso_no_se_gasta_si_no_se_ejecuta():
+    # Solo Menacing es de impacto: Feinting es acción bonus y Precision es de fallo.
+    _, trait, objetivo, ctx = _atacado(
+        maneuvers=("Menacing Attack", "Feinting Attack", "Precision Attack"))
+    _decide(trait, objetivo, ctx, _RngIdx(1, 0))
+    assert trait.maniobra_pendiente == "Menacing Attack"
+    assert trait.dados_restantes == 4  # elegida, no ejecutada
+    daño = trait.extra_attack_damage(
+        trait.owner, objetivo, AttackRange.MELEE, ctx=ctx,
+        rng=random.Random(1), atk=Attack("Espada larga", "1d8", ability="str"))
+    assert daño > 0
+    assert trait.dados_restantes == 3  # ejecutada → gastada
+    assert trait.maniobra_pendiente is None
+
+
+def test_una_maniobra_por_ataque_como_maximo():
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Menacing Attack",))
+    _decide(trait, objetivo, ctx, _RngIdx(1, 0))
+    pendiente = trait.maniobra_pendiente
+    _decide(trait, objetivo, ctx, _ExplotaSiUsaRng())  # ya hay pendiente
+    assert trait.maniobra_pendiente == pendiente
+
+
+def test_sin_datos_cero_rng_en_la_decision():
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Menacing Attack",))
+    trait.dados_restantes = 0
+    hit, total = _decide(trait, objetivo, ctx, _ExplotaSiUsaRng())
+    assert (hit, total) == (True, 15)
+    assert trait.maniobra_pendiente is None
+
+
+def test_en_un_fallo_sin_precision_cero_rng():
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Menacing Attack",))
+    hit, total = _decide(trait, objetivo, ctx, _ExplotaSiUsaRng(), hit=False)
+    assert (hit, total) == (False, 15)
+    assert trait.maniobra_pendiente is None
+
+
+def test_sin_subclase_el_motor_no_consulta_ni_consume_rng():
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    resultado = atk_mod._decidir_maniobra(
+        pj, Monster("Blanco", max_hp=10, ac=10, abilities=_abilities()),
+        Attack("Espada larga", "1d8", ability="str"), AttackRange.MELEE,
+        roll=10, total=17, ca=12, hit=True, ctx=None,
+        rng=_ExplotaSiUsaRng(), log=None)
+    assert resultado == (True, 17)
+
+
+def test_el_motor_decide_y_gasta_el_dado_en_el_ataque(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    pj, trait, objetivo, ctx = _atacado(
+        maneuvers=("Disarming Attack", "Menacing Attack", "Trip Attack"))
+    atk = Attack("Espada larga", "1d8", ability="str")
+    atk_mod.attack_roll(pj, objetivo, atk, random.Random(1), ctx=ctx)
+    assert trait.dados_restantes == 3  # la maniobra se decidió y ejecutó
+    assert trait.maniobra_pendiente is None
+    assert objetivo.hp < objetivo.max_hp
+
+
+# --- Relentless (15) -----------------------------------------------------------
+
+def test_relentless_tira_d8_sin_gastar_y_solo_una_vez_por_turno():
+    _, trait, objetivo, ctx = _atacado(level=15, maneuvers=("Trip Attack",))
+    trait.maniobra_pendiente = "Trip Attack"
+    daño = trait.extra_attack_damage(
+        trait.owner, objetivo, AttackRange.MELEE, ctx=ctx, rng=_RngSi(),
+        atk=Attack("Espada larga", "1d8", ability="str"))
+    assert daño >= 1
+    assert trait.relentless_used_this_turn is True
+    assert trait.dados_restantes == 6  # sin gastar el dado
+    # Segundo uso en el MISMO turno: Relentless ya gastado → sí gasta.
+    trait.maniobra_pendiente = "Trip Attack"
+    trait.extra_attack_damage(
+        trait.owner, objetivo, AttackRange.MELEE, ctx=ctx, rng=_RngSi(),
+        atk=Attack("Espada larga", "1d8", ability="str"))
+    assert trait.dados_restantes == 5
+
+
+def test_relentless_no_consulta_pick_por_debajo_del_nivel_15(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+
+    _, trait, objetivo, ctx = _atacado(level=14, maneuvers=("Trip Attack",))
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("Relentless no debe consultarse con < 15")
+
+    monkeypatch.setattr(bm_mod, "pick", _revienta)
+    trait.maniobra_pendiente = "Trip Attack"
+    trait.extra_attack_damage(
+        trait.owner, objetivo, AttackRange.MELEE, ctx=ctx,
+        rng=random.Random(1), atk=Attack("Espada larga", "1d8", ability="str"))
+    assert trait.dados_restantes == 4  # 5 dados en nivel 14 → 4 tras gastar
+
+
+def test_relentless_el_dado_es_siempre_d8(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core import dice
+
+    vistas: list[str] = []
+    real = dice.roll_dice
+
+    def _espiar(expr, *args, **kwargs):
+        vistas.append(expr)
+        return real(expr, *args, **kwargs)
+
+    monkeypatch.setattr(bm_mod, "roll_dice", _espiar)
+    _, trait, objetivo, ctx = _atacado(level=18, maneuvers=("Trip Attack",))
+    trait.maniobra_pendiente = "Trip Attack"
+    trait.extra_attack_damage(
+        trait.owner, objetivo, AttackRange.MELEE, ctx=ctx, rng=_RngSi(),
+        atk=Attack("Espada larga", "1d8", ability="str"))
+    assert vistas == ["1d8"]  # nivel 18: dado d12, Relentless tira d8

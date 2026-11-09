@@ -1156,6 +1156,32 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
     recuento, Student of War (añade/no candidatas/herramientas), Know
     Your Enemy, dados por nivel, ``reset`` y ``on_turn_start`` sin RNG.
     Suite completa: 1212 passed (0 fallos). Commit de A2.
+  - (3) Punto de decisión único por ataque: en ``engine/combat/attack.py``,
+    helper ``_decidir_maniobra`` (duck-typing patrón
+    ``_sustituir_ataque``, sin HOOK_NAMES: primer rasgo que define
+    ``decidir_maniobra(attacker, target, atk, rango, *, roll, total, ca,
+    hit, ctx, rng, log)`` devuelve ``(hit, total)`` corregidos). En
+    ``attack_roll``, paso 6b justo tras calcular ``hit`` y ANTES del
+    crítico automático (la conversión de Precision no vuelve a consultar
+    Parry: simplificación documentada); sin rasgo → valores idénticos
+    SIN RNG. En ``battle_master.py``: constantes ``MANEUVERS_ON_HIT``
+    (9 de impacto) y ``MANEUVERS_MELEE_ONLY`` (Lunging/Sweeping);
+    ``decidir_maniobra`` con guards primero (sin datos, pendiente,
+    Feinting encolado, sin rng o fallo → SIN RNG), elegibles sin RNG
+    (cuerpo a cuerpo para Lunging/Sweeping; Sweeping exige otro enemigo)
+    y ``pick`` «no»/«sí» + ``pick`` uniforme; guarda
+    ``maniobra_pendiente`` + ``maniobra_total``. ``extra_attack_damage``
+    ejecuta: tira el dado de superioridad UNA vez con la regla de
+    críticos del motor (``crit`` lo duplica), gasta el dado y devuelve
+    el daño; Relentless (15) con ``pick`` «no»/«sí» → 1d8 sin gastar y
+    flag por turno (sin RNG con <15 o ya usado). Salvaciones (A4),
+    marcas (A5) y Sweeping (A6) quedan como ramas marcadas. Tests
+    nuevos A3 (12): un solo par de picks, equiprobabilidad con RNG
+    controlado, melee-only a distancia, gasto solo al ejecutar, una
+    maniobra por ataque, sin datos/fallo-sin-Precision/sin subclase sin
+    RNG, integración ``attack_roll`` (gasta el dado con pick parcheado),
+    Relentless (d8 sin gastar, una vez por turno, sin ``pick`` con <15,
+    siempre d8). Suite completa: 1224 passed (0 fallos). Commit de A3.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas

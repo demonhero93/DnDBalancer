@@ -235,6 +235,34 @@ def _sustituir_ataque(attacker: Any, target: Any, atk: Any, rango: Any,
     return None
 
 
+def _decidir_maniobra(attacker: Any, target: Any, atk: Any, rango: Any, *,
+                      roll: int, total: int, ca: int, hit: bool,
+                      ctx: Any, rng: Any, log: Any) -> tuple[bool, int]:
+    """Punto ÚNICO de decisión de maniobras por ataque (Battle Master).
+
+    Duck-typing (patrón ``_sustituir_ataque``, sin hook HOOK_NAMES): el
+    primer rasgo que define
+    ``decidir_maniobra(attacker, target, atk, rango, *, roll, total, ca,
+    hit, ctx, rng, log)`` recibe la tirada ya conocida y devuelve
+    ``(hit, total)`` posiblemente corregidos (Precision Attack puede
+    subir el total y convertir un fallo en impacto). Se le llama justo
+    DESPUÉS de conocer el resultado y ANTES de aplicar efectos; una
+    maniobra como máximo por ataque. El bonificador defensivo del
+    defensor (Parry) ya se resolvió antes: la conversión de Precision
+    no lo vuelve a consultar (simplificación documentada). Sin rasgos
+    que lo definan devuelve los valores recibidos **sin consumir RNG**.
+    """
+    for rasgo in (getattr(attacker, "traits", None) or []):
+        metodo = getattr(rasgo, "decidir_maniobra", None)
+        if metodo is None:
+            continue
+        hit, total = metodo(attacker, target, atk, rango, roll=roll,
+                            total=total, ca=ca, hit=hit, ctx=ctx, rng=rng,
+                            log=log)
+        break
+    return hit, total
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
                 verbose: bool = False, ctx: Any = None,
@@ -327,6 +355,13 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         if extra_ca:
             ca_efectiva += extra_ca
     hit = crit or (roll != 1 and total >= ca_efectiva)
+    # (6b) Punto ÚNICO de decisión de maniobras (Battle Master): tras
+    # conocer la tirada y ANTES de aplicar efectos. Puede corregir el
+    # total y el impacto (Precision); sin rasgo que lo defina el flujo
+    # es idéntico y no consume RNG.
+    hit, total = _decidir_maniobra(attacker, target, atk, rango,
+                                   roll=roll, total=total, ca=ca_efectiva,
+                                   hit=hit, ctx=ctx, rng=rng, log=log)
     # Crítico automático (objetivo paralizado o inconsciente a cuerpo a
     # cuerpo): el impacto es crítico aunque el d20 no sea 20; un 1 natural
     # sigue fallando.

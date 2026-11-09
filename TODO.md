@@ -87,7 +87,7 @@ Plan de sesión (una casilla = un commit):
   + tests por nivel.
 - [x] A2. Esqueleto `battle_master.py`, registro `"battle_master"` y reexportes;
   Student of War (habilidad con `pick`) y Know Your Enemy (dato); tests.
-- [ ] A3. Punto de decisión único por ataque (duck-typing desde `attack.py`),
+- [x] A3. Punto de decisión único por ataque (duck-typing desde `attack.py`),
   gasto de dado al ejecutar, una maniobra por ataque, Relentless; tests.
 - [ ] A4. Maniobras de impacto con daño y salvación (Disarming, Goading,
   Lunging, Maneuvering, Menacing, Pushing, Trip); tests.
