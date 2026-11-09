@@ -91,7 +91,7 @@ Plan de sesión (una casilla = un commit):
   gasto de dado al ejecutar, una maniobra por ataque, Relentless; tests.
 - [x] A4. Maniobras de impacto con daño y salvación (Disarming, Goading,
   Lunging, Maneuvering, Menacing, Pushing, Trip); tests.
-- [ ] A5. Marcas Distracting / Goading / Feinting en `CombatState`; tests.
+- [x] A5. Marcas Distracting / Goading / Feinting en `CombatState`; tests.
 - [ ] A6. Precision Attack y Sweeping Attack; tests.
 - [ ] A7. Cierre de pool: Relentless, Know Your Enemy dato, Bait and Switch
   fuera si no hay CA temporal; tests.

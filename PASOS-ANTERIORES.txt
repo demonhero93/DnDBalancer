@@ -1202,6 +1202,30 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
     sin implementación no alteran el combate (daño devuelto 4 veces,
     sin condiciones/marcas/movimiento), daño una sola vez. Suite
     completa: 1234 passed (0 fallos). Commit de A4.
+  - (5) Marcas Distracting/Goading/Feinting: campo nuevo
+    ``CombatState.distracting`` (core, ``compare=False``, limpio en
+    ``Combatant.reset``); el de ``goading`` ya entró en A4.
+    ``rules/mastery.py::consumir_marcas`` (bloque 5c de
+    ``attack_modifiers``) ampliado: Distracting en el OBJETIVO →
+    ventaja al primer atacante distinto del marcador y SE CONSUME
+    (caduca a ronda+1, «antes del inicio de tu siguiente turno»; el
+    marcador no gana ventaja ni consume); Goading en el ATACANTE →
+    desventaja al atacar a cualquiera que NO sea el marcador, NO se
+    consume (solo caduca a ronda+2). En ``battle_master.py``: rama
+    Distracting en ``_efecto_de_maniobra`` (sin salvación), rama
+    Feinting en ``decidir_maniobra`` (consume la ranura SIN RNG y, si
+    impacta, deja ``maniobra_pendiente="Feinting Attack"``),
+    ``modify_attack_modifiers`` concede ventaja mientras la marca esté
+    encolada (la consume el punto de decisión tras la tirada) y
+    ``FeintingAttackAction`` (acción bonus «Ataque de Engaño»:
+    elegibilidad con ``pick`` «no»/«sí» patrón Disparo Curvo, cero RNG
+    sin bonus/datos/marca ya encolada; ``execute`` encola la marca;
+    añadida en ``apply_battle_master``). Tests nuevos A5 (9):
+    Distracting ventaja a terceros+consumo/no al marcador/caducidad;
+    Goading sin consumo/no aplica al marcador/caducidad; reset limpia
+    marcas; Feinting elegibilidad con decisión aleatoria/sin datos sin
+    RNG/ventaja+gasto del dado al impactar/pendiente en fallo. Suite
+    completa: 1244 passed (0 fallos). Commit de A5.
 
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas

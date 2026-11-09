@@ -60,10 +60,11 @@ from .....core.log import log_line as _log_line
 from .....core.proficiency import proficiency_bonus
 from .....core.randomness import pick, sample
 from .....core.targeting import valid_targets
+from .....model.actions import ActionType, CombatAction
 from ....conditions import Condition, EscapeCheck, apply_condition
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
-from ..features import FighterFeatures
+from ..features import FighterFeatures, _contexto
 
 #: RNG con semilla fija para Student of War y maniobras cuando no pasa
 #: ``rng``: crea el personaje siempre igual (reproducible).
@@ -201,10 +202,19 @@ class BattleMasterFeatures(Trait):
         """
         if (attacker is not self.owner
                 or target is None
-                or rng is None
-                or self.dados_restantes <= 0
-                or self.maniobra_pendiente is not None
-                or self.feinting_pendiente):
+                or rng is None):
+            return hit, total
+        if self.feinting_pendiente:
+            # Este ataque es el de Feinting: consume la ranura (una
+            # maniobra por ataque) y, si impacta, su dado se aplica en
+            # ``extra_attack_damage``. Sin RNG en esta rama.
+            self.feinting_pendiente = False
+            if hit and self.maniobra_pendiente is None:
+                self.maniobra_pendiente = "Feinting Attack"
+                self.maniobra_total = total
+            return hit, total
+        if (self.dados_restantes <= 0
+                or self.maniobra_pendiente is not None):
             return hit, total
         if not hit:
             return hit, total  # A6: Precision Attack (fallo → total)
@@ -257,6 +267,21 @@ class BattleMasterFeatures(Trait):
         _log_line(ctx, f"Battle Master ({opcion}): +{valor} de daño{sufijo}")
         self._efecto_de_maniobra(opcion, target, ctx, rng)
         return valor
+
+    # --- Feinting Attack (5): ventaja en el siguiente ataque ------------------
+    def modify_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
+                                rango: Any, ctx: Any = None,
+                                rng: Any = None, atk: Any = None) -> None:
+        """Feinting: ventaja mientras la marca siga encolada.
+
+        El hook se despacha en cada tirada; la consume
+        ``decidir_maniobra`` (una sola vez, justo después de la tirada),
+        así que solo el SIGUIENTE ataque de este turno la recibe.
+        """
+        if attacker is not self.owner or not self.feinting_pendiente:
+            return None
+        mods.advantage_sources.append("Feinting Attack")
+        return None
 
     # --- Salvaciones y condiciones de las maniobras (4) ------------------------
     def _cd(self) -> int:
@@ -320,6 +345,65 @@ class BattleMasterFeatures(Trait):
                         escape=EscapeCheck(abilities=("str", "dex"), dc=10,
                                            consumes_action=False))
                 # Enorme o mayor: sin salvación (solo daño).
+        elif opcion == "Distracting Strike":
+            ronda = getattr(ctx, "round", None)
+            estado = getattr(target, "state", None)
+            if ronda is not None and estado is not None:
+                # shortcut: caduca en ronda+1 («antes del inicio de tu
+                # siguiente turno»); la ventaja es para OTROS y la
+                # consume consumir_marcas al primer atacante distinto.
+                estado.distracting[self.owner.name] = ronda + 1
+        # Feinting: la ventaja la concede modify_attack_modifiers y el
+        # dato de la marca vive en el propio rasgo (feinting_pendiente).
+
+
+class FeintingAttackAction(CombatAction):
+    """Ataque de Engaño (acción bonus): ventaja en el siguiente ataque.
+
+    Solo es elegible con bonus libre, dados de superioridad restantes y
+    sin marca ya encolada; la decisión de usarlo es un ``pick``
+    «no»/«sí» (cero RNG si no es elegible, patrón Disparo Curvo). Al
+    ejecutar encola ``feinting_pendiente``: la ventaja la concede
+    ``modify_attack_modifiers`` y el dado, si el ataque impacta, lo
+    aplica ``extra_attack_damage`` (una maniobra como máximo por
+    ataque). Sin marca al empezar el turno la decisión caduca.
+    """
+
+    def __init__(self) -> None:
+        self.name = "Ataque de Engaño"
+        self.action_type = ActionType.BONUS_ACTION
+        self.usage = None  # sin usos limitados: el límite es el bonus
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None:
+            return False
+        trait = _de(actor, BattleMasterFeatures)
+        if (trait is None
+                or trait.feinting_pendiente
+                or trait.maniobra_pendiente is not None
+                or trait.dados_restantes <= 0):
+            return False  # sin datos o ya encolado: cero RNG
+        rng = getattr(ctx, "rng", None)
+        if rng is None:
+            return False  # sin RNG el rasgo se abstiene
+        if pick(rng, ("no", "si")) == "no":
+            return False  # decisión aleatoria de usar la acción bonus
+        return True
+
+    def execute(self, context: Any) -> None:
+        actor = context.actor
+        trait = _de(actor, BattleMasterFeatures)
+        rng = getattr(context, "rng", None)
+        if (trait is None or rng is None or trait.feinting_pendiente
+                or trait.dados_restantes <= 0):
+            return
+        trait.feinting_pendiente = True
+        _log_line(context, f"{getattr(actor, 'name', actor)} se prepara "
+                           f"para un Ataque de Engaño")
 
 
 def apply_battle_master(pj: Any, level: int | None = None,
@@ -383,7 +467,10 @@ def apply_battle_master(pj: Any, level: int | None = None,
     )
     trait.owner = pj
     pj.traits.append(trait)
+    # Feinting Attack (acción bonus): disponible desde el nivel 3.
+    pj.actions.append(FeintingAttackAction())
     return trait
 
 
-__all__ = ["BattleMasterFeatures", "apply_battle_master"]
+__all__ = ["BattleMasterFeatures", "FeintingAttackAction",
+           "apply_battle_master"]

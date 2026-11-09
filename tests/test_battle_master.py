@@ -258,6 +258,13 @@ class _RngSi:
         return b
 
 
+class _RngNo:
+    """randrange siempre 0 («no»)."""
+
+    def randrange(self, n: int) -> int:
+        return 0
+
+
 class _RngIdx:
     """Devuelve los índices dados en orden (y «si» cuando se acaban)."""
 
@@ -577,3 +584,170 @@ def test_el_dano_de_la_maniobra_se_suma_una_sola_vez():
         rng=_RngFalla(), atk=Attack("Espada larga", "1d8", ability="str"))
     assert segunda == 0  # sin pendiente: no se vuelve a aplicar
     assert trait.dados_restantes == 3
+
+
+# --- Marcas: Distracting / Goading / Feinting (A5) -----------------------------
+
+def _mods() -> SimpleNamespace:
+    return SimpleNamespace(advantage_sources=[], disadvantage_sources=[])
+
+
+def test_distracting_da_ventaja_a_un_tercero_y_se_consume():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, trait, objetivo, ctx = _atacado(
+        maneuvers=("Distracting Strike",))
+    _ejecuta(trait, objetivo, ctx, _RngFalla(), "Distracting Strike")
+    assert objetivo.state.distracting == {trait.owner.name: 2}  # ronda 1 + 1
+    tercero = Monster("Tercero", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, tercero, objetivo, ctx)
+    assert "Distracting Strike" in mods.advantage_sources
+    assert objetivo.state.distracting == {}  # consumida al concederse
+
+
+def test_distracting_no_da_ventaja_al_marcador_ni_se_consume():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, trait, objetivo, ctx = _atacado(
+        maneuvers=("Distracting Strike",))
+    _ejecuta(trait, objetivo, ctx, _RngFalla(), "Distracting Strike")
+    mods = _mods()
+    consumir_marcas(mods, pj, objetivo, ctx)
+    assert mods.advantage_sources == []
+    assert objetivo.state.distracting == {trait.owner.name: 2}  # intacta
+
+
+def test_distracting_no_concede_ventaja_si_ya_caduco():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, trait, objetivo, _ = _atacado(maneuvers=("Distracting Strike",))
+    objetivo.state.distracting[trait.owner.name] = 2
+    ctx = SimpleNamespace(round=2, combatants=[pj, objetivo])
+    tercero = Monster("Tercero", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, tercero, objetivo, ctx)
+    assert mods.advantage_sources == []
+    assert objetivo.state.distracting == {}
+
+
+def test_goading_no_se_consume_y_no_aplica_al_atacar_al_marcador():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, trait, objetivo, ctx = _atacado(maneuvers=("Goading Attack",))
+    _ejecuta(trait, objetivo, ctx, _RngFalla(), "Goading Attack")
+    assert objetivo.state.goading == {trait.owner.name: 3}
+    otro = Monster("Otro", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, objetivo, otro, ctx)
+    assert "Goading Attack" in mods.disadvantage_sources
+    assert objetivo.state.goading == {trait.owner.name: 3}  # NO consumida
+    # Contra su propio marcador: sin desventaja y la marca sigue.
+    mods2 = _mods()
+    consumir_marcas(mods2, objetivo, pj, ctx)
+    assert "Goading Attack" not in mods2.disadvantage_sources
+    assert objetivo.state.goading == {trait.owner.name: 3}
+
+
+def test_goading_caduca_en_la_ronda_indicada():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, trait, objetivo, _ = _atacado(maneuvers=("Goading Attack",))
+    objetivo.state.goading[trait.owner.name] = 3
+    ctx = SimpleNamespace(round=3, combatants=[pj, objetivo])
+    otro = Monster("Otro", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, objetivo, otro, ctx)
+    assert mods.disadvantage_sources == []
+    assert objetivo.state.goading == {}
+
+
+def test_reset_de_combate_limpia_las_marcas_de_battle_master():
+    _, trait, _, _ = _atacado(maneuvers=("Goading Attack",))
+    pj = trait.owner
+    pj.state.distracting["Marcador"] = 5
+    pj.state.goading["Marcador"] = 7
+    pj.reset()
+    assert pj.state.distracting == {}
+    assert pj.state.goading == {}
+
+
+# --- Feinting Attack (acción bonus) --------------------------------------------
+
+def _accion_feinting(pj):
+    from dnd_sim.rules.classes.fighter.subclasses.battle_master import (
+        FeintingAttackAction,
+    )
+
+    for accion in pj.actions:
+        if isinstance(accion, FeintingAttackAction):
+            return accion
+    raise AssertionError("falta FeintingAttackAction")
+
+
+def test_feinting_es_elegible_con_bonus_libre_y_decision_aleatoria():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, objetivo, _ = _atacado(maneuvers=("Goading Attack",))
+    accion = _accion_feinting(pj)
+    ctx = SimpleNamespace(actor=pj, rng=_RngSi(),
+                          combatants=[pj, objetivo])
+    assert accion.can_use(TurnResources(), ctx) is True
+    ctx_no = SimpleNamespace(actor=pj, rng=_RngNo(),
+                             combatants=[pj, objetivo])
+    assert accion.can_use(TurnResources(), ctx_no) is False
+
+
+def test_feinting_sin_datos_es_inelegible_sin_rng():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, objetivo, _ = _atacado(maneuvers=("Goading Attack",))
+    accion = _accion_feinting(pj)
+    trait.dados_restantes = 0
+    ctx = SimpleNamespace(actor=pj, rng=_ExplotaSiUsaRng(),
+                          combatants=[pj, objetivo])
+    assert accion.can_use(TurnResources(), ctx) is False
+
+
+def test_feinting_encola_la_ventaja_y_el_dado_si_impacta():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, objetivo, ctx = _atacado(maneuvers=("Goading Attack",))
+    accion = _accion_feinting(pj)
+    ctx_ejec = SimpleNamespace(actor=pj, rng=_RngSi(),
+                               combatants=[pj, objetivo], round=1)
+    accion.execute(ctx_ejec)
+    assert trait.feinting_pendiente is True
+    # La ventaja se ve en la tirada...
+    mods = _mods()
+    trait.modify_attack_modifiers(mods, pj, objetivo, AttackRange.MELEE,
+                                  ctx=ctx, rng=_RngSi())
+    assert mods.advantage_sources == ["Feinting Attack"]
+    # ...y la decisión de este ataque consume la ranura SIN RNG, aunque
+    # haya otras maniobras conocidas (una por ataque).
+    hit, total = _decide(trait, objetivo, ctx, _ExplotaSiUsaRng())
+    assert trait.feinting_pendiente is False
+    assert trait.maniobra_pendiente == "Feinting Attack"
+    assert (hit, total) == (True, 15)
+    # La ventaja NO se concede al siguiente ataque.
+    mods2 = _mods()
+    trait.modify_attack_modifiers(mods2, pj, objetivo, AttackRange.MELEE,
+                                  ctx=ctx, rng=_ExplotaSiUsaRng())
+    assert mods2.advantage_sources == []
+    # El dado se gasta al impactar.
+    daño = trait.extra_attack_damage(
+        pj, objetivo, AttackRange.MELEE, ctx=ctx, rng=random.Random(1),
+        atk=Attack("Espada larga", "1d8", ability="str"))
+    assert daño > 0
+    assert trait.dados_restantes == 3
+    assert trait.maniobra_pendiente is None
+
+
+def test_feinting_sin_impacto_no_gasta_el_dado():
+    pj, trait, objetivo, ctx = _atacado(maneuvers=("Goading Attack",))
+    trait.feinting_pendiente = True
+    hit, _ = _decide(trait, objetivo, ctx, _ExplotaSiUsaRng(), hit=False)
+    assert hit is False
+    assert trait.feinting_pendiente is False
+    assert trait.maniobra_pendiente is None
+    assert trait.dados_restantes == 4

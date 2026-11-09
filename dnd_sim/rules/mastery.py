@@ -217,13 +217,16 @@ def al_fallar(attacker: Any, target: Any, attack: Any, *,
 
 def consumir_marcas(mods: Any, attacker: Any, target: Any,
                     ctx: Any = None) -> None:
-    """Consume las marcas de maestría pendientes en esta tirada.
+    """Consume las marcas pendientes en esta tirada.
 
     Se llama desde :func:`dnd_sim.rules.roll_modifiers.attack_modifiers`
     (bloque 5c): Vex da ventaja al ATACANTE contra ``target``; Sap da
-    desventaja al atacante porque ``target`` lo marcó. Cada marca se
-    consume al concederse (solo la siguiente tirada) y las caducadas se
-    borran. Sin ``ctx`` o sin marcas no hace nada (cero RNG).
+    desventaja al atacante porque ``target`` lo marcó. Además las marcas
+    de Battle Master: Distracting (en el OBJETIVO) da ventaja al primer
+    atacante distinto del marcador y se consume; Goading (en el
+    ATACANTE) da desventaja a quien está marcado al atacar a cualquiera
+    que no sea su marcador y NO se consume. Cada marca caducada se borra
+    y sin ``ctx`` o sin marcas no se hace nada (cero RNG).
     """
     if ctx is None or attacker is None or target is None:
         return
@@ -242,6 +245,27 @@ def consumir_marcas(mods: Any, attacker: Any, target: Any,
         if marcas_des[nombre_atk] > ronda:
             mods.disadvantage_sources.append("Maestría Sap")
         del marcas_des[nombre_atk]
+    # Distracting Strike (Battle Master): ventaja al primer atacante
+    # distinto del marcador; se consume al concederse y las caducadas se
+    # borran. El propio marcador no gana ventaja ni consume la marca.
+    marcas_dis = getattr(estado_obj, "distracting", None)
+    if marcas_dis:
+        for marcador, caduca in list(marcas_dis.items()):
+            if caduca <= ronda:
+                del marcas_dis[marcador]
+            elif nombre_atk != marcador:
+                mods.advantage_sources.append("Distracting Strike")
+                del marcas_dis[marcador]
+    # Goading Attack (Battle Master): desventaja al SUJETO marcado al
+    # atacar a cualquiera que no sea su marcador; NO se consume (solo
+    # caduca) y al atacar al propio marcador no hay desventaja.
+    marcas_goad = getattr(estado, "goading", None)
+    if marcas_goad:
+        for marcador, caduca in list(marcas_goad.items()):
+            if caduca <= ronda:
+                del marcas_goad[marcador]
+            elif nombre_obj != marcador:
+                mods.disadvantage_sources.append("Goading Attack")
 
 
 __all__ = ["EFECTOS", "EFECTOS_SIN_EFECTO", "MAESTRIAS", "al_acertar",

@@ -292,6 +292,8 @@ class Combatant:
             self.state.enfeeble_hasta_ronda.clear()
             # Marca de Goading (Battle Master): un combate nuevo sin ella.
             self.state.goading.clear()
+            # Marca de Distracting (Battle Master): un combate nuevo sin ella.
+            self.state.distracting.clear()
         except Exception:
             pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,

@@ -77,6 +77,12 @@ class CombatState:
     # ``rules.mastery.consumir_marcas``). La limpia ``Combatant.reset()``.
     goading: dict[str, int] = field(
         default_factory=dict, repr=False, compare=False)
+    # Distracting Strike (Battle Master): nombre del Maestro de Batalla →
+    # ronda de caducidad. La marca quien RECIBE la maniobra y da ventaja
+    # al primer ATACANTE distinto del marcador, que la consume (lo aplica
+    # ``rules.mastery.consumir_marcas``). La limpia ``Combatant.reset()``.
+    distracting: dict[str, int] = field(
+        default_factory=dict, repr=False, compare=False)
 
     def enfeeble_mitiga(self, ronda: int | None) -> bool:
         """¿Vigente la marca de Enfeebling en ``ronda``?
