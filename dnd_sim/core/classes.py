@@ -114,6 +114,42 @@ def arcane_shot_uses(level: int) -> int:
     return 3 if lvl >= 15 else 2
 
 
+def superiority_dice_count(level: int) -> int:
+    """Dados de superioridad de Combat Superiority (0/4/5/6 en <3/3-6/7-14/15+)."""
+    lvl = _clamp(level)
+    if lvl < 3:
+        return 0
+    if lvl < 7:
+        return 4
+    if lvl < 15:
+        return 5
+    return 6
+
+
+def superiority_die_sides(level: int) -> int:
+    """Caras del dado de superioridad (d8/d10/d12 en <10/10-17/18+)."""
+    lvl = _clamp(level)
+    if lvl >= 18:
+        return 12
+    if lvl >= 10:
+        return 10
+    return 8
+
+
+def maneuvers_known_count(level: int) -> int:
+    """Maniobras conocidas (0/3/5/7/9 en <3/3-6/7-9/10-14/15+)."""
+    lvl = _clamp(level)
+    if lvl < 3:
+        return 0
+    if lvl < 7:
+        return 3
+    if lvl < 10:
+        return 5
+    if lvl < 15:
+        return 7
+    return 9
+
+
 def fighter_extra_attacks_for(level: int) -> int:
     """Golpes de la acción Atacar del Fighter (1/2/3/4 en 1/5/11/20).
 
@@ -228,10 +264,28 @@ FIGHTER_STYLES: tuple[str, ...] = (
     "Thrown Weapon Fighting",
 )
 
+#: Pool de maniobras de Battle Master implementadas (PHB 2024): las 11
+#: de la sesión 1. Las de la sesión 2 (Parry, Riposte...) entran al
+#: ampliar el pool (cambiará el ``sample`` de PJ con semilla fija).
+BATTLE_MASTER_MANEUVERS: tuple[str, ...] = (
+    "Disarming Attack",
+    "Distracting Strike",
+    "Feinting Attack",
+    "Goading Attack",
+    "Lunging Attack",
+    "Maneuvering Attack",
+    "Menacing Attack",
+    "Precision Attack",
+    "Pushing Attack",
+    "Sweeping Attack",
+    "Trip Attack",
+)
+
 __all__ = [
     "BARBARIAN_FEATURES",
     "BARBARIAN_PRIMAL_SKILLS",
     "BARBARIAN_SKILLS",
+    "BATTLE_MASTER_MANEUVERS",
     "FIGHTER_FEATURES",
     "FIGHTER_SKILLS",
     "FIGHTER_STYLES",
@@ -243,8 +297,11 @@ __all__ = [
     "extra_attacks_for",
     "fighter_extra_attacks_for",
     "indomitable_uses",
+    "maneuvers_known_count",
     "rage_damage",
     "rage_uses",
     "second_wind_uses",
+    "superiority_die_sides",
+    "superiority_dice_count",
     "weapon_mastery_count",
 ]

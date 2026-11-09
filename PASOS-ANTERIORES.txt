@@ -1119,6 +1119,17 @@ ARCANE ARCHER: PIERCING Y SEEKING (2026-11-08)
     3563 nodos, 12939 aristas, 110 comunidades; backup
     ``graphify-out/2026-11-09/``. Commit final con grafo.
 
+BATTLE MASTER (SESIÓN 1) (2026-11-09)
+  - (1) Tablas en ``core/classes.py``: ``superiority_dice_count`` (0/4/5/6
+    en <3/3-6/7-14/15+), ``superiority_die_sides`` (d8/d10/d12 en
+    <10/10-17/18+), ``maneuvers_known_count`` (0/3/5/7/9 en
+    <3/3-6/7-9/10-14/15+) y pool ``BATTLE_MASTER_MANEUVERS`` (11
+    maniobras de la sesión 1: 9 de impacto + Precision + Feinting; las
+    de la sesión 2 entran al ampliar el pool y cambiarán el ``sample``
+    de PJ con semilla fija). Tests nuevos ``tests/test_battle_master.py``
+    (4): las 3 tablas por nivel y el pool (11, sin Parry, sin
+    duplicados). Commit de A1 (suite entera al cerrar A2).
+
 ESTADO ACTUAL
    - 82 módulos en dnd_sim/; tests/ con 52 ficheros y 19034 líneas
      (1192 tests en verde, medido 2026-11-08).

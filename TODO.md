@@ -80,6 +80,27 @@ Plan de sesión (una casilla = un commit):
 - [x] Verificación + grafo (`pytest` arquitectura, suite, `capas.py`,
   `graphify update .`, commit final).
 
+## Battle Master: plan de sesión 1
+
+- [x] A1. Tablas `superiority_dice_count` / `superiority_die_sides` /
+  `maneuvers_known_count` y pool `BATTLE_MASTER_MANEUVERS` en `core/classes.py`
+  + tests por nivel.
+- [ ] A2. Esqueleto `battle_master.py`, registro `"battle_master"` y reexportes;
+  Student of War (habilidad con `pick`) y Know Your Enemy (dato); tests.
+- [ ] A3. Punto de decisión único por ataque (duck-typing desde `attack.py`),
+  gasto de dado al ejecutar, una maniobra por ataque, Relentless; tests.
+- [ ] A4. Maniobras de impacto con daño y salvación (Disarming, Goading,
+  Lunging, Maneuvering, Menacing, Pushing, Trip); tests.
+- [ ] A5. Marcas Distracting / Goading / Feinting en `CombatState`; tests.
+- [ ] A6. Precision Attack y Sweeping Attack; tests.
+- [ ] A7. Cierre de pool: Relentless, Know Your Enemy dato, Bait and Switch
+  fuera si no hay CA temporal; tests.
+- [ ] B. Decisiones de diseño y cambio de test existente explicado (subclases
+  registradas pasa a `{"arcane_archer", "battle_master"}`).
+- [ ] Docs. `ARCHITECTURE.md`, `PASOS-ANTERIORES.txt`, `TODO.md` (sesión 2).
+- [ ] Verificación. `pytest tests/test_arquitectura.py`, `pytest`,
+  `python tools/capas.py`, `graphify update .` y commit final del grafo.
+
 ## Fighter: cómo añadir una subclase
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`):
