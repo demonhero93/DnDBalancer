@@ -1311,6 +1311,33 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     recuento + pertenencia al pool. Test nuevo (1): kwarg explícito
     con las 3 maniobras de reacción es válido. Suite completa:
     1255 passed (0 fallos). Commit de A1.
+  - (2) Parry (A2): nuevo hook duck-typing sobre el OBJETIVO
+    ``reducir_dano_recibido(attacker, rango, dmg, *, ctx, rng,
+    log)`` (helper ``_reducir_dano_recibido`` en ``attack.py``,
+    patrón ``_sustituir_ataque``, sin entrada en HOOK_NAMES →
+    ``test_traits`` no cambia) llamado justo ANTES de
+    ``inflict_damage``: el dueño del rasgo es el atacado (el
+    ``reduce_damage_to_allies`` de Interception excluye al propio
+    guardián, por eso hizo falta un hook nuevo). Guards SIN RNG:
+    daño <= 0, sin atacante/rng, rango no cuerpo a cuerpo, maniobra
+    no conocida, dueño muerto/no capaz de actuar, reacción ya
+    usada o sin dados (y sin Relentless disponible). Decisión
+    ``pick`` «no»/«sí» («no» no gasta nada); el dado se tira UNA
+    vez (``_tirar_dado`` compartido, Relentless incluido) y resta
+    ``dado + max(mod FUE, mod DES)`` con mínimo 0. Gasta la
+    reacción siempre que se usa; Relentless solo evita gastar el
+    dado. Orden documentado: Parry reduce el daño YA modificado
+    (resistencias/vulnerabilidades primero, Parry después) y no se
+    duplica en crítico. Sin la subclase el helper devuelve el
+    daño sin consultar rasgos ni RNG. Tests nuevos (14): reducción
+    con valor controlado, mínimo 0, solo cuerpo a cuerpo (rng que
+    revienta a distancia), gasto de reacción y dado, sin
+    reacción/dados/maniobra → sin RNG, una sola vez por ronda,
+    mayor de FUE/DES, Relentless sin gastar dado, aplicación en el
+    motor antes del daño, no se consulta en un fallo, no actúa
+    cuando el Battle Master es el atacante y sin subclase. NINGÚN
+    test existente cambia. Suite completa: 1269 passed (0
+    fallos). Commit de A2.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas

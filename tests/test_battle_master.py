@@ -480,6 +480,160 @@ def test_relentless_el_dado_es_siempre_d8(monkeypatch):
     assert vistas == ["1d8"]  # nivel 18: dado d12, Relentless tira d8
 
 
+# --- Parry (reacción) (A2) ------------------------------------------------------
+
+# Pool de 3 (recuento del nivel 5) sin maniobras de impacto: la decisión
+# de sesión 1 no interviene y cada test de Parry ve solo su «no/sí».
+_SOLO_REACCION = ("Commander's Strike", "Feinting Attack", "Parry")
+
+
+def _parry(trait, rng, *, dmg=10, rango=AttackRange.MELEE):
+    """Llama al hook de Parry con el dueño como objetivo (como el motor)."""
+    agresor = Monster("Agresor", max_hp=40, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[trait.owner, agresor])
+    return trait.reducir_dano_recibido(
+        agresor, rango, dmg, ctx=ctx, rng=rng, log=None)
+
+
+def test_parry_reduce_el_daño_en_dado_mas_mod_fue_o_des():
+    _, trait, _, _ = _atacado(maneuvers=_SOLO_REACCION)
+    # _RngSi: «si» y d8 = 8; mod FUE +3 → −11 → 15 − 11 = 4.
+    assert _parry(trait, _RngSi(), dmg=15) == 4
+
+
+def test_parry_el_daño_no_baja_de_cero():
+    _, trait, _, _ = _atacado(maneuvers=_SOLO_REACCION)
+    assert _parry(trait, _RngSi(), dmg=6) == 0
+
+
+def test_parry_solo_se_dispara_en_ataques_cuerpo_a_cuerpo():
+    _, trait, _, _ = _atacado(maneuvers=_SOLO_REACCION)
+    assert _parry(trait, _ExplotaSiUsaRng(),
+                  rango=AttackRange.RANGED) == 10
+    assert trait.owner.state.reaction_used is False
+
+
+def test_parry_gasta_la_reaccion_y_el_dado():
+    _, trait, _, _ = _atacado(maneuvers=_SOLO_REACCION)
+    _parry(trait, _RngSi())
+    assert trait.owner.state.reaction_used is True
+    assert trait.dados_restantes == 3
+
+
+def test_parry_sin_reaccion_libre_no_reduce_y_no_consume_rng():
+    _, trait, _, _ = _atacado(maneuvers=_SOLO_REACCION)
+    trait.owner.state.reaction_used = True
+    assert _parry(trait, _ExplotaSiUsaRng()) == 10
+
+
+def test_parry_sin_dados_y_sin_relentless_no_consume_rng():
+    _, trait, _, _ = _atacado(maneuvers=_SOLO_REACCION)
+    trait.dados_restantes = 0
+    assert _parry(trait, _ExplotaSiUsaRng()) == 10
+
+
+def test_parry_sin_la_maniobra_conocida_no_consume_rng():
+    _, trait, _, _ = _atacado(maneuvers=("Feinting Attack", "Precision Attack",
+                                         "Riposte"))
+    assert _parry(trait, _ExplotaSiUsaRng()) == 10
+
+
+def test_parry_solo_una_vez_por_ronda():
+    _, trait, _, _ = _atacado(maneuvers=_SOLO_REACCION)
+    assert _parry(trait, _RngSi(), dmg=15) == 4
+    assert _parry(trait, _ExplotaSiUsaRng(), dmg=15) == 15
+
+
+def test_parry_usa_el_mayor_de_mod_fue_y_des():
+    pj = _pj(abilities=_abilities(str=10, dex=18))
+    apply_fighter(pj, level=5)
+    trait = apply_battle_master(pj, level=5,
+                                maneuvers=_completa(("Parry",), 5))
+    # mod FUE 0 < mod DES +4: la reducción usa +4 → 15 − (8 + 4) = 3.
+    assert _parry(trait, _RngSi(), dmg=15) == 3
+
+
+def test_parry_con_relentless_no_gasta_el_dado():
+    _, trait, _, _ = _atacado(level=15, maneuvers=_SOLO_REACCION)
+    # _RngSi: «si» en la decisión y «si» en Relentless → d8 sin gastar.
+    assert _parry(trait, _RngSi(), dmg=15) == 4  # 15 − (8 + 3)
+    assert trait.dados_restantes == 6  # nivel 15: ninguno gastado
+    assert trait.relentless_used_this_turn is True
+    assert trait.owner.state.reaction_used is True
+
+
+def test_parry_se_aplica_en_el_motor_justo_antes_del_daño(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj, trait, agresor, ctx = _atacado(maneuvers=_SOLO_REACCION)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])  # «si»
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 8)
+    atk = Attack("Garra", "1d6", ability="str")
+    atk_mod.attack_roll(agresor, pj, atk, random.Random(1), ctx=ctx)
+    # daño del arma 1 + mod FUE 3 = 4; Parry: d8 = 8 + 3 → 4 − 11 → 0.
+    assert pj.hp == pj.max_hp
+    assert pj.state.reaction_used is True
+    assert trait.dados_restantes == 3  # 4 iniciales − 1 de Parry
+
+
+def test_parry_no_se_consulta_si_el_ataque_falla(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj, trait, agresor, ctx = _atacado(maneuvers=_SOLO_REACCION)
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("Parry no debe consultarse en un fallo")
+
+    monkeypatch.setattr(bm_mod, "pick", _revienta)
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=1, rolls=[1],
+                                    mode=RollMode.NORMAL))
+    atk = Attack("Garra", "1d6", ability="str")
+    atk_mod.attack_roll(agresor, pj, atk, random.Random(1), ctx=ctx)
+    assert pj.hp == pj.max_hp
+    assert pj.state.reaction_used is False
+
+
+def test_parry_no_actua_cuando_el_battle_master_es_el_atacante(monkeypatch):
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    pj, trait, objetivo, ctx = _atacado(maneuvers=_SOLO_REACCION)
+    atk = Attack("Espada larga", "1d8", ability="str")
+    atk_mod.attack_roll(pj, objetivo, atk, random.Random(1), ctx=ctx)
+    # El hook vive en los rasgos del OBJETIVO: el Monster no reduce nada
+    # y la reacción/dados del atacante quedan intactos.
+    assert objetivo.hp < objetivo.max_hp
+    assert pj.state.reaction_used is False
+    assert trait.dados_restantes == 4
+
+
+def test_sin_subclase_el_motor_no_consulta_la_reduccion_de_dano():
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    resultado = atk_mod._reducir_dano_recibido(
+        pj, Monster("Blanco", max_hp=10, ac=10, abilities=_abilities()),
+        AttackRange.MELEE, 7, ctx=None, rng=_ExplotaSiUsaRng(), log=None)
+    assert resultado == 7
+
+
 # --- Maniobras con salvación (A4) ----------------------------------------------
 
 class _RngFalla:

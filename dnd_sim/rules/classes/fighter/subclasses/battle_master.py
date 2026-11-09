@@ -292,6 +292,47 @@ class BattleMasterFeatures(Trait):
         self._efecto_de_maniobra(opcion, target, ctx, rng)
         return valor
 
+    # --- Parry (reacción, sesión 2): reduce el daño recibido --------------------
+    def reducir_dano_recibido(self, attacker: Any, rango: Any, dmg: int,
+                              *, ctx: Any, rng: Any, log: Any) -> int:
+        """Parry: gasta reacción y dado para reducir un golpe cuerpo a cuerpo.
+
+        Lo llama el motor (duck-typing ``_reducir_dano_recibido``) justo
+        ANTES de ``inflict_damage``, con el dueño como objetivo. Guards
+        SIN RNG: sin daño, sin atacante, sin rng, rango no cuerpo a
+        cuerpo, sin la maniobra conocida, sin dueño vivo o capaz de actuar,
+        reacción ya usada o sin dados (y sin Relentless disponible).
+        Decisión ``pick`` «no»/«sí» («no» no gasta nada); el dado se tira
+        UNA vez y resta ``dado + max(mod FUE, mod DES)`` al daño ya
+        modificado (mínimo 0). Gasta la reacción siempre que se usa;
+        Relentless solo evita gastar el dado. Orden documentado: las
+        resistencias/vulnerabilidades ya se aplicaron, Parry reduce el
+        resultado final.
+        """
+        owner = self.owner
+        if (dmg <= 0 or attacker is None or rng is None
+                or rango is not AttackRange.MELEE
+                or "Parry" not in self.maneuvers
+                or owner is None or not owner.alive or not owner.can_act):
+            return dmg
+        if owner.state.reaction_used:
+            return dmg
+        if (self.dados_restantes <= 0
+                and not (self.level >= 15
+                         and not self.relentless_used_this_turn)):
+            return dmg
+        if pick(rng, ("no", "si")) == "no":
+            return dmg
+        owner.state.reaction_used = True
+        valor, gastar = self._tirar_dado(rng)
+        mod = max(int(owner.abilities.mod("str")),
+                  int(owner.abilities.mod("dex")))
+        reducido = max(0, dmg - (valor + mod))
+        sufijo = "" if gastar else " (Relentless: sin gastar dado)"
+        _log_line(ctx, f"Battle Master (Parry): {dmg} -> {reducido} de "
+                       f"daño (-{valor + mod}){sufijo}")
+        return reducido
+
     def _tirar_dado(self, rng: Any, *, crit: bool = False) -> tuple[int, bool]:
         """Tira el dado de la maniobra y gasta el uso.
 

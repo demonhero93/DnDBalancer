@@ -110,7 +110,7 @@ Plan de sesión (una casilla = un commit):
   en `BATTLE_MASTER_MANEUVERS` (11→14) + tests (pool, `sample`,
   kwarg) + reseed de los tests afectados por el cambio de `sample`
   (cada test tocado, explicado en PASOS ANTES de tocarlo).
-- [ ] A2 — Parry: consulta duck-typing
+- [x] A2 — Parry: consulta duck-typing
   `reducir_dano_recibido(target, attacker, rango, *, dmg, ctx, rng,
   log)` desde `attack.py` antes de `inflict_damage`; reduce
   `dado + max(mod FUE, mod DES)` con mínimo 0; guards (cuerpo a

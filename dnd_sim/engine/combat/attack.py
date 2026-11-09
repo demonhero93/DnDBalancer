@@ -263,6 +263,25 @@ def _decidir_maniobra(attacker: Any, target: Any, atk: Any, rango: Any, *,
     return hit, total
 
 
+def _reducir_dano_recibido(target: Any, attacker: Any, rango: Any, dmg: int,
+                           *, ctx: Any, rng: Any, log: Any) -> int:
+    """Primer resultado de ``reducir_dano_recibido`` de los rasgos del OBJETIVO.
+
+    Duck-typing (patrón ``_sustituir_ataque``, sin hook HOOK_NAMES): cada
+    rasgo del defensor puede definir
+    ``reducir_dano_recibido(attacker, rango, dmg, *, ctx, rng, log)``
+    y devolver el daño resultante (p. ej. Parry del Battle Master). Se le
+    llama justo ANTES de ``inflict_damage``, cuando el golpe ya impactó.
+    Sin rasgos que lo definan devuelve ``dmg`` **sin consumir RNG**.
+    """
+    for rasgo in (getattr(target, "traits", None) or []):
+        metodo = getattr(rasgo, "reducir_dano_recibido", None)
+        if metodo is None:
+            continue
+        return int(metodo(attacker, rango, dmg, ctx=ctx, rng=rng, log=log))
+    return dmg
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
                 verbose: bool = False, ctx: Any = None,
@@ -394,6 +413,11 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                             "marked_by", None)
         if dmg > 0 and _marcador is not None and target is not _marcador:
             dmg = max(0, dmg // 2)
+        # Parry (Battle Master): el defensor reduce el daño justo antes
+        # de aplicarlo (duck-typing sobre el OBJETIVO; sin rasgos que lo
+        # definan el valor no cambia y no se consume RNG).
+        dmg = _reducir_dano_recibido(target, attacker, rango, dmg,
+                                     ctx=ctx, rng=rng, log=log)
         # ``crit`` y ``rng`` viajan con el daño: los rasgos que se salvan a
         # 0 PV (Undead Fortitude) necesitan saber si el golpe fue crítico y
         # con qué tirar.
