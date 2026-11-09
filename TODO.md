@@ -99,7 +99,7 @@ Plan de sesión (una casilla = un commit):
 - [x] B. Decisiones de diseño y cambio de test existente explicado (subclases
   registradas pasa a `{"arcane_archer", "battle_master"}`).
 - [x] Docs. `ARCHITECTURE.md`, `PASOS-ANTERIORES.txt`, `TODO.md` (sesión 2).
-- [ ] Verificación. `pytest tests/test_arquitectura.py`, `pytest`,
+- [x] Verificación. `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` y commit final del grafo.
 
 ## Battle Master: sesión 2 (pendiente)

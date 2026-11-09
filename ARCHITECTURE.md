@@ -25,7 +25,7 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 | `dnd_sim/engine/combat/` | 3 | 975 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
 | `dnd_sim/__init__.py` | 1 | 184 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **83** | **19089** | + `tests/` con 53 ficheros y 19927 líneas (1253 tests). |
+| **Total** | **83** | **19089** | + `tests/` con 53 ficheros y 19927 líneas (1254 tests). |
 
 ## Reglas de dependencia
 
@@ -133,7 +133,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1253 tests
+pytest                              # 1254 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

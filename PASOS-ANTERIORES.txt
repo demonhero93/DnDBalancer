@@ -1291,10 +1291,15 @@ BATTLE MASTER (SESIÓN 1) (2026-11-09)
       Riposte, Commander's Strike, Ambush, Commanding Presence,
       Rally, quizá Bait and Switch) cambiará el ``sample`` de PJ con
       semilla fija: anotarlo aquí y reseedar los tests afectados.
+  - Verificación final: ``pytest tests/test_arquitectura.py`` → 3
+    passed; ``pytest`` → 1254 passed (0 fallos); ``python tools/capas.py``
+    → 1 violación, la conocida ``model.combatant → rules.conditions``;
+    ``graphify update .`` → 3720 nodos, 13481 aristas, 112 comunidades;
+    backup ``graphify-out/2026-11-09/``. Commit final con grafo.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas
-     (1253 tests en verde, medido 2026-11-09).
+     (1254 tests en verde, medido 2026-11-09).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro y Arcane Archer/Battle Master del fighter, con
      las 8 opciones de Arcane Shot: Piercing/Seeking sin tirada vía
