@@ -1410,6 +1410,36 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     existentes no tienen aliado elegible (guard antes de todo RNG) y
     el ataque de reacción del dueño cae en ``is_reaction``. Suite
     completa: 1293 passed (0 fallos). Commit de A4.
+  - (5) Rally (B1): acción bonus ``BattleMasterRallyAction``
+    (``usage=None``, patrón ``FeintingAttackAction``) registrada en
+    ``apply_battle_master`` junto a Feinting. ``can_use``: guards SIN
+    RNG — bonus libre (super), maniobra «Rally» conocida (a diferencia
+    de Feinting, sesión 1, que no la exige), dados > 0 y algún aliado —
+    y después ``pick`` «no»/«sí». Helper nuevo ``_aliados`` (vivo, no
+    hostil, distinto del dueño, sin RNG; ``_aliados_elegibles`` de CS
+    pasa a reutilizarlo). ``execute`` revalida sin RNG, ``pick`` de
+    aliado (sin RNG con uno solo), ``_tirar_dado`` (Relentless
+    incluido) y PV temporales = max(1, dado + mod CAR del dueño) con
+    política ``max(actual, cantidad)`` (no se acumulan, patrón aura
+    tundra: storm_herald/world_tree/wild_magic). Rally no gasta la
+    reacción de nadie. Pool 14→15 con «Rally» (alfabético, entre
+    Pushing Attack y Riposte). RESEED: el ``sample`` del pool con
+    semilla fija cambia para los PJ creados sin ``maneuvers``
+    explícitos — UN test existente cambia:
+    ``test_el_pool_solo_contiene_las_maniobras_implementadas``
+    (``len == 14`` → 15 y membership «Rally»), explicado aquí ANTES de
+    tocarlo (regla de la tarea). El resto NO cambia: los tests de
+    comportamiento usan maniobras explícitas o no afirman el sample.
+    Suite pre-fix: 1 failed (solo el conteo), 1292 passed. Tests
+    nuevos (11): elegibilidad con pick «no»/«sí», sin maniobra/datos/
+    aliados → sin RNG (can_use y execute), fórmula dado+CAR (6+3=9)
+    gastando UN dado y sin reacción de nadie, mínimo 1 con CAR -1,
+    no acumular (20 se queda, 2 sube a 6), el ``pick`` de aliado
+    nunca incluye al dueño (spy con 2 aliados), Relentless a nivel 15
+    sin gastar dado y sin subclase sin la acción registrada.
+    ``battle_master.py`` pasa de 752 a 819 líneas (el paquete sigue
+    pospuesto por el motivo de A4). Suite final: 1304 passed (0
+    fallos; 3 de test_arquitectura). Commit de B1.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas

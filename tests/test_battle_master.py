@@ -79,13 +79,15 @@ def test_tabla_de_maniobras_conocidas_por_nivel():
 
 
 def test_el_pool_solo_contiene_las_maniobras_implementadas():
-    assert len(BATTLE_MASTER_MANEUVERS) == 14
+    assert len(BATTLE_MASTER_MANEUVERS) == 15
     assert "Precision Attack" in BATTLE_MASTER_MANEUVERS
     assert "Feinting Attack" in BATTLE_MASTER_MANEUVERS
     # Reacciones de la sesión 2.
     assert "Parry" in BATTLE_MASTER_MANEUVERS
     assert "Riposte" in BATTLE_MASTER_MANEUVERS
     assert "Commander's Strike" in BATTLE_MASTER_MANEUVERS
+    # Rally (B1): acción bonus.
+    assert "Rally" in BATTLE_MASTER_MANEUVERS
     assert len(set(BATTLE_MASTER_MANEUVERS)) == len(BATTLE_MASTER_MANEUVERS)
 
 
@@ -1471,3 +1473,164 @@ def test_commanders_strike_con_relentless_no_gasta_dado(monkeypatch):
     assert trait.dados_restantes == 6  # Relentless: sin gastar
     assert aliado.state.reaction_used is True
     assert enemigo.hp == 50  # 1 + 3 + 6 (d8 de Relentless)
+
+
+# --- Rally (acción bonus, sesión 2 B1) ----------------------------------------
+
+def _accion_rally(pj):
+    from dnd_sim.rules.classes.fighter.subclasses.battle_master import (
+        BattleMasterRallyAction,
+    )
+
+    for accion in pj.actions:
+        if isinstance(accion, BattleMasterRallyAction):
+            return accion
+    raise AssertionError("falta BattleMasterRallyAction")
+
+
+def test_rally_es_elegible_con_bonus_libre_y_decision_aleatoria():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, aliado, _, ctx = _commanda(maneuvers=("Rally",))
+    accion = _accion_rally(pj)
+    ctx_si = SimpleNamespace(actor=pj, rng=_RngSi(),
+                             combatants=ctx.combatants)
+    assert accion.can_use(TurnResources(), ctx_si) is True
+    ctx_no = SimpleNamespace(actor=pj, rng=_RngNo(),
+                             combatants=ctx.combatants)
+    assert accion.can_use(TurnResources(), ctx_no) is False
+
+
+def test_rally_sin_la_maniobra_conocida_es_inelegible_sin_rng():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, aliado, _, _ = _commanda(maneuvers=("Parry",))
+    accion = _accion_rally(pj)
+    ctx = SimpleNamespace(actor=pj, rng=_ExplotaSiUsaRng(),
+                          combatants=[pj, aliado])
+    assert accion.can_use(TurnResources(), ctx) is False
+
+
+def test_rally_sin_datos_es_inelegible_sin_rng():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, aliado, _, _ = _commanda(maneuvers=("Rally",))
+    accion = _accion_rally(pj)
+    trait.dados_restantes = 0
+    ctx = SimpleNamespace(actor=pj, rng=_ExplotaSiUsaRng(),
+                          combatants=[pj, aliado])
+    assert accion.can_use(TurnResources(), ctx) is False
+
+
+def test_rally_sin_aliados_es_inelegible_sin_rng():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, _, enemigo, _ = _commanda(maneuvers=("Rally",))
+    accion = _accion_rally(pj)
+    ctx = SimpleNamespace(actor=pj, rng=_ExplotaSiUsaRng(),
+                          combatants=[pj, enemigo])
+    assert accion.can_use(TurnResources(), ctx) is False
+
+
+def test_rally_gasta_un_dado_y_concede_pv_temporales_sin_reaccion(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+
+    pj, trait, aliado, _, _ = _commanda(maneuvers=("Rally",))
+    pj.abilities.cha = 16  # mod CAR +3
+    accion = _accion_rally(pj)
+    ctx = SimpleNamespace(actor=pj, rng=random.Random(1), round=1,
+                          combatants=[pj, aliado])
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    accion.execute(ctx)
+    assert aliado.temp_hp == 9  # 6 (dado) + 3 (CAR)
+    assert trait.dados_restantes == 3  # un dado gastado
+    assert aliado.state.reaction_used is False  # Rally sin reacción
+    assert pj.state.reaction_used is False
+
+
+def test_rally_concede_al_menos_un_pv_temporal(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+
+    pj, trait, aliado, _, _ = _commanda(maneuvers=("Rally",))
+    pj.abilities.cha = 8  # mod CAR -1: 1 - 1 = 0 → mínimo 1
+    accion = _accion_rally(pj)
+    ctx = SimpleNamespace(actor=pj, rng=random.Random(1), round=1,
+                          combatants=[pj, aliado])
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 1)
+    accion.execute(ctx)
+    assert aliado.temp_hp == 1
+
+
+def test_los_pv_temporales_de_rally_no_se_acumulan(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+
+    pj, trait, aliado, _, _ = _commanda(maneuvers=("Rally",))
+    accion = _accion_rally(pj)
+    ctx = SimpleNamespace(actor=pj, rng=random.Random(1), round=1,
+                          combatants=[pj, aliado])
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    aliado.temp_hp = 20  # más que la concesión: se queda el mayor
+    accion.execute(ctx)
+    assert aliado.temp_hp == 20
+    aliado.temp_hp = 2  # menos: sube al mayor, no suma 2+6
+    accion.execute(ctx)
+    assert aliado.temp_hp == 6
+
+
+def test_rally_elige_un_aliado_distinto_del_dueno(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+
+    pj, trait = _bm(maneuvers=_completa(("Rally",), 5))
+    a1 = _pj(name="Alicia")
+    a2 = _pj(name="Beatriz")
+    enemigo = Monster("Enemigo", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(actor=pj, rng=random.Random(1), round=1,
+                          combatants=[pj, a1, a2, enemigo])
+    registradas = []
+    original = bm_mod.pick
+
+    def _spy(rng, seq):
+        registradas.append(tuple(seq))
+        return original(rng, seq)
+
+    monkeypatch.setattr(bm_mod, "pick", _spy)
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    accion = _accion_rally(pj)
+    accion.execute(ctx)
+    assert all(not any(x is pj for x in s) for s in registradas)
+    assert a1.temp_hp + a2.temp_hp == 6  # solo uno la recibe
+
+
+def test_rally_execute_sin_datos_no_concede_pv():
+    pj, trait, aliado, _, _ = _commanda(maneuvers=("Rally",))
+    accion = _accion_rally(pj)
+    trait.dados_restantes = 0
+    ctx = SimpleNamespace(actor=pj, rng=_ExplotaSiUsaRng(), round=1,
+                          combatants=[pj, aliado])
+    accion.execute(ctx)
+    assert aliado.temp_hp == 0
+
+
+def test_rally_con_relentless_no_gasta_dado(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+
+    pj, trait, aliado, _, _ = _commanda(level=15, maneuvers=("Rally",))
+    accion = _accion_rally(pj)
+    ctx = SimpleNamespace(actor=pj, rng=_RngSi(), round=1,
+                          combatants=[pj, aliado])
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 8)
+    accion.execute(ctx)
+    assert trait.dados_restantes == 6  # Relentless: sin gastar
+    assert trait.relentless_used_this_turn is True
+    assert aliado.temp_hp == 8  # 1d8 Relentless, CAR 0
+
+
+def test_sin_subclase_no_se_registra_la_accion_rally():
+    from dnd_sim.rules.classes.fighter.subclasses.battle_master import (
+        BattleMasterRallyAction,
+    )
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    assert not any(isinstance(a, BattleMasterRallyAction)
+                   for a in pj.actions)

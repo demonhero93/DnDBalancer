@@ -264,9 +264,9 @@ FIGHTER_STYLES: tuple[str, ...] = (
     "Thrown Weapon Fighting",
 )
 
-#: Pool de maniobras de Battle Master implementadas (PHB 2024): 14
+#: Pool de maniobras de Battle Master implementadas (PHB 2024): 15
 #: (11 de la sesión 1 + Parry, Riposte y Commander's Strike de la
-#: sesión 2; Rally entra en B1). Cambiar el pool cambia el ``sample``
+#: sesión 2 + Rally de B1). Cambiar el pool cambia el ``sample``
 #: de PJ con semilla fija (tests reseedados, ver PASOS).
 BATTLE_MASTER_MANEUVERS: tuple[str, ...] = (
     "Commander's Strike",
@@ -280,6 +280,7 @@ BATTLE_MASTER_MANEUVERS: tuple[str, ...] = (
     "Parry",
     "Precision Attack",
     "Pushing Attack",
+    "Rally",
     "Riposte",
     "Sweeping Attack",
     "Trip Attack",

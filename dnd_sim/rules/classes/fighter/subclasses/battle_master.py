@@ -45,6 +45,10 @@ Decisiones de simulación documentadas:
   tirada (paso 2b): no es equiprobable con las maniobras de impacto,
   que ven el resultado. El ataque aliado es de reacción: no activa
   maniobras de la sesión 1 ni reentra en Commander's Strike.
+- **Rally** (acción bonus): un aliado vivo no hostil distinto del
+  dueño recibe PV temporales = dado + mod CAR del dueño (mínimo 1; no
+  se acumulan, se queda el mayor, patrón aura tundra). Exige la
+  maniobra conocida; el dado se gasta en ``execute``.
 
 La decisión por ataque vive en :meth:`BattleMasterFeatures.decidir_maniobra`
 (punto único del motor tras conocer la tirada; ver el docstring) y la
@@ -146,17 +150,21 @@ def _armas_melee_propias(criatura: Any) -> tuple:
                  is not AttackRange.RANGED)
 
 
+def _aliados(owner: Any, ctx: Any) -> tuple:
+    """Aliados vivos no hostiles distintos del dueño (sin RNG)."""
+    return tuple(c for c in (getattr(ctx, "combatants", None) or ())
+                 if _es_aliado(owner, c))
+
+
 def _aliados_elegibles(owner: Any, ctx: Any) -> tuple:
     """Aliados que pueden recibir Commander's Strike (sin RNG).
 
-    Filtros: vivo, no el dueño, no hostil (``_es_aliado``), con
+    Filtros: vivo, no el dueño, no hostil (``_aliados``), con
     reacción disponible y con qué atacar (algún arma y algún enemigo
     objetivo).
     """
     aliados = []
-    for c in getattr(ctx, "combatants", None) or []:
-        if not _es_aliado(owner, c):
-            continue
+    for c in _aliados(owner, ctx):
         if not getattr(c, "can_react", True):
             continue
         if getattr(getattr(c, "state", None), "reaction_used", False):
@@ -683,6 +691,63 @@ class FeintingAttackAction(CombatAction):
                            f"para un Ataque de Engaño")
 
 
+class BattleMasterRallyAction(CombatAction):
+    """Rally (acción bonus): PV temporales a un aliado con un dado.
+
+    PHB 2024: gasta un dado de superioridad y otorga al aliado elegido
+    PV temporales iguales al dado + mod CAR del dueño (mínimo 1; no se
+    acumulan: se queda el mayor, patrón aura tundra). Solo es elegible
+    con la maniobra conocida, bonus libre, dados restantes y algún
+    aliado vivo distinto del dueño; la decisión de usarla es un
+    ``pick`` «no»/«sí» (cero RNG si no es elegible, patrón Feinting).
+    El dado se gasta en ``execute`` con ``_tirar_dado`` (Relentless
+    incluido) y Rally no consume la reacción de nadie.
+    """
+
+    def __init__(self) -> None:
+        self.name = "Rally"
+        self.action_type = ActionType.BONUS_ACTION
+        self.usage = None  # sin usos limitados: el límite es el bonus
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None:
+            return False
+        trait = _de(actor, BattleMasterFeatures)
+        if (trait is None
+                or "Rally" not in trait.maneuvers
+                or trait.dados_restantes <= 0
+                or not _aliados(actor, ctx)):
+            return False  # sin maniobra/datos/aliados: cero RNG
+        rng = getattr(ctx, "rng", None)
+        if rng is None:
+            return False  # sin RNG el rasgo se abstiene
+        if pick(rng, ("no", "si")) == "no":
+            return False  # decisión aleatoria de usar la acción bonus
+        return True
+
+    def execute(self, context: Any) -> None:
+        actor = context.actor
+        trait = _de(actor, BattleMasterFeatures)
+        rng = getattr(context, "rng", None)
+        if (trait is None or rng is None or "Rally" not in trait.maneuvers
+                or trait.dados_restantes <= 0):
+            return
+        aliados = _aliados(actor, context)
+        if not aliados:
+            return  # sin aliados no se decide (no debería llegar)
+        aliado = pick(rng, aliados)
+        valor, _ = trait._tirar_dado(rng)
+        cantidad = max(1, valor + int(actor.abilities.mod("cha")))
+        actual = int(getattr(aliado, "temp_hp", 0) or 0)
+        aliado.temp_hp = max(actual, cantidad)  # no se acumula
+        _log_line(context, f"Rally: {getattr(aliado, 'name', aliado)} "
+                           f"recibe {cantidad} PV temporales")
+
+
 def apply_battle_master(pj: Any, level: int | None = None,
                         maneuvers: tuple[str, ...] | None = None,
                         rng: Any = None) -> BattleMasterFeatures:
@@ -746,8 +811,10 @@ def apply_battle_master(pj: Any, level: int | None = None,
     pj.traits.append(trait)
     # Feinting Attack (acción bonus): disponible desde el nivel 3.
     pj.actions.append(FeintingAttackAction())
+    # Rally (acción bonus): disponible desde el nivel 3.
+    pj.actions.append(BattleMasterRallyAction())
     return trait
 
 
-__all__ = ["BattleMasterFeatures", "FeintingAttackAction",
-           "apply_battle_master"]
+__all__ = ["BattleMasterFeatures", "BattleMasterRallyAction",
+           "FeintingAttackAction", "apply_battle_master"]

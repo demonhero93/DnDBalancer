@@ -128,7 +128,7 @@ Plan de sesión (una casilla = un commit):
   TODO); tests. **Sesgo = decisión de diseño, NO deuda**: la
   decisión es previa a la tirada (paso 2b), no equiprobable con las
   maniobras de impacto.
-- [ ] B1 — Rally: `BattleMasterRallyAction` (bonus, `usage=None`,
+- [x] B1 — Rally: `BattleMasterRallyAction` (bonus, `usage=None`,
   elegibilidad sin RNG) y `rally` al pool (14→15, reseed explicado);
   PV temporales `dado + mod CAR` (mínimo 1) sin acumular; tests.
 - [ ] B2 — Bait and Switch: re-inspección de CA temporal con

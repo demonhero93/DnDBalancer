@@ -148,6 +148,11 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   reentra en Commander's Strike ni activa maniobras de la sesión 1.
   Congelado en `test_commanders_strike_*` de
   `tests/test_battle_master.py`.
+- **Rally (B1, acción bonus)**: `BattleMasterRallyAction` con
+  `usage=None` y patrón Feinting (guards sin RNG + pick «no»/«sí»).
+  Exige la maniobra conocida; PV temporales = max(1, dado + mod CAR
+  del dueño) con política `max(actual, cantidad)` (no se acumulan,
+  patrón aura tundra). No consume la reacción de nadie.
 
 ## Cómo comprobar que todo sigue en orden
 
