@@ -146,17 +146,23 @@ Plan de sesión (una casilla = un commit):
   efecto documentado en PASOS.
   **Resultado: no tira habilidades → FUERA del pool** (motivo en
   PASOS (8); test freeze propio, pool sin cambio).
-- [ ] Docs — `ARCHITECTURE.md` (reacciones nuevas en el motor,
-  Commander's Strike y su sesgo, recuentos), `PASOS-ANTERIORES.txt`
-  (bloque «BATTLE MASTER (SESIÓN 2)» + ESTADO ACTUAL), `TODO.md`
-  (sesión cerrada y pendientes reales).
+- [x] Docs — `ARCHITECTURE.md` (sección Battle Master con Parry,
+  Riposte, Commander's Strike + sesgo, Rally y Ambush; recuentos
+  1311), `PASOS-ANTERIORES.txt` (entradas (1)–(8) + ESTADO ACTUAL
+  2026-11-10), `TODO.md` (sesión cerrada y pendientes reales).
 - [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` y commit final.
+
+Sesión 2 CERRADA (A1–A4, B1–B4, Docs): pool final 16 maniobras;
+reacciones Parry/Riposte/Commander's Strike; Rally (bonus, PV temp);
+Ambush (iniciativa); Bait and Switch y Commanding Presence fuera con
+motivo. Pendientes reales: paquete `battle_master/` (845 líneas) y
+receta de arriba.
 
 Fuera de esta sesión (siguen pendientes): el paquete
 `battle_master/` del recetario de abajo queda pendiente porque 17
 tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
-(`battle_master.py`, 819 líneas).
+(`battle_master.py`, 845 líneas).
 
 ## Fighter: cómo añadir una subclase
 

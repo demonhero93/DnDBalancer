@@ -1492,8 +1492,8 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     ``test_commanding_presence_queda_fuera_del_pool``. Commit de B4.
 
 ESTADO ACTUAL
-   - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas
-     (1254 tests en verde, medido 2026-11-09).
+   - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y
+     20762 líneas (1311 tests en verde, medido 2026-11-10).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro y Arcane Archer/Battle Master del fighter, con
      las 8 opciones de Arcane Shot: Piercing/Seeking sin tirada vía
