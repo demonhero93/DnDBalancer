@@ -1338,6 +1338,38 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     cuando el Battle Master es el atacante y sin subclase. NINGÚN
     test existente cambia. Suite completa: 1269 passed (0
     fallos). Commit de A2.
+  - (3) Riposte (A3): en ``attack.py`` helper
+    ``_reaccionar_al_fallo(target, attacker, rango, *, ctx, rng, log)``
+    (duck-typing patrón ``_reducir_dano_recibido``, sin entrada en
+    HOOK_NAMES) llamado tras la rama de fallo de ``attack_roll`` SOLO
+    si ``not hit``: el dueño del rasgo es el atacado. En
+    ``battle_master.py``: helper ``_armas_melee_propias`` (pool vacío
+    → sin RNG, sin fallback a golpe sin armas a diferencia de
+    Retaliation) y ``reaccionar_al_fallo`` con guards SIN RNG (sin
+    ctx/rng, rango no cuerpo a cuerpo, maniobra no conocida, sin armas
+    cuerpo a cuerpo propias, dueño muerto/no capaz de actuar, atacante
+    muerto o ``at_range``, reacción ya usada, sin dados y sin
+    Relentless disponible); ``pick`` «no»/«sí» («no» no gasta nada);
+    arma con ``pick`` uniforme (sin RNG si solo hay una); gasta la
+    reacción y tira el dado UNA vez (``_tirar_dado`` compartido,
+    Relentless incluido). El valor viaja en ``ctx.dano_reaccion`` y
+    ``daño_base_arma`` lo suma PLANO (fuera de ``roll_dice``: no se
+    duplica en crítico y se consume aunque el arma no tire dados; el
+    ctx es copia, sin fugas). Contraataque con ``r_ctx.is_reaction``
+    = True reutilizando ``attack_roll`` completo (camino de
+    Retaliation: tirada, daño y crítico); guard de reentrada
+    ``is_reaction`` en ``decidir_maniobra`` → no activa maniobras de
+    la sesión 1. Tests nuevos (12): fallo cuerpo a cuerpo dispara con
+    daño exacto controlado (1+3+6), no dispara tras acierto (RNG que
+    revienta), no a distancia, el dado solo suma si la reacción
+    impacta, el crítico NO duplica el dado, sin armas cuerpo a cuerpo
+    sin RNG, una vez por ronda, sin dados sin RNG, sin reacción sin
+    RNG, atacante muerto no responde, reentrada (is_reaction → sin
+    maniobra) y sin subclase sin consulta del helper. Helper nuevo
+    ``_atacado_fijo`` (fighting_style Archery fijo): los tests que
+    afirman daño exacto no dependen del estilo aleatorio de
+    ``_RNG_CREACION`` compartido. NINGÚN test existente cambia.
+    Suite completa: 1281 passed (0 fallos). Commit de A3.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas

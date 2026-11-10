@@ -116,7 +116,7 @@ Plan de sesión (una casilla = un commit):
   `dado + max(mod FUE, mod DES)` con mínimo 0; guards (cuerpo a
   cuerpo, daño > 0, reacción libre, dado/Relentless, maniobra
   conocida); tests.
-- [ ] A3 — Riposte: consulta duck-typing `reaccionar_al_fallo(...)`
+- [x] A3 — Riposte: consulta duck-typing `reaccionar_al_fallo(...)`
   en la rama de fallo de `attack_roll`; ataque de reacción patrón
   Retaliation (`r_ctx.is_reaction`); el dado viaja en
   `ctx.dano_reaccion` y lo suma `daño_base_arma` (plano); guard de

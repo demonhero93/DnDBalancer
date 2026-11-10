@@ -46,6 +46,7 @@ ejecución en :meth:`BattleMasterFeatures.extra_attack_damage`.
 """
 from __future__ import annotations
 
+import copy
 import random
 from dataclasses import dataclass, field
 from typing import Any
@@ -117,6 +118,21 @@ def _de(actor: Any, clase: type) -> Any:
         if isinstance(trait, clase):
             return trait
     return None
+
+
+def _armas_melee_propias(criatura: Any) -> tuple:
+    """Armas cuerpo a cuerpo propias (patrón ``_armas_melee_de`` de Retaliation).
+
+    Sin candidatas → pool vacío: la maniobra de reacción no es
+    elegible (SIN RNG), a diferencia de Retaliation, que cae en golpe
+    sin armas.
+    """
+    ataques = list(getattr(criatura, "attacks", None) or []) or (
+        list(getattr(criatura, "weapons", None) or [])
+        + list(getattr(criatura, "dynamic_weapons", None) or []))
+    return tuple(a for a in ataques
+                 if getattr(a, "range_type", AttackRange.MELEE)
+                 is not AttackRange.RANGED)
 
 
 @dataclass
@@ -212,7 +228,8 @@ class BattleMasterFeatures(Trait):
         """
         if (attacker is not self.owner
                 or target is None
-                or rng is None):
+                or rng is None
+                or getattr(ctx, "is_reaction", False)):
             return hit, total
         if self.feinting_pendiente:
             # Este ataque es el de Feinting: consume la ranura (una
@@ -332,6 +349,58 @@ class BattleMasterFeatures(Trait):
         _log_line(ctx, f"Battle Master (Parry): {dmg} -> {reducido} de "
                        f"daño (-{valor + mod}){sufijo}")
         return reducido
+
+    # --- Riposte (reacción, sesión 2): contraataque al fallo --------------------
+    def reaccionar_al_fallo(self, attacker: Any, rango: Any, *,
+                            ctx: Any, rng: Any, log: Any) -> None:
+        """Riposte: ataque de reacción cuando el enemigo FALLA cuerpo a cuerpo.
+
+        Lo llama el motor (duck-typing ``_reaccionar_al_fallo``) tras la
+        rama de fallo de ``attack_roll``, con el dueño como objetivo.
+        Guards SIN RNG: sin ctx/rng, rango no cuerpo a cuerpo, sin la
+        maniobra, sin armas cuerpo a cuerpo propias (pool vacío: sin
+        fallback a golpe sin armas), dueño muerto/no capaz de actuar,
+        atacante muerto o a distancia, reacción ya usada o sin dados (y
+        sin Relentless). Decisión ``pick`` «no»/«sí» («no» no gasta
+        nada); arma con ``pick`` uniforme (sin RNG si solo hay una);
+        gasta la reacción y tira el dado UNA vez: su valor viaja en
+        ``ctx.dano_reaccion`` y ``daño_base_arma`` lo suma SOLO si el
+        ataque de reacción impacta (plano: no se duplica en crítico).
+        El contraataque marca ``is_reaction``: no activa maniobras de la
+        sesión 1 (guard de reentrada en ``decidir_maniobra``).
+        """
+        owner = self.owner
+        if (ctx is None or rng is None or rango is not AttackRange.MELEE
+                or "Riposte" not in self.maneuvers
+                or owner is None or attacker is None
+                or not owner.alive or not owner.can_act
+                or not attacker.alive
+                or getattr(attacker.state, "at_range", False)):
+            return
+        estado = owner.state
+        if estado.reaction_used:
+            return
+        if (self.dados_restantes <= 0
+                and not (self.level >= 15
+                         and not self.relentless_used_this_turn)):
+            return
+        armas = _armas_melee_propias(owner)
+        if not armas:
+            return  # sin cuerpo a cuerpo propio: sin RNG
+        if pick(rng, ("no", "si")) == "no":
+            return
+        arma = armas[0] if len(armas) == 1 else pick(rng, armas)
+        estado.reaction_used = True
+        valor, gastar = self._tirar_dado(rng)
+        sufijo = "" if gastar else " (Relentless: sin gastar dado)"
+        _log_line(ctx, f"Battle Master (Riposte): ataque de reacción con "
+                       f"{getattr(arma, 'name', arma)} (+{valor}){sufijo}")
+        from .....engine.combat import attack_roll
+        r_ctx = copy.copy(ctx)
+        r_ctx.is_reaction = True
+        r_ctx.dano_reaccion = valor
+        attack_roll(owner, attacker, arma, rng,
+                    log=getattr(ctx, "log", log), ctx=r_ctx)
 
     def _tirar_dado(self, rng: Any, *, crit: bool = False) -> tuple[int, bool]:
         """Tira el dado de la maniobra y gasta el uso.

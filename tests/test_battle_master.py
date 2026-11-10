@@ -328,6 +328,25 @@ def _decide(trait, target, ctx, rng, *, hit=True, total=15, ca=12,
         hit=hit, ctx=ctx, rng=rng)
 
 
+def _atacado_fijo(**kwargs) -> tuple:
+    """Como ``_atacado`` pero con Estilo de Combate fijo (Archery).
+
+    El estilo por defecto se elige con el ``_RNG_CREACION`` compartido
+    de ``apply_fighter``: depende de cuántos PJ se crearon antes en el
+    proceso. Archery no toca el daño cuerpo a cuerpo, así que los
+    tests que afirman un número exacto de daño no cambian de orden de
+    ejecución.
+    """
+    if "maneuvers" in kwargs:
+        kwargs["maneuvers"] = _completa(kwargs["maneuvers"], 5)
+    pj = _pj()
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    trait = apply_battle_master(pj, level=5, **kwargs)
+    objetivo = Monster("Muñeco", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, objetivo])
+    return pj, trait, objetivo, ctx
+
+
 def test_la_decision_es_un_solo_par_de_picks():
     _, trait, objetivo, ctx = _atacado(
         maneuvers=("Disarming Attack", "Menacing Attack", "Trip Attack"))
@@ -632,6 +651,194 @@ def test_sin_subclase_el_motor_no_consulta_la_reduccion_de_dano():
         pj, Monster("Blanco", max_hp=10, ac=10, abilities=_abilities()),
         AttackRange.MELEE, 7, ctx=None, rng=_ExplotaSiUsaRng(), log=None)
     assert resultado == 7
+
+
+# --- Riposte (reacción) (A3) ----------------------------------------------------
+
+def _ripostea_directa(trait, agresor, rng, ctx, rango=AttackRange.MELEE):
+    """Llama a la reacción de Riposte como el motor tras un fallo."""
+    trait.reaccionar_al_fallo(agresor, rango, ctx=ctx, rng=rng, log=None)
+
+
+def test_riposte_dispara_tras_un_fallo_cuerpo_a_cuerpo(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj, trait, agresor, ctx = _atacado_fijo(maneuvers=("Riposte",))
+    d20s = iter([1, 15])  # enemigo: 1 natural; reacción: impacta
+
+    def _d20(rng, mode):
+        v = next(d20s)
+        return D20Result(value=v, rolls=[v], mode=RollMode.NORMAL)
+
+    monkeypatch.setattr(atk_mod, "roll_d20", _d20)
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])  # «si»
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    atk_ene = Attack("Garra", "1d6", ability="str")
+    atk_mod.attack_roll(agresor, pj, atk_ene, random.Random(1), ctx=ctx)
+    # daño de reacción: 1 (dados) + 3 (mod FUE) + 6 (dado Riposte) = 10
+    assert agresor.hp == 50
+    assert pj.state.reaction_used is True
+    assert trait.dados_restantes == 3  # 4 iniciales − 1 de Riposte
+    assert trait.maniobra_pendiente is None  # sin maniobras de sesión 1
+
+
+def test_riposte_no_dispara_tras_un_acierto_enemigo(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj, trait, agresor, ctx = _atacado(maneuvers=("Riposte",))
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("Riposte no debe consultarse en un acierto")
+
+    monkeypatch.setattr(bm_mod, "pick", _revienta)
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    atk_ene = Attack("Garra", "1d6", ability="str")
+    atk_mod.attack_roll(agresor, pj, atk_ene, random.Random(1), ctx=ctx)
+    assert pj.hp < pj.max_hp  # el enemigo impactó y causó daño
+    assert pj.state.reaction_used is False
+    assert trait.dados_restantes == 4
+
+
+def test_riposte_no_dispara_a_distancia():
+    _, trait, agresor, ctx = _atacado(maneuvers=("Riposte",))
+    _ripostea_directa(trait, agresor, _ExplotaSiUsaRng(), ctx,
+                      rango=AttackRange.RANGED)
+    assert trait.owner.state.reaction_used is False
+    assert trait.dados_restantes == 4
+
+
+def test_riposte_suma_el_dado_solo_si_el_ataque_de_reaccion_impacta(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj, trait, agresor, ctx = _atacado(maneuvers=("Riposte",))
+    d20s = iter([1, 5])  # falla el enemigo; la reacción también falla
+
+    def _d20(rng, mode):
+        v = next(d20s)
+        return D20Result(value=v, rolls=[v], mode=RollMode.NORMAL)
+
+    monkeypatch.setattr(atk_mod, "roll_d20", _d20)
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    atk_ene = Attack("Garra", "1d6", ability="str")
+    atk_mod.attack_roll(agresor, pj, atk_ene, random.Random(1), ctx=ctx)
+    assert agresor.hp == agresor.max_hp  # sin daño: el ataque falló
+    assert pj.state.reaction_used is True
+    assert trait.dados_restantes == 3  # el dado se gasta aunque falle
+
+
+def test_el_dado_de_reaccion_no_se_duplica_en_critico(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj, trait, agresor, ctx = _atacado_fijo(maneuvers=("Riposte",))
+    d20s = iter([1, 20])  # la reacción es crítico
+
+    def _d20(rng, mode):
+        v = next(d20s)
+        return D20Result(value=v, rolls=[v], mode=RollMode.NORMAL)
+
+    monkeypatch.setattr(atk_mod, "roll_d20", _d20)
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    atk_ene = Attack("Garra", "1d6", ability="str")
+    atk_mod.attack_roll(agresor, pj, atk_ene, random.Random(1), ctx=ctx)
+    # plano: 1 + 3 + 6 = 10 (el dado NO se duplica con el crítico)
+    assert agresor.hp == 50
+
+
+def test_riposte_sin_ataques_cuerpo_a_cuerpo_no_consume_rng():
+    pj = _pj(attacks=[])
+    apply_fighter(pj, level=5)
+    trait = apply_battle_master(pj, level=5,
+                                maneuvers=_completa(("Riposte",), 5))
+    ctx = SimpleNamespace(round=1, combatants=[pj])
+    agresor = Monster("Agresor", max_hp=40, ac=15, abilities=_abilities())
+    _ripostea_directa(trait, agresor, _ExplotaSiUsaRng(), ctx)
+    assert not pj.state.reaction_used
+    assert trait.dados_restantes == 4
+
+
+def test_riposte_solo_una_vez_por_ronda(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj, trait, agresor, ctx = _atacado(maneuvers=("Riposte",))
+    d20s = iter([1, 15])
+
+    def _d20(rng, mode):
+        v = next(d20s)
+        return D20Result(value=v, rolls=[v], mode=RollMode.NORMAL)
+
+    monkeypatch.setattr(atk_mod, "roll_d20", _d20)
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    atk_ene = Attack("Garra", "1d6", ability="str")
+    atk_mod.attack_roll(agresor, pj, atk_ene, random.Random(1), ctx=ctx)
+    assert trait.dados_restantes == 3  # primer fallo: gastado
+    _ripostea_directa(trait, agresor, _ExplotaSiUsaRng(), ctx)
+    assert trait.dados_restantes == 3  # la reacción ya estaba usada
+    assert pj.state.reaction_used is True
+
+
+def test_riposte_sin_datos_no_consume_rng():
+    pj, trait, agresor, ctx = _atacado(maneuvers=("Riposte",))
+    trait.dados_restantes = 0
+    _ripostea_directa(trait, agresor, _ExplotaSiUsaRng(), ctx)
+    assert not pj.state.reaction_used
+
+
+def test_riposte_sin_reaccion_libre_no_consume_rng():
+    pj, trait, agresor, ctx = _atacado(maneuvers=("Riposte",))
+    pj.state.reaction_used = True
+    _ripostea_directa(trait, agresor, _ExplotaSiUsaRng(), ctx)
+    assert trait.dados_restantes == 4
+
+
+def test_riposte_al_atacante_muerto_no_responde():
+    pj, trait, agresor, ctx = _atacado(maneuvers=("Riposte",))
+    agresor.hp = 0
+    agresor.dead = True
+    _ripostea_directa(trait, agresor, _ExplotaSiUsaRng(), ctx)
+    assert not pj.state.reaction_used
+    assert trait.dados_restantes == 4
+
+
+def test_el_ataque_de_reaccion_no_activa_maniobras_de_sesion_1():
+    _, trait, objetivo, ctx = _atacado(maneuvers=("Trip Attack",))
+    r_ctx = SimpleNamespace(round=1, combatants=[ctx.combatants],
+                             is_reaction=True)
+    hit, total = _decide(trait, objetivo, r_ctx, _ExplotaSiUsaRng())
+    assert (hit, total) == (True, 15)
+    assert trait.maniobra_pendiente is None
+
+
+def test_sin_subclase_el_motor_no_consulta_la_reaccion_de_fallo():
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    atk_mod._reaccionar_al_fallo(
+        pj, Monster("Blanco", max_hp=10, ac=10, abilities=_abilities()),
+        AttackRange.MELEE, ctx=None, rng=_ExplotaSiUsaRng(), log=None)
+    assert not pj.state.reaction_used
 
 
 # --- Maniobras con salvación (A4) ----------------------------------------------

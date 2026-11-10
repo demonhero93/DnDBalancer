@@ -210,6 +210,13 @@ def daño_base_arma(attacker: Combatant, target: Combatant, atk: Attack,
                 and attacker.state.enfeeble_mitiga(
                     getattr(ctx, "round", None))):
             raw_dmg = raw_dmg // 2
+    # Dado de la reacción ofensiva (Riposte, Commander's Strike): se
+    # suma PLANO, fuera de roll_dice, para no duplicarlo en crítico, y se
+    # consume aunque el arma no tire dados (evita fugas en el ctx).
+    bonus_reaccion = int(getattr(ctx, "dano_reaccion", 0) or 0)
+    if bonus_reaccion:
+        raw_dmg += bonus_reaccion
+        ctx.dano_reaccion = 0
     return raw_dmg
 
 
@@ -280,6 +287,25 @@ def _reducir_dano_recibido(target: Any, attacker: Any, rango: Any, dmg: int,
             continue
         return int(metodo(attacker, rango, dmg, ctx=ctx, rng=rng, log=log))
     return dmg
+
+
+def _reaccionar_al_fallo(target: Any, attacker: Any, rango: Any, *,
+                         ctx: Any, rng: Any, log: Any) -> None:
+    """Primer ``reaccionar_al_fallo`` de los rasgos del OBJETIVO (Riposte).
+
+    Duck-typing (patrón ``_reducir_dano_recibido``, sin hook HOOK_NAMES):
+    cada rasgo del defensor puede definir
+    ``reaccionar_al_fallo(attacker, rango, *, ctx, rng, log)`` y
+    resolver su reacción cuando la tirada de ataque enemiga FALLA. Se
+    le llama tras la rama de fallo de :func:`attack_roll`. Sin rasgos
+    que lo definan **no se consume RNG**.
+    """
+    for rasgo in (getattr(target, "traits", None) or []):
+        metodo = getattr(rasgo, "reaccionar_al_fallo", None)
+        if metodo is None:
+            continue
+        metodo(attacker, rango, ctx=ctx, rng=rng, log=log)
+        break
 
 
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
@@ -505,6 +531,11 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                   if getattr(getattr(target, "state", None), "at_range", False) else "")
         log.append(f"  {attacker.name} -> {target.name} con {atk.name}: "
                    f"{roll}{mode_tag}+{bonus}={total} vs CA {ca_efectiva}{ca_tag}, falla")
+    # Reacción del defensor al FALLO de la tirada (p. ej. Riposte del
+    # Battle Master): duck-typing sobre el OBJETIVO, igual que Parry.
+    if not hit:
+        _reaccionar_al_fallo(target, attacker, rango, ctx=ctx, rng=rng,
+                             log=log)
     # Tras resolver la tirada (acierte o falle): p. ej. el ataque extra de
     # las Garras del Path of the Beast, que se dispara «cuando atacas con
     # ellas», no solo cuando impactan.
