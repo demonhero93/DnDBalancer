@@ -1483,6 +1483,13 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     nada, sin subclase nadie consulta ``bonus_iniciativa`` y
     Relentless a nivel 15 suma 8 sin gastar. Suite final: 1310
     passed (0 fallos; 3 de test_arquitectura). Commit de B3.
+  - (8) Commanding Presence FUERA del pool (B4): el motor NO tira
+    Carisma en combate — grep Intimidation/Persuasion solo toca las
+    tablas de mapeo de core/classes.py y core/skills.py, y grep de
+    habilidades en engine/ solo encuentra un comentario. El
+    bonificador sería un dato sin efecto. Pool SIN CAMBIO (sigue en
+    16) con test freeze propio (no se toca el de Bait/Evasive):
+    ``test_commanding_presence_queda_fuera_del_pool``. Commit de B4.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas

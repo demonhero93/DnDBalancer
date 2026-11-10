@@ -100,6 +100,12 @@ def test_bait_and_switch_y_evasive_footwork_quedan_fuera_del_pool():
     assert "Evasive Footwork" not in BATTLE_MASTER_MANEUVERS
 
 
+def test_commanding_presence_queda_fuera_del_pool():
+    # Commanding Presence: el motor no tira Carisma (Intimidación/Persuasión)
+    # en combate, así que el bonificador sería un dato sin efecto.
+    assert "Commanding Presence" not in BATTLE_MASTER_MANEUVERS
+
+
 # --- Registro y equivalencia --------------------------------------------------
 
 def test_registro_battle_master_bajo_fighter():

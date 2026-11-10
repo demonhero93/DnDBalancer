@@ -141,9 +141,11 @@ Plan de sesión (una casilla = un commit):
   rules en el motor; guards sin RNG + pick «no/sí»; Sigilo = dato
   sin efecto (el motor no tira habilidades); pool 15→16 (reseed
   explicado); tests.
-- [ ] B4 — Commanding Presence: comprobar si el motor tira
+- [x] B4 — Commanding Presence: comprobar si el motor tira
   Carisma (Intimidación/Persuasión) en combate; si no → dato sin
   efecto documentado en PASOS.
+  **Resultado: no tira habilidades → FUERA del pool** (motivo en
+  PASOS (8); test freeze propio, pool sin cambio).
 - [ ] Docs — `ARCHITECTURE.md` (reacciones nuevas en el motor,
   Commander's Strike y su sesgo, recuentos), `PASOS-ANTERIORES.txt`
   (bloque «BATTLE MASTER (SESIÓN 2)» + ESTADO ACTUAL), `TODO.md`
