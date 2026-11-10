@@ -131,9 +131,17 @@ Plan de sesión (una casilla = un commit):
 - [x] B1 — Rally: `BattleMasterRallyAction` (bonus, `usage=None`,
   elegibilidad sin RNG) y `rally` al pool (14→15, reseed explicado);
   PV temporales `dado + mod CAR` (mínimo 1) sin acumular; tests.
-- [ ] B2 — Bait and Switch: re-inspección de CA temporal con
+- [x] B2 — Bait and Switch: re-inspección de CA temporal con
   caducidad (Defense, Shielding Storm, Protection); si no existe →
   FUERA del pool con motivo en PASOS (+ test si cambia el pool).
+  **Resultado: no existe → sigue FUERA** (motivo en PASOS (6); pool
+  sin cambio, test existente intacto).
+- [ ] B3 — Ambush: inspeccionar los dados de iniciativa en
+  `engine/combat/encounter.py` (consulta duck-typing SIN RNG);
+  pruebas de Sigilo solo si el motor las tira.
+- [ ] B4 — Commanding Presence: comprobar si el motor tira
+  Carisma (Intimidación/Persuasión) en combate; si no → dato sin
+  efecto documentado en PASOS.
 - [ ] Docs — `ARCHITECTURE.md` (reacciones nuevas en el motor,
   Commander's Strike y su sesgo, recuentos), `PASOS-ANTERIORES.txt`
   (bloque «BATTLE MASTER (SESIÓN 2)» + ESTADO ACTUAL), `TODO.md`
@@ -141,11 +149,10 @@ Plan de sesión (una casilla = un commit):
 - [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` y commit final.
 
-Fuera de esta sesión (siguen pendientes): Ambush y Commanding
-Presence no tienen casilla en los bloques A/B de la tarea.
-`battle_master.py` superó ~700 líneas (752): el paquete
+Fuera de esta sesión (siguen pendientes): el paquete
 `battle_master/` del recetario de abajo queda pendiente porque 17
-tests parchean `bm_mod.pick`/`roll_dice` en el módulo único.
+tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
+(`battle_master.py`, 819 líneas).
 
 ## Fighter: cómo añadir una subclase
 

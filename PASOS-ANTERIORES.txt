@@ -1440,6 +1440,21 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     ``battle_master.py`` pasa de 752 a 819 líneas (el paquete sigue
     pospuesto por el motivo de A4). Suite final: 1304 passed (0
     fallos; 3 de test_arquitectura). Commit de B1.
+  - (6) Bait and Switch FUERA del pool (B2): re-inspección de CA
+    temporal con caducidad pedida por la tarea. NO EXISTE: Defense
+    es ``pj.ac += 1`` permanente (fighter/features), Protection es
+    reacción que impone desventaja al atacante (no toca CA),
+    Shielding Storm concede resistencias (no CA), el hook
+    ``defensive_ac_bonus`` es un bonificador instantáneo por ataque
+    con reacción (Patrulla/Parry-like) y ``CombatState`` no tiene
+    ningún campo de CA con ronda de caducidad (los marcadores con
+    caducidad —Vex, Sap, Enfeeble, Goading, Distracting— afectan a
+    tiradas, ventajas o daño). Además, la maniobra exige intercambio
+    de posiciones con un aliado, fuera del alcance (sin movimiento).
+    Pool SIN CAMBIO (sigue en 15):
+    ``test_bait_and_switch_y_evasive_footwork_quedan_fuera_del_pool``
+    ya lo congela y no se toca. Solo documentación (PASOS + TODO).
+    Commit de B2.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas
