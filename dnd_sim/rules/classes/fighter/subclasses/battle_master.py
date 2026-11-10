@@ -49,6 +49,11 @@ Decisiones de simulación documentadas:
   dueño recibe PV temporales = dado + mod CAR del dueño (mínimo 1; no
   se acumulan, se queda el mayor, patrón aura tundra). Exige la
   maniobra conocida; el dado se gasta en ``execute``.
+- **Ambush** (3): ``bonus_iniciativa`` lo consulta
+  ``roll_initiative`` (duck-typing, sin imports de rules en el
+  motor): ``pick`` «no»/«sí» y un dado de superioridad sumado a la
+  tirada. La parte de Sigilo es dato sin efecto (el motor no tira
+  habilidades).
 
 La decisión por ataque vive en :meth:`BattleMasterFeatures.decidir_maniobra`
 (punto único del motor tras conocer la tirada; ver el docstring) y la
@@ -512,6 +517,27 @@ class BattleMasterFeatures(Trait):
         attack_roll(aliado, objetivo, arma, rng,
                     log=getattr(ctx, "log", None), ctx=r_ctx)
         return AtaqueSustituido(motivo="Commander's Strike")
+
+    # --- Ambush (3): dado de superioridad a la iniciativa --------------------
+    def bonus_iniciativa(self, *, rng: Any = None) -> int:
+        """Ambush: un dado de superioridad añadido a la tirada de iniciativa.
+
+        Lo consulta ``roll_initiative`` (duck-typing, sin imports de
+        rules en el motor). Guards SIN RNG: sin ``rng``, maniobra no
+        conocida o sin dados (y sin Relentless). Después ``pick``
+        «no»/«sí» («no» no gasta nada) y ``_tirar_dado``. La parte de
+        Sigilo de la maniobra es dato sin efecto: el motor no tira
+        habilidades. Sin log: la iniciativa corre sin ``ctx``.
+        """
+        if (rng is None or "Ambush" not in self.maneuvers
+                or (self.dados_restantes <= 0
+                    and not (self.level >= 15
+                             and not self.relentless_used_this_turn))):
+            return 0
+        if pick(rng, ("no", "si")) == "no":
+            return 0
+        valor, _ = self._tirar_dado(rng)
+        return valor
 
     def _tirar_dado(self, rng: Any, *, crit: bool = False) -> tuple[int, bool]:
         """Tira el dado de la maniobra y gasta el uso.

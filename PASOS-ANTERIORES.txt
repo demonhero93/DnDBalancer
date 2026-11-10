@@ -1455,6 +1455,34 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     ``test_bait_and_switch_y_evasive_footwork_quedan_fuera_del_pool``
     ya lo congela y no se toca. Solo documentación (PASOS + TODO).
     Commit de B2.
+  - (7) Ambush (B3): método ``bonus_iniciativa(self, *, rng)`` en
+    ``BattleMasterFeatures``, consultado por ``roll_initiative``
+    (engine/combat/encounter.py) con duck-typing puro —el motor NO
+    importa rules: ``getattr(rasgo, "bonus_iniciativa")`` y si no es
+    callable se salta— después de la tirada base y ANTES de sumar el
+    mod DES. Guards SIN RNG: sin rng, maniobra no conocida o sin
+    dados (y sin Relentless); después ``pick`` «no»/«sí» («no» no
+    gasta nada) y ``_tirar_dado`` (Relentless incluido). La parte de
+    Sigilo de la maniobra es dato sin efecto: verificado que el
+    motor NO tira habilidades en combate (grep en engine/: ninguna
+    tirada de Sigilo/habilidad). Sin log: la iniciativa corre sin
+    ctx. La rama de ventaja de Feral Instinct
+    (``initiative_with_advantage``) queda intacta y el bucle de
+    traits no consume RNG en rasgos sin ``bonus_iniciativa`` (los
+    tests de encuentro existentes, sin Battle Master, no cambian).
+    Pool 15→16 con «Ambush» (primero alfabético). RESEED: mismo
+    mecanismo que B1 — UN test existente cambia:
+    ``test_el_pool_solo_contiene_las_maniobras_implementadas``
+    (15→16 + membership «Ambush»), explicado aquí ANTES de tocarlo.
+    El resto NO cambia (el fill de ``_completa`` añade «Ambush», pero
+    ningún test de comportamiento lo ve): suite pre-fix 1 failed
+    (solo el conteo), 1303 passed. Tests nuevos (6): el d20 del
+    motor parcheado a 10 —el rasgo suma6 → iniciativa 18 con DES +2
+    y gasta UN dado—, sin maniobra/sin datos → sin RNG (el d20
+    parcheado aísla el ``_ExplotaSiUsaRng``), decisión «no» no gasta
+    nada, sin subclase nadie consulta ``bonus_iniciativa`` y
+    Relentless a nivel 15 suma 8 sin gastar. Suite final: 1310
+    passed (0 fallos; 3 de test_arquitectura). Commit de B3.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas

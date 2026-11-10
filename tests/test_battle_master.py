@@ -79,15 +79,16 @@ def test_tabla_de_maniobras_conocidas_por_nivel():
 
 
 def test_el_pool_solo_contiene_las_maniobras_implementadas():
-    assert len(BATTLE_MASTER_MANEUVERS) == 15
+    assert len(BATTLE_MASTER_MANEUVERS) == 16
     assert "Precision Attack" in BATTLE_MASTER_MANEUVERS
     assert "Feinting Attack" in BATTLE_MASTER_MANEUVERS
     # Reacciones de la sesión 2.
     assert "Parry" in BATTLE_MASTER_MANEUVERS
     assert "Riposte" in BATTLE_MASTER_MANEUVERS
     assert "Commander's Strike" in BATTLE_MASTER_MANEUVERS
-    # Rally (B1): acción bonus.
+    # Rally (B1) y Ambush (B3).
     assert "Rally" in BATTLE_MASTER_MANEUVERS
+    assert "Ambush" in BATTLE_MASTER_MANEUVERS
     assert len(set(BATTLE_MASTER_MANEUVERS)) == len(BATTLE_MASTER_MANEUVERS)
 
 
@@ -1634,3 +1635,86 @@ def test_sin_subclase_no_se_registra_la_accion_rally():
     apply_fighter(pj, level=5)
     assert not any(isinstance(a, BattleMasterRallyAction)
                    for a in pj.actions)
+
+
+# --- Ambush (iniciativa, sesión 2 B3) ------------------------------------------
+
+def _d20_fijo(monkeypatch, valor: int = 10) -> None:
+    """d20 del motor siempre ``valor``: el RNG del rasgo se aísla."""
+    import dnd_sim.engine.combat.encounter as enc_mod
+
+    monkeypatch.setattr(enc_mod, "d20", lambda rng: valor)
+
+
+def test_ambush_suma_un_dado_a_la_tirada_de_iniciativa(monkeypatch):
+    import dnd_sim.engine.combat.encounter as enc_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.engine.combat.encounter import roll_initiative
+
+    pj, trait, enemigo, _ = _atacado(maneuvers=("Ambush",))
+    _d20_fijo(monkeypatch)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: "si")
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    orden = roll_initiative([pj, enemigo], random.Random(1))
+    # 10 (d20 parcheado) + 6 (dado) + 2 (DES 14) = 18; el enemigo: 12.
+    assert pj.initiative == 18
+    assert trait.dados_restantes == 3  # un dado gastado
+    assert orden[0] is pj
+
+
+def test_ambush_sin_la_maniobra_no_consume_rng(monkeypatch):
+    from dnd_sim.engine.combat.encounter import roll_initiative
+
+    pj, trait, enemigo, _ = _atacado(
+        maneuvers=("Parry", "Riposte", "Trip Attack"))  # sin Ambush
+    _d20_fijo(monkeypatch)
+    roll_initiative([pj, enemigo], _ExplotaSiUsaRng())
+    assert pj.initiative == 12  # 10 + DES: sin dado y sin RNG
+    assert trait.dados_restantes == 4
+
+
+def test_ambush_sin_dados_no_consume_rng(monkeypatch):
+    from dnd_sim.engine.combat.encounter import roll_initiative
+
+    pj, trait, enemigo, _ = _atacado(maneuvers=("Ambush",))
+    trait.dados_restantes = 0
+    _d20_fijo(monkeypatch)
+    roll_initiative([pj, enemigo], _ExplotaSiUsaRng())
+    assert pj.initiative == 12  # guard antes de todo RNG
+    assert trait.dados_restantes == 0
+
+
+def test_ambush_con_la_decision_no_no_gasta_nada(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.engine.combat.encounter import roll_initiative
+
+    pj, trait, enemigo, _ = _atacado(maneuvers=("Ambush",))
+    _d20_fijo(monkeypatch)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: "no")
+    roll_initiative([pj, enemigo], random.Random(1))
+    assert pj.initiative == 12  # sin el dado: solo el d20 y el DES
+    assert trait.dados_restantes == 4  # «no» no gasta nada
+
+
+def test_sin_subclase_roll_initiative_no_consulta_bonus(monkeypatch):
+    from dnd_sim.engine.combat.encounter import roll_initiative
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    enemigo = Monster("Muñeco", max_hp=60, ac=15, abilities=_abilities())
+    _d20_fijo(monkeypatch)
+    roll_initiative([pj, enemigo], _ExplotaSiUsaRng())
+    assert pj.initiative == 12  # nadie con bonus_iniciativa: cero RNG
+
+
+def test_ambush_con_relentless_no_gasta_dado(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.engine.combat.encounter import roll_initiative
+
+    pj, trait, enemigo, _ = _atacado(level=15, maneuvers=("Ambush",))
+    _d20_fijo(monkeypatch)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: "si")
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 8)
+    roll_initiative([pj, enemigo], random.Random(1))
+    assert pj.initiative == 20  # 10 + 8 (Relentless) + 2 (DES)
+    assert trait.dados_restantes == 6  # sin gastar

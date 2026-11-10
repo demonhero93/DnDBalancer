@@ -153,6 +153,11 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   Exige la maniobra conocida; PV temporales = max(1, dado + mod CAR
   del dueño) con política `max(actual, cantidad)` (no se acumulan,
   patrón aura tundra). No consume la reacción de nadie.
+- **Ambush (B3, iniciativa)**: `bonus_iniciativa` lo consulta
+  `roll_initiative` con duck-typing puro (el motor no importa
+  rules): guards sin RNG + pick «no»/«sí» + un dado de superioridad
+  sumado antes del mod DES. La parte de Sigilo es dato sin efecto
+  (el motor no tira habilidades en combate).
 
 ## Cómo comprobar que todo sigue en orden
 

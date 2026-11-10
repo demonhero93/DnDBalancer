@@ -136,9 +136,11 @@ Plan de sesión (una casilla = un commit):
   FUERA del pool con motivo en PASOS (+ test si cambia el pool).
   **Resultado: no existe → sigue FUERA** (motivo en PASOS (6); pool
   sin cambio, test existente intacto).
-- [ ] B3 — Ambush: inspeccionar los dados de iniciativa en
-  `engine/combat/encounter.py` (consulta duck-typing SIN RNG);
-  pruebas de Sigilo solo si el motor las tira.
+- [x] B3 — Ambush: `bonus_iniciativa` en `BattleMasterFeatures`
+  consultado por `roll_initiative` con duck-typing SIN imports de
+  rules en el motor; guards sin RNG + pick «no/sí»; Sigilo = dato
+  sin efecto (el motor no tira habilidades); pool 15→16 (reseed
+  explicado); tests.
 - [ ] B4 — Commanding Presence: comprobar si el motor tira
   Carisma (Intimidación/Persuasión) en combate; si no → dato sin
   efecto documentado en PASOS.

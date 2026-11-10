@@ -73,6 +73,13 @@ def roll_initiative(combatants: list[Combatant], rng: random.Random) -> list[Com
             roll = roll_d20(rng, RollMode.ADVANTAGE).value
         else:
             roll = d20(rng)
+        # Ambush (Battle Master): consulta duck-typing (sin imports de
+        # rules); el rasgo aplica sus guards —sin RNG si no procede— y
+        # suma un dado de superioridad a la tirada.
+        for rasgo in getattr(c, "traits", None) or []:
+            bonus = getattr(rasgo, "bonus_iniciativa", None)
+            if callable(bonus):
+                roll += int(bonus(rng=rng) or 0)
         c.initiative = roll + c.abilities.mod("dex")
     return sorted(combatants, key=lambda c: (c.initiative, c.abilities.dex), reverse=True)
 
