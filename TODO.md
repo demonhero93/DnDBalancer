@@ -161,6 +161,50 @@ Ambush (iniciativa); Bait and Switch y Commanding Presence fuera con
 motivo. Pendientes reales: paquete `battle_master/` (845 líneas) y
 receta de arriba.
 
+## Cavalier: plan de sesión
+
+(una casilla = un commit; entrada en PASOS tras cada paso)
+
+- [x] A1 — Tablas en `core/classes.py` (`cavalier_mark_uses`,
+  `warding_maneuver_uses`, `cavalier_mark_extra_damage`, pool
+  `CAVALIER_BONUS_SKILLS`) + `CHARGE_MOVE_PROBABILITY` + flag CLI
+  `--charge-p` con el cableado de `--reckless-p` + tests.
+  **Hecho**: `performance` sí existe en `SKILL_ABILITIES`; cableado
+  `charge_p` por `hasattr` (sin importar la subclase antes de A2);
+  5 tests, suite 1316 passed.
+- [ ] A2 — Esqueleto `fighter/subclasses/cavalier.py`
+  (`CavalierFeatures`, `apply_cavalier`) + registro `"cavalier"` y
+  reexportes + tests (registro/equivalencia, error clase/nivel, Bonus
+  Proficiency, Born to the Saddle dato, cero RNG sin subclase).
+- [ ] A3 — Unwavering Mark: marca en `CombatState` (campo propio,
+  caducidad por ronda, sustitución, validez dinámica) + desventaja en
+  `roll_modifiers` (mecanismo Goading) + marca tras impacto cuerpo a
+  cuerpo (`after_attack_roll`) + tests.
+- [ ] A4 — Unwavering Mark: ataque especial
+  `CavalierMarkAttackAction` (flag con contador de turnos propios,
+  ventaja forzada, daño extra `nivel // 2`, sin uso adicional) +
+  tests.
+- [ ] A5 — Warding Maneuver: punto de Parry extendido a los aliados
+  del objetivo con resultado `ac_extra` + `resistencia` + tests.
+- [ ] A6 — Hold the Line: ataque de oportunidad abstracto (punto de
+  consulta tras ataque con tirada contra aliado) + reinterpretación
+  documentada + tests.
+- [ ] A7 — Vigilant Defender: reacción especial exclusiva de A6,
+  consumida antes que la normal, reset por ronda + tests.
+- [ ] A8 — Ferocious Charger: evaluación única por turno con
+  `CHARGE_MOVE_PROBABILITY`, salvación FUE → PRONE (EscapeCheck de
+  Topple) + tests.
+- [ ] B — Decisiones de diseño: cambio esperado del test de registro
+  en `tests/test_fighter.py` (explicado ANTES de tocarlo), límites
+  modelados con tests freeze (Born to the Saddle, velocidad 0, 5 ft),
+  TODO con pendientes reales.
+- [ ] Docs — `ARCHITECTURE.md` (fila `cavalier`, puntos de consulta,
+  `CHARGE_MOVE_PROBABILITY`/`--charge-p`, recuentos),
+  `PASOS-ANTERIORES.txt` (bloque CAVALIER + ESTADO ACTUAL), `TODO.md`
+  (receta y pendientes).
+- [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
+  `python tools/capas.py`, `graphify update .` + commit final.
+
 Fuera de esta sesión (siguen pendientes): el paquete
 `battle_master/` del recetario de abajo queda pendiente porque 17
 tests parchean `bm_mod.pick`/`roll_dice` en el módulo único

@@ -150,6 +150,21 @@ def maneuvers_known_count(level: int) -> int:
     return 9
 
 
+def cavalier_mark_uses(str_mod: int) -> int:
+    """Usos de Unwavering Mark por descanso (mínimo 1, mod FUE)."""
+    return max(1, str_mod)
+
+
+def warding_maneuver_uses(con_mod: int) -> int:
+    """Usos de Warding Maneuver por descanso (mínimo 1, mod CON)."""
+    return max(1, con_mod)
+
+
+def cavalier_mark_extra_damage(level: int) -> int:
+    """Daño extra del ataque especial de Unwavering Mark (nivel // 2)."""
+    return _clamp(level) // 2
+
+
 def fighter_extra_attacks_for(level: int) -> int:
     """Golpes de la acción Atacar del Fighter (1/2/3/4 en 1/5/11/20).
 
@@ -287,11 +302,32 @@ BATTLE_MASTER_MANEUVERS: tuple[str, ...] = (
     "Trip Attack",
 )
 
+#: Habilidades candidatas a Bonus Proficiency (Cavalier, XGE): Trato con
+#: animales, Historia, Perspicacia, Interpretación y Persuasión. Todas
+#: existen en :data:`dnd_sim.core.skills.SKILL_ABILITIES` (claves en
+#: inglés); el idioma del rasgo es dato sin efecto (sin modelo).
+CAVALIER_BONUS_SKILLS: tuple[str, ...] = (
+    "animal-handling",
+    "history",
+    "insight",
+    "performance",
+    "persuasion",
+)
+
+#: Probabilidad de simular un movimiento de carga de al menos 10 pies
+#: hacia la criatura en Ferocious Charger (Cavalier). Se evalúa una vez
+#: por turno en el primer impacto cuerpo a cuerpo (patrón
+#: ``RECKLESS_USE_PROBABILITY``): con 0 la carga nunca ocurre y no se
+#: consume RNG. CLI ``--charge-p`` en main.py.
+CHARGE_MOVE_PROBABILITY: float = 0.5
+
 __all__ = [
     "BARBARIAN_FEATURES",
     "BARBARIAN_PRIMAL_SKILLS",
     "BARBARIAN_SKILLS",
     "BATTLE_MASTER_MANEUVERS",
+    "CAVALIER_BONUS_SKILLS",
+    "CHARGE_MOVE_PROBABILITY",
     "FIGHTER_FEATURES",
     "FIGHTER_SKILLS",
     "FIGHTER_STYLES",
@@ -300,6 +336,8 @@ __all__ = [
     "action_surge_uses",
     "arcane_shot_options_known",
     "arcane_shot_uses",
+    "cavalier_mark_extra_damage",
+    "cavalier_mark_uses",
     "extra_attacks_for",
     "fighter_extra_attacks_for",
     "indomitable_uses",
@@ -309,5 +347,6 @@ __all__ = [
     "second_wind_uses",
     "superiority_die_sides",
     "superiority_dice_count",
+    "warding_maneuver_uses",
     "weapon_mastery_count",
 ]

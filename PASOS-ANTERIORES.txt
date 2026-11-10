@@ -1491,6 +1491,26 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     16) con test freeze propio (no se toca el de Bait/Evasive):
     ``test_commanding_presence_queda_fuera_del_pool``. Commit de B4.
 
+CAVALIER (2026-11-10)
+  - (1) Tablas y constante (A1): ``cavalier_mark_uses`` (máx(1, mod
+    FUE)), ``warding_maneuver_uses`` (máx(1, mod CON)) y
+    ``cavalier_mark_extra_damage`` (nivel // 2) en ``core/classes.py``
+    con ``_clamp`` de nivel; pool ``CAVALIER_BONUS_SKILLS`` = Trato con
+    animales, Historia, Perspicacia, Interpretación y Persuasión —
+    «performance» EXISTE en ``SKILL_ABILITIES`` (core/skills.py:29),
+    así que no se quita del pool; el idioma del rasgo queda como dato
+    sin efecto (sin modelo). ``CHARGE_MOVE_PROBABILITY = 0.5`` en
+    ``core/classes.py`` (patrón ``RECKLESS_USE_PROBABILITY``: con 0 la
+    carga nunca ocurre y no se consume RNG) y flag ``--charge-p`` en
+    main.py cableado como ``--reckless-p``: ``_build_party`` acepta
+    ``charge_p`` y lo aplica por duck-typing (``hasattr(trait,
+    "charge_probability")``) para no importar la subclase antes de que
+    exista (A2). Tests nuevos (5) en ``tests/test_cavalier.py``: tablas
+    de usos, daño extra por nivel, pertenencia del pool a
+    ``SKILL_ABILITIES``, constante 0.5 y flag CLI (patrón
+    ``test_legendary`` con ``importlib`` sobre main.py). Suite final:
+    1316 passed (0 fallos). Commit de A1.
+
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y
      20762 líneas (1311 tests en verde, medido 2026-11-10).

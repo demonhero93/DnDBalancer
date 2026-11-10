@@ -89,11 +89,14 @@ PARTY_TEMPLATES = [
 ]
 
 
-def _build_party(size: int, reckless_p: float | None = None) -> list:
+def _build_party(size: int, reckless_p: float | None = None,
+                 charge_p: float | None = None) -> list:
     """Construye el grupo de PJ a partir de las plantillas.
 
     ``reckless_p`` (opcional) fija la probabilidad de Ataque Temerario de
-    todo bárbaro del grupo (``--reckless-p``).
+    todo bárbaro del grupo (``--reckless-p``). ``charge_p`` (opcional)
+    fija la probabilidad de carga de Ferocious Charger de todo Cavalier
+    (``--charge-p``).
     """
     if size < 1 or size > len(PARTY_TEMPLATES):
         raise ValueError(
@@ -135,6 +138,12 @@ def _build_party(size: int, reckless_p: float | None = None) -> list:
             for trait in getattr(pj, "traits", None) or []:
                 if isinstance(trait, BarbarianFeatures):
                     trait.reckless_probability = float(reckless_p)
+        if charge_p is not None:
+            # Duck-typing: cualquier rasgo con el atributo (Cavalier)
+            # acepta la probabilidad de carga.
+            for trait in getattr(pj, "traits", None) or []:
+                if hasattr(trait, "charge_probability"):
+                    trait.charge_probability = float(charge_p)
         party.append(pj)
     return party
 
@@ -176,6 +185,12 @@ def build_parser() -> argparse.ArgumentParser:
              "RECKLESS_USE_PROBABILITY).",
     )
     parser.add_argument(
+        "--charge-p", type=float, default=None,
+        help="Probabilidad de que un Cavalier simule un movimiento de "
+             "carga en Ferocious Charger (0.0-1.0). Default: 0.5 "
+             "(constante CHARGE_MOVE_PROBABILITY).",
+    )
+    parser.add_argument(
         "--utility-p", type=float, default=None,
         help="Probabilidad de usar una utilitaria (Esquivar/Agarrar/"
              "Empujar) en vez del ataque o acción previsto (0.0-1.0). "
@@ -196,7 +211,8 @@ def main() -> None:
                            legendary_points=args.legendary_points)
 
     # Los PJ sí se definen aquí (personajes jugador).
-    party = _build_party(args.party, reckless_p=args.reckless_p)
+    party = _build_party(args.party, reckless_p=args.reckless_p,
+                         charge_p=args.charge_p)
 
     combatants = party + monsters
 
