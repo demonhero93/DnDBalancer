@@ -150,8 +150,10 @@ Plan de sesión (una casilla = un commit):
   Riposte, Commander's Strike + sesgo, Rally y Ambush; recuentos
   1311), `PASOS-ANTERIORES.txt` (entradas (1)–(8) + ESTADO ACTUAL
   2026-11-10), `TODO.md` (sesión cerrada y pendientes reales).
-- [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
-  `python tools/capas.py`, `graphify update .` y commit final.
+- [x] Verificación — `pytest tests/test_arquitectura.py` (3),
+  `pytest` (1311), `python tools/capas.py` (1 violación conocida:
+  `model.combatant → rules.conditions`), `graphify update .`
+  (3825 nodos) y commit final.
 
 Sesión 2 CERRADA (A1–A4, B1–B4, Docs): pool final 16 maniobras;
 reacciones Parry/Riposte/Commander's Strike; Rally (bonus, PV temp);
