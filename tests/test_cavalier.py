@@ -10,10 +10,11 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 import random
+from types import SimpleNamespace
 
 import pytest
 
-from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
+from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import (
     CAVALIER_BONUS_SKILLS,
     CHARGE_MOVE_PROBABILITY,
@@ -21,6 +22,7 @@ from dnd_sim.core.classes import (
     cavalier_mark_uses,
     warding_maneuver_uses,
 )
+from dnd_sim.core.enums import AttackRange
 from dnd_sim.core.skills import SKILL_ABILITIES
 from dnd_sim.rules.classes import apply_fighter
 from dnd_sim.rules.classes.fighter import CavalierFeatures, apply_cavalier
@@ -224,3 +226,172 @@ def test_el_flag_charge_p_llega_al_rasgo(monkeypatch):
     trait2 = next(t for t in party2[0].traits
                   if isinstance(t, CavalierFeatures))
     assert trait2.charge_probability == CHARGE_MOVE_PROBABILITY
+
+
+# --- A3: Unwavering Mark (marca y desventaja) ---------------------------------
+
+
+class _RngSi:
+    """``randrange`` devuelve el último índice: ``pick`` elige «si»."""
+
+    def randrange(self, n: int) -> int:
+        return n - 1
+
+
+def _marcado(**kwargs) -> tuple:
+    """PJ Cavalier + objetivo, para probar Unwavering Mark."""
+    pj, trait = _cavalier(**kwargs)
+    objetivo = Monster("Muñeco", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, objetivo])
+    return pj, trait, objetivo, ctx
+
+
+def _mods() -> SimpleNamespace:
+    return SimpleNamespace(advantage_sources=[], disadvantage_sources=[])
+
+
+def _marca_con(trait, target, ctx, rng, *, hit=True,
+               rango=AttackRange.MELEE) -> None:
+    atk = Attack("Espada larga", "1d8", ability="str", range_type=rango)
+    trait.after_attack_roll(trait.owner, target, atk, hit, ctx=ctx, rng=rng)
+
+
+def test_marca_al_impactar_con_ataque_cuerpo_a_cuerpo(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    pj, trait, objetivo, ctx = _marcado()
+    atk = Attack("Espada larga", "1d8", ability="str")
+    atk_mod.attack_roll(pj, objetivo, atk, random.Random(1), ctx=ctx)
+    assert list(objetivo.state.marca_cavalier) == [pj.name]
+    caduca, ref = objetivo.state.marca_cavalier[pj.name]
+    assert caduca == 3  # ronda 1 + 2
+    assert ref is pj
+    # Se gasta un uso al marcar.
+    assert trait.marca_usos.uses_left == trait.marca_usos.uses_max - 1
+
+
+def test_no_marca_con_ataque_a_distancia():
+    pj, trait, objetivo, ctx = _marcado()
+    _marca_con(trait, objetivo, ctx, _RngExplota(),
+               rango=AttackRange.RANGED)
+    assert objetivo.state.marca_cavalier == {}
+    assert trait.marca_usos.uses_left == trait.marca_usos.uses_max
+
+
+def test_no_marca_si_el_ataque_falla():
+    pj, trait, objetivo, ctx = _marcado()
+    _marca_con(trait, objetivo, ctx, _RngExplota(), hit=False)
+    assert objetivo.state.marca_cavalier == {}
+    assert trait.marca_usos.uses_left == trait.marca_usos.uses_max
+
+
+def test_la_marca_no_se_consume_y_no_aplica_al_atacar_al_marcador():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, trait, objetivo, ctx = _marcado()
+    _marca_con(trait, objetivo, ctx, _RngSi())
+    assert list(objetivo.state.marca_cavalier) == [pj.name]
+    tercero = Monster("Tercero", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, objetivo, tercero, ctx)
+    assert "Unwavering Mark" in mods.disadvantage_sources
+    # NO se consume: sigue marcado tras la tirada.
+    assert list(objetivo.state.marca_cavalier) == [pj.name]
+    # Contra su propio marcador: sin desventaja y la marca sigue.
+    mods2 = _mods()
+    consumir_marcas(mods2, objetivo, pj, ctx)
+    assert "Unwavering Mark" not in mods2.disadvantage_sources
+    assert list(objetivo.state.marca_cavalier) == [pj.name]
+
+
+def test_la_marca_caduca_en_la_ronda_indicada():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, _, objetivo, _ = _marcado()
+    objetivo.state.marca_cavalier[pj.name] = (3, pj)
+    ctx = SimpleNamespace(round=3, combatants=[pj, objetivo])
+    tercero = Monster("Tercero", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, objetivo, tercero, ctx)
+    assert mods.disadvantage_sources == []
+    assert objetivo.state.marca_cavalier == {}
+
+
+def test_muerto_el_marcador_anula_la_marca():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, _, objetivo, ctx = _marcado()
+    objetivo.state.marca_cavalier[pj.name] = (5, pj)
+    pj.dead = True  # fin anticipado: el marcador murió
+    tercero = Monster("Tercero", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, objetivo, tercero, ctx)
+    assert mods.disadvantage_sources == []
+    assert objetivo.state.marca_cavalier == {}
+
+
+def test_incapacitado_el_marcador_anula_la_marca():
+    from dnd_sim.rules.conditions import Condition, apply_condition
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, _, objetivo, ctx = _marcado()
+    objetivo.state.marca_cavalier[pj.name] = (5, pj)
+    apply_condition(pj, Condition.INCAPACITATED, ctx)
+    tercero = Monster("Tercero", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, objetivo, tercero, ctx)
+    assert mods.disadvantage_sources == []
+    assert objetivo.state.marca_cavalier == {}
+
+
+def test_remarcar_sustituye_a_la_anterior():
+    pj, trait, objetivo, ctx = _marcado()
+    intruso = Monster("Intruso", max_hp=40, ac=12, abilities=_abilities())
+    objetivo.state.marca_cavalier[intruso.name] = (9, intruso)
+    _marca_con(trait, objetivo, ctx, _RngSi())
+    # La marca nueva sustituye a la anterior (un solo marcador).
+    assert list(objetivo.state.marca_cavalier) == [pj.name]
+    assert objetivo.state.marca_cavalier[pj.name][0] == 3
+
+
+def test_sin_usos_no_hay_rng():
+    pj, trait, objetivo, ctx = _marcado()
+    for _ in range(trait.marca_usos.uses_max):
+        trait.marca_usos.spend()
+    _marca_con(trait, objetivo, ctx, _RngExplota())
+    assert objetivo.state.marca_cavalier == {}
+    assert trait.marca_usos.uses_left == 0
+
+
+def test_las_marcas_de_goading_y_cavalier_no_se_pisan():
+    from dnd_sim.rules.mastery import consumir_marcas
+
+    pj, trait, objetivo, ctx = _marcado()
+    # Goading de Battle Master sobre el MISMO sujeto, otro marcador.
+    objetivo.state.goading["Maestro de Batalla"] = 3
+    _marca_con(trait, objetivo, ctx, _RngSi())
+    assert "Maestro de Batalla" in objetivo.state.goading
+    assert list(objetivo.state.marca_cavalier) == [pj.name]
+    tercero = Monster("Tercero", max_hp=40, ac=12, abilities=_abilities())
+    mods = _mods()
+    consumir_marcas(mods, objetivo, tercero, ctx)
+    # Cada marca vive en su propio campo y ambas siguen vigentes.
+    assert "Goading Attack" in mods.disadvantage_sources
+    assert "Unwavering Mark" in mods.disadvantage_sources
+    assert "Maestro de Batalla" in objetivo.state.goading
+    assert list(objetivo.state.marca_cavalier) == [pj.name]
+
+
+def test_reset_de_combate_limpia_la_marca_de_cavalier():
+    pj, trait, objetivo, ctx = _marcado()
+    _marca_con(trait, objetivo, ctx, _RngSi())
+    assert objetivo.state.marca_cavalier
+    objetivo.reset()
+    assert objetivo.state.marca_cavalier == {}

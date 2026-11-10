@@ -77,6 +77,15 @@ class CombatState:
     # ``rules.mastery.consumir_marcas``). La limpia ``Combatant.reset()``.
     goading: dict[str, int] = field(
         default_factory=dict, repr=False, compare=False)
+    # Unwavering Mark (Cavalier): nombre del marcador → (ronda de
+    # caducidad, referencia al marcador). Vive en el SUJETO marcado y da
+    # desventaja a SUS ataques contra quien no sea el marcador; NO se
+    # consume (solo caduca) y se anula si el marcador muere o queda
+    # incapacitado (lo aplica ``rules.mastery.consumir_marcas``). La
+    # limpia ``Combatant.reset()``. La ref permite comprobar el estado
+    # del marcador sin un lookup por nombre.
+    marca_cavalier: dict[str, Any] = field(
+        default_factory=dict, repr=False, compare=False)
     # Distracting Strike (Battle Master): nombre del Maestro de Batalla →
     # ronda de caducidad. La marca quien RECIBE la maniobra y da ventaja
     # al primer ATACANTE distinto del marcador, que la consume (lo aplica

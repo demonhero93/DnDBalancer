@@ -292,6 +292,8 @@ class Combatant:
             self.state.enfeeble_hasta_ronda.clear()
             # Marca de Goading (Battle Master): un combate nuevo sin ella.
             self.state.goading.clear()
+            # Marca de Unwavering Mark (Cavalier): sin ella en combate nuevo.
+            self.state.marca_cavalier.clear()
             # Marca de Distracting (Battle Master): un combate nuevo sin ella.
             self.state.distracting.clear()
         except Exception:

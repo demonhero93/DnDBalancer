@@ -10,11 +10,14 @@ Rasgos por nivel (Fighter 3 / 7 / 10 / 15 / 18):
 - **Born to the Saddle** (3): ventaja en salvaciones para no caer de
   la montura, caída de pie y montar/desmontar barato → dato sin
   efecto (el sim no modela monturas ni caídas); congelado en tests.
+- **Unwavering Mark** (3): marca tras impactar con arma cuerpo a
+  cuerpo (``after_attack_roll``), desventaja en ``consumir_marcas``
+  (campo propio ``marca_cavalier`` en ``CombatState``).
 
-El resto de rasgos (Unwavering Mark, Warding Maneuver, Hold the Line,
-Ferocious Charger y Vigilant Defender) se implementa en los pasos
-A3-A8 de la misma sesión; ver ``TODO.md`` (plan «Cavalier») y las
-entradas de ``PASOS-ANTERIORES.txt``.
+El resto de rasgos (ataque especial de la marca, Warding Maneuver,
+Hold the Line, Ferocious Charger y Vigilant Defender) se implementa en
+los pasos A4-A8 de la misma sesión; ver ``TODO.md`` (plan «Cavalier»)
+y las entradas de ``PASOS-ANTERIORES.txt``.
 """
 from __future__ import annotations
 
@@ -30,6 +33,7 @@ from .....core.classes import (
     cavalier_mark_uses,
     warding_maneuver_uses,
 )
+from .....core.enums import AttackRange
 from .....core.randomness import pick
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
@@ -88,6 +92,48 @@ class CavalierFeatures(Trait):
             self.marca_usos.reset()
         if self.warding_usos is not None:
             self.warding_usos.reset()
+
+    # --- Unwavering Mark (3): marca y desventaja --------------------------------
+    def after_attack_roll(self, attacker: Any, target: Any, atk: Any,
+                          hit: bool, ctx: Any = None,
+                          rng: Any = None) -> None:
+        """Marca al ``target`` tras impactarle con arma cuerpo a cuerpo.
+
+        Marca hasta el final del siguiente turno del dueño (aproximación
+        ``ronda + 2``, mismo criterio documentado que Goading). Gasta un
+        uso de ``marca_usos``. Los guards van ANTES de todo RNG: sin
+        acierto, sin arma cuerpo a cuerpo, incapacitado, sin usos o sin
+        ``rng`` no hay ni pick. La desventaja la aplica
+        ``rules.mastery.consumir_marcas`` (campo propio
+        ``marca_cavalier``, separado de Goading).
+        """
+        if attacker is not self.owner or not hit:
+            return None
+        if getattr(atk, "range_type", None) is not AttackRange.MELEE:
+            return None
+        if not getattr(self.owner, "can_act", True) or rng is None:
+            return None
+        if self.marca_usos is None or not self.marca_usos.available:
+            return None
+        if not getattr(target, "alive", True) or not getattr(
+                target, "name", None):
+            return None
+        estado = getattr(target, "state", None)
+        ronda = getattr(ctx, "round", None)
+        if estado is None or ronda is None:
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        self.marca_usos.spend()
+        # Sustituye cualquier marca anterior (otro combatiente o la misma):
+        # «la marca nueva sustituye a la anterior».
+        estado.marca_cavalier.clear()
+        # shortcut: caduca a las 2 rondas («hasta el final de tu
+        # siguiente turno»), mismo criterio que Goading; la ref al
+        # marcador permite anularla si muere o queda incapacitado.
+        estado.marca_cavalier[self.owner.name] = (
+            int(ronda) + 2, self.owner)
+        return None
 
 
 def apply_cavalier(pj: Any, level: int | None = None,

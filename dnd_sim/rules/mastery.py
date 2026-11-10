@@ -266,6 +266,21 @@ def consumir_marcas(mods: Any, attacker: Any, target: Any,
                 del marcas_goad[marcador]
             elif nombre_obj != marcador:
                 mods.disadvantage_sources.append("Goading Attack")
+    # Unwavering Mark (Cavalier): desventaja al SUJETO marcado al atacar
+    # a cualquiera que no sea su marcador; NO se consume (solo caduca)
+    # y la marca se anula (fin anticipado) si el marcador murió o está
+    # incapacitado. Mismo mecanismo que Goading, campo propio.
+    marcas_cav = getattr(estado, "marca_cavalier", None)
+    if marcas_cav:
+        for marcador, valor in list(marcas_cav.items()):
+            caduca, ref = (valor if isinstance(valor, tuple)
+                           else (valor, None))
+            vigente = (getattr(ref, "alive", True)
+                       and getattr(ref, "can_act", True))
+            if caduca <= ronda or not vigente:
+                del marcas_cav[marcador]
+            elif nombre_obj != marcador:
+                mods.disadvantage_sources.append("Unwavering Mark")
 
 
 __all__ = ["EFECTOS", "EFECTOS_SIN_EFECTO", "MAESTRIAS", "al_acertar",

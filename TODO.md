@@ -179,10 +179,13 @@ receta de arriba.
   **Hecho**: 3 tests de registro con freeze exacto tocados
   (`test_fighter`, `test_arcane_archer`, `test_battle_master` —
   explicados en PASOS (2)); 10 tests nuevos, suite 1326 passed.
-- [ ] A3 — Unwavering Mark: marca en `CombatState` (campo propio,
+- [x] A3 — Unwavering Mark: marca en `CombatState` (campo propio,
   caducidad por ronda, sustitución, validez dinámica) + desventaja en
   `roll_modifiers` (mecanismo Goading) + marca tras impacto cuerpo a
   cuerpo (`after_attack_roll`) + tests.
+  **Hecho**: `marca_cavalier` = nombre → `(caduca, ref)`; consumición
+  en `consumir_marcas`; guards sin RNG antes del pick; 11 tests,
+  suite 1337 passed.
 - [ ] A4 — Unwavering Mark: ataque especial
   `CavalierMarkAttackAction` (flag con contador de turnos propios,
   ventaja forzada, daño extra `nivel // 2`, sin uso adicional) +

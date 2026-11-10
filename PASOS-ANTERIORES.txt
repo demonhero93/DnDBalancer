@@ -1550,6 +1550,37 @@ CAVALIER (2026-11-10)
     y ``--charge-p`` llega al rasgo (``_build_party`` con plantilla
     parcheada a ``subclass_name="cavalier"``). Suite final: 1326
     passed (0 fallos). Commit de A2.
+  - (3) Unwavering Mark: marca y desventaja (A3): campo propio
+    ``marca_cavalier`` en ``CombatState`` (``dict[str, Any]`` →
+    nombre del marcador → ``(ronda de caducidad, ref al marcador)``;
+    la ref permite anular la marca si el marcador muere o queda
+    incapacitado sin un lookup por nombre; separado de ``goading`` para
+    que dos fuentes no se pisen) con limpieza en ``Combatant.reset`` y
+    consumo en ``rules/mastery.py::consumir_marcas`` por el mismo
+    camino que Goading (desventaja al SUJETO marcado al atacar a quien
+    no sea su marcador; NO se consume, solo caduca; caducidad
+    ``ronda + 2`` = «hasta el final de tu siguiente turno», mismo
+    criterio documentado que Goading; si el marcador no está vivo o no
+    puede actuar, la marca se borra = fin anticipado). Marca tras
+    impactar: ``after_attack_roll`` en ``CavalierFeatures`` (patrón
+    Studied Attacks; guards ANTES de todo RNG: solo el propio dueño,
+    ``hit``, ``atk.range_type is AttackRange.MELEE`` (el hook no
+    recibe rango), ``can_act``, ``marca_usos.available``, objetivo
+    vivo con nombre y ``ctx.round`` presente; luego ``pick`` «no/sí» →
+    gasta un uso → ``clear()`` + set = la marca nueva sustituye a la
+    anterior). Sin la subclase ni el hook ni el consumo leen RNG.
+    Tests nuevos (11) en ``tests/test_cavalier.py``: marca por el
+    motor (``attack_roll`` con ``roll_d20`` y ``pick`` parcheados →
+    clave ``(3, pj)`` + un uso gastado), sin marca a distancia y sin
+    RNG (rng que revienta), sin marca tras fallo, desventaja solo
+    contra terceros y no contra el marcador sin consumirse, caduca en
+    la ronda indicada, muerto (``dead``) e incapacitado
+    (``apply_condition``) anulan y borran la marca, remarcar
+    sustituye, sin usos sin RNG, Goading de Battle Master convive en
+    su propio campo sin pisarse (ambas desventajas en la misma
+    tirada) y ``Combatant.reset`` la limpia. NINGÚN test existente
+    cambió (suite completa en verde). Suite final: 1337 passed (0
+    fallos). Commit de A3.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y
