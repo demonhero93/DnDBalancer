@@ -1261,3 +1261,213 @@ def test_sweeping_no_es_elegible_a_distancia():
                      hit=True, rango=AttackRange.RANGED)
     assert hit is True
     assert trait.maniobra_pendiente is None  # solo cuerpo a cuerpo: cero RNG
+
+
+# --- Commander's Strike (reacción, sesión 2 A4) --------------------------------
+
+def _commanda(level: int = 5, **kwargs) -> tuple:
+    """PJ Battle Master + aliado PJ + enemigo, para Commander's Strike."""
+    if "maneuvers" in kwargs:
+        kwargs["maneuvers"] = _completa(kwargs["maneuvers"], level)
+    pj, trait = _bm(level=level, **kwargs)
+    aliado = _pj(name="Alicia")
+    enemigo = Monster("Enemigo", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, aliado, enemigo])
+    return pj, trait, aliado, enemigo, ctx
+
+
+def _sustituye(trait, pj, enemigo, ctx, rng) -> object:
+    """Llama al hook como el motor en el paso 2b de ``attack_roll``."""
+    atk = Attack("Espada larga", "1d8", ability="str")
+    return trait.sustituir_ataque(pj, enemigo, atk, AttackRange.MELEE,
+                                  ctx=ctx, rng=rng)
+
+
+def test_commanders_strike_sustituye_el_ataque_y_el_aliado_gasta_su_reaccion(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+    from dnd_sim.rules.traits.base import AtaqueSustituido
+
+    pj, trait, aliado, enemigo, ctx = _commanda(
+        maneuvers=("Commander's Strike",))
+    d20s = []
+
+    def _d20(rng, mode):
+        d20s.append(15)
+        return D20Result(value=15, rolls=[15], mode=RollMode.NORMAL)
+
+    monkeypatch.setattr(atk_mod, "roll_d20", _d20)
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])  # «si»
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    atk = Attack("Espada larga", "1d8", ability="str")
+    res = atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), ctx=ctx)
+    assert isinstance(res, AtaqueSustituido)
+    assert res.motivo == "Commander's Strike"
+    assert len(d20s) == 1  # solo el aliado tira d20 (el dueño: 0)
+    assert aliado.state.reaction_used is True
+    assert pj.state.reaction_used is False  # el dueño solo gasta el dado
+    assert trait.dados_restantes == 3  # 4 iniciales − 1
+    assert enemigo.hp == 50  # 1 (arma) + 3 (FUE) + 6 (dado) = 10
+
+
+def test_commanders_strike_no_se_decide_sin_aliados_elegibles():
+    pj, trait, aliado, enemigo, ctx = _commanda(
+        maneuvers=("Commander's Strike",))
+    ctx.combatants = [pj, enemigo]  # el aliado no está en el encuentro
+    assert _sustituye(trait, pj, enemigo, ctx, _ExplotaSiUsaRng()) is None
+    assert trait.dados_restantes == 4
+    assert not aliado.state.reaction_used
+
+
+def test_commanders_strike_no_se_decide_si_el_aliado_ya_uso_su_reaccion():
+    _, trait, aliado, enemigo, ctx = _commanda(
+        maneuvers=("Commander's Strike",))
+    aliado.state.reaction_used = True
+    assert _sustituye(trait, trait.owner, enemigo, ctx,
+                      _ExplotaSiUsaRng()) is None
+    assert trait.dados_restantes == 4
+
+
+def test_commanders_strike_no_se_decide_sin_dados():
+    pj, trait, _, enemigo, ctx = _commanda(
+        maneuvers=("Commander's Strike",))
+    trait.dados_restantes = 0
+    assert _sustituye(trait, pj, enemigo, ctx, _ExplotaSiUsaRng()) is None
+    assert not trait.owner.state.reaction_used
+
+
+def test_commanders_strike_no_se_decide_sin_la_maniobra_conocida():
+    pj, trait, aliado, enemigo, ctx = _commanda(
+        maneuvers=("Riposte", "Parry", "Trip Attack"))  # sin CS
+    assert "Commander's Strike" not in trait.maneuvers
+    assert _sustituye(trait, pj, enemigo, ctx, _ExplotaSiUsaRng()) is None
+    assert trait.dados_restantes == 4
+    assert not aliado.state.reaction_used
+
+
+def test_commanders_strike_cede_el_ataque_si_hay_feinting_encolado():
+    pj, trait, aliado, enemigo, ctx = _commanda(
+        maneuvers=("Commander's Strike",))
+    trait.feinting_pendiente = True
+    assert _sustituye(trait, pj, enemigo, ctx, _ExplotaSiUsaRng()) is None
+    assert trait.feinting_pendiente is True  # una maniobra por ataque
+    assert not aliado.state.reaction_used
+
+
+def test_commanders_strike_no_sustituye_un_ataque_de_reaccion():
+    pj, trait, _, enemigo, ctx = _commanda(
+        maneuvers=("Commander's Strike",))
+    ctx.is_reaction = True
+    assert _sustituye(trait, pj, enemigo, ctx, _ExplotaSiUsaRng()) is None
+    assert trait.dados_restantes == 4
+
+
+def test_commanders_strike_no_se_decide_si_el_aliado_no_tiene_armas():
+    _, trait, aliado, enemigo, ctx = _commanda(
+        maneuvers=("Commander's Strike",))
+    aliado.attacks = []
+    assert _sustituye(trait, trait.owner, enemigo, ctx,
+                      _ExplotaSiUsaRng()) is None
+    assert trait.dados_restantes == 4
+    assert not aliado.state.reaction_used
+
+
+def test_commanders_strike_el_dueño_nunca_es_el_aliado_elegido(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj, trait = _bm(maneuvers=_completa(("Commander's Strike",), 5))
+    a1 = _pj(name="Alicia")
+    a2 = _pj(name="Berta")
+    enemigo = Monster("Enemigo", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, a1, a2, enemigo])
+    registradas = []
+
+    def _spy(rng, seq):
+        registradas.append(tuple(seq))
+        return seq[-1]
+
+    monkeypatch.setattr(bm_mod, "pick", _spy)
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    atk = Attack("Espada larga", "1d8", ability="str")
+    res = atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), ctx=ctx)
+    assert res is not None  # la sustitución se produjo
+    assert any(any(x is a1 for x in s) for s in registradas)
+    assert any(any(x is a2 for x in s) for s in registradas)
+    assert all(not any(x is pj for x in s) for s in registradas)
+
+
+def test_sin_subclase_el_motor_no_consulta_sustituir_ataque():
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    aliado = _pj(name="Alicia")
+    enemigo = Monster("Blanco", max_hp=10, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, aliado, enemigo])
+    atk = Attack("Espada larga", "1d8", ability="str")
+    res = atk_mod._sustituir_ataque(pj, enemigo, atk, AttackRange.MELEE,
+                                    ctx, _ExplotaSiUsaRng())
+    assert res is None  # sin subclase: cero RNG aunque haya aliado
+
+
+def test_el_ataque_del_aliado_no_reentra_en_commanders_strike(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+    from dnd_sim.rules.conditions import Condition
+    from dnd_sim.rules.traits.base import AtaqueSustituido
+
+    pj, trait = _bm(maneuvers=_completa(("Commander's Strike",), 5))
+    aliado, aliado_trait = _bm(
+        maneuvers=_completa(("Menacing Attack",), 5))  # con CS: reentrada
+    aliado.name = "Alicia"
+    enemigo = Monster("Enemigo", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, aliado, enemigo])
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])  # «si»
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)
+    atk = Attack("Espada larga", "1d8", ability="str")
+    res = atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), ctx=ctx)
+    assert isinstance(res, AtaqueSustituido)  # el aliado atacó en su sitio
+    assert aliado.state.reaction_used is True
+    assert aliado_trait.maniobra_pendiente is None  # guard is_reaction
+    assert not _tiene(enemigo, Condition.FRIGHTENED)  # ni Menacing ni recursión
+    assert aliado_trait.dados_restantes == 4  # el aliado no gastó su dado
+    assert trait.dados_restantes == 3  # un solo dado: el del dueño
+
+
+def test_commanders_strike_con_relentless_no_gasta_dado(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+    from dnd_sim.rules.traits.base import AtaqueSustituido
+
+    pj, trait, aliado, enemigo, ctx = _commanda(
+        level=15, maneuvers=("Commander's Strike",))
+    monkeypatch.setattr(bm_mod, "pick", lambda rng, seq: seq[-1])  # «si»
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=15, rolls=[15],
+                                    mode=RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice", lambda *a, **k: 1)
+    monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 6)  # d8 Relentless
+    atk = Attack("Espada larga", "1d8", ability="str")
+    res = atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), ctx=ctx)
+    assert isinstance(res, AtaqueSustituido)
+    assert trait.dados_restantes == 6  # Relentless: sin gastar
+    assert aliado.state.reaction_used is True
+    assert enemigo.hp == 50  # 1 + 3 + 6 (d8 de Relentless)

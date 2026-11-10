@@ -1370,6 +1370,46 @@ BATTLE MASTER (SESIÓN 2) (2026-11-09)
     afirman daño exacto no dependen del estilo aleatorio de
     ``_RNG_CREACION`` compartido. NINGÚN test existente cambia.
     Suite completa: 1281 passed (0 fallos). Commit de A3.
+  - (4) Commander's Strike (A4): método ``sustituir_ataque`` en
+    ``BattleMasterFeatures`` (duck-typing ya existente en el paso 2b
+    de ``attack_roll``, patrón Arcane Shot). Guards SIN RNG en orden:
+    sin ctx/rng/atacante/objetivo, ``ctx.is_reaction`` (no sustituye
+    ataques de reacción), maniobra no conocida, otra maniobra ya
+    encolada (una por ataque: si Feinting está encolado, CS cede),
+    sin dados y sin Relentless, o sin aliado elegible. Helper nuevo
+    ``_aliados_elegibles`` — vivo, no el dueño, no hostil
+    (``_es_aliado``), reacción libre, con arma (``_armas_propias``,
+    refactor mínimo sobre ``_armas_melee_propias``) y con enemigo
+    objetivo (``valid_targets``)— todo SIN RNG. Con elegibles: ``pick``
+    «no»/«sí» («no» no gasta nada), ``pick`` uniforme de aliado,
+    objetivo y arma (sin RNG con una sola opción), gasta UN dado del
+    DUEÑO (``_tirar_dado``, Relentless incluido) y la REACCIÓN del
+    ALIADO; el valor va en ``r_ctx.dano_reaccion`` y
+    ``daño_base_arma`` ya lo consumía (hecho en A3). El ataque aliado
+    reutiliza ``attack_roll`` completo con ``r_ctx.is_reaction``:
+    defensa contra recursión — el guard ``is_reaction`` del propio
+    ``sustituir_ataque`` y el de ``decidir_maniobra`` del aliado
+    (aunque conozca CS y maniobras de impacto) devuelven sin RNG.
+    Devuelve ``AtaqueSustituido``: el dueño NO tira d20 y NO gasta
+    reacción. SESGO documentado (docstring del método + docstring de
+    módulo + ARCHITECTURE + TODO): la decisión es PREVIA a la tirada
+    (paso 2b), no equiprobable con las maniobras de impacto, que ven
+    el resultado — decisión de diseño, NO deuda.
+    ``battle_master.py`` pasa de 650 a 752 líneas: el recetario del
+    TODO (~700 → paquete ``battle_master/``) se POSPONE porque 17
+    tests parchean ``bm_mod.pick``/``roll_dice`` apuntando al módulo
+    único; migrarlos obligaría a tocar tests existentes (pendiente
+    real, ver TODO). Tests nuevos (12): sustitución con daño exacto
+    (1+3+6) y UN solo d20 (el del aliado; el dueño, 0), sin
+    aliados/reacción/dados/maniobra/arma → sin RNG, Feinting encolado
+    cede (flag intacto), ``ctx.is_reaction`` no sustituye, el dueño
+    nunca aparece en los pools de ``pick``, sin subclase sin consulta
+    del hook, reentrada (aliado Battle Master con CS en su pool no
+    recursa, no gasta su dado y no aplica Menacing) y Relentless a
+    nivel 15 sin gastar dado. NINGÚN test existente cambia: los ctx
+    existentes no tienen aliado elegible (guard antes de todo RNG) y
+    el ataque de reacción del dueño cae en ``is_reaction``. Suite
+    completa: 1293 passed (0 fallos). Commit de A4.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/; tests/ con 53 ficheros y 19927 líneas

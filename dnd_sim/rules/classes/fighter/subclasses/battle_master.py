@@ -39,6 +39,12 @@ Decisiones de simulación documentadas:
   soltado, alcance, movimiento del aliado) son dato sin efecto
   (``# TODO``): solo daño y salvación. Bait and Switch y Evasive
   Footwork quedan FUERA del pool (ver TODO.md).
+- **Commander's Strike** (4): el ataque del dueño se sustituye por el
+  de un aliado con la reacción libre, usando un dado del dueño en
+  ``ctx.dano_reaccion`` (patrón Riposte). La decisión es PREVIA a la
+  tirada (paso 2b): no es equiprobable con las maniobras de impacto,
+  que ven el resultado. El ataque aliado es de reacción: no activa
+  maniobras de la sesión 1 ni reentra en Commander's Strike.
 
 La decisión por ataque vive en :meth:`BattleMasterFeatures.decidir_maniobra`
 (punto único del motor tras conocer la tirada; ver el docstring) y la
@@ -71,8 +77,8 @@ from ....conditions import Condition, EscapeCheck, apply_condition
 from ....damage import apply_damage_modifiers, inflict_damage
 from ....roll_modifiers import effective_ac
 from ....saves import registrar_resistencia, saving_throw
-from ....traits.base import Trait
-from ..features import FighterFeatures, _contexto
+from ....traits.base import AtaqueSustituido, Trait
+from ..features import FighterFeatures, _contexto, _es_aliado
 
 #: RNG con semilla fija para Student of War y maniobras cuando no pasa
 #: ``rng``: crea el personaje siempre igual (reproducible).
@@ -120,6 +126,14 @@ def _de(actor: Any, clase: type) -> Any:
     return None
 
 
+def _armas_propias(criatura: Any) -> tuple:
+    """Armas propias: ``attacks``, o ``weapons`` + ``dynamic_weapons``."""
+    ataques = list(getattr(criatura, "attacks", None) or []) or (
+        list(getattr(criatura, "weapons", None) or [])
+        + list(getattr(criatura, "dynamic_weapons", None) or []))
+    return tuple(ataques)
+
+
 def _armas_melee_propias(criatura: Any) -> tuple:
     """Armas cuerpo a cuerpo propias (patrón ``_armas_melee_de`` de Retaliation).
 
@@ -127,12 +141,32 @@ def _armas_melee_propias(criatura: Any) -> tuple:
     elegible (SIN RNG), a diferencia de Retaliation, que cae en golpe
     sin armas.
     """
-    ataques = list(getattr(criatura, "attacks", None) or []) or (
-        list(getattr(criatura, "weapons", None) or [])
-        + list(getattr(criatura, "dynamic_weapons", None) or []))
-    return tuple(a for a in ataques
+    return tuple(a for a in _armas_propias(criatura)
                  if getattr(a, "range_type", AttackRange.MELEE)
                  is not AttackRange.RANGED)
+
+
+def _aliados_elegibles(owner: Any, ctx: Any) -> tuple:
+    """Aliados que pueden recibir Commander's Strike (sin RNG).
+
+    Filtros: vivo, no el dueño, no hostil (``_es_aliado``), con
+    reacción disponible y con qué atacar (algún arma y algún enemigo
+    objetivo).
+    """
+    aliados = []
+    for c in getattr(ctx, "combatants", None) or []:
+        if not _es_aliado(owner, c):
+            continue
+        if not getattr(c, "can_react", True):
+            continue
+        if getattr(getattr(c, "state", None), "reaction_used", False):
+            continue
+        if not _armas_propias(c):
+            continue
+        if not valid_targets(c, ctx):
+            continue
+        aliados.append(c)
+    return tuple(aliados)
 
 
 @dataclass
@@ -401,6 +435,75 @@ class BattleMasterFeatures(Trait):
         r_ctx.dano_reaccion = valor
         attack_roll(owner, attacker, arma, rng,
                     log=getattr(ctx, "log", log), ctx=r_ctx)
+
+    # --- Commander's Strike (4): el aliado ataca con tu dado -------------------
+    def sustituir_ataque(self, attacker: Any, target: Any, atk: Any,
+                         rango: Any, *, ctx: Any = None,
+                         rng: Any = None) -> Any:
+        """Commander's Strike: sustituye el ataque del dueño por el de un aliado.
+
+        Lo llama el motor en el paso 2b de ``attack_roll`` (duck-typing),
+        ANTES de la tirada. Guards SIN RNG: sin ctx/rng, el ataque es de
+        reacción (en el sim, todo ataque del dueño fuera de su turno),
+        maniobra no conocida, otra maniobra ya encolada (una por ataque),
+        sin dados (y sin Relentless) o sin aliado elegible (vivo, no el
+        dueño, no hostil, con reacción libre, con arma y con enemigo).
+
+        Decisión ``pick`` «no»/«sí» («no» no gasta nada); luego ``pick``
+        uniforme de aliado, de su objetivo y de su arma (sin RNG con una
+        sola opción). Gasta un dado del DUEÑO (Relentless incluido) y la
+        REACCIÓN del ALIADO; el valor viaja en ``ctx.dano_reaccion`` y
+        ``daño_base_arma`` lo suma SOLO si el ataque aliado impacta.
+        Devuelve ``AtaqueSustituido``: el ataque del dueño no se tira
+        (sin d20, sin maestrías).
+
+        Sesgo documentado: la decisión es PREVIA a la tirada (a diferencia
+        de las maniobras de impacto, que ven el resultado), así que no es
+        equiprobable respecto a ellas. El ataque aliado lleva
+        ``is_reaction``: no activa maniobras de la sesión 1 ni cede
+        reentrada a Commander's Strike (guard propio).
+        """
+        owner = self.owner
+        if (owner is None or attacker is None or target is None
+                or ctx is None or rng is None
+                or attacker is not owner
+                or getattr(ctx, "is_reaction", False)
+                or "Commander's Strike" not in self.maneuvers
+                or self.maniobra_pendiente is not None
+                or self.feinting_pendiente
+                or (self.dados_restantes <= 0
+                    and not (self.level >= 15
+                             and not self.relentless_used_this_turn))):
+            return None
+        aliados = _aliados_elegibles(owner, ctx)
+        if not aliados:
+            return None  # sin aliado elegible: cero RNG
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        aliado = aliados[0] if len(aliados) == 1 else pick(rng, aliados)
+        objetivos = valid_targets(aliado, ctx)
+        if not objetivos:
+            return None  # no debería ocurrir (ya filtrado): sin RNG
+        objetivo = objetivos[0] if len(objetivos) == 1 else pick(
+            rng, objetivos)
+        armas = _armas_propias(aliado)
+        if not armas:
+            return None  # no debería ocurrir (ya filtrado): sin RNG
+        arma = armas[0] if len(armas) == 1 else pick(rng, armas)
+        valor, gastar = self._tirar_dado(rng)
+        aliado.state.reaction_used = True
+        sufijo = "" if gastar else " (Relentless: sin gastar dado)"
+        _log_line(ctx, f"Battle Master (Commander's Strike): "
+                       f"{getattr(aliado, 'name', aliado)} ataca a "
+                       f"{getattr(objetivo, 'name', objetivo)} (+{valor})"
+                       f"{sufijo}")
+        from .....engine.combat import attack_roll
+        r_ctx = copy.copy(ctx)
+        r_ctx.is_reaction = True
+        r_ctx.dano_reaccion = valor
+        attack_roll(aliado, objetivo, arma, rng,
+                    log=getattr(ctx, "log", None), ctx=r_ctx)
+        return AtaqueSustituido(motivo="Commander's Strike")
 
     def _tirar_dado(self, rng: Any, *, crit: bool = False) -> tuple[int, bool]:
         """Tira el dado de la maniobra y gasta el uso.

@@ -121,11 +121,13 @@ Plan de sesión (una casilla = un commit):
   Retaliation (`r_ctx.is_reaction`); el dado viaja en
   `ctx.dano_reaccion` y lo suma `daño_base_arma` (plano); guard de
   reentrada `is_reaction` en `decidir_maniobra`; tests.
-- [ ] A4 — Commander's Strike: `sustituir_ataque` propio (guard
+- [x] A4 — Commander's Strike: `sustituir_ataque` propio (guard
   `is_reaction`); pick previo «no/sí» + pick de aliado elegible y de
   su objetivo; el aliado gasta SU reacción y el dado del dueño va en
   `ctx.dano_reaccion`; sesgo documentado (docstring + ARCHITECTURE +
-  TODO); tests.
+  TODO); tests. **Sesgo = decisión de diseño, NO deuda**: la
+  decisión es previa a la tirada (paso 2b), no equiprobable con las
+  maniobras de impacto.
 - [ ] B1 — Rally: `BattleMasterRallyAction` (bonus, `usage=None`,
   elegibilidad sin RNG) y `rally` al pool (14→15, reseed explicado);
   PV temporales `dado + mod CAR` (mínimo 1) sin acumular; tests.
@@ -141,6 +143,9 @@ Plan de sesión (una casilla = un commit):
 
 Fuera de esta sesión (siguen pendientes): Ambush y Commanding
 Presence no tienen casilla en los bloques A/B de la tarea.
+`battle_master.py` superó ~700 líneas (752): el paquete
+`battle_master/` del recetario de abajo queda pendiente porque 17
+tests parchean `bm_mod.pick`/`roll_dice` en el módulo único.
 
 ## Fighter: cómo añadir una subclase
 

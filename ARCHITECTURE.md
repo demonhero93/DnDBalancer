@@ -129,6 +129,26 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   `test_ever_ready_shot_no_cambia_los_usos_al_empezar_un_combate`;
   reabrir solo si el sim modela más de un combate por descanso.
 
+## Battle Master (PHB 2024)
+
+- **Reacciones (sesión 2)**: Parry (`reducir_dano_recibido`, sobre el
+  atacado, antes de `inflict_damage`), Riposte (`reaccionar_al_fallo`,
+  tras un fallo cuerpo a cuerpo) y Commander's Strike
+  (`sustituir_ataque`, paso 2b). Las tres son duck-typing sobre el
+  dueño del rasgo, sin entrada en `HOOK_NAMES`; guards SIN RNG y
+  decisión `pick` «no»/«sí». El dado sale de `_tirar_dado`
+  (Relentless incluido) y, en los ataques de reacción, viaja en
+  `ctx.dano_reaccion` (plano: `daño_base_arma` lo suma sin duplicarlo
+  en crítico).
+- **Commander's Strike — sesgo documentado, NO deuda**: el aliado se
+  elige ANTES de la tirada (paso 2b), mientras que las maniobras de
+  impacto se deciden después de conocer el resultado; la decisión no
+  es equiprobable con ellas. El dueño gasta el dado, el aliado gasta
+  SU reacción. El ataque aliado lleva `r_ctx.is_reaction=True`: no
+  reentra en Commander's Strike ni activa maniobras de la sesión 1.
+  Congelado en `test_commanders_strike_*` de
+  `tests/test_battle_master.py`.
+
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
