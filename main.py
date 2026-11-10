@@ -52,6 +52,7 @@ def _load_party(specs: list[str], legendary_p: float = 1.0,
 PARTY_TEMPLATES = [
     dict(name="Guerrero", max_hp=50, ac=18, level=5,
          class_name="fighter",
+         subclass_name="battle_master",
          save_proficiencies=("str", "con"),
          skill_proficiencies=("athletics", "intimidation", "perception",
                               "survival"),
@@ -189,7 +190,7 @@ def main() -> None:
         # Fija la probabilidad de utilitarias para todo el simulador.
         from dnd_sim.rules import utility
         utility.UTILITY_ACTION_PROBABILITY = float(args.utility_p)
-    specs = args.monster if args.monster else ["troll"]
+    specs = args.monster if args.monster else ["owlbear:3"]
     monsters = _load_party(specs, legendary_p=args.legendary_p,
                            resistance_p=args.resistance_p,
                            legendary_points=args.legendary_points)
