@@ -172,10 +172,13 @@ receta de arriba.
   **Hecho**: `performance` sí existe en `SKILL_ABILITIES`; cableado
   `charge_p` por `hasattr` (sin importar la subclase antes de A2);
   5 tests, suite 1316 passed.
-- [ ] A2 — Esqueleto `fighter/subclasses/cavalier.py`
+- [x] A2 — Esqueleto `fighter/subclasses/cavalier.py`
   (`CavalierFeatures`, `apply_cavalier`) + registro `"cavalier"` y
   reexportes + tests (registro/equivalencia, error clase/nivel, Bonus
   Proficiency, Born to the Saddle dato, cero RNG sin subclase).
+  **Hecho**: 3 tests de registro con freeze exacto tocados
+  (`test_fighter`, `test_arcane_archer`, `test_battle_master` —
+  explicados en PASOS (2)); 10 tests nuevos, suite 1326 passed.
 - [ ] A3 — Unwavering Mark: marca en `CombatState` (campo propio,
   caducidad por ronda, sustitución, validez dinámica) + desventaja en
   `roll_modifiers` (mecanismo Goading) + marca tras impacto cuerpo a

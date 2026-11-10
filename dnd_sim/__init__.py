@@ -68,8 +68,9 @@ from .rules.classes.barbarian.subclasses.zealot import (
 )
 from .rules.classes.fighter import (
     ActionSurgeAction, ArcaneArcherFeatures, BattleMasterFeatures,
-    FighterFeatures, SecondWindAction, apply_arcane_archer,
-    apply_battle_master, apply_fighter,
+    CavalierFeatures, FighterFeatures, SecondWindAction,
+    apply_arcane_archer, apply_battle_master, apply_cavalier,
+    apply_fighter,
 )
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
@@ -132,6 +133,7 @@ __all__ = [
     "BeastFeatures",
     "BerserkerFeatures",
     "BloodFrenzy",
+    "CavalierFeatures",
     "CheckModifiers", "CheckResult", "CombatAction", "CombatContext",
     "CombatResult", "CombatState", "Combatant", "CombatantType", "Condition",
     "ConditionAction", "ConditionEffect", "ConditionInstance",
@@ -163,7 +165,8 @@ __all__ = [
     "ability_check", "ability_check_bonus",
     "ability_mod", "apply_ancestral_guardian", "apply_barbarian",
     "apply_battle_master",
-    "apply_battlerager", "apply_beast", "apply_berserker", "apply_class",
+    "apply_battlerager", "apply_beast", "apply_berserker", "apply_cavalier",
+    "apply_class",
     "apply_arcane_archer", "apply_condition", "apply_fighter", "apply_giant", "apply_storm_herald",
     "apply_wild_heart", "apply_wild_magic", "apply_world_tree",
     "apply_zealot",

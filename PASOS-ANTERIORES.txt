@@ -1510,6 +1510,46 @@ CAVALIER (2026-11-10)
     ``SKILL_ABILITIES``, constante 0.5 y flag CLI (patrón
     ``test_legendary`` con ``importlib`` sobre main.py). Suite final:
     1316 passed (0 fallos). Commit de A1.
+  - (2) Esqueleto y registro (A2): módulo nuevo
+    ``rules/classes/fighter/subclasses/cavalier.py`` con
+    ``CavalierFeatures`` (usos ``marca_usos``/``warding_usos`` como
+    ``ActionUsage`` PER_DAY según ``cavalier_mark_uses``(mod FUE) y
+    ``warding_maneuver_uses``(mod CON) solo desde nivel 7,
+    ``competencia`` de Bonus Proficiency, ``born_to_the_saddle`` =
+    dato, ``charge_probability`` = ``CHARGE_MOVE_PROBABILITY`` para
+    ``--charge-p``, ``turno_cavalier``/``carga_evaluada`` y
+    ``on_turn_start``/``reset``) y ``apply_cavalier`` (valida
+    ``FighterFeatures`` y nivel >= 3 ANTES de todo RNG, luego
+    ``pick`` de Bonus Proficiency entre las no conocidas de
+    ``CAVALIER_BONUS_SKILLS`` sin candidatas no cambia nada). Registro
+    ``"cavalier"`` en ``fighter/__init__.py`` + reexportes en
+    ``fighter/subclasses/__init__.py``, ``rules/classes/__init__.py``
+    y fachada ``dnd_sim/__init__.py`` (``__all__`` de ambos).
+    ``tests/test_arquitectura.py`` NO se toca: su aserción de
+    fachadas es ``esperados - exportados`` (subconjunto) y solo se
+    AÑADEN exports. **Test existente tocado (explicado ANTES)**:
+    ``tests/test_fighter.py::test_clase_fighter_esta_registrada_con_arcane_archer``
+    congela el registro con igualdad exacta
+    ``{"arcane_archer", "battle_master"}`` → pasa a incluir
+    ``"cavalier"`` (es el cambio previsto en la sección 3 de la
+    tarea; NINGÚN otro test existente cambia). **Dos tests más con el
+    mismo freeze exacto (explicados ANTES de tocarlos, inevitable por
+    el registro global)**: ``tests/test_arcane_archer.py::test_registro_arcane_archer_bajo_fighter``
+    y ``tests/test_battle_master.py::test_registro_battle_master_bajo_fighter``
+    afirman ``set(subclases) == {"arcane_archer", "battle_master"}``
+    → pasan a incluir ``"cavalier"`` (mismo cambio que el de
+    ``test_fighter``; ninguna conducta cambia, solo la tabla de
+    registro). Tests nuevos (10) en
+    ``tests/test_cavalier.py``: registro por apply_class equivalente
+    a ``apply_cavalier`` (reseed de ``_RNG_CREACION`` en
+    ``fighter_mod`` y ``cav_mod``, patrón Battle Master), errores de
+    clase/nivel (directo y por registro), Bonus Proficiency añade una
+    no conocida / sin candidatas sin RNG (rng que revienta), usos de
+    marca y warding según tabla, Born to the Saddle sin efecto sobre
+    CA/salvaciones, sin subclase no hay rasgo ni ``charge_probability``
+    y ``--charge-p`` llega al rasgo (``_build_party`` con plantilla
+    parcheada a ``subclass_name="cavalier"``). Suite final: 1326
+    passed (0 fallos). Commit de A2.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y

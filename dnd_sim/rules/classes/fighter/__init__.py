@@ -4,8 +4,8 @@
 Extra Attack...). Este ``__init__`` reexporta la API (``from
 dnd_sim.rules.classes.fighter import apply_fighter``) y declara la
 clase en el registro genérico de :mod:`dnd_sim.rules.classes.base` con
-su tabla de subclases (Arcane Archer y Battle Master; ver ``TODO.md``
-para la receta).
+su tabla de subclases (Arcane Archer, Battle Master y Cavalier; ver
+``TODO.md`` para la receta).
 """
 from __future__ import annotations
 
@@ -15,8 +15,10 @@ from .subclasses import (
     ARCANE_SHOTS,
     ArcaneArcherFeatures,
     BattleMasterFeatures,
+    CavalierFeatures,
     apply_arcane_archer,
     apply_battle_master,
+    apply_cavalier,
 )
 
 #: Registro de la clase Fighter con sus subclases (claves normalizadas).
@@ -32,10 +34,14 @@ FIGHTER_CLASS = register_class(ClassDef(
             name="Battle Master", class_name="fighter",
             min_level=3, apply=apply_battle_master,
         ),
+        "cavalier": SubclassDef(
+            name="Cavalier", class_name="fighter",
+            min_level=3, apply=apply_cavalier,
+        ),
     },
 ))
 
 __all__ = ["ActionSurgeAction", "ARCANE_SHOTS", "ArcaneArcherFeatures",
-           "BattleMasterFeatures", "FIGHTER_CLASS", "FighterFeatures",
-           "SecondWindAction", "apply_arcane_archer", "apply_battle_master",
-           "apply_fighter"]
+           "BattleMasterFeatures", "CavalierFeatures", "FIGHTER_CLASS",
+           "FighterFeatures", "SecondWindAction", "apply_arcane_archer",
+           "apply_battle_master", "apply_cavalier", "apply_fighter"]

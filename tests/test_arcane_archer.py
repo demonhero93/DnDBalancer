@@ -62,7 +62,9 @@ def _trait(pj) -> ArcaneArcherFeatures:
 
 def test_registro_arcane_archer_bajo_fighter():
     subclases = CLASSES["fighter"].subclasses
-    assert set(subclases) == {"arcane_archer", "battle_master"}
+    # Cambio esperado con Cavalier (2026-11-10, explicado en PASOS).
+    assert set(subclases) == {"arcane_archer", "battle_master",
+                              "cavalier"}
     sub = subclases["arcane_archer"]
     assert sub.class_name == "fighter"
     assert sub.min_level == 3

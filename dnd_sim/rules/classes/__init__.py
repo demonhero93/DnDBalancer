@@ -30,9 +30,11 @@ from .barbarian.subclasses import (
 from .fighter import (
     ActionSurgeAction,
     BattleMasterFeatures,
+    CavalierFeatures,
     FighterFeatures,
     SecondWindAction,
     apply_battle_master,
+    apply_cavalier,
     apply_fighter,
 )
 
@@ -40,12 +42,12 @@ __all__ = ["ANCESTRAL_FEATURES", "AncestralGuardianFeatures",
            "ActionSurgeAction",
            "BATTLERAGER_FEATURES", "CLASSES", "ClassDef",
            "BarbarianFeatures", "BattleMasterFeatures", "BeastFeatures",
-           "BattleragerFeatures",
+           "BattleragerFeatures", "CavalierFeatures",
            "FighterFeatures",
            "SubclassDef", "ExtendRageAction", "FormOfTheBeast",
            "NaturalWeapon", "RageAction", "SecondWindAction",
            "SpikedArmorAction",
            "apply_ancestral_guardian", "apply_barbarian", "apply_battlerager",
-           "apply_battle_master",
+           "apply_battle_master", "apply_cavalier",
            "apply_beast", "apply_class", "apply_fighter", "normalize_class_name",
            "register_class"]
