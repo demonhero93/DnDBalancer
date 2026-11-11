@@ -24,11 +24,16 @@ Rasgos por nivel (Fighter 3 / 7 / 10 / 15 / 18):
   resistencia si el golpe sigue entrando (concesión temporal al tipo
   durante ``apply_damage_modifiers``, sin acumularse). Reacción
   compartida; requiere escudo o arma cuerpo a cuerpo.
+- **Hold the Line** (10): ``ataque_de_oportunidad`` (duck-typing, sin
+  ``HOOK_NAMES``) —reinterpretación documentada: en lugar del ataque
+  de oportunidad por movimiento (el sim no tiene movimiento), un
+  ataque de reacción cuando un enemigo ataca con tirada a un aliado
+  distinto del dueño; contraataque cuerpo a cuerpo con la reacción
+  compartida. La velocidad 0 es dato sin efecto.
 
-El resto de rasgos (Hold the Line, Ferocious Charger y Vigilant
-Defender) se implementa en los pasos A6-A8 de la misma sesión; ver
-``TODO.md`` (plan «Cavalier») y las entradas de
-``PASOS-ANTERIORES.txt``.
+El resto de rasgos (Vigilant Defender y Ferocious Charger) se
+implementa en los pasos A7-A8 de la misma sesión; ver ``TODO.md``
+(plan «Cavalier») y las entradas de ``PASOS-ANTERIORES.txt``.
 """
 from __future__ import annotations
 
@@ -241,6 +246,70 @@ class CavalierFeatures(Trait):
                        f"Maneuver: +{valor} de CA a "
                        f"{getattr(target, 'name', target)}")
         return SimpleNamespace(ac_extra=valor, resistencia=True)
+
+    # --- Hold the Line (10): ataque de oportunidad abstracto -----------------
+    def ataque_de_oportunidad(self, attacker: Any, target: Any, *,
+                              ctx: Any = None, rng: Any = None,
+                              log: Any = None) -> None:
+        """Hold the Line: ataque de reacción contra el atacante de un aliado.
+
+        Reinterpretación documentada: en las reglas la criatura
+        provoca el ataque al moverse dentro del alcance; el sim no
+        tiene movimiento, así que el «ataque de oportunidad abstracto»
+        se dispara cuando un enemigo hace un ataque con tirada —impacte
+        o falle— contra un aliado vivo distinto del dueño. Lo llama el
+        motor (duck-typing ``_oportunidad_contra_bando``, sin entrada
+        en ``HOOK_NAMES``) tras resolver la tirada; los hechizos de
+        salvación y el área no lo disparan.
+
+        Guards SIN RNG en orden: nivel < 10, sin ctx/rng/atacante u
+        objetivo, reentrada (``ctx.is_reaction``: un ataque de
+        reacción no dispara otro), dueño muerto/incapacitado, atacante
+        muerto o no enemigo del dueño, objetivo que no sea un aliado
+        vivo distinto del dueño, reacción ya gastada, sin ataque
+        cuerpo a cuerpo propio. Decisión ``pick`` «no»/«sí» («no» no
+        gasta nada); arma con ``pick`` uniforme (sin RNG si solo hay
+        una); gasta la reacción y contraataca con ``is_reaction`` en
+        el ctx copiado. La velocidad 0 hasta el final del turno del
+        atacante es dato sin efecto: el sim no modela velocidad.
+        """
+        if self.level < 10:
+            return None
+        if ctx is None or rng is None or attacker is None or target is None:
+            return None
+        if getattr(ctx, "is_reaction", False):
+            return None  # reentrada: un ataque de reacción no dispara otro
+        owner = self.owner
+        if owner is None or not getattr(owner, "alive", True) or not getattr(
+                owner, "can_act", True):
+            return None
+        if not getattr(attacker, "alive", True):
+            return None
+        hostil = getattr(owner, "is_hostile_to", None)
+        if hostil is None or not hostil(attacker):
+            return None  # solo contra enemigos del dueño
+        if target is owner or not _es_aliado(owner, target):
+            return None  # solo aliados vivos distintos del dueño
+        estado = getattr(owner, "state", None)
+        if estado is not None and estado.reaction_used:
+            return None
+        armas = _armas_melee_de(owner)
+        if not armas:
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        arma = pick(rng, armas)  # sin RNG si solo hay una
+        if estado is not None:
+            estado.reaction_used = True
+        _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Hold the Line "
+                       f"contra {getattr(attacker, 'name', attacker)}")
+        # TODO: velocidad 0 hasta el final del turno del atacante (dato
+        # sin efecto: el sim no modela velocidad ni movimiento).
+        r_ctx = copy.copy(ctx)
+        r_ctx.is_reaction = True  # reentrada: el contraataque no dispara otro
+        from .....engine.combat import attack_roll  # local: evita ciclo
+        attack_roll(owner, attacker, arma, rng, log=log, ctx=r_ctx)
+        return None
 
 
 class CavalierMarkAttackAction(CombatAction):

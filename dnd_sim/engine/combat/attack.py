@@ -174,6 +174,29 @@ def _bonus_defensivo(target: Any, attacker: Any, rango: Any, total: int,
     return total_bonus
 
 
+def _bando_del(target: Any, ctx: Any) -> list:
+    """``target`` más sus aliados vivos del contexto (sin RNG).
+
+    Misma enumeración que ``reduce_damage_to_allies``: ``ctx.combatants``
+    sin el propio objetivo, sin muertos y sin hostiles según
+    ``is_hostile_to``. Sin ``target`` la lista queda vacía; sin
+    ``combatants`` solo va el objetivo.
+    """
+    if target is None:
+        return []
+    candidatos = [target]
+    hostil = getattr(target, "is_hostile_to", None)
+    for otro in getattr(ctx, "combatants", None) or []:
+        if otro is target or otro is None:
+            continue
+        if not getattr(otro, "alive", True):
+            continue
+        if hostil is not None and hostil(otro):
+            continue
+        candidatos.append(otro)
+    return candidatos
+
+
 def _defensa_del_bando(target: Any, attacker: Any, rango: Any, *,
                        total: int, ca: int, ctx: Any,
                        rng: Any) -> Any:
@@ -189,21 +212,10 @@ def _defensa_del_bando(target: Any, attacker: Any, rango: Any, *,
     """
     if target is None:
         return None
-    combatientes = getattr(ctx, "combatants", None) or []
-    candidatos = [target]
-    hostil = getattr(target, "is_hostile_to", None)
-    for otro in combatientes:
-        if otro is target or otro is None:
-            continue
-        if not getattr(otro, "alive", True):
-            continue
-        if hostil is not None and hostil(otro):
-            continue
-        candidatos.append(otro)
     from ...rules.traits import hooks
     ac_extra = 0
     resistencia = False
-    for criatura in candidatos:
+    for criatura in _bando_del(target, ctx):
         traits = getattr(criatura, "traits", None)
         if not traits:
             continue
@@ -220,6 +232,29 @@ def _defensa_del_bando(target: Any, attacker: Any, rango: Any, *,
         return None
     return SimpleNamespace(ac_extra=max(0, ac_extra),
                            resistencia=resistencia)
+
+
+def _oportunidad_contra_bando(target: Any, attacker: Any, *,
+                              ctx: Any = None, rng: Any = None,
+                              log: Any = None) -> None:
+    """Hold the Line (Cavalier): reacción del bando tras un ataque con tirada.
+
+    Duck-typing SIN entrada en ``HOOK_NAMES`` (patrón
+    ``sustituir_ataque``): llama al ``ataque_de_oportunidad`` de los
+    rasgos de ``_bando_del(target, ctx)`` —el aliado atacado y su
+    bando—; cada rasgo decide con guards propios. Guard de reentrada:
+    un ataque de reacción (``ctx.is_reaction``) no vuelve a consultar.
+    Sin ``ctx``/``rng`` o sin rasgos que lo defina no hay RNG.
+    """
+    if target is None or attacker is None or ctx is None or rng is None:
+        return
+    if getattr(ctx, "is_reaction", False):
+        return  # reentrada: un ataque de reacción no dispara otro
+    for criatura in _bando_del(target, ctx):
+        for rasgo in getattr(criatura, "traits", None) or ():
+            metodo = getattr(rasgo, "ataque_de_oportunidad", None)
+            if callable(metodo):
+                metodo(attacker, target, ctx=ctx, rng=rng, log=log)
 
 
 def daño_base_arma(attacker: Combatant, target: Combatant, atk: Attack,
@@ -624,6 +659,10 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             al_fallar(attacker, target, atk, rango=rango, ctx=ctx,
                       rng=rng, log=log)
     _trigger_after_attack_roll(attacker, target, atk, hit, log, ctx, rng)
+    # Hold the Line (Cavalier): tras resolver un ataque con tirada
+    # (acerte o falle) el bando del OBJETIVO puede contraatacar. Los
+    # hechizos de salvación y el área no pasan por aquí.
+    _oportunidad_contra_bando(target, attacker, ctx=ctx, rng=rng, log=log)
 
 
 def _tag_modificadores(raw: int, final: int, dt: Any, target: Any, *,

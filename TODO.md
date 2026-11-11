@@ -204,9 +204,15 @@ receta de arriba.
   solo por la resistencia); concesión temporal del tipo durante
   `apply_damage_modifiers` (no se acumula); guards sin RNG antes del
   pick; 14 tests, suite 1362 passed.
-- [ ] A6 — Hold the Line: ataque de oportunidad abstracto (punto de
+- [x] A6 — Hold the Line: ataque de oportunidad abstracto (punto de
   consulta tras ataque con tirada contra aliado) + reinterpretación
   documentada + tests.
+  **Hecho**: `_oportunidad_contra_bando` al final de `attack_roll`
+  (duck-typing sin HOOK_NAMES, guard `is_reaction`); enumeración
+  `_bando_del` compartida con Warding; `ataque_de_oportunidad` con
+  guards sin RNG (nivel 10, aliado distinto del dueño, enemigo vivo,
+  reacción libre, armas melee); velocidad 0 `# TODO` dato sin efecto;
+  9 tests, suite 1371 passed.
 - [ ] A7 — Vigilant Defender: reacción especial exclusiva de A6,
   consumida antes que la normal, reset por ronda + tests.
 - [ ] A8 — Ferocious Charger: evaluación única por turno con

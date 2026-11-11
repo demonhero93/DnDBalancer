@@ -1674,6 +1674,47 @@ CAVALIER (2026-11-10)
     ``_defensa_del_bando`` devuelve ``None`` sin tocar RNG. NINGÚN
     test existente cambió. Suite final: 1362 passed + arquitectura 3
     passed (0 fallos). Commit de A5.
+  - (6) Hold the Line (A6): reinterpretación documentada — en las
+    reglas la criatura provoca el ataque al moverse dentro del
+    alcance; el sim no tiene movimiento, así que el «ataque de
+    oportunidad abstracto» se dispara cuando un enemigo hace un
+    ataque con tirada (impacte o falle) contra un aliado vivo distinto
+    del dueño. Punto de consulta nuevo en ``attack.py``:
+    ``_oportunidad_contra_bando(target, attacker, ctx, rng, log)`` al
+    FINAL de ``attack_roll`` (tras ``_trigger_after_attack_roll``; lo
+    más barato: los hechizos de salvación y el área no pasan por
+    ``attack_roll``), duck-typing SIN entrada en ``HOOK_NAMES``
+    (patrón ``sustituir_ataque``: ``hooks()`` rechazaría el nombre)
+    que llama al ``ataque_de_oportunidad`` de los rasgos de
+    ``_bando_del(target, ctx)`` —enumeración extraída a helper
+    compartido con ``_defensa_del_bando`` (mismo comportamiento, los
+    tests A5 siguen verdes) y llamando a TODOS los rasgos del bando,
+    cada uno con sus guards—. Guard de reentrada en el motor
+    (``ctx.is_reaction`` → return antes de enumerar) y en el rasgo.
+    Método ``ataque_de_oportunidad`` en ``CavalierFeatures``: guards
+    SIN RNG en orden (nivel < 10, sin ctx/rng/atacante/objetivo,
+    reentrada, dueño muerto/incapacitado, atacante muerto o no enemigo
+    del dueño, objetivo que no sea aliado vivo distinto del dueño
+    (``_es_aliado``), reacción ya gastada, sin ``_armas_melee_de``)
+    → ``pick`` «no/sí» → arma con ``pick`` (sin RNG si una) → gasta
+    reacción → log → ``r_ctx = copy.copy`` con ``is_reaction=True`` →
+    ``attack_roll`` local (patrón Retaliation/Riposte). SIN daño extra
+    ni ventaja (reacción normal); velocidad 0 = ``# TODO`` dato sin
+    efecto. Tests nuevos (9) en ``tests/test_cavalier.py`` (helper
+    ``_bajo_ataque(level=…)`` ahora acepta nivel): contraataque al
+    que ataca a un aliado (motor con ``pick``/``roll_d20``/``roll_dice``
+    parcheados y usos de Warding a 0 para que la reacción de una por
+    ronda quede libre: aliado 66, enemigo 56, reacción gastada); no si
+    el objeto es el dueño; un hechizo de salvación no lo dispara
+    (espía que revienta en ``_oportunidad_contra_bando``); guards sin
+    RNG con ``_RngExplota`` (reacción usada, sin arma cuerpo a cuerpo,
+    ``ctx.is_reaction``, nivel 9, atacante muerto y atacante no
+    enemigo); decisión «no» sin gasto; sin subclase
+    ``_oportunidad_contra_bando`` no consulta ni toca RNG. NINGÚN test
+    existente cambió (los tests de Warding siguen verdes: la consulta
+    de CA gasta primero la reacción y Hold la ve gastada). Suite
+    final: 1371 passed + arquitectura 3 passed (0 fallos). Commit de
+    A6.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y

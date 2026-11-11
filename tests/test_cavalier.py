@@ -600,9 +600,9 @@ def test_la_velocidad_cero_del_ataque_especial_es_dato_sin_efecto():
 # --- A5: Warding Maneuver -----------------------------------------------------
 
 
-def _bajo_ataque(**kwargs) -> tuple:
-    """PJ Cavalier nivel 7 + aliado + enemigo, para Warding Maneuver."""
-    pj, trait = _cavalier(level=7, **kwargs)
+def _bajo_ataque(level: int = 7, **kwargs) -> tuple:
+    """PJ Cavalier + aliado + enemigo, para Warding (7+) y Hold (10+)."""
+    pj, trait = _cavalier(level=level, **kwargs)
     aliado = _pj(name="Alicia")
     enemigo = Monster("Enemigo", max_hp=60, ac=15, abilities=_abilities())
     ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
@@ -787,3 +787,114 @@ def test_sin_subclase_la_defensa_ante_ataque_no_consulta_ni_toca_rng():
         pj, enemigo, AttackRange.MELEE, total=15, ca=15,
         ctx=ctx, rng=_RngExplota())
     assert resultado is None  # sin rasgo que lo defina: ni RNG ni tiradas
+
+
+# --- A6: Hold the Line --------------------------------------------------------
+
+
+def test_hold_the_line_contraataca_al_que_ataca_a_un_aliado(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    _parchea_ataque(monkeypatch, valor_d20=15, dados=1)
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    # Sin usos de Warding: la consulta de CA ocurre ANTES y gastaría la
+    # reacción que Hold the Line necesita (una por ronda compartida).
+    trait.warding_usos.uses_left = 0
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(enemigo, aliado, atk, random.Random(1), ctx=ctx)
+    assert aliado.hp == 66  # golpe enemigo entra (15 + 5 >= CA 15): 1+3
+    assert pj.state.reaction_used  # la reacción es del Cavalier
+    assert enemigo.hp == 56  # contraataque cuerpo a cuerpo: 1+3
+
+
+def test_hold_the_line_no_se_dispara_si_el_objeto_es_el_dueño(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    _parchea_ataque(monkeypatch, valor_d20=15, dados=1)
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    trait.warding_usos.uses_left = 0
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(enemigo, pj, atk, random.Random(1), ctx=ctx)
+    assert not pj.state.reaction_used  # el dueño no se contraataca a sí mismo
+    assert enemigo.hp == 60  # nadie más contraataca
+
+
+def test_hold_the_line_no_lo_dispara_un_hechizo_de_salvación(monkeypatch):
+    from dnd_sim.engine.combat import attack as atk_mod
+    from dnd_sim.rules.saves import SaveDamage, apply_save_damage
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("la oportunidad se consultó en una salvación")
+
+    monkeypatch.setattr(atk_mod, "_oportunidad_contra_bando", _revienta)
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    efecto = SaveDamage(ability="dex", dc=13, damage="2d6",
+                        damage_type="fire", on_success="half")
+    apply_save_damage(enemigo, aliado, efecto, 7, ctx)
+    assert aliado.hp <= 70  # el daño de la salvación sigue su camino normal
+
+
+def test_hold_the_line_no_se_usa_sin_reacción_o_sin_ataque_cuerpo_a_cuerpo():
+    # La reacción es la misma que Parry/Warding/Riposte: una por ronda.
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    pj.state.reaction_used = True
+    assert trait.ataque_de_oportunidad(
+        enemigo, aliado, ctx=ctx, rng=_RngExplota()) is None
+    pj.state.reaction_used = False
+    pj.attacks = []
+    pj.weapons = []
+    pj.dynamic_weapons = []
+    assert trait.ataque_de_oportunidad(
+        enemigo, aliado, ctx=ctx, rng=_RngExplota()) is None
+
+
+def test_hold_the_line_no_reentra_con_un_ataque_de_reacción():
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    ctx.is_reaction = True  # contraataque propio, Retaliation, Riposte…
+    assert trait.ataque_de_oportunidad(
+        enemigo, aliado, ctx=ctx, rng=_RngExplota()) is None
+
+
+def test_hold_the_line_exige_nivel_10():
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    trait.level = 9
+    assert trait.ataque_de_oportunidad(
+        enemigo, aliado, ctx=ctx, rng=_RngExplota()) is None
+
+
+def test_hold_the_line_no_contra_un_atacante_muerto_o_no_enemigo():
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    enemigo.dead = True
+    assert trait.ataque_de_oportunidad(
+        enemigo, aliado, ctx=ctx, rng=_RngExplota()) is None
+    enemigo.dead = False
+    otro_pj = _pj(name="Berto")  # mismo bando que el dueño: no es enemigo
+    assert trait.ataque_de_oportunidad(
+        otro_pj, aliado, ctx=ctx, rng=_RngExplota()) is None
+
+
+def test_hold_the_line_con_decision_negativa_no_gasta_nada(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: "no")
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    assert trait.ataque_de_oportunidad(
+        enemigo, aliado, ctx=ctx, rng=random.Random(1)) is None
+    assert not pj.state.reaction_used
+
+
+def test_sin_subclase_la_oportunidad_no_consulta_ni_toca_rng():
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj = _pj()
+    apply_fighter(pj, level=10)
+    aliado = _pj(name="Alicia")
+    enemigo = Monster("Enemigo", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, aliado, enemigo])
+    # Sin rasgo con el método: ni consulta ni RNG (rng que revienta).
+    atk_mod._oportunidad_contra_bando(aliado, enemigo, ctx=ctx,
+                                      rng=_RngExplota())
