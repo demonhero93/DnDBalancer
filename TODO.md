@@ -248,10 +248,18 @@ receta de arriba.
   de Warding (sin posiciones) y la restricción «mismo turno que otra
   reacción» de Vigilant Defender (sin identificador de turno ajeno en
   `ctx`).
-- [ ] Docs — `ARCHITECTURE.md` (fila `cavalier`, puntos de consulta,
+- [x] Docs — `ARCHITECTURE.md` (fila `cavalier`, puntos de consulta,
   `CHARGE_MOVE_PROBABILITY`/`--charge-p`, recuentos),
   `PASOS-ANTERIORES.txt` (bloque CAVALIER + ESTADO ACTUAL), `TODO.md`
   (receta y pendientes).
+  **Hecho**: `ARCHITECTURE.md` con la tabla de carpetas medida de
+  nuevo (84 módulos / 20257 líneas; tests 54 ficheros / 21980 líneas
+  / 1387), `HOOK_NAMES` a 26 con `defensa_ante_ataque`, fila
+  `fighter/subclasses/{arcane_archer,battle_master,cavalier}`,
+  sección **## Cavalier (XGE)** con los 6 puntos de consulta y
+  congelados, y `pytest # 1387 tests`; `PASOS` ESTADO ACTUAL con los
+  mismos recuentos (medido 2026-11-11) y bullet de la subclase
+  Cavalier; receta de este `TODO.md` con `cavalier.py` como ejemplo.
 - [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` + commit final.
 
@@ -263,7 +271,7 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
 ## Fighter: cómo añadir una subclase
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de
-fighter: `arcane_archer.py` y `battle_master.py`):
+fighter: `arcane_archer.py`, `battle_master.py` y `cavalier.py`):
 
 1. Crear `rules/classes/fighter/subclasses/<clave>.py` con un
    `SubclassDef(name="<nombre visible>", class_name="fighter",

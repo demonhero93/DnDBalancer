@@ -16,16 +16,16 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 
 | Carpeta | Mód. | Líneas | Contenido |
 |---|---:|---:|---|
-| `dnd_sim/core/` | 13 | 943 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
-| `dnd_sim/model/` | 4 | 1040 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 31 | 9247 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías. |
-| `dnd_sim/rules/traits/` | 6 | 1268 | Los rasgos de monstruo (paquete, ver abajo). |
+| `dnd_sim/core/` | 13 | 1067 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
+| `dnd_sim/model/` | 4 | 1046 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
+| `dnd_sim/rules/` | 33 | 10937 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías. |
+| `dnd_sim/rules/traits/` | 6 | 1299 | Los rasgos de monstruo (paquete, ver abajo). |
 | `dnd_sim/rules/spells/` | 5 | 915 | Hechizos (paquete). |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
-| `dnd_sim/engine/combat/` | 3 | 975 | El motor: tirada de ataque y bucle de rondas (paquete). |
+| `dnd_sim/engine/combat/` | 3 | 1185 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
-| `dnd_sim/__init__.py` | 1 | 184 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **83** | **19463** | + `tests/` con 53 ficheros y 20762 líneas (1311 tests). |
+| `dnd_sim/__init__.py` | 1 | 190 | Fachada: reexporta la API pública ordenada por capa. |
+| **Total** | **84** | **20257** | + `tests/` con 54 ficheros y 21980 líneas (1387 tests). |
 
 ## Reglas de dependencia
 
@@ -58,9 +58,9 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 
 | Paquete | Módulos | Contenido |
 |---|---|---|
-| `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (25 hooks, incl. `after_failed_check`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
+| `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (26 hooks, incl. `after_failed_check` y `defensa_ante_ataque`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer y Battle Master). |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master y Cavalier). |
 | `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
@@ -159,11 +159,51 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   sumado antes del mod DES. La parte de Sigilo es dato sin efecto
   (el motor no tira habilidades en combate).
 
+## Cavalier (XGE)
+
+- **Warding Maneuver (7)**: hook nuevo `defensa_ante_ataque` en
+  `HOOK_NAMES`; el motor lo consulta en el paso 6 de `attack_roll`
+  con `_defensa_del_bando` (enumera el bando del OBJETIVO con
+  `_bando_del`, la misma enumeración que `reduce_damage_to_allies`)
+  cuando el golpe iba a entrar o es crítico. Devuelve
+  `SimpleNamespace(ac_extra, resistencia)`: la CA extra recalcula el
+  impacto (el 20 natural siempre impacta) y la resistencia es una
+  concesión temporal del tipo SOLO durante `apply_damage_modifiers`
+  (no se acumula con la resistencia previa del tipo). Reacción
+  compartida con Parry/Riposte/Hold the Line.
+- **Unwavering Mark (3)**: marca tras impactar (`after_attack_roll`),
+  desventaja en `consumir_marcas` (campo propio `marca_cavalier`),
+  ataque especial `CavalierMarkAttackAction` armado desde
+  `inflict_damage` (punto central con fuente: cubre salvaciones y
+  área).
+- **Hold the Line (10)**: `_oportunidad_contra_bando` al FINAL de
+  `attack_roll` (duck-typing, NO en `HOOK_NAMES`, guard
+  `ctx.is_reaction`) llama al `ataque_de_oportunidad` del bando del
+  atacado. Reinterpretación documentada: sin movimiento en el sim, el
+  ataque de oportunidad abstracto se dispara cuando un enemigo ataca
+  con tirada a un aliado distinto del dueño (los hechizos de
+  salvación no pasan por `attack_roll`).
+- **Vigilant Defender (18)**: segunda reacción por ronda
+  (`especial_usada_en_ronda` comparada con `ctx.round`) exclusiva de
+  Hold the Line, consumida antes que la normal y solo fuera del turno
+  propio; simplificación: sin identificador de turno ajeno en `ctx`
+  no se aplica la restricción «mismo turno que otra reacción».
+- **Ferocious Charger (15)**: `_evaluar_carga` desde
+  `after_attack_roll` — UNA evaluación por turno en el primer
+  impacto cuerpo a cuerpo, patrón Reckless: constante
+  `CHARGE_MOVE_PROBABILITY` = 0.5 en `core/classes.py` y CLI
+  `--charge-p` en `main.py` (0.0/1.0 sin RNG); si hay carga, `pick`
+  «no»/«sí» y salvación de FUE CD 8 + PB + mod FUE → `PRONE` con el
+  `EscapeCheck` de Topple.
+- **Datos sin efecto (freeze en `tests/test_cavalier.py`)**: Born to
+  the Saddle (monturas), velocidad 0 de la marca (modelo sin campo
+  de velocidad) y los 5 ft de Warding (el sim no guarda posiciones).
+
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1311 tests
+pytest                              # 1387 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

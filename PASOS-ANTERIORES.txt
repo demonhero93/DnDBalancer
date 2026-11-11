@@ -1802,12 +1802,12 @@ CAVALIER (2026-11-10)
     Commit de B.
 
 ESTADO ACTUAL
-   - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y
-     20762 líneas (1311 tests en verde, medido 2026-11-10).
+   - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y
+     21980 líneas (1387 tests en verde, medido 2026-11-11).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
-     subclases bárbaro y Arcane Archer/Battle Master del fighter, con
-     las 8 opciones de Arcane Shot: Piercing/Seeking sin tirada vía
-     sustituir_ataque).
+     subclases bárbaro y Arcane Archer/Battle Master/Cavalier del
+     fighter, con las 8 opciones de Arcane Shot: Piercing/Seeking sin
+     tirada vía sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities
@@ -1943,6 +1943,24 @@ ESTADO ACTUAL
      "battle_master" en el registro, reexports y fachada;
      tests/test_battle_master.py (62);
      commits abdcc55..93aa6f3 (ver bloque BATTLE MASTER (SESIÓN 1)).
+   - Subclase Cavalier (Caballero, XGE) en
+     fighter/subclasses/cavalier.py (509 líneas): tablas
+     cavalier_mark_uses/warding_maneuver_uses/cavalier_mark_extra_damage
+     y CAVALIER_BONUS_SKILLS + CHARGE_MOVE_PROBABILITY (0.5, CLI
+     --charge-p en main.py); Bonus Proficiency (3, pick sin
+     candidatas = sin RNG), Born to the Saddle (dato sin efecto),
+     Unwavering Mark (3: marca_cavalier con desventaja en
+     consumir_marcas + ataque especial CavalierMarkAttackAction con
+     daño extra nivel//2 armado desde inflict_damage), Warding
+     Maneuver (7: hook defensa_ante_ataque en HOOK_NAMES, 1d8 de CA +
+     resistencia temporal vía _defensa_del_bando/_bando_del), Hold the
+     Line (10: _oportunidad_contra_bando al final de attack_roll,
+     ataque de oportunidad abstracto reinterpretado), Vigilant
+     Defender (18: reacción especial por ronda para Hold) y Ferocious
+     Charger (15: _evaluar_carga con CHARGE_MOVE_PROBABILITY, CD
+     8+PB+FUE → PRONE); clave "cavalier" en registro y reexports;
+     tests/test_cavalier.py (76); commits 1c4ef39..c77240f (9 pasos,
+     ver bloque CAVALIER).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY
