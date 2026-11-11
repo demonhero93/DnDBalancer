@@ -1800,6 +1800,22 @@ CAVALIER (2026-11-10)
     en la casilla B de ``TODO.md``, todos congelados o documentados.
     Suite final: 1387 passed + arquitectura 3 passed (0 fallos).
     Commit de B.
+  - (10) Verificación final de la sesión Cavalier.
+    ``.venv\Scripts\python.exe -m pytest tests/test_arquitectura.py`` →
+    3 passed. ``pytest`` completo → **1387 passed** (0 fallos) + 200
+    warnings de rutina. ``PYTHONIOENCODING=utf-8`` +
+    ``.venv\Scripts\python.exe tools/capas.py`` →
+    total: 1, solo la excepción conocida
+    ``dnd_sim.model.combatant -> dnd_sim.rules.conditions`` (el criterio
+    congelado sigue en pie; las flechas locales ``rules ->
+    engine.combat`` de las subclases salen en la lista permitida de
+    imports dentro de función, igual que ``traits.defense``).
+    ``graphify update .`` → rebuilt 3994 nodes, 14584 edges, 143
+    communities; ``graphify-out/`` actualizado (grafo + informe) con
+    copia de seguridad ``graphify-out/2026-11-11/``. Nada tocado en
+    otros módulos durante la sesión. Commit final con el grafo;
+    ``ARGUMENTOS-CLI.md`` sigue sin commitear (trabajo ajeno).
+    Casilla ``Verificación`` de ``TODO.md`` [x]. FIN sesión Cavalier.
 
 ESTADO ACTUAL
    - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y

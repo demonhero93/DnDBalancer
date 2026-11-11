@@ -260,8 +260,13 @@ receta de arriba.
   congelados, y `pytest # 1387 tests`; `PASOS` ESTADO ACTUAL con los
   mismos recuentos (medido 2026-11-11) y bullet de la subclase
   Cavalier; receta de este `TODO.md` con `cavalier.py` como ejemplo.
-- [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
+- [x] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` + commit final.
+  **Hecho**: arquitectura 3 passed; suite **1387 passed** (0 fallos);
+  `tools/capas.py` → total 1 (solo la excepción conocida
+  `model.combatant -> rules.conditions`); `graphify update .` →
+  graph.json/html + GRAPH_REPORT.md en `graphify-out/` (3994 nodos,
+  14584 aristas); commit final con el grafo. FIN sesión Cavalier.
 
 Fuera de esta sesión (siguen pendientes): el paquete
 `battle_master/` del recetario de abajo queda pendiente porque 17
