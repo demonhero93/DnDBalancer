@@ -1,7 +1,7 @@
 """Tipos de daño de D&D 5e y modificadores (resistencia, vulnerabilidad, inmunidad)."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..core.enums import DamageType, parse_damage_type  # noqa: F401  (reexport)
 
@@ -287,6 +287,37 @@ def _absorber_pv_temporales(target: "Combatant", amount: int) -> int:
     return amount - absorbido
 
 
+def _avisar_ataque_especial_marca(target: "Combatant", source: Any,
+                                  ctx: Any) -> None:
+    """Unwavering Mark (Cavalier): el marcado daña a un tercero.
+
+    Si ``source`` está marcada por un Cavalier vivo y el daño NO va
+    contra el propio marcador, arma el ataque especial del marcador para
+    su siguiente turno (duck-typing sobre ``ref.traits``). Sin marcas —
+    nadie tiene la subclase— el diccionario está vacío y se sale sin
+    consultar rasgos ni tirar nada (cero RNG).
+    """
+    marcas = getattr(getattr(source, "state", None),
+                     "marca_cavalier", None)
+    if not marcas:
+        return
+    ronda = int(getattr(ctx, "round", 0) or 0)
+    for valor in tuple(marcas.values()):
+        caduca, ref = valor if isinstance(valor, tuple) else (valor, None)
+        if ref is None or int(caduca) <= ronda:
+            continue  # marca caducada
+        if target is ref:
+            continue  # dañar al propio Cavalier no arma el ataque
+        if not (getattr(ref, "alive", True)
+                and getattr(ref, "can_act", True)):
+            continue  # fin anticipado: marcador muerto/incapacitado
+        for rasgo in getattr(ref, "traits", None) or ():
+            arma = getattr(rasgo, "marcar_ataque_especial", None)
+            if callable(arma):
+                arma(source, ctx)
+                return
+
+
 def inflict_damage(target: "Combatant", amount: int,
                    damage_type: Any = None, source: Any = None,
                    ctx: Any = None, *, crit: bool = False,
@@ -375,6 +406,11 @@ def inflict_damage(target: "Combatant", amount: int,
         _salvar_a_cero(target, hp_antes, amt, dt, source, crit, ctx, rng)
     _notify_damage_dealt(source, target, amt, dt, magical=magical)
     _notify_damage_taken(target, amt, dt, source)
+    # Unwavering Mark (Cavalier): el marcado causó daño a un tercero →
+    # arma el ataque especial de su marcador. Cubre también el daño de
+    # salvación y de área: todos pasan por aquí con ``source``.
+    if original > 0 and amt > 0 and source is not None:
+        _avisar_ataque_especial_marca(target, source, ctx)
     if original > 0 and traits:
         for rasgo in _hooks(traits, "after_damage_taken"):
             rasgo.after_damage_taken(target, original, damage_type, source, ctx)

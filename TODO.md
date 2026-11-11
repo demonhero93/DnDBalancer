@@ -186,10 +186,16 @@ receta de arriba.
   **Hecho**: `marca_cavalier` = nombre → `(caduca, ref)`; consumición
   en `consumir_marcas`; guards sin RNG antes del pick; 11 tests,
   suite 1337 passed.
-- [ ] A4 — Unwavering Mark: ataque especial
+- [x] A4 — Unwavering Mark: ataque especial
   `CavalierMarkAttackAction` (flag con contador de turnos propios,
   ventaja forzada, daño extra `nivel // 2`, sin uso adicional) +
   tests.
+  **Hecho**: aviso en `inflict_damage` (punto central con fuente,
+  cubre salvaciones/área) → `marcar_ataque_especial` sin RNG; flag
+  `turno_cavalier + 1` validado en `can_use` sin pick (uniformidad
+  del encuentro, patrón SecondWind); ventaja forzada con
+  `attacks_with_advantage` restaurada en `finally`; 11 tests,
+  suite 1348 passed.
 - [ ] A5 — Warding Maneuver: punto de Parry extendido a los aliados
   del objetivo con resultado `ac_extra` + `resistencia` + tests.
 - [ ] A6 — Hold the Line: ataque de oportunidad abstracto (punto de

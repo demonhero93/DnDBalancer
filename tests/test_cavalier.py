@@ -1,8 +1,9 @@
 """Tests de tablas, constantes, CLI y registro de Cavalier (XGE).
 
 Las tablas y la CLI viven en A1; el registro, ``apply_cavalier`` y
-Bonus Proficiency en A2. El comportamiento de los rasgos entra en los
-pasos A3-A8 de la misma sesión.
+Bonus Proficiency en A2; Unwavering Mark (marca, desventaja y ataque
+especial) en A3-A4. El resto de rasgos entra en los pasos A5-A8 de la
+misma sesión.
 """
 
 from __future__ import annotations
@@ -78,9 +79,10 @@ def _trait(pj) -> CavalierFeatures:
     raise AssertionError("falta CavalierFeatures")
 
 
-def _cavalier(level: int = 5, **kwargs) -> tuple:
+def _cavalier(level: int = 5, fighting_style: str | None = None,
+              **kwargs) -> tuple:
     pj = _pj(level=level)
-    apply_fighter(pj, level=level)
+    apply_fighter(pj, level=level, fighting_style=fighting_style)
     trait = apply_cavalier(pj, level=level, **kwargs)
     return pj, trait
 
@@ -395,3 +397,201 @@ def test_reset_de_combate_limpia_la_marca_de_cavalier():
     assert objetivo.state.marca_cavalier
     objetivo.reset()
     assert objetivo.state.marca_cavalier == {}
+
+
+# --- A4: Unwavering Mark (ataque especial) ------------------------------------
+
+
+def _accion_marca(pj):
+    from dnd_sim.rules.classes.fighter.subclasses.cavalier import (
+        CavalierMarkAttackAction,
+    )
+
+    for accion in pj.actions:
+        if isinstance(accion, CavalierMarkAttackAction):
+            return accion
+    raise AssertionError("falta CavalierMarkAttackAction")
+
+
+def _especial(**kwargs) -> tuple:
+    """PJ Cavalier + marcado + víctima, con el ataque especial armado."""
+    from dnd_sim.rules.damage import inflict_damage
+
+    pj, trait = _cavalier(**kwargs)
+    marcado = Monster("Marcado", max_hp=60, ac=15, abilities=_abilities())
+    victima = Monster("Víctima", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, marcado, victima], log=None)
+    # Marca puesta directamente (el camino de marca ya está en A3).
+    marcado.state.marca_cavalier[pj.name] = (int(ctx.round) + 2, pj)
+    inflict_damage(victima, 5, source=marcado, ctx=ctx)
+    return pj, trait, marcado, victima, ctx
+
+
+def _pick_sin_decision(rng, seq):
+    """«no»/«si» → «no» (decisiones); pools (armas) → último elemento."""
+    return "no" if tuple(seq) == ("no", "si") else seq[-1]
+
+
+def _parchea_ataque(monkeypatch, valor_d20=15, dados=1, modos=None):
+    from dnd_sim.core.dice import D20Result, RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: (modos.append(mode) if modos is not None else None,
+                           D20Result(value=valor_d20,
+                                     rolls=[valor_d20, valor_d20],
+                                     mode=mode))[1])
+    monkeypatch.setattr(atk_mod, "roll_dice",
+                        lambda expr, rng, crit=False: dados)
+
+
+def test_el_ataque_especial_se_arma_cuando_el_marcado_dana_a_un_tercero():
+    pj, trait, marcado, victima, ctx = _especial()
+    assert trait.ataque_marca_pendiente == trait.turno_cavalier + 1
+    assert trait.ataque_marca_objetivo is marcado
+    # Y el daño a la víctima se aplicó con normalidad.
+    assert victima.hp == 55
+
+
+def test_no_se_arma_si_el_marcado_dana_al_cavalier():
+    from dnd_sim.rules.damage import inflict_damage
+
+    pj, trait, objetivo, ctx = _marcado()
+    _marca_con(trait, objetivo, ctx, _RngSi())
+    inflict_damage(pj, 5, source=objetivo, ctx=ctx)
+    assert trait.ataque_marca_pendiente == 0
+    assert trait.ataque_marca_objetivo is None
+
+
+def test_no_se_arma_si_la_marca_ya_caduco():
+    from dnd_sim.rules.damage import inflict_damage
+
+    pj, trait, objetivo, ctx = _marcado()
+    # Caducada: ronda 1 con caduca en la ronda 1.
+    objetivo.state.marca_cavalier[pj.name] = (1, pj)
+    tercero = Monster("Tercero", max_hp=40, ac=12, abilities=_abilities())
+    ctx.combatants = [pj, objetivo, tercero]
+    inflict_damage(tercero, 5, source=objetivo, ctx=ctx)
+    assert trait.ataque_marca_pendiente == 0
+    assert trait.ataque_marca_objetivo is None
+
+
+def test_el_ataque_especial_solo_vale_en_el_siguiente_turno():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, _, _, ctx = _especial()
+    accion = _accion_marca(pj)
+    ctx.rng = _RngExplota()  # la elegibilidad no toca el RNG
+    # Flag futuro (aún no es su turno): no elegible.
+    assert not accion.can_use(TurnResources(), ctx)
+    trait.on_turn_start(pj)  # turno 1 == flag
+    assert accion.can_use(TurnResources(), ctx)
+    trait.on_turn_start(pj)  # turno 2: caducó sin usarse
+    assert not accion.can_use(TurnResources(), ctx)
+    assert trait.ataque_marca_pendiente == 0
+    assert trait.ataque_marca_objetivo is None
+
+
+def test_no_es_elegible_sin_flag_sin_bonus_libre_sin_ataque_o_sin_marcado():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, marcado, _, ctx = _especial()
+    accion = _accion_marca(pj)
+    ctx.rng = _RngExplota()
+    # Flag futuro → no elegible.
+    assert not accion.can_use(TurnResources(), ctx)
+    trait.on_turn_start(pj)
+    # Control: con todo en orden sí.
+    assert accion.can_use(TurnResources(), ctx)
+    # Acción bonus ya gastada.
+    assert not accion.can_use(TurnResources(bonus_action_used=True), ctx)
+    # Sin ataque cuerpo a cuerpo.
+    golpes = list(pj.attacks)
+    pj.attacks = []
+    pj.weapons = []
+    pj.dynamic_weapons = []
+    assert not accion.can_use(TurnResources(), ctx)
+    pj.attacks = golpes
+    # Marcado muerto.
+    marcado.dead = True
+    assert not accion.can_use(TurnResources(), ctx)
+
+
+def test_el_ataque_especial_tira_con_ventaja(monkeypatch):
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    monkeypatch.setattr(cav_mod, "pick", _pick_sin_decision)
+    modos = []
+    _parchea_ataque(monkeypatch, modos=modos)
+    pj, trait, _, _, ctx = _especial()
+    trait.on_turn_start(pj)
+    _accion_marca(pj).execute(ctx)
+    assert modos == [RollMode.ADVANTAGE]
+    # Ataque único: el flag se consume al ejecutar.
+    assert trait.ataque_marca_pendiente == 0
+    assert trait.ataque_marca_objetivo is None
+
+
+def test_el_ataque_especial_suma_el_dano_extra_si_impacta(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    monkeypatch.setattr(cav_mod, "pick", _pick_sin_decision)
+    _parchea_ataque(monkeypatch, dados=1)
+    # Estilo fijo sin bono de daño (el estilo por defecto es aleatorio).
+    pj, trait, marcado, _, ctx = _especial(fighting_style="Archery")
+    trait.on_turn_start(pj)
+    _accion_marca(pj).execute(ctx)
+    # 1 (arma) + 3 (FUE 16) + 2 (nivel 5 // 2) = 6 de daño.
+    assert marcado.hp == 54
+
+
+def test_el_ataque_especial_no_suma_dano_extra_si_falla(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    monkeypatch.setattr(cav_mod, "pick", _pick_sin_decision)
+    _parchea_ataque(monkeypatch, valor_d20=1)
+    pj, trait, marcado, _, ctx = _especial(fighting_style="Archery")
+    trait.on_turn_start(pj)
+    _accion_marca(pj).execute(ctx)
+    assert marcado.hp == 60  # fallo: ni daño base ni extra
+
+
+def test_el_ataque_especial_no_gasta_un_uso_ni_la_reaccion(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    monkeypatch.setattr(cav_mod, "pick", _pick_sin_decision)
+    _parchea_ataque(monkeypatch)
+    pj, trait, _, _, ctx = _especial(fighting_style="Archery")
+    usos = trait.marca_usos.uses_left
+    trait.on_turn_start(pj)
+    _accion_marca(pj).execute(ctx)
+    assert trait.marca_usos.uses_left == usos
+    assert not pj.state.reaction_used  # es acción bonus, no reacción
+
+
+def test_sin_subclase_el_dano_no_consulta_ataques_especiales():
+    from dnd_sim.rules.damage import inflict_damage
+
+    class _Espia:
+        def marcar_ataque_especial(self, marcado, ctx):
+            raise AssertionError("consulta de ataque especial sin subclase")
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    pj.traits.append(_Espia())  # el duck-typing lo vería si consultara
+    victima = Monster("Víctima", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, victima])
+    inflict_damage(victima, 5, source=pj, ctx=ctx)
+    assert victima.hp == 55  # el daño sigue su camino normal
+
+
+def test_la_velocidad_cero_del_ataque_especial_es_dato_sin_efecto():
+    # El modelo no tiene campo de velocidad: no hay nada que poner a 0.
+    pj, trait, marcado, _, _ = _especial()
+    assert not hasattr(pj, "speed")
+    assert not hasattr(marcado, "speed")

@@ -1581,6 +1581,56 @@ CAVALIER (2026-11-10)
     tirada) y ``Combatant.reset`` la limpia. NINGÚN test existente
     cambió (suite completa en verde). Suite final: 1337 passed (0
     fallos). Commit de A3.
+  - (4) Unwavering Mark: ataque especial (A4): punto central con
+    fuente YA existente (``rules/damage.py::inflict_damage`` recibe
+    ``source`` y ``ctx``), así que el aviso vive ahí y cubre también
+    el daño de salvación y de área (todos pasan por ahí con
+    ``source``). Helper nuevo ``_avisar_ataque_especial_marca`` tras
+    ``_notify_damage_dealt`` (solo con ``original > 0 and amt > 0 and
+    source is not None``): lee ``source.state.marca_cavalier`` —
+    vacío (nadie tiene la subclase) → return sin consultar rasgos ni
+    RNG — y por cada marca exige caducidad viva (``caduca >
+    ctx.round``), ``target is not ref`` (dañar al propio Cavalier no
+    arma) y marcador vivo/can_act, luego llama por duck-typing al
+    ``marcar_ataque_especial`` del primer rasgo de ``ref`` que lo
+    tenga. En ``CavalierFeatures``: campos nuevos
+    ``ataque_marca_pendiente`` (turno propio en que vale; 0 = nada) y
+    ``ataque_marca_objetivo``, método ``marcar_ataque_especial`` SIN
+    RNG (``flag = turno_cavalier + 1``, patrón Studied Attacks: un
+    disparo durante el propio turno vale ya para el siguiente; el
+    último disparo gana si varias criaturas marcadas dañan a terceros)
+    y limpieza en ``reset`` (NO en ``on_turn_start``, que debe
+    sobrevivir hasta su turno válido). ``CavalierMarkAttackAction``
+    (acción bonus, ``usage=None``, registrada en ``apply_cavalier``):
+    ``can_use`` sin ``pick`` (el ``pick`` del encuentro decide entre
+    las acciones candidatas de forma uniforme, patrón SecondWind;
+    decisión documentada) con guards sin RNG: super (bonus libre),
+    flag == turno actual (flag pasado se limpia; flag futuro = no
+    elegible), marcado vivo y arma cuerpo a cuerpo propia
+    (``_armas_melee_de``, patrón ``_armas_melee_propias``);
+    ``execute`` revalida, gasta el flag, ``r_ctx = copy.copy`` con
+    ``is_reaction=True`` (reentrada: no activa maniobras) y
+    ``dano_reaccion = cavalier_mark_extra_damage(nivel)`` (suma plana
+    SOLO si impacta, camino ya existente), ventaja forzada con
+    ``attacks_with_advantage`` ALREDEDOR de ``attack_roll`` y
+    restauración en ``finally`` (lo leen ``resolve_roll_mode`` y
+    ``attack_modifiers``; Feinting no sirve porque su flag es de
+    Battle Master), arma con ``pick`` (sin RNG con una) y NO gasta uso
+    de marca ni reacción (es acción bonus). La velocidad 0 es dato sin
+    efecto (el modelo no tiene campo de velocidad; congelado). Tests
+    nuevos (11) en ``tests/test_cavalier.py``: se arma al dañar a un
+    tercero / no al dañar al Cavalier / no con marca caducada; solo
+    vale el siguiente turno (flag futuro → no, turno actual → sí,
+    turno siguiente → caducó y se limpia); no elegible sin flag, sin
+    bonus libre (``TurnResources(bonus_action_used=True)``), sin arma
+    cuerpo a cuerpo ni con marcado muerto (rng que revienta); tira con
+    ventaja (``roll_d20`` parcheado → ``[RollMode.ADVANTAGE]``) y
+    consume el flag; daño extra nivel//2 al impactar (1+3+2=6 con
+    estilo ``Archery`` fijo) y nada al fallar; no gasta uso de marca
+    ni la reacción; sin subclase ``inflict_damage`` no consulta
+    (espía que revienta) y velocidad 0 sin efecto. NINGÚN test
+    existente cambió. Suite final: 1348 passed + arquitectura 3
+    passed (0 fallos). Commit de A4.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y

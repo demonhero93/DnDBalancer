@@ -12,15 +12,22 @@ Rasgos por nivel (Fighter 3 / 7 / 10 / 15 / 18):
   efecto (el sim no modela monturas ni caídas); congelado en tests.
 - **Unwavering Mark** (3): marca tras impactar con arma cuerpo a
   cuerpo (``after_attack_roll``), desventaja en ``consumir_marcas``
-  (campo propio ``marca_cavalier`` en ``CombatState``).
+  (campo propio ``marca_cavalier`` en ``CombatState``). Si la criatura
+  marcada daña a un tercero, ``inflict_damage`` llama a
+  :meth:`CavalierFeatures.marcar_ataque_especial` y, en el SIGUIENTE
+  turno del dueño, :class:`CavalierMarkAttackAction` (acción bonus)
+  hace un ataque cuerpo a cuerpo con ventaja forzada y daño extra
+  ``nivel // 2`` si impacta. Sin monturas ni movimiento: la velocidad 0
+  de la marca es dato sin efecto.
 
-El resto de rasgos (ataque especial de la marca, Warding Maneuver,
-Hold the Line, Ferocious Charger y Vigilant Defender) se implementa en
-los pasos A4-A8 de la misma sesión; ver ``TODO.md`` (plan «Cavalier»)
-y las entradas de ``PASOS-ANTERIORES.txt``.
+El resto de rasgos (Warding Maneuver, Hold the Line, Ferocious Charger
+y Vigilant Defender) se implementa en los pasos A5-A8 de la misma
+sesión; ver ``TODO.md`` (plan «Cavalier») y las entradas de
+``PASOS-ANTERIORES.txt``.
 """
 from __future__ import annotations
 
+import copy
 import random
 from dataclasses import dataclass, field
 from typing import Any
@@ -30,14 +37,17 @@ from .....core.classes import (
     CHARGE_MOVE_PROBABILITY,
     MAX_LEVEL,
     MIN_LEVEL,
+    cavalier_mark_extra_damage,
     cavalier_mark_uses,
     warding_maneuver_uses,
 )
 from .....core.enums import AttackRange
+from .....core.log import log_line as _log_line
 from .....core.randomness import pick
+from .....model.actions import ActionType, CombatAction
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
-from ..features import FighterFeatures
+from ..features import FighterFeatures, _contexto
 
 #: RNG con semilla fija para Bonus Proficiency cuando no pasa ``rng``:
 #: crea el personaje siempre igual (reproducible), patrón Battle Master.
@@ -50,6 +60,19 @@ def _de(actor: Any, clase: type) -> Any:
         if isinstance(rasgo, clase):
             return rasgo
     return None
+
+
+def _armas_melee_de(criatura: Any) -> tuple:
+    """Ataques cuerpo a cuerpo propios (sin RNG; vacío si no hay).
+
+    Mismo criterio que ``battle_master._armas_melee_propias``:
+    ``attacks`` si existe, si no ``weapons`` + ``dynamic_weapons``.
+    """
+    ataques = list(getattr(criatura, "attacks", None) or []) or (
+        list(getattr(criatura, "weapons", None) or [])
+        + list(getattr(criatura, "dynamic_weapons", None) or []))
+    return tuple(a for a in ataques
+                 if getattr(a, "range_type", None) is AttackRange.MELEE)
 
 
 @dataclass
@@ -76,18 +99,26 @@ class CavalierFeatures(Trait):
     #: ¿Se evaluó ya la carga este turno? (Ferocious Charger; se
     #: limpia en ``on_turn_start``).
     carga_evaluada: bool = False
+    #: Ataque especial de Unwavering Mark (A4): turno propio en el que
+    #: vale el flag (``turno_cavalier + 1`` al armar; 0 = sin flag).
+    ataque_marca_pendiente: int = 0
+    #: Criatura marcada contra la que vale el ataque especial.
+    ataque_marca_objetivo: Any = None
     #: Dueño (para que ``reset``/hooks encuentren al combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
 
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         # Contador de turnos propios y flag «una vez por turno» de la
-        # carga (Ferocious Charger).
+        # carga (Ferocious Charger). El flag del ataque especial NO se
+        # toca aquí: debe sobrevivir hasta su turno válido.
         self.turno_cavalier += 1
         self.carga_evaluada = False
 
     def reset(self) -> None:
         self.turno_cavalier = 0
         self.carga_evaluada = False
+        self.ataque_marca_pendiente = 0
+        self.ataque_marca_objetivo = None
         if self.marca_usos is not None:
             self.marca_usos.reset()
         if self.warding_usos is not None:
@@ -133,6 +164,109 @@ class CavalierFeatures(Trait):
         # marcador permite anularla si muere o queda incapacitado.
         estado.marca_cavalier[self.owner.name] = (
             int(ronda) + 2, self.owner)
+        return None
+
+    # --- Unwavering Mark (3): ataque especial ----------------------------------
+    def marcar_ataque_especial(self, marcado: Any,
+                               ctx: Any = None) -> None:
+        """Arma el ataque especial de la marca para el próximo turno propio.
+
+        Lo llama ``inflict_damage`` (punto central con fuente) cuando
+        ``marcado`` —una criatura marcada por este Cavalier— daña a un
+        tercero. Sin RNG: solo guarda el flag con el patrón de turnos
+        de Studied Attacks (``turno_cavalier + 1`` = siguiente turno
+        propio; un disparo durante el propio turno vale ya para el
+        siguiente). El último disparo gana si hay varias criaturas
+        marcadas.
+        """
+        self.ataque_marca_pendiente = self.turno_cavalier + 1
+        self.ataque_marca_objetivo = marcado
+        return None
+
+
+class CavalierMarkAttackAction(CombatAction):
+    """Ataque especial de Unwavering Mark (acción bonus, A4).
+
+    Solo es elegible si el flag vale en el turno actual (armado en el
+    anterior), la criatura marcada sigue viva, la acción bonus está
+    libre (``super().can_use``) y el dueño tiene un ataque cuerpo a
+    cuerpo. Sin ``pick``: la elegibilidad no consume RNG (el ``pick``
+    del encuentro decide entre las acciones candidatas de forma
+    uniforme, patrón Tomar Aliento). Ejecuta un ataque cuerpo a cuerpo
+    con ventaja forzada (``attacks_with_advantage``, se restaura al
+    salir) y ``ctx.dano_reaccion`` = ``nivel // 2``, que solo suma si
+    impacta. NO gasta un uso de marca (ya se gastó al marcar) ni la
+    reacción (es acción bonus); sí marca ``is_reaction`` para que el
+    ataque no reentre en maniobras. La velocidad 0 hasta el final del
+    turno es dato sin efecto: el sim no modela velocidad ni movimiento.
+    """
+
+    def __init__(self) -> None:
+        self.name = "Ataque de Marca"
+        self.action_type = ActionType.BONUS_ACTION
+        self.usage = None  # sin usos limitados: el límite es el bonus
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None:
+            return False
+        trait = _de(actor, CavalierFeatures)
+        if trait is None:
+            return False
+        if trait.ataque_marca_pendiente < trait.turno_cavalier:
+            # Caducó (el turno propio ya pasó sin usarlo): se limpia.
+            trait.ataque_marca_pendiente = 0
+            trait.ataque_marca_objetivo = None
+            return False
+        if trait.ataque_marca_pendiente != trait.turno_cavalier:
+            return False  # flag futuro: aún no es su turno válido
+        marcado = trait.ataque_marca_objetivo
+        if marcado is None or not getattr(marcado, "alive", True):
+            return False
+        if not _armas_melee_de(actor):
+            return False
+        return True
+
+    def execute(self, context: Any) -> None:
+        actor = context.actor
+        trait = _de(actor, CavalierFeatures)
+        rng = getattr(context, "rng", None)
+        if trait is None or rng is None:
+            return  # sin RNG el rasgo se abstiene
+        marcado = trait.ataque_marca_objetivo
+        if (trait.ataque_marca_pendiente != trait.turno_cavalier
+                or marcado is None
+                or not getattr(marcado, "alive", True)):
+            return  # caducado o marcado muerto: sin RNG
+        armas = _armas_melee_de(actor)
+        if not armas:
+            return
+        arma = pick(rng, armas)  # sin RNG si solo hay una
+        # Ataque único: el flag se consume aunque falle o falte el
+        # objetivo tras la comprobación.
+        trait.ataque_marca_pendiente = 0
+        trait.ataque_marca_objetivo = None
+        _log_line(context, f"{getattr(actor, 'name', actor)} realiza un "
+                           f"Ataque de Marca contra "
+                           f"{getattr(marcado, 'name', marcado)}")
+        r_ctx = copy.copy(context)
+        r_ctx.is_reaction = True  # reentrada: no activa maniobras
+        # Daño extra nivel//2: daño_base_arma lo suma plano solo si
+        # impacta (y lo pone a 0).
+        r_ctx.dano_reaccion = cavalier_mark_extra_damage(trait.level)
+        # Ventaja forzada: el indicador estático lo leen resolve_roll_mode
+        # y attack_modifiers; se restaura para no colarla a otros ataques.
+        antes = bool(getattr(actor, "attacks_with_advantage", False))
+        actor.attacks_with_advantage = True
+        try:
+            from .....engine.combat import attack_roll  # local: evita ciclo
+            attack_roll(actor, marcado, arma, rng,
+                        log=getattr(context, "log", None), ctx=r_ctx)
+        finally:
+            actor.attacks_with_advantage = antes
         return None
 
 
@@ -186,7 +320,10 @@ def apply_cavalier(pj: Any, level: int | None = None,
             uses_max=warding_maneuver_uses(int(pj.abilities.mod("con"))),
         )
     pj.traits.append(trait)
+    # Ataque especial de Unwavering Mark (acción bonus, elegibilidad
+    # sin RNG: el pick del encuentro decide entre candidatas).
+    pj.actions.append(CavalierMarkAttackAction())
     return trait
 
 
-__all__ = ["CavalierFeatures", "apply_cavalier"]
+__all__ = ["CavalierFeatures", "CavalierMarkAttackAction", "apply_cavalier"]
