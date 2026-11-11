@@ -213,8 +213,14 @@ receta de arriba.
   guards sin RNG (nivel 10, aliado distinto del dueño, enemigo vivo,
   reacción libre, armas melee); velocidad 0 `# TODO` dato sin efecto;
   9 tests, suite 1371 passed.
-- [ ] A7 — Vigilant Defender: reacción especial exclusiva de A6,
+- [x] A7 — Vigilant Defender: reacción especial exclusiva de A6,
   consumida antes que la normal, reset por ronda + tests.
+  **Hecho**: campo `especial_usada_en_ronda` comparado con
+  `ctx.round` (reset implícito por ronda + `reset()`); solo para
+  Hold the Line, fuera del turno propio (`ctx.actor`); simplificación
+  documentada: sin identificador de turno ajeno no se aplica la
+  restricción «mismo turno que otra reacción»; 6 tests, suite 1377
+  passed.
 - [ ] A8 — Ferocious Charger: evaluación única por turno con
   `CHARGE_MOVE_PROBABILITY`, salvación FUE → PRONE (EscapeCheck de
   Topple) + tests.

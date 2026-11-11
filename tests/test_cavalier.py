@@ -898,3 +898,87 @@ def test_sin_subclase_la_oportunidad_no_consulta_ni_toca_rng():
     # Sin rasgo con el método: ni consulta ni RNG (rng que revienta).
     atk_mod._oportunidad_contra_bando(aliado, enemigo, ctx=ctx,
                                       rng=_RngExplota())
+
+
+# --- A7: Vigilant Defender ----------------------------------------------------
+
+
+def test_vigilant_defender_no_tiene_reacción_especial_por_debajo_del_nivel_18():
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=17)
+    ctx.actor = enemigo
+    pj.state.reaction_used = True  # sin especial y sin normal: nada
+    assert trait.ataque_de_oportunidad(
+        enemigo, aliado, ctx=ctx, rng=_RngExplota()) is None
+
+
+def test_vigilant_defender_la_especial_se_consume_antes_que_la_normal(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    _parchea_ataque(monkeypatch, valor_d20=15, dados=1)
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=18)
+    ctx.actor = enemigo  # turno del enemigo, no del Cavalier
+    trait.ataque_de_oportunidad(enemigo, aliado, ctx=ctx,
+                                rng=random.Random(1))
+    assert trait.especial_usada_en_ronda == 1
+    assert not pj.state.reaction_used  # la reacción normal queda intacta
+
+
+def test_vigilant_defender_se_restablece_al_empezar_cada_ronda(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    _parchea_ataque(monkeypatch, valor_d20=15, dados=1)
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=18)
+    ctx.actor = enemigo
+    # Ronda 1: gasta la especial.
+    trait.ataque_de_oportunidad(enemigo, aliado, ctx=ctx,
+                                rng=random.Random(1))
+    assert trait.especial_usada_en_ronda == 1
+    # Sigue en ronda 1: sin especial, cae a la reacción normal.
+    trait.ataque_de_oportunidad(enemigo, aliado, ctx=ctx,
+                                rng=random.Random(1))
+    assert pj.state.reaction_used
+    assert trait.especial_usada_en_ronda == 1  # la normal no la toca
+    # Ronda 2: la especial vuelve a estar disponible.
+    ctx.round = 2
+    trait.ataque_de_oportunidad(enemigo, aliado, ctx=ctx,
+                                rng=random.Random(1))
+    assert trait.especial_usada_en_ronda == 2
+
+
+def test_vigilant_defender_solo_sirve_para_hold_the_line():
+    # Warding (y Parry/Riposte) siguen mirando SOLO la reacción normal.
+    pj, trait, _, _, ctx = _bajo_ataque(level=18)
+    pj.state.reaction_used = True
+    assert _defiende(trait, pj, ctx, _RngExplota()) is None
+    assert trait.especial_usada_en_ronda == 0  # la especial no se gastó
+
+
+def test_vigilant_defender_dos_oportunidades_en_una_ronda_con_ambas_reacciones_libres(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    _parchea_ataque(monkeypatch, valor_d20=15, dados=1)
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=18)
+    ctx.actor = enemigo
+    trait.warding_usos.uses_left = 0  # que la consulta de CA no gaste reacción
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(enemigo, aliado, atk, random.Random(1), ctx=ctx)
+    assert trait.especial_usada_en_ronda == 1
+    assert not pj.state.reaction_used
+    atk_mod.attack_roll(enemigo, aliado, atk, random.Random(1), ctx=ctx)
+    assert pj.state.reaction_used  # la segunda oportunidad usa la normal
+    assert enemigo.hp == 52  # dos contraataques de 1 + 3
+    assert aliado.hp == 62  # dos golpes enemigos de 1 + 3
+
+
+def test_vigilant_defender_no_usa_la_especial_en_el_turno_propio():
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=18)
+    ctx.actor = pj  # turno del propio Cavalier: sin especial
+    pj.state.reaction_used = True  # y la normal ya gastada
+    assert trait.ataque_de_oportunidad(
+        enemigo, aliado, ctx=ctx, rng=_RngExplota()) is None

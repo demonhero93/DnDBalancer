@@ -1715,6 +1715,32 @@ CAVALIER (2026-11-10)
     de CA gasta primero la reacción y Hold la ve gastada). Suite
     final: 1371 passed + arquitectura 3 passed (0 fallos). Commit de
     A6.
+  - (7) Vigilant Defender (A7): segundo recurso de reacción en
+    ``CavalierFeatures`` — campo ``especial_usada_en_ronda`` (ronda en
+    que se gastó; 0 = nunca) comparado con ``ctx.round``, así que se
+    «restablece» sola al empezar cada ronda sin hook de ronda (y
+    ``reset`` lo pone a 0). En ``ataque_de_oportunidad``: la
+    reacción especial (nivel >= 18, ``ctx.round`` presente, NO en el
+    turno propio — ``ctx.actor is not owner`` — y sin gastar aún esta
+    ronda) se consume ANTES que la normal (si está disponible se marca
+    ``especial_usada_en_ronda`` y ``reaction_used`` NO se toca; si no,
+    exige la reacción normal libre). Guards sin RNG: sin especial ni
+    normal → return ANTES del pick. Simplificación documentada en el
+    docstring: la restricción «no usar la especial en el mismo turno
+    en que gastaste otra reacción» no se aplica porque no hay
+    identificador de turno ajeno barato en ``ctx``. Warding/Parry/
+    Riposte NO consultan el recurso especial (siguen exigiendo solo
+    ``reaction_used``). Tests nuevos (6) en ``tests/test_cavalier.py``:
+    nivel 17 sin especial (rng que revienta); la especial se consume
+    antes que la normal (marcada y ``reaction_used`` intacto);
+    restablece cada ronda (ronda 1: especial → normal, ronda 2:
+    especial otra vez); solo vale para Hold the Line (Warding con
+    reacción gastada no usa la especial y no la gasta); dos
+    oportunidades en una ronda con ambas reacciones libres (motor:
+    primera → especial, segunda → normal, dos contraataques de 4);
+    sin especial en el turno propio. NINGÚN test existente cambió.
+    Suite final: 1377 passed + arquitectura 3 passed (0 fallos).
+    Commit de A7.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y

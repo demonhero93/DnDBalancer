@@ -30,10 +30,15 @@ Rasgos por nivel (Fighter 3 / 7 / 10 / 15 / 18):
   ataque de reacción cuando un enemigo ataca con tirada a un aliado
   distinto del dueño; contraataque cuerpo a cuerpo con la reacción
   compartida. La velocidad 0 es dato sin efecto.
+- **Vigilant Defender** (18): segunda reacción por ronda
+  (``especial_usada_en_ronda`` comparada con ``ctx.round``)
+  exclusiva de Hold the Line, consumida antes que la normal y solo
+  fuera del turno propio; la restricción «mismo turno que otra
+  reacción» es simplificación (sin identificador de turno ajeno).
 
-El resto de rasgos (Vigilant Defender y Ferocious Charger) se
-implementa en los pasos A7-A8 de la misma sesión; ver ``TODO.md``
-(plan «Cavalier») y las entradas de ``PASOS-ANTERIORES.txt``.
+El último rasgo (Ferocious Charger) se implementa en el paso A8 de
+la misma sesión; ver ``TODO.md`` (plan «Cavalier») y las entradas de
+``PASOS-ANTERIORES.txt``.
 """
 from __future__ import annotations
 
@@ -111,6 +116,10 @@ class CavalierFeatures(Trait):
     #: ¿Se evaluó ya la carga este turno? (Ferocious Charger; se
     #: limpia en ``on_turn_start``).
     carga_evaluada: bool = False
+    #: Vigilant Defender (18): ronda en que se gastó la reacción
+    #: especial (0 = nunca). Se compara con ``ctx.round``: así se
+    #: «restablece» sola al empezar cada ronda, sin hook de ronda.
+    especial_usada_en_ronda: int = 0
     #: Ataque especial de Unwavering Mark (A4): turno propio en el que
     #: vale el flag (``turno_cavalier + 1`` al armar; 0 = sin flag).
     ataque_marca_pendiente: int = 0
@@ -131,6 +140,7 @@ class CavalierFeatures(Trait):
         self.carga_evaluada = False
         self.ataque_marca_pendiente = 0
         self.ataque_marca_objetivo = None
+        self.especial_usada_en_ronda = 0
         if self.marca_usos is not None:
             self.marca_usos.reset()
         if self.warding_usos is not None:
@@ -266,12 +276,14 @@ class CavalierFeatures(Trait):
         objetivo, reentrada (``ctx.is_reaction``: un ataque de
         reacción no dispara otro), dueño muerto/incapacitado, atacante
         muerto o no enemigo del dueño, objetivo que no sea un aliado
-        vivo distinto del dueño, reacción ya gastada, sin ataque
-        cuerpo a cuerpo propio. Decisión ``pick`` «no»/«sí» («no» no
-        gasta nada); arma con ``pick`` uniforme (sin RNG si solo hay
-        una); gasta la reacción y contraataca con ``is_reaction`` en
-        el ctx copiado. La velocidad 0 hasta el final del turno del
-        atacante es dato sin efecto: el sim no modela velocidad.
+        vivo distinto del dueño, sin reacción disponible (Vigilant
+        Defender: reacción especial por ronda consumida ANTES que la
+        normal), sin ataque cuerpo a cuerpo propio. Decisión ``pick``
+        «no»/«sí» («no» no gasta nada); arma con ``pick`` uniforme
+        (sin RNG si solo hay una); gasta la reacción y contraataca
+        con ``is_reaction`` en el ctx copiado. La velocidad 0 hasta el
+        final del turno del atacante es dato sin efecto: el sim no
+        modela velocidad.
         """
         if self.level < 10:
             return None
@@ -290,16 +302,28 @@ class CavalierFeatures(Trait):
             return None  # solo contra enemigos del dueño
         if target is owner or not _es_aliado(owner, target):
             return None  # solo aliados vivos distintos del dueño
+        # Vigilant Defender (18): reacción especial por ronda, EXCLUSIVA
+        # de esta oportunidad, consumida antes que la normal y solo
+        # fuera del turno propio. Simplificación documentada: la
+        # restricción «no usarla en el mismo turno en que gastaste otra
+        # reacción» no se aplica porque no hay identificador de turno
+        # ajeno barato en ctx.
         estado = getattr(owner, "state", None)
-        if estado is not None and estado.reaction_used:
-            return None
+        ronda = getattr(ctx, "round", None)
+        especial = (self.level >= 18 and ronda is not None
+                    and getattr(ctx, "actor", None) is not owner
+                    and int(ronda) != self.especial_usada_en_ronda)
+        if not especial and estado is not None and estado.reaction_used:
+            return None  # sin especial ni reacción normal libre
         armas = _armas_melee_de(owner)
         if not armas:
             return None
         if pick(rng, ("no", "si")) == "no":
             return None
         arma = pick(rng, armas)  # sin RNG si solo hay una
-        if estado is not None:
+        if especial:
+            self.especial_usada_en_ronda = int(ronda)
+        elif estado is not None:
             estado.reaction_used = True
         _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Hold the Line "
                        f"contra {getattr(attacker, 'name', attacker)}")
