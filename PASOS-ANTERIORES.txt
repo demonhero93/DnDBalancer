@@ -1827,6 +1827,36 @@ CHAMPION (2026-11-11)
     2 tests: umbral por nivel 1-20 y cura con CON alta/normal/baja).
     Ningún test existente cambia (solo se añaden funciones
     puras). Commit de A1.
+  - (2) Esqueleto y registro (A2): fichero nuevo
+    ``dnd_sim/rules/classes/fighter/subclasses/champion.py`` con
+    ``ChampionFeatures`` (nivel, dueño, sentinels ``heroic_warrior`` y
+    ``defy_death`` a True, datos sin efecto congelados) y
+    ``apply_champion`` (exige ``FighterFeatures``; nivel >= 3;
+    kwarg ``additional_fighting_style`` VALIDADO contra
+    ``FIGHTER_STYLES`` y contra el estilo que ya tiene el PJ — la
+    elección con ``pick`` y sus efectos llegan en A5, así que hasta
+    entonces el valor validado no se aplica; ``rng`` por defecto con
+    semilla 0 vía ``_RNG_CREACION``, sin consumo hasta A5). Sin
+    estado de combate propio: ``reset``/``on_turn_start`` los hereda
+    del Trait base (A6 añade el override de Heroic Rally). Registro
+    ``"champion"`` en ``fighter/__init__.py`` (``SubclassDef``) +
+    reexportes en ``fighter/subclasses/__init__.py``,
+    ``rules/classes/__init__.py`` y la fachada ``dnd_sim/__init__.py``.
+    ``tests/test_arquitectura.py`` NO cambia: su comprobación de
+    fachada es por subconjunto (``esperados - exportados``).
+    CAMBIOS DE TESTS EXISTENTES, explicados ANTES de tocarlos: 4 tests
+    existentes cambian — 3 congelan la tabla y pasan de ``{arcane_archer,
+    battle_master, cavalier}`` a ``+ champion`` porque A2 registra la
+    clave — ``test_fighter.py::test_clase_fighter_esta_registrada...``,
+    ``test_arcane_archer.py::test_registro_arcane_archer...``,
+    ``test_battle_master.py::test_registro_battle_master...`` — y
+    ``test_fighter.py::test_subclase_de_fighter_inexistente...``
+    usaba "champion" como clave inválida de ejemplo (ahora "paladin",
+    docstring actualizado). Ningún otro test cambia de resultado. 7
+    tests nuevos en ``test_champion.py`` (registro, equivalencia
+    apply_class con RNGs reseedados, error clase/nivel, Heroic Warrior
+    y Defy Death freeze, cero RNG sin subclase), suite 1396 passed.
+    Commit de A2.
 
 ESTADO ACTUAL
    - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y

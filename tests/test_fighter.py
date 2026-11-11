@@ -44,9 +44,12 @@ def test_clase_fighter_esta_registrada_con_arcane_archer():
     # Cambio esperado con Arcane Archer: la tabla deja de estar vacía.
     # Cambio esperado con Cavalier (2026-11-10, explicado en PASOS):
     # la clave "cavalier" se añade al registro.
+    # Cambio esperado con Champion (2026-11-11, explicado en PASOS):
+    # la clave "champion" se añade al registro.
     assert set(CLASSES["fighter"].subclasses) == {"arcane_archer",
                                                   "battle_master",
-                                                  "cavalier"}
+                                                  "cavalier",
+                                                  "champion"}
 
 
 def test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter(
@@ -93,9 +96,9 @@ def test_apply_fighter_rechaza_habilidades_fuera_de_la_lista():
 
 
 def test_subclase_de_fighter_inexistente_da_value_error():
-    """Solo existe arcane_archer: cualquier otra clave falla."""
+    """El registro ya tiene sus 4 claves: cualquier otra falla."""
     with pytest.raises(ValueError, match="no es una subclase"):
-        apply_class(_pj(), "fighter", "champion")
+        apply_class(_pj(), "fighter", "paladin")
 
 
 def test_los_golpes_del_guerrero_suben_en_5_11_y_20():

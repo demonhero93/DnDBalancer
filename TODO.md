@@ -281,14 +281,17 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   `heroic_rally_amount`) + tests de tablas por nivel.
   **Hecho**: ambas con `_clamp`/`max(0, ...)`; 2 tests, fichero
   `tests/test_champion.py`.
-- [ ] A2 — Esqueleto `fighter/subclasses/champion.py`
+- [x] A2 — Esqueleto `fighter/subclasses/champion.py`
   (`ChampionFeatures`, `apply_champion` con kwarg
   `additional_fighting_style` validado; la aplicación del estilo se
   completa en A5) + registro `"champion"` y reexportes + tests
   (registro/equivalencia, error clase/nivel, Heroic Warrior y Defy
   Death dato sin efecto, cero RNG sin subclase). Cambio esperado en
-  los 3 tests de freeze de registro (explicado en PASOS ANTES de
-  tocarlos).
+  los 4 tests que congelan/usaban el registro (explicado en PASOS
+  ANTES de tocarlos).
+  **Hecho**: 4 tests de registro con freeze/ejemplo tocados
+  (`test_fighter` ×2, `test_arcane_archer`, `test_battle_master` —
+  explicados en PASOS (2)); 7 tests nuevos, suite 1396 passed.
 - [ ] A3 — Rango crítico ampliado: refactor previo (helper
   `evaluar_d20`/`umbral_critico` en `rules/roll_modifiers.py`, suite
   idéntica ANTES de seguir) + umbral por atacante duck-typing
