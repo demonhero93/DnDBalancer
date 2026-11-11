@@ -4,6 +4,7 @@ críticos, daño, impactos reaccionarios y represalias."""
 from __future__ import annotations
 
 import random
+from types import SimpleNamespace
 from typing import Any
 
 from ...model.attack import Attack
@@ -171,6 +172,54 @@ def _bonus_defensivo(target: Any, attacker: Any, rango: Any, total: int,
         if bonus > 0:
             total_bonus += bonus
     return total_bonus
+
+
+def _defensa_del_bando(target: Any, attacker: Any, rango: Any, *,
+                       total: int, ca: int, ctx: Any,
+                       rng: Any) -> Any:
+    """CA extra y resistencia que el bando del defensor aporta a este golpe.
+
+    Extiende el punto de consulta de CA (``_bonus_defensivo``) a los
+    rasgos del OBJETIVO y de sus aliados vivos del contexto (misma
+    enumeración que ``reduce_damage_to_allies``: ``ctx.combatants`` sin
+    el propio objetivo y sin hostiles; sin ``combatants`` solo se
+    pregunta al objetivo). Cada rasgo decide con guards propios y un
+    único ``pick``; el resultado agrega las CA extra y las
+    resistencias. Sin rasgos que lo definan no hay RNG ni tiradas.
+    """
+    if target is None:
+        return None
+    combatientes = getattr(ctx, "combatants", None) or []
+    candidatos = [target]
+    hostil = getattr(target, "is_hostile_to", None)
+    for otro in combatientes:
+        if otro is target or otro is None:
+            continue
+        if not getattr(otro, "alive", True):
+            continue
+        if hostil is not None and hostil(otro):
+            continue
+        candidatos.append(otro)
+    from ...rules.traits import hooks
+    ac_extra = 0
+    resistencia = False
+    for criatura in candidatos:
+        traits = getattr(criatura, "traits", None)
+        if not traits:
+            continue
+        for rasgo in hooks(traits, "defensa_ante_ataque"):
+            resultado = rasgo.defensa_ante_ataque(
+                target, attacker, rango, total=total, ca=ca,
+                ctx=ctx, rng=rng)
+            if resultado is None:
+                continue
+            ac_extra += int(getattr(resultado, "ac_extra", 0) or 0)
+            resistencia = resistencia or bool(
+                getattr(resultado, "resistencia", False))
+    if ac_extra <= 0 and not resistencia:
+        return None
+    return SimpleNamespace(ac_extra=max(0, ac_extra),
+                           resistencia=resistencia)
 
 
 def daño_base_arma(attacker: Combatant, target: Combatant, atk: Attack,
@@ -399,6 +448,20 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                                     ca_efectiva, ctx, rng)
         if extra_ca:
             ca_efectiva += extra_ca
+    # Warding Maneuver (Cavalier): el bando del defensor (él mismo o
+    # sus aliados) puede reaccionar con CA extra y, si el golpe sigue
+    # entrando, resistencia. Se consulta si el golpe iba a entrar —o si
+    # es crítico, que siempre impacta pero la resistencia aplica—; un
+    # 1 natural no consulta.
+    resistencia_defensor = False
+    if crit or (roll != 1 and total >= ca_efectiva):
+        defensa = _defensa_del_bando(target, attacker, rango,
+                                     total=total, ca=ca_efectiva,
+                                     ctx=ctx, rng=rng)
+        if defensa is not None:
+            resistencia_defensor = bool(defensa.resistencia)
+            if not crit and defensa.ac_extra:
+                ca_efectiva += defensa.ac_extra
     hit = crit or (roll != 1 and total >= ca_efectiva)
     # (6b) Punto ÚNICO de decisión de maniobras (Battle Master): tras
     # conocer la tirada y ANTES de aplicar efectos. Puede corregir el
@@ -426,8 +489,19 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         # veces** —una en este bloque y otra en apply_damage_modifiers— y el
         # valor de este bloque se descartaba justo después; solo sobrevivía
         # la etiqueta del log, que ahora se deriva del resultado real.
+        # Resistencia de Warding Maneuver (Cavalier): se concede al tipo
+        # de ESTE ataque solo durante la llamada (camino existente de
+        # resistencias). Si el objetivo ya resistía, la mitad se aplica
+        # una sola vez: no se acumula.
+        _resis_previas = getattr(target, "resistances", None)
+        _warding = (resistencia_defensor
+                    and dt not in (_resis_previas or set()))
+        if _warding:
+            target.resistances = set(_resis_previas or set()) | {dt}
         dmg = apply_damage_modifiers(raw_dmg, dt, target,
                                      magical=bool(getattr(atk, "magical", False)))
+        if _warding:
+            target.resistances = _resis_previas
         mod_tag = _tag_modificadores(raw_dmg, dmg, dt, target,
                                      magical=bool(getattr(atk, "magical", False)))
         # Resistencia por marca del defensor (p. ej. Protectores

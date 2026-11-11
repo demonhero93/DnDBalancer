@@ -595,3 +595,195 @@ def test_la_velocidad_cero_del_ataque_especial_es_dato_sin_efecto():
     pj, trait, marcado, _, _ = _especial()
     assert not hasattr(pj, "speed")
     assert not hasattr(marcado, "speed")
+
+
+# --- A5: Warding Maneuver -----------------------------------------------------
+
+
+def _bajo_ataque(**kwargs) -> tuple:
+    """PJ Cavalier nivel 7 + aliado + enemigo, para Warding Maneuver."""
+    pj, trait = _cavalier(level=7, **kwargs)
+    aliado = _pj(name="Alicia")
+    enemigo = Monster("Enemigo", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, aliado, enemigo], log=None)
+    return pj, trait, aliado, enemigo, ctx
+
+
+def _defiende(trait, target, ctx, rng):
+    """Consulta directa del hook con el dueño como atacante."""
+    return trait.defensa_ante_ataque(
+        target, trait.owner, AttackRange.MELEE, total=15, ca=15,
+        ctx=ctx, rng=rng)
+
+
+def _parchea_warding(monkeypatch, *, d20=10, dados=1, d8=8):
+    """d20 y daño del arma (motor) + 1d8 y decisiones (Cavalier)."""
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    d8s = []
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    monkeypatch.setattr(
+        cav_mod, "roll_dice",
+        lambda expr, rng, crit=False: (d8s.append(expr), d8)[1])
+    _parchea_ataque(monkeypatch, valor_d20=d20, dados=dados)
+    return d8s
+
+
+def test_warding_convierte_el_impacto_en_fallo(monkeypatch):
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    d8s = _parchea_warding(monkeypatch, d20=10, d8=8)
+    pj, trait, _, enemigo, ctx = _bajo_ataque()
+    # Sin Warding el golpe entraría (10 + 5 = CA 15); el 1d8 lo convierte.
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(enemigo, pj, atk, random.Random(1), ctx=ctx)
+    assert pj.hp == 70  # ni daño ni PV temporales: falló
+    assert pj.state.reaction_used
+    assert trait.warding_usos.uses_left == trait.warding_usos.uses_max - 1
+    assert d8s == ["1d8"]  # UNA sola tirada
+
+
+def test_warding_protege_al_aliado_del_cavalier(monkeypatch):
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    _parchea_warding(monkeypatch, d20=10, d8=8)
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque()
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(enemigo, aliado, atk, random.Random(1), ctx=ctx)
+    assert aliado.hp == 70  # el 1d8 del Cavalier convirtió el golpe
+    assert pj.state.reaction_used  # la reacción es del Cavalier
+    assert not aliado.state.reaction_used
+    assert trait.warding_usos.uses_left == trait.warding_usos.uses_max - 1
+
+
+def test_warding_no_convierte_un_critico_natural_y_aun_asi_resiste(
+        monkeypatch):
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    _parchea_warding(monkeypatch, d20=20, dados=3, d8=8)
+    pj, trait, _, enemigo, ctx = _bajo_ataque(fighting_style="Archery")
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(enemigo, pj, atk, random.Random(1), ctx=ctx)
+    # 20 natural: impacta pese al 1d8; resistencia 6 -> 3.
+    assert pj.hp == 67
+    assert pj.state.reaction_used
+
+
+def test_warding_resiste_la_mitad_redondeando_hacia_abajo(monkeypatch):
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    _parchea_warding(monkeypatch, d20=12, dados=2, d8=1)
+    pj, trait, _, enemigo, ctx = _bajo_ataque(fighting_style="Archery")
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(enemigo, pj, atk, random.Random(1), ctx=ctx)
+    # 2 + 3 (FUE) = 5 -> resistencia -> 2 (suelo); golpe entra (17 >= 16).
+    assert pj.hp == 68
+
+
+def test_warding_no_se_acumula_con_la_resistencia_previa(monkeypatch):
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    _parchea_warding(monkeypatch, d20=12, dados=2, d8=1)
+    pj, trait, _, enemigo, ctx = _bajo_ataque(fighting_style="Archery")
+    atk = Attack("Golpe", "1d6", ability="str")
+    pj.resistances = {atk.damage_type}  # ya resistía por otro origen
+    atk_mod.attack_roll(enemigo, pj, atk, random.Random(1), ctx=ctx)
+    # 5 -> una sola mitad (2), no dos (1).
+    assert pj.hp == 68
+    # Y la resistencia propia sigue intacta tras el ataque.
+    assert pj.resistances == {atk.damage_type}
+
+
+def test_warding_gasta_la_reacción_y_un_uso_y_tira_el_d8_una_vez(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    d8s = []
+    monkeypatch.setattr(
+        cav_mod, "roll_dice",
+        lambda expr, rng, crit=False: (d8s.append(expr), 8)[1])
+    pj, trait, _, _, ctx = _bajo_ataque()
+    resultado = _defiende(trait, pj, ctx, _RngSi())
+    assert resultado is not None
+    assert resultado.ac_extra == 8
+    assert resultado.resistencia is True
+    assert pj.state.reaction_used
+    assert trait.warding_usos.uses_left == trait.warding_usos.uses_max - 1
+    assert d8s == ["1d8"]
+
+
+def test_warding_no_se_pregunta_si_el_ataque_no_iba_a_entrar(monkeypatch):
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("consulta de defensa en un ataque que falla")
+
+    monkeypatch.setattr(atk_mod, "_defensa_del_bando", _revienta)
+    _parchea_ataque(monkeypatch, valor_d20=1)
+    pj, trait, _, enemigo, ctx = _bajo_ataque()
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(enemigo, pj, atk, random.Random(1), ctx=ctx)
+    assert pj.hp == 70  # 1 natural: fallo sin consultar a nadie
+
+
+def test_warding_no_se_usa_por_debajo_del_nivel_7():
+    pj, trait, _, _, ctx = _bajo_ataque()
+    trait.level = 6
+    assert _defiende(trait, pj, ctx, _RngExplota()) is None
+
+
+def test_warding_no_protege_a_un_enemigo():
+    pj, trait, _, enemigo, ctx = _bajo_ataque()
+    assert _defiende(trait, enemigo, ctx, _RngExplota()) is None
+
+
+def test_warding_no_se_usa_sin_reacción_o_sin_usos():
+    pj, trait, _, _, ctx = _bajo_ataque()
+    pj.state.reaction_used = True
+    assert _defiende(trait, pj, ctx, _RngExplota()) is None
+    pj.state.reaction_used = False
+    trait.warding_usos.uses_left = 0
+    assert _defiende(trait, pj, ctx, _RngExplota()) is None
+    assert trait.warding_usos.uses_left == 0  # ni un uso gastado
+
+
+def test_warding_no_se_usa_sin_escudo_ni_arma_cuerpo_a_cuerpo():
+    pj, trait, _, _, ctx = _bajo_ataque()
+    # tiene_escudo ya es False (sin escudo en la plantilla).
+    pj.attacks = []
+    pj.weapons = []
+    pj.dynamic_weapons = []
+    assert _defiende(trait, pj, ctx, _RngExplota()) is None
+
+
+def test_warding_comparte_la_reacción_con_las_demás_reacciones():
+    # Parry/Riposte/Hold the Line usan el mismo reaction_used: una por
+    # ronda para todo el bando de reacciones.
+    pj, trait, _, _, ctx = _bajo_ataque()
+    pj.state.reaction_used = True
+    assert _defiende(trait, pj, ctx, _RngExplota()) is None
+    assert trait.warding_usos.uses_left == trait.warding_usos.uses_max
+
+
+def test_warding_con_decision_negativa_no_gasta_nada(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: "no")
+    pj, trait, _, _, ctx = _bajo_ataque()
+    assert _defiende(trait, pj, ctx, random.Random(1)) is None
+    assert not pj.state.reaction_used
+    assert trait.warding_usos.uses_left == trait.warding_usos.uses_max
+
+
+def test_sin_subclase_la_defensa_ante_ataque_no_consulta_ni_toca_rng():
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    enemigo = Monster("Enemigo", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, combatants=[pj, enemigo])
+    resultado = atk_mod._defensa_del_bando(
+        pj, enemigo, AttackRange.MELEE, total=15, ca=15,
+        ctx=ctx, rng=_RngExplota())
+    assert resultado is None  # sin rasgo que lo defina: ni RNG ni tiradas

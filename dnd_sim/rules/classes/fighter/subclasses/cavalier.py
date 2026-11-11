@@ -19,10 +19,15 @@ Rasgos por nivel (Fighter 3 / 7 / 10 / 15 / 18):
   hace un ataque cuerpo a cuerpo con ventaja forzada y daño extra
   ``nivel // 2`` si impacta. Sin monturas ni movimiento: la velocidad 0
   de la marca es dato sin efecto.
+- **Warding Maneuver** (7): ``defensa_ante_ataque`` (hook registrado en
+  ``HOOK_NAMES``) devuelve 1d8 de CA —el motor recalcula el impacto— y
+  resistencia si el golpe sigue entrando (concesión temporal al tipo
+  durante ``apply_damage_modifiers``, sin acumularse). Reacción
+  compartida; requiere escudo o arma cuerpo a cuerpo.
 
-El resto de rasgos (Warding Maneuver, Hold the Line, Ferocious Charger
-y Vigilant Defender) se implementa en los pasos A5-A8 de la misma
-sesión; ver ``TODO.md`` (plan «Cavalier») y las entradas de
+El resto de rasgos (Hold the Line, Ferocious Charger y Vigilant
+Defender) se implementa en los pasos A6-A8 de la misma sesión; ver
+``TODO.md`` (plan «Cavalier») y las entradas de
 ``PASOS-ANTERIORES.txt``.
 """
 from __future__ import annotations
@@ -30,6 +35,7 @@ from __future__ import annotations
 import copy
 import random
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any
 
 from .....core.classes import (
@@ -41,13 +47,14 @@ from .....core.classes import (
     cavalier_mark_uses,
     warding_maneuver_uses,
 )
+from .....core.dice import roll_dice
 from .....core.enums import AttackRange
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick
 from .....model.actions import ActionType, CombatAction
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
-from ..features import FighterFeatures, _contexto
+from ..features import FighterFeatures, _contexto, _es_aliado
 
 #: RNG con semilla fija para Bonus Proficiency cuando no pasa ``rng``:
 #: crea el personaje siempre igual (reproducible), patrón Battle Master.
@@ -182,6 +189,58 @@ class CavalierFeatures(Trait):
         self.ataque_marca_pendiente = self.turno_cavalier + 1
         self.ataque_marca_objetivo = marcado
         return None
+
+    # --- Warding Maneuver (7): defensa de reacción ----------------------------
+    def defensa_ante_ataque(self, target: Any, attacker: Any, rango: Any,
+                            total: int | None = None,
+                            ca: int | None = None,
+                            ctx: Any = None,
+                            rng: Any = None) -> Any:
+        """Warding Maneuver: 1d8 de CA y resistencia si el golpe sigue.
+
+        Lo llama el motor (hook ``defensa_ante_ataque``, punto de
+        consulta de CA ampliado a los aliados del objetivo) cuando el
+        ataque iba a impactar o es crítico. Guards SIN RNG en orden:
+        nivel < 7, sin owner/objetivo/atacante/rng, objetivo que no
+        sea el dueño ni un aliado vivo, dueño muerto/incapacitado, sin
+        escudo ni arma cuerpo a cuerpo (dato ``tiene_escudo`` del
+        Guerrero), sin usos o reacción ya gastada. Decisión ``pick``
+        «no»/«sí» («no» no gasta nada); el 1d8 se tira UNA vez y el
+        resultado ``SimpleNamespace(ac_extra, resistencia)`` alimenta
+        el recálculo de CA y, si el golpe sigue entrando, la resistencia
+        temporal que aplica el motor (mitad, sin acumularse con la
+        resistencia previa del tipo). Gasta reacción y un uso.
+        """
+        if self.level < 7:
+            return None
+        owner = self.owner
+        if owner is None or target is None or attacker is None or rng is None:
+            return None
+        if target is not owner and not _es_aliado(owner, target):
+            return None
+        if not getattr(target, "alive", True):
+            return None
+        if not getattr(owner, "alive", True) or not getattr(
+                owner, "can_act", True):
+            return None
+        fighter = _de(owner, FighterFeatures)
+        escudo = bool(fighter is not None
+                      and getattr(fighter, "tiene_escudo", False))
+        if not escudo and not _armas_melee_de(owner):
+            return None  # sin escudo ni arma cuerpo a cuerpo no hay con qué
+        if self.warding_usos is None or not self.warding_usos.available:
+            return None
+        if owner.state.reaction_used:
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        owner.state.reaction_used = True
+        self.warding_usos.spend()
+        valor = int(roll_dice("1d8", rng))
+        _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Warding "
+                       f"Maneuver: +{valor} de CA a "
+                       f"{getattr(target, 'name', target)}")
+        return SimpleNamespace(ac_extra=valor, resistencia=True)
 
 
 class CavalierMarkAttackAction(CombatAction):

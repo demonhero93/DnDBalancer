@@ -344,6 +344,22 @@ class Trait:
         """
         return 0
 
+    def defensa_ante_ataque(self, target: Any, attacker: Any, rango: Any,
+                            total: int | None = None, ca: int | None = None,
+                            ctx: Any = None, rng: Any = None) -> Any:
+        """Hook: defensa de reacción del bando de ``target`` contra un golpe.
+
+        Se le pregunta a los rasgos del OBJETIVO y de sus aliados vivos
+        cuando el ataque iba a impactar (o es crítico: siempre impacta,
+        pero la resistencia sigue aplicando). Devuelve ``None`` o un
+        resultado mínimo con ``ac_extra`` (puntos de CA que se suman a
+        la efectiva y pueden convertir el impacto en fallo, salvo en un
+        20 natural) y ``resistencia`` (bool: si el golpe sigue entrando,
+        el daño queda a la mitad por el camino de resistencias). Hoy lo
+        usa Warding Maneuver (Cavalier). Por defecto no hace nada.
+        """
+        return None
+
     # --- Reinicio de combate ------------------------------------------------
     def reset(self) -> None:
         """Hook: borra el estado propio del rasgo al empezar un combate.
@@ -376,6 +392,7 @@ HOOK_NAMES: tuple[str, ...] = (
     "damage_dice_upgrades",
     "blocks_condition",
     "defensive_ac_bonus",
+    "defensa_ante_ataque",
     "on_rage_start",
     "on_rage_end",
     "on_turn_start",

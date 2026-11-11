@@ -196,8 +196,14 @@ receta de arriba.
   del encuentro, patrón SecondWind); ventaja forzada con
   `attacks_with_advantage` restaurada en `finally`; 11 tests,
   suite 1348 passed.
-- [ ] A5 — Warding Maneuver: punto de Parry extendido a los aliados
+- [x] A5 — Warding Maneuver: punto de Parry extendido a los aliados
   del objetivo con resultado `ac_extra` + `resistencia` + tests.
+  **Hecho**: hook nuevo `defensa_ante_ataque` (Trait + HOOK_NAMES);
+  `_defensa_del_bando` en `attack.py` enumera el bando del objetivo y
+  agrega resultados; recálculo de CA en el paso 6 (crítico consulta
+  solo por la resistencia); concesión temporal del tipo durante
+  `apply_damage_modifiers` (no se acumula); guards sin RNG antes del
+  pick; 14 tests, suite 1362 passed.
 - [ ] A6 — Hold the Line: ataque de oportunidad abstracto (punto de
   consulta tras ataque con tirada contra aliado) + reinterpretación
   documentada + tests.

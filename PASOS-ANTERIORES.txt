@@ -1631,6 +1631,49 @@ CAVALIER (2026-11-10)
     (espía que revienta) y velocidad 0 sin efecto. NINGÚN test
     existente cambió. Suite final: 1348 passed + arquitectura 3
     passed (0 fallos). Commit de A4.
+  - (5) Warding Maneuver (A5): hook nuevo ``defensa_ante_ataque`` en
+    ``Trait`` + ``HOOK_NAMES`` (default no-op; ``tests/test_traits.py``
+    lo cubre por catálogo) con resultado mínimo
+    ``SimpleNamespace(ac_extra, resistencia)``. Punto de consulta
+    ampliado en ``attack.py``: helper nuevo ``_defensa_del_bando``
+    enumera el bando del OBJETIVO (él mismo + aliados vivos no
+    hostiles de ``ctx.combatants``, misma enumeración que
+    ``_mitigacion_de_otros`` de ``reduce_damage_to_allies``) y agrega
+    las CA extra y las resistencias que los rasgos devuelvan; sin
+    rasgos que lo definan → ``None`` sin RNG. Se le pregunta en el
+    bloque del paso 6 cuando el golpe iba a entrar **o** cuando es
+    crítico (el 20 natural siempre impacta, pero la resistencia sigue
+    aplicando; un 1 natural no consulta); el ``ac_extra`` solo se suma
+    si no es crítico y ``hit`` se recalcula con la CA efectiva ya
+    aumentada (convierte impacto en fallo). Resistencia: el motor
+    concede el tipo del ataque en ``target.resistances`` SOLO durante
+    la llamada a ``apply_damage_modifiers`` y restaura el set previo
+    (camino existente de resistencias; si el objetivo ya resistía no
+    se concede y la mitad se aplica una sola vez = no se apila; solo
+    el daño principal, los ``extra_damage`` conservan sus tipos).
+    Guards del rasgo SIN RNG en orden: nivel < 7, sin
+    owner/objetivo/atacante/rng, objetivo que no sea el dueño ni un
+    aliado vivo (``_es_aliado``), dueño muerto/incapacitado, sin
+    escudo (dato ``tiene_escudo`` del Guerrero) ni arma cuerpo a
+    cuerpo (``_armas_melee_de``), sin ``warding_usos.available`` o
+    reacción ya gastada → luego ``pick`` «no/sí» («no» no gasta
+    nada); gasta reacción + un uso y tira ``1d8`` UNA vez. Decisión:
+    el gasto es incondicional tras el «sí» (los guards del enunciado
+    no piden «solo si convierte», a diferencia del Parry hobgoblin);
+    sin la subclase ni consulta ni RNG. Tests nuevos (14) en
+    ``tests/test_cavalier.py``: convierte impacto en fallo con 1d8
+    (motor, d20=10 → CA 15+8) y gasta reacción/uso con una sola
+    tirada del d8; protege al aliado (la reacción es del Cavalier);
+    crítico natural 20 sigue impactando con resistencia (6 → 3);
+    resistencia mitad con suelo (5 → 2); no se acumula con
+    resistencia previa (5 → 2, no 1, y el set queda intacto);
+    sin consulta si el ataque no iba a entrar (1 natural, espía que
+    revienta); guards sin RNG con ``_RngExplota`` (nivel 6, enemigo
+    como objetivo, reacción usada, usos a 0, sin escudo ni armas);
+    decisión «no» sin gasto; reacción compartida; sin subclase
+    ``_defensa_del_bando`` devuelve ``None`` sin tocar RNG. NINGÚN
+    test existente cambió. Suite final: 1362 passed + arquitectura 3
+    passed (0 fallos). Commit de A5.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y
