@@ -36,9 +36,15 @@ Rasgos por nivel (Fighter 3 / 7 / 10 / 15 / 18):
   fuera del turno propio; la restricción «mismo turno que otra
   reacción» es simplificación (sin identificador de turno ajeno).
 
-El último rasgo (Ferocious Charger) se implementa en el paso A8 de
-la misma sesión; ver ``TODO.md`` (plan «Cavalier») y las entradas de
-``PASOS-ANTERIORES.txt``.
+- **Ferocious Charger** (15): ``_evaluar_carga`` en
+  ``after_attack_roll`` —evaluación única por turno del primer
+  impacto cuerpo a cuerpo con probabilidad fija ``charge_probability``
+  (``--charge-p``, patrón Reckless; 0.0/1.0 sin RNG)— → ``pick`` y
+  salvación de FUE CD 8 + PB + mod FUE; fallo → PRONE (EscapeCheck de
+  Topple). El flag se limpia en ``on_turn_start``.
+
+Ver ``TODO.md`` (plan «Cavalier», casillas B y Verificación) y las
+entradas de ``PASOS-ANTERIORES.txt``.
 """
 from __future__ import annotations
 
@@ -62,6 +68,8 @@ from .....core.enums import AttackRange
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick
 from .....model.actions import ActionType, CombatAction
+from ....conditions import Condition, EscapeCheck, apply_condition
+from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
 from ..features import FighterFeatures, _contexto, _es_aliado
@@ -162,6 +170,11 @@ class CavalierFeatures(Trait):
         """
         if attacker is not self.owner or not hit:
             return None
+        # Ferocious Charger (15): evaluación de movimiento única por
+        # turno sobre el PRIMER impacto cuerpo a cuerpo (patrón
+        # RECKLESS/`--charge-p`). Vive antes del guard de melee para
+        # poder descartar ataques a distancia sin marcar la bandera.
+        self._evaluar_carga(target, atk, ctx=ctx, rng=rng)
         if getattr(atk, "range_type", None) is not AttackRange.MELEE:
             return None
         if not getattr(self.owner, "can_act", True) or rng is None:
@@ -186,6 +199,59 @@ class CavalierFeatures(Trait):
         # marcador permite anularla si muere o queda incapacitado.
         estado.marca_cavalier[self.owner.name] = (
             int(ronda) + 2, self.owner)
+        return None
+
+    # --- Ferocious Charger (15): salvación de FUE al cargar -------------------
+    def _evaluar_carga(self, target: Any, atk: Any, *, ctx: Any = None,
+                       rng: Any = None) -> None:
+        """Evalúa la carga una vez por turno sobre el primer impacto melee.
+
+        Simplificación documentada: el movimiento por turno se simula con
+        la probabilidad fija ``charge_probability`` (``--charge-p``,
+        patrón ``RECKLESS_USE_PROBABILITY``): 0.0/1.0 no consumen RNG y
+        con el resto UN ``rng.random()``. Guards SIN RNG ANTES de todo:
+        nivel < 15, bandera ya puesta, ataque no cuerpo a cuerpo (la
+        bandera NO se pega: un disparo no evalúa), incapacitado o sin
+        rng (se abstiene y podrá decidir después, patrón Reckless).
+        Si hay carga, ``pick`` «no»/«sí» («no» no fuerza nada); si
+        «sí», salvación de FUE CD 8 + PB + mod FUE con el camino de
+        ``saving_throw``/``registrar_resistencia``; fallo → PRONE con
+        el ``EscapeCheck`` de Topple. Por debajo del nivel 15 no
+        actúa; el flag se limpia en ``on_turn_start``.
+        """
+        if self.level < 15 or self.carga_evaluada:
+            return None
+        if target is None or getattr(atk, "range_type", None) is not AttackRange.MELEE:
+            return None
+        owner = self.owner
+        if owner is None or not getattr(owner, "can_act", True):
+            return None
+        p = float(self.charge_probability)
+        if 0.0 < p < 1.0 and rng is None:
+            return None  # sin RNG el rasgo se abstiene (podrá decidir después)
+        self.carga_evaluada = True
+        if p <= 0.0:
+            hay_carga = False
+        elif p >= 1.0:
+            hay_carga = True
+        else:
+            hay_carga = rng.random() < p
+        if not hay_carga:
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None  # no fuerza la salvación
+        cd = (8 + int(getattr(owner, "proficiency", 0) or 0)
+              + int(owner.abilities.mod("str")))
+        sr = saving_throw(target, "str", cd, rng)
+        registrar_resistencia(ctx, target, sr)
+        if sr.success:
+            return None
+        apply_condition(target, Condition.PRONE, ctx, source=owner,
+                        escape=EscapeCheck(abilities=("str", "dex"), dc=10,
+                                           consumes_action=False))
+        _log_line(ctx, f"{getattr(owner, 'name', owner)} derriba con una "
+                       f"carga a {getattr(target, 'name', target)} "
+                       f"(salvación de FUE CD {cd})")
         return None
 
     # --- Unwavering Mark (3): ataque especial ----------------------------------

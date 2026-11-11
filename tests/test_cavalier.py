@@ -982,3 +982,209 @@ def test_vigilant_defender_no_usa_la_especial_en_el_turno_propio():
     pj.state.reaction_used = True  # y la normal ya gastada
     assert trait.ataque_de_oportunidad(
         enemigo, aliado, ctx=ctx, rng=_RngExplota()) is None
+
+
+# --- A8: Ferocious Charger ----------------------------------------------------
+
+
+def _carga(level: int = 15, **kwargs) -> tuple:
+    """PJ Cavalier + objetivo, para Ferocious Charger."""
+    pj, trait = _cavalier(level=level, **kwargs)
+    objetivo = Monster("Muñeco", max_hp=60, ac=15, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, objetivo], log=None)
+    return pj, trait, objetivo, ctx
+
+
+def _ataque_carga(rango=AttackRange.MELEE) -> Attack:
+    return Attack("Espada larga", "1d8", ability="str", range_type=rango)
+
+
+def _salvacion(monkeypatch, exito: bool = True) -> list:
+    """``saving_throw`` parcheado: registra (habilidad, CD) y devuelve ``exito``."""
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    llamadas: list = []
+    monkeypatch.setattr(
+        cav_mod, "saving_throw",
+        lambda tgt, ab, cd, rng: (llamadas.append((ab, cd)),
+                                  SimpleNamespace(success=exito))[1])
+    return llamadas
+
+
+def test_ferocious_charger_p_cero_no_carga_sin_rng(monkeypatch):
+    from dnd_sim.rules.conditions import Condition
+
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("salvación consultada con p=0")
+
+    monkeypatch.setattr(cav_mod, "saving_throw", _revienta)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: "no")  # marca sin RNG
+    pj, trait, objetivo, ctx = _carga()
+    trait.charge_probability = 0.0
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=_RngExplota())
+    assert trait.carga_evaluada  # evaluado: resultado negativo, sin carga
+    assert not objetivo.conditions.has(Condition.PRONE)
+
+
+def test_ferocious_charger_p_uno_carga_siempre_con_impacto_cuerpo_a_cuerpo(
+        monkeypatch):
+    from dnd_sim.rules.conditions import Condition
+
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    llamadas = _salvacion(monkeypatch, exito=True)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    pj, trait, objetivo, ctx = _carga()
+    trait.charge_probability = 1.0
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    assert trait.carga_evaluada
+    assert llamadas == [("str", 8 + pj.proficiency + 3)]  # FUE 16: +3
+    assert not objetivo.conditions.has(Condition.PRONE)  # salvación exitosa
+
+
+def test_ferocious_charger_una_sola_evaluacion_por_turno(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    llamadas = _salvacion(monkeypatch, exito=True)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    pj, trait, objetivo, ctx = _carga()
+    trait.charge_probability = 1.0
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    assert len(llamadas) == 1  # el segundo impacto no vuelve a evaluar
+
+
+def test_ferocious_charger_salvacion_fallida_derriba_y_exitosa_no(
+        monkeypatch):
+    from dnd_sim.rules.conditions import Condition
+
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    _salvacion(monkeypatch, exito=True)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    pj, trait, objetivo, ctx = _carga()
+    trait.charge_probability = 1.0
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    assert not objetivo.conditions.has(Condition.PRONE)
+    # Salvación fallada en una evaluación nueva: PRONE con EscapeCheck.
+    trait.carga_evaluada = False
+    _salvacion(monkeypatch, exito=False)
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    assert objetivo.conditions.has(Condition.PRONE)
+
+
+def test_ferocious_charger_solo_cuerpo_a_cuerpo_y_solo_tras_impactar(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    llamadas = _salvacion(monkeypatch, exito=True)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    pj, trait, objetivo, ctx = _carga()
+    trait.charge_probability = 1.0
+    # A distancia: no evalúa (la bandera no se pega).
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(AttackRange.RANGED),
+                            True, ctx=ctx, rng=random.Random(1))
+    assert not trait.carga_evaluada
+    assert llamadas == []
+    # Fallo: no evalúa.
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), False,
+                            ctx=ctx, rng=random.Random(1))
+    assert not trait.carga_evaluada
+    assert llamadas == []
+    # Impacto cuerpo a cuerpo: evalúa y fuerza la salvación.
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    assert trait.carga_evaluada
+    assert llamadas == [("str", 8 + pj.proficiency + 3)]
+
+
+def test_ferocious_charger_cd_es_ocho_mas_pb_mas_fuerza(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    llamadas = _salvacion(monkeypatch, exito=True)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    pj, trait, objetivo, ctx = _carga()
+    trait.charge_probability = 1.0
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    esperada = 8 + pj.proficiency + int(pj.abilities.mod("str"))
+    assert esperada == 16  # nivel 15: PB +5; FUE 16: +3
+    assert llamadas == [("str", esperada)]
+
+
+def test_ferocious_charger_nivel_14_no_actua_sin_rng(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("salvación consultada por debajo del nivel 15")
+
+    monkeypatch.setattr(cav_mod, "saving_throw", _revienta)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: "no")
+    pj, trait, objetivo, ctx = _carga(level=14)
+    trait.charge_probability = 1.0
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=_RngExplota())
+    assert not trait.carga_evaluada  # ni flag ni RNG ni salvación
+
+
+def test_ferocious_charger_el_flag_se_reinicia_cada_turno(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    llamadas = _salvacion(monkeypatch, exito=True)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    pj, trait, objetivo, ctx = _carga()
+    trait.charge_probability = 1.0
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    assert trait.carga_evaluada
+    assert len(llamadas) == 1
+    trait.on_turn_start(pj)
+    assert not trait.carga_evaluada
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=random.Random(1))
+    assert len(llamadas) == 2  # nuevo turno: vuelve a evaluar
+
+
+def test_ferocious_charger_con_p_medio_tira_un_random(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    llamadas = _salvacion(monkeypatch, exito=True)
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+
+    class _RngControl:
+        def __init__(self, valor):
+            self.valor = valor
+            self.randoms = 0
+
+        def random(self):
+            self.randoms += 1
+            return self.valor
+
+        def randrange(self, n):  # por si algo lo pide (pick parcheado)
+            return 0
+
+    pj, trait, objetivo, ctx = _carga()
+    trait.charge_probability = 0.5
+    rng = _RngControl(0.0)  # 0.0 < 0.5 → hay carga
+    trait.after_attack_roll(pj, objetivo, _ataque_carga(), True,
+                            ctx=ctx, rng=rng)
+    assert rng.randoms == 1  # UN random por evaluación
+    assert len(llamadas) == 1
+    # Sin carga: bandera puesta, sin consultar la salvación.
+    trait.carga_evaluada = False
+    objetivo2 = Monster("Muñeco2", max_hp=60, ac=15, abilities=_abilities())
+    rng2 = _RngControl(0.9)  # 0.9 >= 0.5 → sin carga
+    trait.after_attack_roll(pj, objetivo2, _ataque_carga(), True,
+                            ctx=ctx, rng=rng2)
+    assert rng2.randoms == 1
+    assert trait.carga_evaluada
+    assert len(llamadas) == 1

@@ -1741,6 +1741,41 @@ CAVALIER (2026-11-10)
     sin especial en el turno propio. NINGÚN test existente cambió.
     Suite final: 1377 passed + arquitectura 3 passed (0 fallos).
     Commit de A7.
+  - (8) Ferocious Charger (A8): `_evaluar_carga` (método propio)
+    llamado desde `after_attack_roll` DESPUÉS del guard
+    `attacker is not owner or not hit` y ANTES del guard de melee —
+    así un ataque a distancia lo descarta sin pegar la bandera y un
+    fallo ni se entera. Guards SIN RNG en orden: nivel < 15 o bandera
+    `carga_evaluada` ya puesta; objetivo None o ataque no cuerpo a
+    cuerpo (bandera NO se pega); dueño sin `can_act`; `0.0 < p < 1.0`
+    y `rng is None` → se abstiene sin pegar bandera (patrón Reckless
+    exacto: features.py `_decidir_reckless`). Bandera puesta →
+    `p <= 0` sin carga / `p >= 1` sin RNG / `rng.random() < p`; con
+    carga → `pick` «no/sí» («no» no fuerza nada); «sí» →
+    `saving_throw(target, "str", cd, rng)` con
+    `cd = 8 + proficiency + mod FUE` + `registrar_resistencia` (mismo
+    camino que Topple) y, si falla, `apply_condition(PRONE, …,
+    escape=EscapeCheck(("str","dex"), dc=10, consumes_action=False))`
+    con `_log_line`. Imports nuevos en cavalier.py:
+    `Condition, EscapeCheck, apply_condition` (....conditions) y
+    `registrar_resistencia, saving_throw` (....saves). Docstring
+    módulo: roadmap cierra con A8 (las casillas B/Docs/Verificación
+    quedan en TODO). Tests nuevos (9) en `tests/test_cavalier.py`
+    (helpers `_carga(level=15)`, `_ataque_carga(rango)`,
+    `_salvacion(monkeypatch, exito)`): p=0 sin RNG (`saving_throw`
+    que revienta + `_RngExplota`, bandera puesta = evaluado sin
+    carga); p=1 fuerza siempre (CD registrado, salvación exitosa sin
+    PRONE); UNA sola evaluación por turno (dos impactos → una
+    llamada); fallada → PRONE y exitosa → nada (misma bandera
+    rearmada); solo cuerpo a cuerpo y solo tras impactar (bandera
+    intacta en distancia y fallo); CD = 8+PB+FUE (== 16 nivel 15);
+    nivel 14 ni flag ni RNG; flag reiniciado en `on_turn_start`
+    (segundo turno evalúa otra vez); p=0.5 tira UN `rng.random()`
+    (stub `_RngControl`: 0.0 carga, 0.9 no, un random por
+    evaluación). El cableado CLI `--charge-p` → `trait.
+    charge_probability` ya lo cubren los tests de A1/A2; estos tests
+    cubren trait → motor. NINGÚN test existente cambió. Suite final:
+    1386 passed + arquitectura 3 passed (0 fallos). Commit de A8.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y

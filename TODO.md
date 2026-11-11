@@ -221,9 +221,13 @@ receta de arriba.
   documentada: sin identificador de turno ajeno no se aplica la
   restricción «mismo turno que otra reacción»; 6 tests, suite 1377
   passed.
-- [ ] A8 — Ferocious Charger: evaluación única por turno con
+- [x] A8 — Ferocious Charger: evaluación única por turno con
   `CHARGE_MOVE_PROBABILITY`, salvación FUE → PRONE (EscapeCheck de
   Topple) + tests.
+  **Hecho**: `_evaluar_carga` desde `after_attack_roll` (antes del
+  guard de melee, patrón Reckless para 0.0/1.0 sin RNG); CD
+  8+PB+mod FUE con `saving_throw`+`registrar_resistencia`; PRONE con
+  EscapeCheck de Topple; 9 tests, suite 1386 passed.
 - [ ] B — Decisiones de diseño: cambio esperado del test de registro
   en `tests/test_fighter.py` (explicado ANTES de tocarlo), límites
   modelados con tests freeze (Born to the Saddle, velocidad 0, 5 ft),
