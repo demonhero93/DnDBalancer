@@ -292,12 +292,15 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: 4 tests de registro con freeze/ejemplo tocados
   (`test_fighter` ×2, `test_arcane_archer`, `test_battle_master` —
   explicados en PASOS (2)); 7 tests nuevos, suite 1396 passed.
-- [ ] A3 — Rango crítico ampliado: refactor previo (helper
+- [x] A3 — Rango crítico ampliado: refactor previo (helper
   `evaluar_d20`/`umbral_critico` en `rules/roll_modifiers.py`, suite
   idéntica ANTES de seguir) + umbral por atacante duck-typing
   (`ChampionFeatures.umbral_critico`, campo `spell_attack` para no
   afectar a hechizos) + verificación de consumidores (Precision,
   Warding, Sweeping, Studied, reacciones) + tests.
+  **Hecho**: refactor verde 1396 antes del umbral; campo nuevo
+  `spell_attack` en `model/attack.py` + `casting.py`; 9 tests,
+  suite 1405 passed.
 - [ ] A4 — Remarkable Athlete: ventaja en iniciativa
   (`ventaja_iniciativa()` duck-typing en `roll_initiative`, solo
   Champion consume RNG nuevo) + ventaja en Atletismo

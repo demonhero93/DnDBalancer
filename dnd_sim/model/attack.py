@@ -69,6 +69,10 @@ class Attack:
     properties: set[str] = field(default_factory=set)
     # Maestría del arma ("topple", "push"...): vacío si no la tiene.
     mastery: str = ""
+    # Es una tirada de ataque de HECHIZO (rules/spells/casting.py la
+    # pone a True): el umbral crítico de Champion no le afecta. False en
+    # todas las fichas existentes (cero efecto por defecto).
+    spell_attack: bool = False
 
     def __post_init__(self) -> None:
         # Permite construir Attack con un str como damage_type.

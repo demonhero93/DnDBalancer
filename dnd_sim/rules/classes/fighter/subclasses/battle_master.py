@@ -84,7 +84,7 @@ from .....core.targeting import valid_targets
 from .....model.actions import ActionType, CombatAction
 from ....conditions import Condition, EscapeCheck, apply_condition
 from ....damage import apply_damage_modifiers, inflict_damage
-from ....roll_modifiers import effective_ac
+from ....roll_modifiers import effective_ac, evaluar_d20
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import AtaqueSustituido, Trait
 from ..features import FighterFeatures, _contexto, _es_aliado
@@ -294,7 +294,7 @@ class BattleMasterFeatures(Trait):
             # Precision Attack (fallo): suma el dado a la tirada y, si
             # ahora llega a la CA, el ataque impacta. Se ejecuta aquí
             # (una maniobra por ataque; el dado NO se suma al daño).
-            if roll == 1:
+            if evaluar_d20(roll, attacker, atk)[1]:
                 return hit, total  # 1 natural: nunca (sin RNG)
             elegibles = tuple(
                 m for m in self.maneuvers

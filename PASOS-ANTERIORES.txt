@@ -1857,6 +1857,32 @@ CHAMPION (2026-11-11)
     apply_class con RNGs reseedados, error clase/nivel, Heroic Warrior
     y Defy Death freeze, cero RNG sin subclase), suite 1396 passed.
     Commit de A2.
+  - (3) Rango crítico ampliado (A3): refactor previo SIN cambio de
+    resultados — helpers nuevos ``umbral_critico(attacker, atk)``
+    (duck-typing ``fn(atk)`` sobre los rasgos del ATACANTE, sin
+    entrada en ``HOOK_NAMES``, min con 20, sin rasgo → 20 sin RNG) y
+    ``evaluar_d20(roll, attacker, atk) -> (¿crítico?, ¿1 natural?)``
+    en ``rules/roll_modifiers.py``; el motor sustituye
+    ``crit = roll == 20`` (mismo sitio, antes de Parry/Warding/hit) y
+    los tres ``roll != 1`` por ``fallo_natural``, y Precision Attack
+    de Battle Master pasa de ``roll == 1`` a
+    ``evaluar_d20(...)[1]``. Suite completa ANTES de seguir:
+    idéntica (1396). Umbral por atacante:
+    ``ChampionFeatures.umbral_critico`` devuelve
+    ``champion_crit_threshold(nivel)`` (19 desde el 3, 18 desde el
+    15) y 20 si ``atk.spell_attack``; como el helper solo mira los
+    rasgos del atacante, un ajeno siempre ve 20. DECISIÓN: el modelo
+    ``Attack`` no tenía dato que distinga hechizo de arma y
+    ``magical`` también lo usan armas mágicas, así que se añade el
+    campo nuevo ``spell_attack: bool = False`` en ``model/attack.py``
+    (false por defecto = cero efecto en fichas existentes) que pone a
+    True ``rules/spells/casting.py`` (los hechizos SÍ pasan por
+    ``attack_roll``). 9 tests nuevos (19 impacta vs CA 40 / no
+    Champion falla, 18 solo desde el 15, 1 natural, dados doblados
+    con spy de ``roll_dice``, hechizo sin umbral, Warding no
+    convierte en fallo un crítico por rango, umbral 20 sin subclase
+    sin RNG, umbral del rasgo 19/18/20), suite 1405 passed.
+    Commit de A3.
 
 ESTADO ACTUAL
    - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y

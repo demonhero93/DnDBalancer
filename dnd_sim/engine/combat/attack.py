@@ -15,7 +15,8 @@ from ...rules.conditions import (CONDITION_ATTACK_DAMAGE, Condition,
 from ...rules.damage import apply_damage_modifiers, inflict_damage
 from ...core.dice import RollMode, roll_d20, roll_dice
 from ...rules.roll_modifiers import (
-    AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac, resolve_attack_range
+    AttackRange, RANGED_COVER_AC_BONUS, attack_modifiers, effective_ac,
+    evaluar_d20, resolve_attack_range
 )
 
 
@@ -462,7 +463,10 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     roll = result.value
     bonus = attacker.to_hit(atk)
     total = roll + bonus + modifiers.bonus
-    crit = roll == 20
+    # ¿Crítico y 1 natural? según el umbral del ATACANTE (20 por
+    # defecto; Champion lo amplía vía duck-typing). Mismo sitio y mismo
+    # orden que el antiguo ``roll == 20``.
+    crit, fallo_natural = evaluar_d20(roll, attacker, atk)
     # (5) CA efectiva (cobertura a distancia).
     ca_efectiva = effective_ac(target)
     # Estadística: ataques recibidos por objetivos a distancia.
@@ -478,7 +482,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     # así que el rasgo no tendría nada que hacer). Como la tirada y la CA
     # se le pasan, el rasgo solo gasta su reacción si con eso el golpe
     # falla.
-    if roll != 1 and not crit and total >= ca_efectiva:
+    if not fallo_natural and not crit and total >= ca_efectiva:
         extra_ca = _bonus_defensivo(target, attacker, rango, total,
                                     ca_efectiva, ctx, rng)
         if extra_ca:
@@ -489,7 +493,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     # es crítico, que siempre impacta pero la resistencia aplica—; un
     # 1 natural no consulta.
     resistencia_defensor = False
-    if crit or (roll != 1 and total >= ca_efectiva):
+    if crit or (not fallo_natural and total >= ca_efectiva):
         defensa = _defensa_del_bando(target, attacker, rango,
                                      total=total, ca=ca_efectiva,
                                      ctx=ctx, rng=rng)
@@ -497,7 +501,7 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             resistencia_defensor = bool(defensa.resistencia)
             if not crit and defensa.ac_extra:
                 ca_efectiva += defensa.ac_extra
-    hit = crit or (roll != 1 and total >= ca_efectiva)
+    hit = crit or (not fallo_natural and total >= ca_efectiva)
     # (6b) Punto ÚNICO de decisión de maniobras (Battle Master): tras
     # conocer la tirada y ANTES de aplicar efectos. Puede corregir el
     # total y el impacto (Precision); sin rasgo que lo defina el flujo
@@ -506,8 +510,8 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                                    roll=roll, total=total, ca=ca_efectiva,
                                    hit=hit, ctx=ctx, rng=rng, log=log)
     # Crítico automático (objetivo paralizado o inconsciente a cuerpo a
-    # cuerpo): el impacto es crítico aunque el d20 no sea 20; un 1 natural
-    # sigue fallando.
+    # cuerpo): el impacto es crítico aunque el d20 esté fuera del rango
+    # crítico; un 1 natural sigue fallando.
     if hit and modifiers.auto_crit_on_hit:
         crit = True
     # (7) Termina la invisibilidad del atacante («until it attacks»), ya

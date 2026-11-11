@@ -47,6 +47,37 @@ def effective_ac(target: Any) -> int:
     return ac
 
 
+def umbral_critico(attacker: Any, atk: Any = None) -> int:
+    """Mínimo d20 que cuenta como Impacto Crítico para este atacante/ataque.
+
+    Consulta por duck-typing el método ``umbral_critico(ataque)`` de los
+    rasgos del **atacante** (sin entrada en ``HOOK_NAMES``: el motor solo
+    lo mira, no lo despacha). Sin rasgo o sin método → 20 y sin RNG; el
+    resultado se acota a [2, 20]. Como solo se miran los rasgos del
+    atacante, un combatiente sin la subclase (ajeno) siempre ve 20.
+    """
+    umbral = 20
+    for rasgo in getattr(attacker, "traits", None) or []:
+        fn = getattr(rasgo, "umbral_critico", None)
+        if callable(fn):
+            v = int(fn(atk))
+            umbral = min(umbral, max(2, min(20, v)))
+    return umbral
+
+
+def evaluar_d20(roll: int, attacker: Any, atk: Any = None) -> tuple[bool, bool]:
+    """Decisión de una tirada d20: ``(¿crítico?, ¿1 natural?)``.
+
+    Un 1 natural falla siempre y nunca es crítico. Fuera del 1, un valor
+    >= :func:`umbral_critico` es crítico e impacta siempre (igual que el
+    20 natural). Sin rasgos el umbral es 20: resultado idéntico al
+    ``roll == 20`` de siempre, sin RNG y en el mismo orden de llamadas.
+    """
+    if roll == 1:
+        return False, True
+    return roll >= umbral_critico(attacker, atk), False
+
+
 @dataclass
 class AttackModifiers:
     """Modificadores de una tirada de ataque (reglas, no decisiones)."""

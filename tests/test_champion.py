@@ -10,16 +10,21 @@ dato sin efecto.
 from __future__ import annotations
 
 import random
+from types import SimpleNamespace
 
 import pytest
 
-from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
+from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import (
     champion_crit_threshold,
     heroic_rally_amount,
 )
 from dnd_sim.rules.classes import CLASSES, apply_fighter
-from dnd_sim.rules.classes.fighter import ChampionFeatures, apply_champion
+from dnd_sim.rules.classes.fighter import (
+    ChampionFeatures,
+    apply_cavalier,
+    apply_champion,
+)
 
 # --- A1: tablas --------------------------------------------------------------
 
@@ -144,3 +149,163 @@ def test_sin_subclase_no_hay_rasgo_ni_datos_de_champion():
     # Cero consulta: sin el rasgo nadie lleva los datos congelados.
     assert not any(hasattr(t, "heroic_warrior") for t in pj.traits)
     assert not any(hasattr(t, "defy_death") for t in pj.traits)
+
+
+# --- A3: rango crítico ampliado ------------------------------------------------
+
+def _parchea_d20(monkeypatch, valor: int) -> None:
+    from dnd_sim.core.dice import D20Result
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode: D20Result(value=valor, rolls=[valor], mode=mode))
+
+
+def test_el_critico_con_19_impacta_aunque_no_alcance_la_ca(monkeypatch):
+    _parchea_d20(monkeypatch, 19)
+    pj, _ = _champion(level=5)
+    enemigo = Monster("Toloso", max_hp=60, ac=40, abilities=_abilities())
+    atk = Attack("Espada larga", "1d8", ability="str")
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    log: list[str] = []
+    atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), log=log)
+    assert any("CRÍTICO" in line for line in log)
+    assert enemigo.hp < enemigo.max_hp
+
+
+def test_un_no_champion_con_19_falla_contra_la_misma_ca(monkeypatch):
+    _parchea_d20(monkeypatch, 19)
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    enemigo = Monster("Toloso", max_hp=60, ac=40, abilities=_abilities())
+    atk = Attack("Espada larga", "1d8", ability="str")
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    log: list[str] = []
+    atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), log=log)
+    assert any("falla" in line for line in log)
+    assert not any("CRÍTICO" in line for line in log)
+    assert enemigo.hp == enemigo.max_hp
+
+
+def test_el_rango_ampliado_a_18_solo_funciona_desde_el_nivel_15(monkeypatch):
+    _parchea_d20(monkeypatch, 18)
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    pj15, _ = _champion(level=15)
+    alto = Monster("Alto", max_hp=60, ac=40, abilities=_abilities())
+    log15: list[str] = []
+    atk_mod.attack_roll(pj15, alto, Attack("Espada", "1d8", ability="str"),
+                        random.Random(1), log=log15)
+    assert any("CRÍTICO" in line for line in log15)
+
+    pj3, _ = _champion(level=3)
+    bajo = Monster("Bajo", max_hp=60, ac=40, abilities=_abilities())
+    log3: list[str] = []
+    atk_mod.attack_roll(pj3, bajo, Attack("Espada", "1d8", ability="str"),
+                        random.Random(1), log=log3)
+    assert any("falla" in line for line in log3)
+
+
+def test_el_un_natural_sigue_fallen_do_para_un_champion(monkeypatch):
+    _parchea_d20(monkeypatch, 1)
+    pj, _ = _champion(level=15)
+    enemigo = Monster("Cerdo", max_hp=60, ac=10, abilities=_abilities())
+    atk = Attack("Espada larga", "1d8", ability="str")
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    log: list[str] = []
+    atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), log=log)
+    assert any("falla" in line for line in log)
+    assert not any("CRÍTICO" in line for line in log)
+    assert enemigo.hp == enemigo.max_hp
+
+
+def test_los_dados_del_critico_se_doblan_con_el_rango_ampliado(monkeypatch):
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    _parchea_d20(monkeypatch, 19)
+    criticos: list[bool] = []
+    original = atk_mod.roll_dice
+
+    def espia(expr, rng, crit=False, **kw):
+        criticos.append(bool(crit))
+        return original(expr, rng, crit=crit, **kw)
+
+    monkeypatch.setattr(atk_mod, "roll_dice", espia)
+    pj, _ = _champion(level=3, fighting_style="Archery")
+    enemigo = Monster("Blanco", max_hp=60, ac=40, abilities=_abilities())
+    atk_mod.attack_roll(pj, enemigo, Attack("Espada", "1d8", ability="str"),
+                        random.Random(1), log=[])
+    assert criticos, "el daño no pasó por roll_dice"
+    assert all(criticos)
+
+
+def test_ataque_de_hechizo_no_usa_el_umbral_de_champion(monkeypatch):
+    _parchea_d20(monkeypatch, 19)
+    pj, _ = _champion(level=15)
+    destello = Attack("Destello", "1d8", ability="int",
+                      spell_attack=True)
+    enemigo = Monster("Toloso", max_hp=60, ac=40, abilities=_abilities())
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    log: list[str] = []
+    atk_mod.attack_roll(pj, enemigo, destello, random.Random(1), log=log)
+    assert any("falla" in line for line in log)
+    assert not any("CRÍTICO" in line for line in log)
+
+
+def test_warding_no_convierte_en_fallo_un_critico_por_rango_ampliado(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+    from dnd_sim.engine.combat import attack as atk_mod
+
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    monkeypatch.setattr(cav_mod, "roll_dice",
+                        lambda expr, rng, crit=False: 8)
+    monkeypatch.setattr(atk_mod, "roll_dice",
+                        lambda expr, rng, crit=False: 3)
+    _parchea_d20(monkeypatch, 19)
+    atacante, _ = _champion(fighting_style="Archery")
+    # Defensor Cavalier 7 con CA 40: sin rango ampliado el 19 no
+    # entraría jamás; con él, crítico → Warding no lo convierte en fallo.
+    defensor = _pj(name="Doris", max_hp=70)
+    apply_fighter(defensor, level=7)
+    apply_cavalier(defensor, level=7)
+    defensor.ac = 40
+    ctx = SimpleNamespace(round=1, actor=atacante, rng=random.Random(1),
+                           combatants=[atacante, defensor], log=None)
+    log: list[str] = []
+    atk_mod.attack_roll(atacante, defensor,
+                        Attack("Golpe", "1d6", ability="str"),
+                        random.Random(1), log=log, ctx=ctx,
+                        allow_friendly=True)
+    assert any("CRÍTICO" in line for line in log)
+    assert defensor.hp < defensor.max_hp
+
+
+def test_sin_subclase_el_umbral_de_critico_es_20_sin_rng():
+    from dnd_sim.rules.roll_modifiers import evaluar_d20, umbral_critico
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    atk = Attack("Espada larga", "1d8", ability="str")
+    assert umbral_critico(pj, atk) == 20
+    assert evaluar_d20(19, pj, atk) == (False, False)
+    assert evaluar_d20(20, pj, atk) == (True, False)
+    assert evaluar_d20(1, pj, atk) == (False, True)
+
+
+def test_el_umbral_del_rasgo_es_19_o_18_y_20_para_hechizos():
+    from dnd_sim.rules.roll_modifiers import umbral_critico
+
+    pj3, _ = _champion(level=3)
+    pj15, _ = _champion(level=15)
+    atk = Attack("Espada larga", "1d8", ability="str")
+    destello = Attack("Destello", "1d8", ability="int",
+                      spell_attack=True)
+    assert umbral_critico(pj3, atk) == 19
+    assert umbral_critico(pj15, atk) == 18
+    assert umbral_critico(pj15, destello) == 20

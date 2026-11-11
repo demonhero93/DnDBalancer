@@ -42,6 +42,7 @@ from .....core.classes import (
     FIGHTER_STYLES,
     MAX_LEVEL,
     MIN_LEVEL,
+    champion_crit_threshold,
 )
 from ....traits.base import Trait
 from ..features import FighterFeatures
@@ -79,6 +80,22 @@ class ChampionFeatures(Trait):
     defy_death: bool = True
     # Dueño (guards de hooks y despacho de ``on_turn_start``).
     owner: Any = field(default=None, repr=False, compare=False)
+
+    def umbral_critico(self, atk: Any = None) -> int:
+        """Rango crítico del Champion (Improved/Superior Critical).
+
+        Mínimo d20 que cuenta como Impacto Crítico en un ataque **con
+        arma** de este combatiente: 19 desde el nivel 3 y 18 desde el
+        15. Un ataque de hechizo (``atk.spell_attack``) no usa el
+        umbral; un 1 natural sigue fallando siempre (lo decide
+        ``evaluar_d20``). El helper solo consulta los rasgos del
+        ATACANTE, así que un atacante ajeno (sin la subclase) ve 20.
+        """
+        if self.level < 3:
+            return 20
+        if atk is not None and bool(getattr(atk, "spell_attack", False)):
+            return 20
+        return champion_crit_threshold(self.level)
 
 
 def apply_champion(pj: Any, level: int | None = None,

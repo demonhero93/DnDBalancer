@@ -248,6 +248,8 @@ def spell_action(spell: Spell, spellcasting: Spellcasting | None = None,
             # Un hechizo ES mágico: sus objetivos aplican las reglas
             # ``nonmagical_*`` solo contra daño no mágico.
             magical=True,
+            # Rango crítico de Champion: NO afecta a hechizos.
+            spell_attack=True,
         )
         # Daño extra propio del hechizo (True Strike): sus dados también
         # se duplican en crítico (como cualquier daño extra del ataque).
