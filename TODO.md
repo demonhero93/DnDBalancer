@@ -306,6 +306,9 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   Champion consume RNG nuevo) + ventaja en Atletismo
   (`modify_check_modifiers`, patrón Furia) + movimiento tras crítico
   `# TODO` dato sin efecto + tests.
+  **Hecho**: recuento de fuentes con `desventaja_iniciativa()`
+  (anulación estándar); `# TODO` en `umbral_critico`; 10 tests,
+  suite 1415 passed.
 - [ ] A5 — Additional Fighting Style: generalizar `FighterFeatures` a
   propiedad `estilos` (sin romper `estilo` ni `fighting_style`),
   refactor con suite verde, `apply_champion` elige con `pick`/kwarg y

@@ -1883,6 +1883,25 @@ CHAMPION (2026-11-11)
     convierte en fallo un crítico por rango, umbral 20 sin subclase
     sin RNG, umbral del rasgo 19/18/20), suite 1405 passed.
     Commit de A3.
+  - (4) Remarkable Athlete (A4): ``roll_initiative`` pasa a contar
+    fuentes — flag ``initiative_with_advantage`` (Feral Instinct, sin
+    cambios) O duck-typing ``ventaja_iniciativa()`` frente a
+    ``desventaja_iniciativa()`` (ambos SIN entrada en ``HOOK_NAMES``):
+    solo ventaja → dos d20 y mayor, solo desventaja → dos d20 y
+    menor, ambas/ninguna → normal. RNG de los demás EXACTO (un
+    ``d20`` por combatiente; sin rasgos no se consulta nada).
+    ``ChampionFeatures.ventaja_iniciativa()`` = nivel >= 3 y
+    ``modify_check_modifiers`` añade «Atleta notable» SOLO en
+    ``skill == "athletics"`` y solo del dueño (patrón Furia; la
+    anulación con desventaja es automática vía
+    ``CheckModifiers.mode``); sin competencia añadida. Moverse tras
+    un crítico queda como ``# TODO`` dato sin efecto (sin campo
+    velocidad; test freeze ``test_moverse_tras_un_critico_es_dato_sin_efecto``).
+    10 tests nuevos (iniciativa ventaja solo Champion, RNG exacto
+    sin Champion, anulación ventaja+desventaja, desventaja → menor,
+    Atletismo ventaja, otras habilidades no, anulación con
+    veneno/POISONED, sin competencia, Atletismo normal sin subclase,
+    movimiento sin efecto), suite 1415 passed. Commit de A4.
 
 ESTADO ACTUAL
    - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y

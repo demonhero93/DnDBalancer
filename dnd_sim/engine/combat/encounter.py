@@ -66,11 +66,28 @@ def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
 
 def roll_initiative(combatants: list[Combatant], rng: random.Random) -> list[Combatant]:
     for c in combatants:
-        if getattr(c, "initiative_with_advantage", False):
-            # Feral Instinct: ventaja. Fuera de esta rama el RNG sigue su
-            # curso normal, así que el orden de tiradas de los demás no
-            # cambia respecto a un combate sin la feature.
+        # Fuentes de ventaja/desventaja de la iniciativa: el flag
+        # ``initiative_with_advantage`` (Feral Instinct) y el
+        # duck-typing ``ventaja_iniciativa()``/``desventaja_iniciativa()``
+        # (Remarkable Athlete, Champion) —sin imports de rules, cada
+        # rasgo aplica sus guards y no consume RNG solo—; si hay de
+        # ambos lados se anulan y se tira normal (regla estándar).
+        ventaja = bool(getattr(c, "initiative_with_advantage", False))
+        desventaja = False
+        for rasgo in getattr(c, "traits", None) or []:
+            fn = getattr(rasgo, "ventaja_iniciativa", None)
+            if callable(fn) and fn():
+                ventaja = True
+            fn = getattr(rasgo, "desventaja_iniciativa", None)
+            if callable(fn) and fn():
+                desventaja = True
+        if ventaja and not desventaja:
+            # Fuera de estas ramas el RNG sigue su curso normal, así
+            # que el orden de tiradas de los demás no cambia respecto
+            # a un combate sin la feature.
             roll = roll_d20(rng, RollMode.ADVANTAGE).value
+        elif desventaja and not ventaja:
+            roll = roll_d20(rng, RollMode.DISADVANTAGE).value
         else:
             roll = d20(rng)
         # Ambush (Battle Master): consulta duck-typing (sin imports de

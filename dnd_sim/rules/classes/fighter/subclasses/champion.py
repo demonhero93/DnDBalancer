@@ -95,7 +95,33 @@ class ChampionFeatures(Trait):
             return 20
         if atk is not None and bool(getattr(atk, "spell_attack", False)):
             return 20
+        # TODO: al conseguir un crítico, moverte hasta la mitad de tu
+        # velocidad sin provocar ataques de oportunidad (dato sin
+        # efecto: el sim no modela velocidad ni movimiento).
         return champion_crit_threshold(self.level)
+
+    def ventaja_iniciativa(self) -> bool:
+        """Remarkable Athlete: ventaja en la tirada de iniciativa (3+).
+
+        Lo consulta ``roll_initiative`` por duck-typing (sin RNG en sí:
+        el motor decide el modo). Se anula con desventaja por la regla
+        estándar; sin la subclase el motor ni lo consulta.
+        """
+        return self.level >= 3
+
+    def modify_check_modifiers(self, mods: Any, target: Any, ability: str,
+                               skill: str | None = None) -> None:
+        """Remarkable Athlete: ventaja en pruebas de Atletismo (3+).
+
+        Patrón Furia del bárbaro: solo el dueño y solo la habilidad
+        ``athletics`` (no concede competencia). La ventaja se anula con
+        desventaja en ``CheckModifiers.mode``; otras habilidades y
+        pruebas puras de característica no reciben nada.
+        """
+        if self.level < 3 or target is not self.owner:
+            return
+        if skill == "athletics":
+            mods.advantage_sources.append("Atleta notable")
 
 
 def apply_champion(pj: Any, level: int | None = None,

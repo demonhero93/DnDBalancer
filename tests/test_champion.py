@@ -309,3 +309,147 @@ def test_el_umbral_del_rasgo_es_19_o_18_y_20_para_hechizos():
     assert umbral_critico(pj3, atk) == 19
     assert umbral_critico(pj15, atk) == 18
     assert umbral_critico(pj15, destello) == 20
+
+
+# --- A4: Remarkable Athlete ---------------------------------------------------
+
+def test_la_iniciativa_tira_dos_d20_y_toma_el_mayor_solo_para_el_champion(
+        monkeypatch):
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.engine.combat import encounter as enc_mod
+
+    modos: list = []
+    original = enc_mod.roll_d20
+
+    def espia(rng, mode):
+        modos.append(mode)
+        return original(rng, mode)
+
+    monkeypatch.setattr(enc_mod, "roll_d20", espia)
+    pj, _ = _champion()
+    enc_mod.roll_initiative([pj], random.Random(0))
+    assert modos == [RollMode.ADVANTAGE]
+    assert pj.initiative is not None
+
+
+def test_sin_champion_la_iniciativa_consume_un_d20_por_combatiente(monkeypatch):
+    from dnd_sim.engine.combat import encounter as enc_mod
+
+    tiradas: list = []
+    monkeypatch.setattr(enc_mod, "d20",
+                        lambda rng: (tiradas.append(1), 10)[1])
+    monkeypatch.setattr(
+        enc_mod, "roll_d20",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("sin la subclase no se pide ventaja")))
+    a, b = _pj(name="A"), _pj(name="B")
+    enc_mod.roll_initiative([a, b], random.Random(0))
+    assert len(tiradas) == 2  # un d20 por combatiente: RNG exacto
+
+
+def test_ventaja_y_desventaja_de_iniciativa_se_anulan(monkeypatch):
+    from dnd_sim.engine.combat import encounter as enc_mod
+
+    class _Ambas:
+        def ventaja_iniciativa(self):
+            return True
+
+        def desventaja_iniciativa(self):
+            return True
+
+    tiradas: list = []
+    monkeypatch.setattr(enc_mod, "d20",
+                        lambda rng: (tiradas.append(1), 10)[1])
+    monkeypatch.setattr(
+        enc_mod, "roll_d20",
+        lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("con ambas fuentes se tira normal")))
+    pj, _ = _champion()
+    pj.traits.append(_Ambas())
+    enc_mod.roll_initiative([pj], random.Random(0))
+    assert len(tiradas) == 1
+
+
+def test_la_desventaja_de_iniciativa_tira_dos_d20_y_toma_el_menor(
+        monkeypatch):
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.engine.combat import encounter as enc_mod
+
+    class _Desventaja:
+        def ventaja_iniciativa(self):
+            return False
+
+        def desventaja_iniciativa(self):
+            return True
+
+    modos: list = []
+    original = enc_mod.roll_d20
+
+    def espia(rng, mode):
+        modos.append(mode)
+        return original(rng, mode)
+
+    monkeypatch.setattr(enc_mod, "roll_d20", espia)
+    pj = _pj()
+    pj.traits.append(_Desventaja())
+    enc_mod.roll_initiative([pj], random.Random(0))
+    assert modos == [RollMode.DISADVANTAGE]
+
+
+def test_atletismo_recibe_ventaja_para_el_champion():
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.rules.checks import skill_check
+
+    pj, _ = _champion()
+    res = skill_check(pj, "athletics", 15, random.Random(0))
+    assert res.mode == RollMode.ADVANTAGE
+    assert len(res.rolls) == 2
+
+
+def test_las_demas_habilidades_no_reciben_ventaja_del_champion():
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.rules.checks import skill_check
+
+    pj, _ = _champion()
+    res = skill_check(pj, "stealth", 15, random.Random(0))
+    assert res.mode == RollMode.NORMAL
+    assert len(res.rolls) == 1
+
+
+def test_la_ventaja_de_atletismo_se_anula_con_desventaja():
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.rules.checks import skill_check
+    from dnd_sim.rules.conditions import Condition, apply_condition
+
+    pj, _ = _champion()
+    ctx = SimpleNamespace(round=1, combatants=[pj], rng=random.Random(1),
+                           log=None)
+    apply_condition(pj, Condition.POISONED, ctx)  # desventaja en pruebas
+    res = skill_check(pj, "athletics", 15, random.Random(0))
+    assert res.mode == RollMode.NORMAL
+    assert len(res.rolls) == 1
+
+
+def test_remarkable_athlete_no_concede_competencia_en_atletismo():
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    antes = set(pj.skill_proficiencies)
+    apply_champion(pj, level=5)
+    assert set(pj.skill_proficiencies) == antes
+
+
+def test_sin_subclase_atletismo_tira_normal_sin_ventaja_ni_rng_extra():
+    from dnd_sim.core.dice import RollMode
+    from dnd_sim.rules.checks import skill_check
+
+    pj = _pj()
+    apply_fighter(pj, level=5)
+    res = skill_check(pj, "athletics", 15, random.Random(0))
+    assert res.mode == RollMode.NORMAL
+    assert len(res.rolls) == 1
+
+
+def test_moverse_tras_un_critico_es_dato_sin_efecto():
+    # El modelo no tiene campo de velocidad: no hay nada que mover.
+    pj, _ = _champion()
+    assert not hasattr(pj, "speed")
