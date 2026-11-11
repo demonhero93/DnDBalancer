@@ -1817,6 +1817,17 @@ CAVALIER (2026-11-10)
     ``ARGUMENTOS-CLI.md`` sigue sin commitear (trabajo ajeno).
     Casilla ``Verificación`` de ``TODO.md`` [x]. FIN sesión Cavalier.
 
+CHAMPION (2026-11-11)
+  - (1) Tablas (A1): ``champion_crit_threshold(level)`` en
+    ``core/classes.py`` — 20 por debajo del nivel 3, 19 desde el 3
+    (Improved Critical) y 18 desde el 15 (Superior Critical), con el
+    ``_clamp`` de nivel — y ``heroic_rally_amount(con_mod)`` =
+    ``max(0, 5 + con_mod)`` (Heroic Rally, nivel 18). Ambas en
+    ``__all__``. Tests en ``tests/test_champion.py`` (fichero nuevo,
+    2 tests: umbral por nivel 1-20 y cura con CON alta/normal/baja).
+    Ningún test existente cambia (solo se añaden funciones
+    puras). Commit de A1.
+
 ESTADO ACTUAL
    - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y
      21980 líneas (1387 tests en verde, medido 2026-11-11).

@@ -181,6 +181,27 @@ def fighter_extra_attacks_for(level: int) -> int:
     return 1
 
 
+def champion_crit_threshold(level: int) -> int:
+    """Rango crítico de Champion según el nivel (20 / 19 / 18).
+
+    Improved Critical (3) amplía el Impacto Crítico al 19 y Superior
+    Critical (15) al 18; por debajo del nivel 3 el rango sigue siendo
+    el 20 natural. Un 1 natural sigue fallando siempre y los ataques
+    de hechizo no consultan esta tabla.
+    """
+    lvl = _clamp(level)
+    if lvl >= 15:
+        return 18
+    if lvl >= 3:
+        return 19
+    return 20
+
+
+def heroic_rally_amount(con_mod: int) -> int:
+    """PG que recupera Heroic Rally (Champion 18): 5 + mod CON (mín. 0)."""
+    return max(0, 5 + int(con_mod))
+
+
 #: Nivel en el que el Fighter gana cada feature (PHB 2024).
 #: Solo documentación/paridad: la simulación consulta el ``level`` directo.
 FIGHTER_FEATURES: dict[int, tuple[str, ...]] = {
@@ -338,8 +359,10 @@ __all__ = [
     "arcane_shot_uses",
     "cavalier_mark_extra_damage",
     "cavalier_mark_uses",
+    "champion_crit_threshold",
     "extra_attacks_for",
     "fighter_extra_attacks_for",
+    "heroic_rally_amount",
     "indomitable_uses",
     "maneuvers_known_count",
     "rage_damage",

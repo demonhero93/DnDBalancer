@@ -273,6 +273,53 @@ Fuera de esta sesión (siguen pendientes): el paquete
 tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
 (`battle_master.py`, 845 líneas).
 
+## Champion: plan de sesión
+
+(una casilla = un commit; entrada en PASOS tras cada paso)
+
+- [x] A1 — Tablas en `core/classes.py` (`champion_crit_threshold`,
+  `heroic_rally_amount`) + tests de tablas por nivel.
+  **Hecho**: ambas con `_clamp`/`max(0, ...)`; 2 tests, fichero
+  `tests/test_champion.py`.
+- [ ] A2 — Esqueleto `fighter/subclasses/champion.py`
+  (`ChampionFeatures`, `apply_champion` con kwarg
+  `additional_fighting_style` validado; la aplicación del estilo se
+  completa en A5) + registro `"champion"` y reexportes + tests
+  (registro/equivalencia, error clase/nivel, Heroic Warrior y Defy
+  Death dato sin efecto, cero RNG sin subclase). Cambio esperado en
+  los 3 tests de freeze de registro (explicado en PASOS ANTES de
+  tocarlos).
+- [ ] A3 — Rango crítico ampliado: refactor previo (helper
+  `evaluar_d20`/`umbral_critico` en `rules/roll_modifiers.py`, suite
+  idéntica ANTES de seguir) + umbral por atacante duck-typing
+  (`ChampionFeatures.umbral_critico`, campo `spell_attack` para no
+  afectar a hechizos) + verificación de consumidores (Precision,
+  Warding, Sweeping, Studied, reacciones) + tests.
+- [ ] A4 — Remarkable Athlete: ventaja en iniciativa
+  (`ventaja_iniciativa()` duck-typing en `roll_initiative`, solo
+  Champion consume RNG nuevo) + ventaja en Atletismo
+  (`modify_check_modifiers`, patrón Furia) + movimiento tras crítico
+  `# TODO` dato sin efecto + tests.
+- [ ] A5 — Additional Fighting Style: generalizar `FighterFeatures` a
+  propiedad `estilos` (sin romper `estilo` ni `fighting_style`),
+  refactor con suite verde, `apply_champion` elige con `pick`/kwarg y
+  aplica mutaciones (Defense) + tests.
+- [ ] A6 — Heroic Rally: `on_turn_start` (patrón Life-Giving Force),
+  Bloodied `pg * 2 <= pg_max`, `heroic_rally_amount` recortado a los
+  PG máximos, sin RNG + tests.
+- [ ] B — Decisiones de diseño: 3 tests de freeze de registro
+  explicados ANTES; límites con test freeze (Heroic Warrior, Defy
+  Death, movimiento tras crítico); `TODO.md` con Champion hecha y
+  pendientes reales (Eldritch Knight, Psi Warrior, condiciones de
+  reabrir Heroic Warrior/Defy Death).
+- [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, helper de
+  crítico por umbral, soporte de ventaja en iniciativa/pruebas,
+  recuentos), `PASOS-ANTERIORES.txt` (bloque CHAMPION + ESTADO
+  ACTUAL), `TODO.md` (receta y pendientes).
+- [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
+  `python tools/capas.py`, `graphify update .` + commit final con el
+  grafo.
+
 ## Fighter: cómo añadir una subclase
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de
