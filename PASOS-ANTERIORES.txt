@@ -1776,6 +1776,30 @@ CAVALIER (2026-11-10)
     charge_probability` ya lo cubren los tests de A1/A2; estos tests
     cubren trait → motor. NINGÚN test existente cambió. Suite final:
     1386 passed + arquitectura 3 passed (0 fallos). Commit de A8.
+  - (9) B: decisiones de diseño. Registro: el cambio de los tests de
+    freeze de subclases ya estaba explicado ANTES en la entrada (2)
+    (A2), nada nuevo que tocar. Límites modelados con test freeze:
+    Born to the Saddle (test de A2), velocidad 0 de la marca (test de
+    A4) y 5 ft de Warding — test nuevo
+    ``test_warding_no_modela_los_5_pies_porque_el_sim_no_tiene_posiciones``
+    (el sim no guarda posiciones: el rasgo defiende a cualquier aliado
+    vivo del bando, sin datos de distancia) más una nota en el
+    docstring de ``defensa_ante_ataque``. Tests existentes tocados (2,
+    explicados ANTES de este commit):
+    ``test_hold_the_line_contraataca_al_que_ataca_a_un_aliado`` (A6) y
+    ``test_vigilant_defender_dos_oportunidades_en_una_ronda_con_ambas_reacciones_libres``
+    (A7) pasan a ``_bajo_ataque(..., fighting_style="Archery")``: el
+    estilo por defecto lo elige el ``pick`` global de estilos
+    (``_RNG_CREACION``) y NO es determinista — el test nuevo consumió
+    un pick, movió la secuencia y dejó al descubierto que esos dos
+    asserts de daño exacto (56 y 52) dependían de la suerte del
+    estilo (Dueling habría sumado +2 al contraataque). Ninguna
+    conducta del sim cambia, solo la plantilla de los tests. Los
+    pendientes reales de Cavalier (velocidad 0, monturas, 5 ft,
+    restricción «mismo turno» de Vigilant Defender) quedan listados
+    en la casilla B de ``TODO.md``, todos congelados o documentados.
+    Suite final: 1387 passed + arquitectura 3 passed (0 fallos).
+    Commit de B.
 
 ESTADO ACTUAL
    - 83 módulos en dnd_sim/ (19463 líneas); tests/ con 53 ficheros y

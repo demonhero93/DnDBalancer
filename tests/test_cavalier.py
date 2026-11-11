@@ -789,6 +789,21 @@ def test_sin_subclase_la_defensa_ante_ataque_no_consulta_ni_toca_rng():
     assert resultado is None  # sin rasgo que lo defina: ni RNG ni tiradas
 
 
+def test_warding_no_modela_los_5_pies_porque_el_sim_no_tiene_posiciones(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.cavalier as cav_mod
+
+    # El enunciado pide defender a quien esté a 5 pies; sin posiciones
+    # el rasgo defiende a cualquier aliado vivo del bando (freeze de la
+    # simplificación, igual que Born to the Saddle y la velocidad 0).
+    monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
+    pj, trait, aliado, _, ctx = _bajo_ataque()
+    resultado = _defiende(trait, aliado, ctx, random.Random(1))
+    assert resultado is not None  # aliado defendido sin datos de distancia
+    assert not hasattr(pj, "position")
+    assert not hasattr(aliado, "position")
+
+
 # --- A6: Hold the Line --------------------------------------------------------
 
 
@@ -798,7 +813,10 @@ def test_hold_the_line_contraataca_al_que_ataca_a_un_aliado(monkeypatch):
 
     monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
     _parchea_ataque(monkeypatch, valor_d20=15, dados=1)
-    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=10)
+    # Estilo fijo: el estilo por defecto se elige con un pick global no
+    # determinista y Dueling sumaría +2 al contraataque.
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(
+        level=10, fighting_style="Archery")
     # Sin usos de Warding: la consulta de CA ocurre ANTES y gastaría la
     # reacción que Hold the Line necesita (una por ronda compartida).
     trait.warding_usos.uses_left = 0
@@ -963,7 +981,10 @@ def test_vigilant_defender_dos_oportunidades_en_una_ronda_con_ambas_reacciones_l
 
     monkeypatch.setattr(cav_mod, "pick", lambda rng, seq: seq[-1])
     _parchea_ataque(monkeypatch, valor_d20=15, dados=1)
-    pj, trait, aliado, enemigo, ctx = _bajo_ataque(level=18)
+    # Estilo fijo: el pick global de estilos no es determinista y
+    # Dueling sumaría +2 a cada contraataque.
+    pj, trait, aliado, enemigo, ctx = _bajo_ataque(
+        level=18, fighting_style="Archery")
     ctx.actor = enemigo
     trait.warding_usos.uses_left = 0  # que la consulta de CA no gaste reacción
     atk = Attack("Golpe", "1d6", ability="str")

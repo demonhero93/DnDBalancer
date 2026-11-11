@@ -290,7 +290,10 @@ class CavalierFeatures(Trait):
         resultado ``SimpleNamespace(ac_extra, resistencia)`` alimenta
         el recálculo de CA y, si el golpe sigue entrando, la resistencia
         temporal que aplica el motor (mitad, sin acumularse con la
-        resistencia previa del tipo). Gasta reacción y un uso.
+        resistencia previa del tipo). Gasta reacción y un uso. Los 5
+        pies del enunciado no se modelan: el sim no guarda posiciones,
+        así que basta con que el objetivo sea el dueño o un aliado
+        vivo (decisión documentada, con test freeze).
         """
         if self.level < 7:
             return None

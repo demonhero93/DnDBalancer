@@ -228,10 +228,26 @@ receta de arriba.
   guard de melee, patrón Reckless para 0.0/1.0 sin RNG); CD
   8+PB+mod FUE con `saving_throw`+`registrar_resistencia`; PRONE con
   EscapeCheck de Topple; 9 tests, suite 1386 passed.
-- [ ] B — Decisiones de diseño: cambio esperado del test de registro
+- [x] B — Decisiones de diseño: cambio esperado del test de registro
   en `tests/test_fighter.py` (explicado ANTES de tocarlo), límites
   modelados con tests freeze (Born to the Saddle, velocidad 0, 5 ft),
   TODO con pendientes reales.
+  **Hecho**: el cambio del test de registro ya estaba explicado ANTES
+  en PASOS (2) (A2); freeze de límites:
+  `test_born_to_the_saddle_es_dato_sin_efecto` (A2),
+  `test_la_velocidad_cero_del_ataque_especial_es_dato_sin_efecto` (A4)
+  y `test_warding_no_modela_los_5_pies_porque_el_sim_no_tiene_posiciones`
+  (nuevo: el sim no guarda posiciones, el rasgo defiende a cualquier
+  aliado vivo del bando; nota en el docstring de
+  `defensa_ante_ataque`). Tests existentes tocados y explicados ANTES
+  del commit (B): los dos de daño exacto de A6/A7 fijan
+  `fighting_style="Archery"` — el estilo por defecto se elige con el
+  `pick` global de estilos y no es determinista. Pendientes reales
+  Cavalier (todos congelados o documentados): velocidad 0 de la marca
+  (modelo sin campo de velocidad), monturas (Born to the Saddle), 5 ft
+  de Warding (sin posiciones) y la restricción «mismo turno que otra
+  reacción» de Vigilant Defender (sin identificador de turno ajeno en
+  `ctx`).
 - [ ] Docs — `ARCHITECTURE.md` (fila `cavalier`, puntos de consulta,
   `CHARGE_MOVE_PROBABILITY`/`--charge-p`, recuentos),
   `PASOS-ANTERIORES.txt` (bloque CAVALIER + ESTADO ACTUAL), `TODO.md`
