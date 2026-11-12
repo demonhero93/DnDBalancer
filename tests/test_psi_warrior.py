@@ -26,6 +26,8 @@ from dnd_sim.rules.classes.fighter import (
     PsiWarriorFeatures,
     apply_psi_warrior,
 )
+from dnd_sim.rules.conditions import Condition
+from dnd_sim.rules.saves import SaveResult
 
 
 # --- A1: tablas --------------------------------------------------------------
@@ -345,3 +347,73 @@ def test_sin_subclase_el_walker_del_motor_no_consulta_ni_tira_rng(monkeypatch):
                         ctx=ctx)
     assert enemigo.hp == 60 - (5 + 3)
     assert not any("Psionic Strike" in line for line in ctx.log)
+
+
+# --- A4: Telekinetic Thrust ---------------------------------------------------
+
+
+def _salvacion(monkeypatch, llamadas: list, *, pasa: bool) -> None:
+    """saving_throw parcheado en el módulo consumidor (psi_warrior)."""
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    def _fake(target, ability, dc, rng, mode=None, **kwargs):
+        llamadas.append((ability, dc))
+        return SaveResult(ability=ability, dc=dc, rolls=[1], bonus=0,
+                          total=1, success=pasa,
+                          mode=mode or RollMode.NORMAL)
+
+    monkeypatch.setattr(psi_mod, "saving_throw", _fake)
+
+
+def test_el_telekinetic_thrust_pide_salvacion_de_fue_con_cd_8_mas_pb_mas_int(
+        monkeypatch):
+    llamadas: list = []
+    _parchea_golpe(monkeypatch)
+    _salvacion(monkeypatch, llamadas, pasa=False)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=7)
+    _ataca(pj, enemigo, ctx)
+    assert llamadas == [("str", 8 + pj.proficiency + 2)]  # mod INT = +2
+    assert enemigo.conditions.has(Condition.PRONE)
+    assert any("Telekinetic Thrust" in line for line in ctx.log)
+
+
+def test_el_telekinetic_thrust_no_derriba_si_la_salvacion_pasa(monkeypatch):
+    llamadas: list = []
+    _parchea_golpe(monkeypatch)
+    _salvacion(monkeypatch, llamadas, pasa=True)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=7)
+    _ataca(pj, enemigo, ctx)
+    assert len(llamadas) == 1
+    assert not enemigo.conditions.has(Condition.PRONE)
+
+
+def test_el_telekinetic_thrust_no_actua_por_debajo_del_nivel_siete(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("nivel < 7 no pide salvación")
+
+    _parchea_golpe(monkeypatch)
+    monkeypatch.setattr(psi_mod, "saving_throw", _revienta)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=5)
+    _ataca(pj, enemigo, ctx)
+    # Psionic Strike sí gasta el dado, pero Thrust no entra.
+    assert trait.dados_restantes == psionic_dice_count(5) - 1
+    assert not enemigo.conditions.has(Condition.PRONE)
+
+
+def test_el_telekinetic_thrust_no_se_aplica_si_no_se_gasta_el_dado(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin gasto no hay salvación")
+
+    _parchea_golpe(monkeypatch)
+    monkeypatch.setattr(psi_mod, "pick", lambda rng, seq: "no")
+    monkeypatch.setattr(psi_mod, "saving_throw", _revienta)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=7)
+    _ataca(pj, enemigo, ctx)
+    assert trait.dados_restantes == psionic_dice_count(7)
+    assert not enemigo.conditions.has(Condition.PRONE)

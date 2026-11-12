@@ -156,9 +156,11 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   INT con `apply_damage_modifiers`, flag por turno + tests.
   **Hecho**: walker `_dano_extra_de_rasgo` tras el daño principal;
   9 tests, suite 1452 passed.
-- [ ] A4 — Telekinetic Thrust: salvación FUE CD `8+PB+mod INT` al
+- [x] A4 — Telekinetic Thrust: salvación FUE CD `8+PB+mod INT` al
   aplicarse Psionic Strike con nivel >= 7, fallo → PRONE con
   EscapeCheck de Topple + tests.
+  **Hecho**: `_telekinetic_thrust` tras gastar el dado; 4 tests,
+  suite 1456 passed.
 - [ ] A5 — Protective Field (paso delicado, aislado): punto central
   de daño o punto Parry/Warding, guards de la sección 1, reducción
   `max(1, dado + mod INT)`, reacción compartida + tests. Suite

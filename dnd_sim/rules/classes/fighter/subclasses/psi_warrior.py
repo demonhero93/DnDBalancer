@@ -55,7 +55,9 @@ from .....core.dice import roll_dice
 from .....core.enums import DamageType
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick
+from ....conditions import Condition, EscapeCheck, apply_condition
 from ....damage import apply_damage_modifiers, inflict_damage
+from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ..features import FighterFeatures
 
@@ -157,6 +159,35 @@ class PsiWarriorFeatures(Trait):
                        magical=bool(getattr(atk, "magical", False)))
         _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Psionic Strike: "
                        f"{crudo}+{mod_int} = {extra} de fuerza")
+        if self.level >= 7:
+            self._telekinetic_thrust(target, ctx, rng)
+
+    def _telekinetic_thrust(self, target: Any, ctx: Any,
+                            rng: Any) -> None:
+        """Telekinetic Thrust (7): salvación FUE o cae PRONE (Topple).
+
+        Se aplica SIEMPRE que Psionic Strike gasta el dado (sin pick
+        propio): CD ``8 + competencia + mod INT``; fallo → PRONE con el
+        mismo ``EscapeCheck`` de la Maestría Topple y con la Resistencia
+        legendaria despachada como en el resto de salvaciones. Sin
+        ``rng`` no hay salvación que tirar (defensivo: el walker ya lo
+        garantiza).
+        """
+        if rng is None or target is None or self.owner is None:
+            return
+        owner = self.owner
+        cd = (8 + int(getattr(owner, "proficiency", 0) or 0)
+              + int(owner.abilities.mod("int")))
+        sr = saving_throw(target, "str", cd, rng)
+        sr = registrar_resistencia(ctx, target, sr)
+        if sr.success:
+            return
+        apply_condition(target, Condition.PRONE, ctx, source=owner,
+                        escape=EscapeCheck(abilities=("str", "dex"), dc=10,
+                                           consumes_action=False))
+        _log_line(ctx, f"{getattr(target, 'name', target)} cae derribado "
+                       f"(Telekinetic Thrust de "
+                       f"{getattr(owner, 'name', owner)})")
 
 
 def apply_psi_warrior(pj: Any, level: int | None = None,

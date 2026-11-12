@@ -2034,6 +2034,18 @@ PSI WARRIOR (2026-11-12)
     elige con el RNG global de creación y Dueling añadiría +2 al daño
     (mismo criterio que los tests de daño de Cavalier/Champion).
     Suite **1452 passed**. Commit de A3.
+  - (4) Telekinetic Thrust (A4): método ``_telekinetic_thrust`` en el
+    rasgo, llamado al final de ``psionic_strike`` SOLO si se gastó el
+    dado y ``level >= 7``. Salvación de FUE CD ``8 + competencia +
+    mod INT`` (``saving_throw`` + ``registrar_resistencia`` con la
+    Resistencia legendaria despachada); fallo → ``Condition.PRONE`` con
+    el mismo ``EscapeCheck`` de la Maestría Topple (``str``/``dex``, DC
+    10, ``consumes_action=False``) y log. Sin pick propio: la decisión
+    ya la dio Psionic Strike. Imports nuevos: ``saves`` y
+    ``conditions`` desde el rasgo (rules → rules, capas OK). 4 tests
+    (CD y PRONE, salvación pasa → sin PRONE, nivel 7 gate con
+    ``saving_throw`` que revienta si se consulta, sin gasto de dado no
+    hay salvación). Suite **1456 passed**. Commit de A4.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
