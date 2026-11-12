@@ -17,10 +17,12 @@ from .subclasses import (
     BattleMasterFeatures,
     CavalierFeatures,
     ChampionFeatures,
+    PsiWarriorFeatures,
     apply_arcane_archer,
     apply_battle_master,
     apply_cavalier,
     apply_champion,
+    apply_psi_warrior,
 )
 
 #: Registro de la clase Fighter con sus subclases (claves normalizadas).
@@ -44,11 +46,16 @@ FIGHTER_CLASS = register_class(ClassDef(
             name="Champion", class_name="fighter",
             min_level=3, apply=apply_champion,
         ),
+        "psi_warrior": SubclassDef(
+            name="Psi Warrior", class_name="fighter",
+            min_level=3, apply=apply_psi_warrior,
+        ),
     },
 ))
 
 __all__ = ["ActionSurgeAction", "ARCANE_SHOTS", "ArcaneArcherFeatures",
            "BattleMasterFeatures", "CavalierFeatures", "ChampionFeatures",
-           "FIGHTER_CLASS", "FighterFeatures", "SecondWindAction",
-           "apply_arcane_archer", "apply_battle_master", "apply_cavalier",
-           "apply_champion", "apply_fighter"]
+           "FIGHTER_CLASS", "FighterFeatures", "PsiWarriorFeatures",
+           "SecondWindAction", "apply_arcane_archer", "apply_battle_master",
+           "apply_cavalier", "apply_champion", "apply_fighter",
+           "apply_psi_warrior"]

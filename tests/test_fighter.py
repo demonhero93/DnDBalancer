@@ -46,10 +46,13 @@ def test_clase_fighter_esta_registrada_con_arcane_archer():
     # la clave "cavalier" se añade al registro.
     # Cambio esperado con Champion (2026-11-11, explicado en PASOS):
     # la clave "champion" se añade al registro.
+    # Cambio esperado con Psi Warrior (2026-11-12, explicado en PASOS):
+    # la clave "psi_warrior" se añade al registro.
     assert set(CLASSES["fighter"].subclasses) == {"arcane_archer",
                                                   "battle_master",
                                                   "cavalier",
-                                                  "champion"}
+                                                  "champion",
+                                                  "psi_warrior"}
 
 
 def test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter(
@@ -96,7 +99,7 @@ def test_apply_fighter_rechaza_habilidades_fuera_de_la_lista():
 
 
 def test_subclase_de_fighter_inexistente_da_value_error():
-    """El registro ya tiene sus 4 claves: cualquier otra falla."""
+    """El registro ya tiene sus 5 claves: cualquier otra falla."""
     with pytest.raises(ValueError, match="no es una subclase"):
         apply_class(_pj(), "fighter", "paladin")
 

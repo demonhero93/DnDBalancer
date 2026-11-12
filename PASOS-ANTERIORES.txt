@@ -1980,6 +1980,34 @@ PSI WARRIOR (2026-11-12)
     ``tests/test_psi_warrior.py`` (3 tests de tablas por nivel).
     Ningún test existente cambia (funciones puras nuevas). Commit de
     A1.
+  - (2) Esqueleto y registro (A2): fichero nuevo
+    ``rules/classes/fighter/subclasses/psi_warrior.py`` —
+    ``PsiWarriorFeatures`` (dados ``dados_restantes``/``dados_lados``,
+    usos gratuitos ``bulwark_uso_gratuito``/
+    ``telekinetic_master_uso_gratuito``, flag por turno
+    ``psionic_strike_used_this_turn``, estado ``bulwark_activo``/
+    ``bulwark_objetivos``/``telekinetic_master_activo``, sentinels
+    ``telekinetic_movement``/``psi_powered_leap`` = dato sin efecto),
+    ``reset`` (dados llenos + estados al día, patrón Battle Master),
+    ``on_turn_start`` (resetea el flag de Psionic Strike; la purga de
+    Guarded Mind llega en A6) y ``apply_psi_warrior`` (guards
+    ``FighterFeatures`` y nivel >= 3; reserva con las tablas de core).
+    DECISIÓN: el kwarg ``rng`` existe por paridad pero la subclase no
+    elige nada al crear (los ``pick`` de los rasgos usan el rng del
+    combate), así que no hay ``_RNG_CREACION``. Registro
+    ``"psi_warrior"`` en ``fighter/__init__.py``,
+    ``fighter/subclasses/__init__.py``, ``rules/classes/__init__.py``
+    y fachada ``dnd_sim/__init__.py`` (import + ``__all__`` ×2).
+    ``tests/test_arquitectura.py`` NO cambia (fachada por
+    subconjunto). 4 tests de freeze de registro tocados ANTES
+    explicados (``test_fighter`` ×2 — set + docstring «5 claves»,
+    ``test_arcane_archer``, ``test_battle_master``): pasan a
+    ``+ "psi_warrior"``. 8 tests nuevos (registro, equivalencia
+    ``apply_class`` con reseed de ``fighter_mod._RNG_CREACION``,
+    error sin clase, error nivel, dados/tamaño por nivel, ``reset``,
+    Telekinetic Movement + Psi-Powered Leap dato sin efecto sin
+    gastar dados, cero RNG sin subclase). Suite **1443 passed**.
+    Commit de A2.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y

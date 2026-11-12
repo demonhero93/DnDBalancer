@@ -113,8 +113,10 @@ def test_registro_battle_master_bajo_fighter():
     # Cambio esperado con Cavalier (2026-11-10, explicado en PASOS).
     # Cambio esperado con Champion (2026-11-11, explicado en PASOS):
     # la clave "champion" se añade al registro.
+    # Cambio esperado con Psi Warrior (2026-11-12, explicado en PASOS):
+    # la clave "psi_warrior" se añade al registro.
     assert set(subclases) == {"arcane_archer", "battle_master",
-                              "cavalier", "champion"}
+                              "cavalier", "champion", "psi_warrior"}
     sub = subclases["battle_master"]
     assert sub.class_name == "fighter"
     assert sub.min_level == 3
