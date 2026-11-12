@@ -41,6 +41,7 @@ Registro: clave ``"psi_warrior"`` en ``fighter/__init__.py``. Ver
 """
 from __future__ import annotations
 
+import copy
 import random
 from dataclasses import dataclass, field
 from typing import Any
@@ -56,6 +57,7 @@ from .....core.dice import roll_dice
 from .....core.enums import DamageType
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick
+from .....core.targeting import valid_targets
 from .....model.actions import ActionType, CombatAction
 from ....conditions import (Condition, EscapeCheck, apply_condition,
                             remove_condition)
@@ -338,6 +340,139 @@ class PsiBulwarkAction(CombatAction):
                            f"{len(objetivos)} criatura(s)")
 
 
+def _armas_de(criatura: Any) -> list:
+    """Ataques con arma propios de ``criatura`` (patrón battle master)."""
+    ataques = getattr(criatura, "attacks", None)
+    if ataques:
+        return list(ataques)
+    return list(getattr(criatura, "weapons", None) or []) + list(
+        getattr(criatura, "dynamic_weapons", None) or []
+    )
+
+
+def _telekinetic_master_vigente(trait: Any) -> bool:
+    """¿El efecto de Telekinetic Master sigue vigente?
+
+    Concentración parcial (decisión documentada del enunciado): sin
+    mecánica de ruptura reutilizable en el motor, el efecto dura
+    mientras el dueño no esté Incapacitado ni muerto (``can_act``),
+    sin salvaciones de CON; anotado en TODO.md.
+    """
+    if not getattr(trait, "telekinetic_master_activo", False):
+        return False
+    dueno = getattr(trait, "owner", None)
+    if dueno is None:
+        return False
+    return bool(getattr(dueno, "can_act", True))
+
+
+class TelekineticMasterAction(CombatAction):
+    """Telekinetic Master (18, acción): activa el efecto sin Telekinesis.
+
+    Gasta primero el uso gratuito (una vez por combate, sin RNG ni
+    dado) y, si no queda, un dado de energía psiónica. Una vez activo
+    no se vuelve a activar. La elegibilidad no consume RNG.
+    """
+
+    def __init__(self) -> None:
+        self.name = "Telekinetic Master"
+        self.action_type = ActionType.ACTION
+        self.usage = None  # el límite es el uso gratuito + la reserva
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None or not getattr(actor, "can_act", True):
+            return False
+        trait = _de(actor, PsiWarriorFeatures)
+        if trait is None or trait.level < 18:
+            return False
+        if trait.telekinetic_master_activo:
+            return False
+        if (not trait.telekinetic_master_uso_gratuito
+                and trait.dados_restantes <= 0):
+            return False
+        return True
+
+    def execute(self, context: Any) -> None:
+        actor = getattr(context, "actor", None)
+        rng = getattr(context, "rng", None)
+        if actor is None or rng is None:
+            return
+        if not getattr(actor, "can_act", True):
+            return
+        trait = _de(actor, PsiWarriorFeatures)
+        if trait is None or trait.telekinetic_master_activo:
+            return
+        if (not trait.telekinetic_master_uso_gratuito
+                and trait.dados_restantes <= 0):
+            return
+        # Gasto: primero el uso gratuito (sin dado), después un dado.
+        if trait.telekinetic_master_uso_gratuito:
+            trait.telekinetic_master_uso_gratuito = False
+        else:
+            trait.dados_restantes -= 1
+        trait.telekinetic_master_activo = True
+        _log_line(context, f"{getattr(actor, 'name', actor)} activa "
+                           f"Telekinetic Master")
+
+
+class TelekineticMasterAttackAction(CombatAction):
+    """Ataque adicional de Telekinetic Master (18, acción adicional).
+
+    Solo elegible mientras el efecto siga vigente (el dueño sigue vivo
+    y sin estar Incapacitado) y el dueño tenga al menos un ataque con
+    arma. Elige arma y enemigo vivo con ``pick`` uniforme y reutiliza
+    el helper de ataque del motor (patrón del ataque especial de
+    Unwarvering Mark, sin ``is_reaction``: la limitación a un uso de
+    Psionic Strike por turno es su flag). La elegibilidad no consume
+    RNG.
+    """
+
+    def __init__(self) -> None:
+        self.name = "Ataque de Telekinetic Master"
+        self.action_type = ActionType.BONUS_ACTION
+        self.usage = None
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None:
+            return False
+        trait = _de(actor, PsiWarriorFeatures)
+        if trait is None or trait.level < 18:
+            return False
+        if not _telekinetic_master_vigente(trait):
+            return False
+        return bool(_armas_de(actor))
+
+    def execute(self, context: Any) -> None:
+        actor = getattr(context, "actor", None)
+        rng = getattr(context, "rng", None)
+        if actor is None or rng is None:
+            return
+        trait = _de(actor, PsiWarriorFeatures)
+        if trait is None or not _telekinetic_master_vigente(trait):
+            return
+        armas = _armas_de(actor)
+        objetivos = valid_targets(actor, context)
+        if not armas or not objetivos:
+            return
+        arma = pick(rng, tuple(armas))
+        objetivo = pick(rng, tuple(objetivos))
+        _log_line(context, f"{getattr(actor, 'name', actor)} usa el ataque "
+                           f"de Telekinetic Master con "
+                           f"{getattr(arma, 'name', arma)}")
+        r_ctx = copy.copy(context)
+        from .....engine.combat import attack_roll  # local: evita ciclo
+        attack_roll(actor, objetivo, arma, rng,
+                    log=getattr(context, "log", None), ctx=r_ctx)
+
+
 def apply_psi_warrior(pj: Any, level: int | None = None,
                       rng: random.Random | None = None
                       ) -> PsiWarriorFeatures:
@@ -375,7 +510,15 @@ def apply_psi_warrior(pj: Any, level: int | None = None,
     # ``pick`` del encuentro decide entre las acciones candidatas).
     if lvl >= 15:
         pj.actions.append(PsiBulwarkAction())
+    # Telekinetic Master (18): activación y ataque adicional;
+    # elegibilidad sin RNG (el ``pick`` del encuentro decide entre las
+    # acciones candidatas de forma uniforme).
+    if lvl >= 18:
+        pj.actions.append(TelekineticMasterAction())
+        pj.actions.append(TelekineticMasterAttackAction())
     return trait
 
 
-__all__ = ["PsiWarriorFeatures", "PsiBulwarkAction", "apply_psi_warrior"]
+__all__ = ["PsiWarriorFeatures", "PsiBulwarkAction",
+           "TelekineticMasterAction", "TelekineticMasterAttackAction",
+           "apply_psi_warrior"]

@@ -28,6 +28,8 @@ from dnd_sim.rules.classes.fighter import (
 )
 from dnd_sim.rules.classes.fighter.subclasses.psi_warrior import (
     PsiBulwarkAction,
+    TelekineticMasterAction,
+    TelekineticMasterAttackAction,
 )
 from dnd_sim.rules.conditions import (
     Condition,
@@ -773,3 +775,152 @@ def test_el_bulwark_no_actua_por_debajo_del_nivel_quince():
     solo = _pj()
     apply_fighter(solo, level=15, fighting_style="Archery")
     assert not any(isinstance(a, PsiBulwarkAction) for a in solo.actions)
+
+
+# --- A8: Telekinetic Master ---------------------------------------------------
+
+
+def _master(level: int = 18, **kwargs) -> tuple:
+    """PJ Psi Warrior a nivel 18 con enemigo y contexto de turno."""
+    kwargs.setdefault("fighting_style", "Archery")
+    pj, trait = _psi(level=level, **kwargs)
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    return pj, trait, enemigo, ctx
+
+
+def test_la_activacion_de_telekinetic_master_gasta_el_uso_gratuito():
+    pj, trait, _, ctx = _master()
+    assert trait.telekinetic_master_uso_gratuito
+    TelekineticMasterAction().execute(ctx)
+    assert trait.telekinetic_master_activo
+    assert not trait.telekinetic_master_uso_gratuito
+    assert trait.dados_restantes == psionic_dice_count(18)
+
+
+def test_sin_uso_gratuito_la_activacion_de_telekinetic_master_gasta_un_dado():
+    pj, trait, _, ctx = _master()
+    trait.telekinetic_master_uso_gratuito = False
+    TelekineticMasterAction().execute(ctx)
+    assert trait.telekinetic_master_activo
+    assert trait.dados_restantes == psionic_dice_count(18) - 1
+
+
+def test_una_sola_activacion_de_telekinetic_master():
+    pj, trait, _, ctx = _master()
+    accion = TelekineticMasterAction()
+    assert accion.can_use(ctx)
+    accion.execute(ctx)
+    assert not accion.can_use(ctx)
+    dados = trait.dados_restantes
+    accion.execute(ctx)  # segunda llamada: no vuelve a gastar
+    assert trait.dados_restantes == dados
+
+
+def test_sin_uso_gratuito_ni_dados_la_activacion_no_es_elegible():
+    pj, trait, _, ctx = _master()
+    trait.telekinetic_master_uso_gratuito = False
+    trait.dados_restantes = 0
+    assert not TelekineticMasterAction().can_use(ctx)
+
+
+def test_el_ataque_adicional_exige_efecto_activo_y_bonus_libre():
+    from dnd_sim.model.actions import TurnResources
+
+    pj, trait, _, ctx = _master()
+    accion = TelekineticMasterAttackAction()
+    assert not accion.can_use(ctx)  # sin efecto activo
+    trait.telekinetic_master_activo = True
+    assert accion.can_use(ctx)
+    res = TurnResources()
+    res.bonus_action_used = True
+    assert not accion.can_use(res, ctx)
+
+
+def test_el_ataque_adicional_usa_el_helper_de_ataque_del_motor(
+        monkeypatch):
+    llamadas = []
+
+    def _espia(actor, objetivo, arma, rng, **kwargs):
+        llamadas.append((actor, objetivo, arma.name))
+
+    monkeypatch.setattr("dnd_sim.engine.combat.attack_roll", _espia)
+    pj, trait, enemigo, ctx = _master()
+    trait.telekinetic_master_activo = True
+    TelekineticMasterAttackAction().execute(ctx)
+    assert len(llamadas) == 1
+    assert llamadas[0][0] is pj
+    assert llamadas[0][1] is enemigo
+    assert llamadas[0][2] == "Espada larga"
+
+
+def test_el_ataque_adicional_no_activa_psionic_strike_mas_de_una_vez(
+        monkeypatch):
+    pj, trait, enemigo, ctx = _master()
+    tiradas = _parchea_golpe(monkeypatch)
+    # Sin derribo: si Telekinetic Thrust tumbara al orco, el segundo
+    # ataque tiraría con ventaja y el D20 fijo no llevaría dos dados.
+    _salvacion(monkeypatch, [], pasa=True)
+    # Reacción gastada: Protective Field (nivel 6+) también decide con
+    # el mismo «no»/«sí» y ensuciaría el recuento de tiradas de strike.
+    pj.state.reaction_used = True
+    trait.telekinetic_master_activo = True
+    _ataca(pj, enemigo, ctx)  # golpe normal: Psionic Strike gasta su flag
+    dados = trait.dados_restantes
+    TelekineticMasterAttackAction().execute(ctx)
+    strike = [s for s in tiradas if s == ("no", "si")]
+    assert len(strike) == 1  # solo el golpe normal consume «sí»
+    assert trait.dados_restantes == dados  # sin segundo gasto del strike
+
+
+def test_el_efecto_termina_con_el_dueno_incapacitado_o_muerto():
+    pj, trait, _, ctx = _master()
+    trait.telekinetic_master_activo = True
+    ataque = TelekineticMasterAttackAction()
+    activar = TelekineticMasterAction()
+    assert ataque.can_use(ctx)
+    apply_condition(pj, Condition.INCAPACITATED, ctx)
+    assert not ataque.can_use(ctx)
+    remove_condition(pj, Condition.INCAPACITATED, ctx)
+    assert ataque.can_use(ctx)
+    # La activación también exige al dueño en pie.
+    trait.telekinetic_master_activo = False
+    apply_condition(pj, Condition.INCAPACITATED, ctx)
+    assert not activar.can_use(ctx)
+    remove_condition(pj, Condition.INCAPACITATED, ctx)
+    assert activar.can_use(ctx)
+    trait.telekinetic_master_activo = True
+    pj.mark_dead()
+    assert not ataque.can_use(ctx)
+
+
+def test_telekinetic_master_no_actua_por_debajo_del_nivel_dieciocho():
+    pj, trait, _, ctx = _master(level=17)
+    assert not any(isinstance(a, TelekineticMasterAction)
+                   for a in pj.actions)
+    assert not any(isinstance(a, TelekineticMasterAttackAction)
+                   for a in pj.actions)
+    assert not TelekineticMasterAction().can_use(ctx)
+    assert not TelekineticMasterAttackAction().can_use(ctx)
+
+
+def test_sin_subclase_no_hay_acciones_de_telekinetic_master():
+    solo = _pj()
+    apply_fighter(solo, level=18, fighting_style="Archery")
+    assert not any(isinstance(a, TelekineticMasterAction)
+                   for a in solo.actions)
+    assert not any(isinstance(a, TelekineticMasterAttackAction)
+                   for a in solo.actions)
+
+
+def test_telekinetic_master_integra_en_run_combat_con_semilla_fija():
+    from dnd_sim.engine.combat import run_combat
+
+    pj, trait, _, _ = _master()
+    muneco = Monster("Muñeco", max_hp=400, ac=16, abilities=_abilities())
+    res = run_combat([pj, muneco], random.Random(7), verbose=True,
+                     max_rounds=50)
+    assert trait.telekinetic_master_activo
+    assert res.action_uses.get("Telekinetic Master", 0) >= 1
+    assert res.action_uses.get("Ataque de Telekinetic Master", 0) >= 1

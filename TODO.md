@@ -181,10 +181,14 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: campo `cobertura_bulwark` + `cobertura_bulwark_activa` +
   rama en `effective_ac`/`saving_throw` (DES); 10 tests, suite 1482
   passed.
-- [ ] A8 — Telekinetic Master: `TelekineticMasterAction` +
+- [x] A8 — Telekinetic Master: `TelekineticMasterAction` +
   `TelekineticMasterAttackAction` (helper de ataque adicional
   existente), concentración reutilizada o simple + tests con
   integración `run_combat` semilla fija.
+  **Hecho**: versión simple de concentración (flag mientras el dueño
+  no esté Incapacitado ni muerto, SIN salvaciones de CON: sin
+  mecánica de ruptura reutilizable — «concentración parcial» queda
+  como pendiente real en B); 11 tests, suite 1493 passed.
 - [ ] B — Decisiones: 4 tests de freeze de registro explicados
   ANTES; límites con test freeze (movimiento, empuje, 30 ft,
   Telekinesis); `TODO.md` con Psi Warrior hecha y pendientes

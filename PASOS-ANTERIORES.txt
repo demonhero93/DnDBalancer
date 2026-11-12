@@ -2095,6 +2095,26 @@ PSI WARRIOR (2026-11-12)
     adaptados: resistencia en nivel 10 / no en 9, purga con nivel 10
     y ``psionic_dice_count(10)``, gate negativo en nivel 9. Bulwark
     sigue en 15. Suite **1482 passed**. Commit de fix A6.
+  - (8) Telekinetic Master (A8): ``TelekineticMasterAction`` (acción,
+    ``usage=None``) con ``can_use`` sin RNG (nivel >= 18, no activo,
+    uso gratuito o dado, dueño con ``can_act``) y ``execute`` que gasta
+    gratuito→dado y activa ``telekinetic_master_activo``;
+    ``TelekineticMasterAttackAction`` (acción adicional) elegible solo
+    con efecto vigente (``_telekinetic_master_vigente``: activo y
+    dueño sin Incapacitado/muerto — concentración parcial, SIN
+    salvaciones de CON: no hay mecánica de ruptura reutilizable en el
+    motor, decisión anotada en TODO) y ``_armas_de`` no vacía; en
+    ``execute`` arma y enemigo con ``pick`` uniforme (``valid_targets``)
+    y ataque vía ``attack_roll`` del motor con ``copy.copy(context)``
+    (patrón Unwavering Mark, import local, sin ``is_reaction``: el
+    límite de Psionic Strike a uno por turno es su flag). Registradas
+    en ``apply`` si ``lvl >= 18``. Concentración revisada en
+    ``rules/spells/effects.py``: solo pone la condición, sin ruptura →
+    versión simple. 11 tests (gratis, dado, una sola activación, sin
+    recursos, bonus libre con ``TurnResources``, helper espiado,
+    strike único, incapacitado/muerto, nivel 17, sin subclase,
+    integración ``run_combat`` semilla 7). Suite **1493 passed**.
+    Commit de A8.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
