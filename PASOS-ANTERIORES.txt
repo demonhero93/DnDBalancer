@@ -2008,6 +2008,32 @@ PSI WARRIOR (2026-11-12)
     Telekinetic Movement + Psi-Powered Leap dato sin efecto sin
     gastar dados, cero RNG sin subclase). Suite **1443 passed**.
     Commit de A2.
+  - (3) Psionic Strike (A3): walker NUEVO ``_dano_extra_de_rasgo`` en
+    ``engine/combat/attack.py``, justo tras el ``inflict_damage``
+    principal y ANTES del bucle de ``extra_damage``, duck-typing por
+    ``getattr`` (patrón ``_decidir_maniobra``; NO ``hooks()``, que
+    exigiría entrada en ``HOOK_NAMES``). Guards del walker: ``dmg <= 0``
+    y ``rng is None`` (sin rasgo que lo defina, ni consulta ni RNG);
+    recibe ``atk``/``crit``/``ctx``/``rng``/``log``. Método
+    ``psionic_strike`` en el rasgo: guards (nivel, una vez por turno,
+    reserva de dados, ``rng``, ``spell_attack`` → solo ataques con
+    arma), decisión con ``pick`` «no»/«sí»; al gastarse: resta 1 dado,
+    marca el flag, UNA tirada ``roll_dice(f"1d{lados}", rng, crit=crit)``
+    (la regla de críticos existente del motor viaja en ``crit``), daño
+    de fuerza = dado + mod INT con ``apply_damage_modifiers`` +
+    ``inflict_damage`` y log. Decisiones: (a) el flag solo se pone al
+    gastar — si el ``pick`` dice «no», el mismo turno puede reintentar
+    en el siguiente golpe; (b) solo se excluyen los hechizos (campo
+    ``spell_attack``), los ataques naturales cuentan como con arma; (c)
+    inserción ANTES del daño extra del arma («tras impactar y causar
+    daño»). 9 tests nuevos (suma dado+mod INT como fuerza, un solo
+    gasto por turno, hechizo no, daño 0 no, sin dados sin ``pick``,
+    reinicio del flag al empezar turno, resistencia a fuerza mitiga,
+    ``crit=True`` llega al dado, sin subclase el walker no consulta).
+    Helper de test A3 fija ``fighting_style="Archery"``: el estilo se
+    elige con el RNG global de creación y Dueling añadiría +2 al daño
+    (mismo criterio que los tests de daño de Cavalier/Champion).
+    Suite **1452 passed**. Commit de A3.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y

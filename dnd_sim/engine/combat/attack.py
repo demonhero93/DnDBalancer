@@ -374,6 +374,32 @@ def _reducir_dano_recibido(target: Any, attacker: Any, rango: Any, dmg: int,
     return dmg
 
 
+def _dano_extra_de_rasgo(target: Any, attacker: Any, rango: Any, dmg: int, *,
+                         atk: Any, crit: bool, ctx: Any, rng: Any,
+                         log: Any) -> None:
+    """Psionic Strike (Psi Warrior): daño de fuerza extra tras impactar.
+
+    Duck-typing (patrón ``_decidir_maniobra``, sin hook HOOK_NAMES): el
+    primer rasgo del ATACANTE que define
+    ``psionic_strike(target, rango, dmg, *, atk, crit, ctx, rng, log)``
+    gasta allí su propio dado y sus decisiones. Se le llama justo
+    DESPUÉS del ``inflict_damage`` principal y ANTES del daño adicional
+    del arma, solo si el golpe causó daño (``dmg > 0``). ``crit``
+    viaja para que el dado extra siga la misma regla de críticos que el
+    motor aplica a los dados extra. Sin rasgos que lo definan, ni
+    consulta ni RNG.
+    """
+    if dmg <= 0 or rng is None:
+        return
+    for rasgo in (getattr(attacker, "traits", None) or []):
+        metodo = getattr(rasgo, "psionic_strike", None)
+        if metodo is None:
+            continue
+        metodo(target, rango, dmg, atk=atk, crit=crit, ctx=ctx, rng=rng,
+               log=log)
+        break
+
+
 def _reaccionar_al_fallo(target: Any, attacker: Any, rango: Any, *,
                          ctx: Any, rng: Any, log: Any) -> None:
     """Primer ``reaccionar_al_fallo`` de los rasgos del OBJETIVO (Riposte).
@@ -563,6 +589,11 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
         inflict_damage(target, dmg, dt, source=attacker, ctx=ctx,
                        crit=crit, rng=rng,
                        magical=bool(getattr(atk, "magical", False)))
+        # Psionic Strike (Psi Warrior): daño de fuerza extra tras el daño
+        # principal, antes del daño adicional del arma (duck-typing sobre
+        # el atacante; sin rasgo que lo defina, ni consulta ni RNG).
+        _dano_extra_de_rasgo(target, attacker, rango, dmg, atk=atk,
+                             crit=crit, ctx=ctx, rng=rng, log=log)
         # Daño adicional del arma (p. ej. el 1d6 de fuego del Warhammer
         # del azer o el ácido del mordisco de un dragón). Cada entrada
         # tiene su propio tipo, así que resistencia/inmunidad/vulnerabilidad

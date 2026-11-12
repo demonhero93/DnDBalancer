@@ -150,10 +150,12 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: `psi_warrior.py` con `reset`/`on_turn_start`; sin
   `_RNG_CREACION` (no hay elección al crear; documentado en PASOS
   (2)); 8 tests + 3 A1, suite 1443 passed.
-- [ ] A3 — Psionic Strike: opción de impacto tras acertar y causar
+- [x] A3 — Psionic Strike: opción de impacto tras acertar y causar
   daño (duck-typing desde `attack.py`, patrón Arcane Shot/maniobras),
   `pick` «no»/«sí», dado tirado una vez, daño de fuerza = dado + mod
   INT con `apply_damage_modifiers`, flag por turno + tests.
+  **Hecho**: walker `_dano_extra_de_rasgo` tras el daño principal;
+  9 tests, suite 1452 passed.
 - [ ] A4 — Telekinetic Thrust: salvación FUE CD `8+PB+mod INT` al
   aplicarse Psionic Strike con nivel >= 7, fallo → PRONE con
   EscapeCheck de Topple + tests.

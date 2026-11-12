@@ -51,6 +51,11 @@ from .....core.classes import (
     psionic_dice_count,
     psionic_die_sides,
 )
+from .....core.dice import roll_dice
+from .....core.enums import DamageType
+from .....core.log import log_line as _log_line
+from .....core.randomness import pick
+from ....damage import apply_damage_modifiers, inflict_damage
 from ....traits.base import Trait
 from ..features import FighterFeatures
 
@@ -112,6 +117,46 @@ class PsiWarriorFeatures(Trait):
         self.bulwark_activo = False
         self.bulwark_objetivos = []
         self.telekinetic_master_activo = False
+
+    def psionic_strike(self, target: Any, rango: Any, dmg: int, *,
+                       atk: Any = None, crit: bool = False,
+                       ctx: Any = None, rng: Any = None,
+                       log: Any = None) -> None:
+        """Psionic Strike (3): daño de fuerza extra (dado + mod INT).
+
+        Lo llama el motor (walker ``_dano_extra_de_rasgo``) tras el
+        daño principal de un impacto que causó daño, antes del daño
+        adicional del arma. Guards primero (sin RNG): nivel, una vez
+        por turno, reserva de dados, ``rng`` y ataque con arma (los
+        hechizos quedan fuera). Decisión con ``pick`` «no»/«sí»; al
+        gastarse, UNA tirada del dado que se reutiliza —sigue la regla
+        de críticos del motor: ``crit`` viaja a ``roll_dice``—, se
+        resta 1 a la reserva y se marca el turno. A4 (Telekinetic
+        Thrust) se engancha tras aplicar el daño.
+        """
+        if (self.level < 3 or self.psionic_strike_used_this_turn
+                or self.dados_restantes <= 0 or rng is None
+                or dmg <= 0 or target is None):
+            return
+        if atk is not None and bool(getattr(atk, "spell_attack", False)):
+            return  # solo ataques con arma
+        if pick(rng, ("no", "si")) == "no":
+            return
+        self.dados_restantes -= 1
+        self.psionic_strike_used_this_turn = True
+        owner = self.owner
+        mod_int = (int(owner.abilities.mod("int"))
+                   if owner is not None else 0)
+        crudo = int(roll_dice(f"1d{self.dados_lados}", rng, crit=crit))
+        extra = apply_damage_modifiers(crudo + mod_int, DamageType.FORCE,
+                                       target,
+                                       magical=bool(getattr(atk, "magical",
+                                                            False)))
+        inflict_damage(target, extra, DamageType.FORCE, source=owner,
+                       ctx=ctx, crit=crit, rng=rng,
+                       magical=bool(getattr(atk, "magical", False)))
+        _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Psionic Strike: "
+                       f"{crudo}+{mod_int} = {extra} de fuerza")
 
 
 def apply_psi_warrior(pj: Any, level: int | None = None,

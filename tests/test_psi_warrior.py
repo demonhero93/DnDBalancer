@@ -10,15 +10,17 @@ de 10 ft, distancias de 30 ft) se congelan como dato sin efecto.
 from __future__ import annotations
 
 import random
+from types import SimpleNamespace
 
 import pytest
 
-from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
+from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import (
     bulwark_targets,
     psionic_dice_count,
     psionic_die_sides,
 )
+from dnd_sim.core.dice import D20Result, RollMode
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
     PsiWarriorFeatures,
@@ -184,3 +186,162 @@ def test_sin_subclase_no_hay_rasgo_ni_datos_de_psi_warrior():
     assert not any(isinstance(t, PsiWarriorFeatures) for t in pj.traits)
     # Cero consulta: sin el rasgo nadie tiene la reserva de dados.
     assert not any(hasattr(t, "dados_restantes") for t in pj.traits)
+
+
+# --- A3: Psionic Strike -------------------------------------------------------
+
+
+def _bajo_golpe(**kwargs) -> tuple:
+    """PJ Psi Warrior + enemigo y ctx de combate, para el walker del motor."""
+    # Archery fijo: el estilo se elige con el RNG global de creación y
+    # Dueling añadiría +2 al daño esperado.
+    kwargs.setdefault("fighting_style", "Archery")
+    pj, trait = _psi(**kwargs)
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    return pj, trait, enemigo, ctx
+
+
+def _parchea_golpe(monkeypatch, *, valor_d20: int = 20, dado_arma: int = 5,
+                   dado_psi: int = 4) -> list:
+    """d20 fijo + daño del arma fijo + pick «sí» y dado psi fijo."""
+    import dnd_sim.engine.combat.attack as atk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    tiradas: list[str] = []
+    monkeypatch.setattr(
+        atk_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(
+            value=valor_d20, rolls=[valor_d20],
+            mode=mode or RollMode.NORMAL))
+    monkeypatch.setattr(atk_mod, "roll_dice",
+                        lambda expr, rng, crit=False: dado_arma)
+    monkeypatch.setattr(psi_mod, "pick",
+                        lambda rng, seq: (tiradas.append(tuple(seq)),
+                                          seq[-1])[1])
+    monkeypatch.setattr(psi_mod, "roll_dice",
+                        lambda expr, rng, crit=False: dado_psi)
+    return tiradas
+
+
+def _ataca(pj, enemigo, ctx, *, spell: bool = False):
+    import dnd_sim.engine.combat.attack as atk_mod
+
+    atk = Attack("Golpe", "1d6", ability="str", spell_attack=spell)
+    atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), log=ctx.log,
+                        ctx=ctx)
+
+
+def test_el_psionic_strike_suma_el_dado_mas_el_mod_de_int_como_fuerza(
+        monkeypatch):
+    _parchea_golpe(monkeypatch, dado_arma=5, dado_psi=4)
+    pj, trait, enemigo, ctx = _bajo_golpe()
+    _ataca(pj, enemigo, ctx)
+    # Arma: 5 del dado + 3 de mod FUE. Fuerza: 4 del dado + 2 de mod INT.
+    assert enemigo.hp == 60 - (5 + 3) - (4 + 2)
+    assert trait.dados_restantes == psionic_dice_count(5) - 1
+    assert any("Psionic Strike" in line for line in ctx.log)
+
+
+def test_el_psionic_strike_gasta_un_solo_dado_por_turno(monkeypatch):
+    _parchea_golpe(monkeypatch)
+    pj, trait, enemigo, ctx = _bajo_golpe()
+    _ataca(pj, enemigo, ctx)
+    _ataca(pj, enemigo, ctx)  # mismo turno: el flag lo bloquea
+    assert trait.psionic_strike_used_this_turn is True
+    assert trait.dados_restantes == psionic_dice_count(5) - 1
+    assert sum("Psionic Strike" in line for line in ctx.log) == 1
+
+
+def test_el_psionic_strike_no_se_activa_en_ataques_de_hechizo(monkeypatch):
+    tiradas = _parchea_golpe(monkeypatch)
+    pj, trait, enemigo, ctx = _bajo_golpe()
+    _ataca(pj, enemigo, ctx, spell=True)
+    assert tiradas == []  # ni siquiera el pick se consulta
+    assert trait.dados_restantes == psionic_dice_count(5)
+    assert enemigo.hp == 60 - (5 + 3)  # solo el daño del arma
+
+
+def test_el_psionic_strike_no_se_activa_si_el_golpe_no_causo_dano(
+        monkeypatch):
+    tiradas = _parchea_golpe(monkeypatch)
+    pj, trait, enemigo, ctx = _bajo_golpe()
+    import dnd_sim.engine.combat.attack as atk_mod
+
+    # Daño principal 0 (p. ej. inmunidad): el walker no procede.
+    monkeypatch.setattr(atk_mod, "apply_damage_modifiers",
+                        lambda *args, **kwargs: 0)
+    _ataca(pj, enemigo, ctx)
+    assert tiradas == []
+    assert trait.dados_restantes == psionic_dice_count(5)
+    assert enemigo.hp == 60
+
+
+def test_sin_dados_restantes_no_hay_pick_ni_rng(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    def _revienta(rng, seq):
+        raise AssertionError("sin dados no se consulta el pick")
+
+    pj, trait, enemigo, ctx = _bajo_golpe()
+    trait.dados_restantes = 0
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    _ataca(pj, enemigo, ctx)
+    assert enemigo.hp == 60 - (5 + 3)  # solo el daño del arma
+
+
+def test_el_flag_de_psionic_strike_se_reinicia_cada_turno(monkeypatch):
+    _parchea_golpe(monkeypatch)
+    pj, trait, enemigo, ctx = _bajo_golpe()
+    _ataca(pj, enemigo, ctx)
+    trait.on_turn_start(pj, ctx)
+    assert trait.psionic_strike_used_this_turn is False
+    _ataca(pj, enemigo, ctx)
+    assert trait.dados_restantes == psionic_dice_count(5) - 2
+    assert sum("Psionic Strike" in line for line in ctx.log) == 2
+
+
+def test_la_resistencia_a_fuerza_del_objetivo_mitiga_el_psionic_strike(
+        monkeypatch):
+    _parchea_golpe(monkeypatch, dado_arma=5, dado_psi=4)
+    pj, trait, enemigo, ctx = _bajo_golpe()
+    enemigo.resistances = {"force"}
+    _ataca(pj, enemigo, ctx)
+    # Fuerza: 4+2 = 6 con resistencia → 3; el daño del arma no se toca.
+    assert enemigo.hp == 60 - (5 + 3) - 3
+
+
+def test_el_dado_del_psionic_strike_sigue_la_regla_de_criticos_del_motor(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    criticos: list[bool] = []
+    _parchea_golpe(monkeypatch, valor_d20=20)
+    monkeypatch.setattr(
+        psi_mod, "roll_dice",
+        lambda expr, rng, crit=False: (criticos.append(crit), 4)[1])
+    pj, trait, enemigo, ctx = _bajo_golpe()
+    _ataca(pj, enemigo, ctx)
+    assert criticos == [True]
+
+
+def test_sin_subclase_el_walker_del_motor_no_consulta_ni_tira_rng(monkeypatch):
+    import dnd_sim.engine.combat.attack as atk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    def _revienta(rng, seq):
+        raise AssertionError("sin la subclase no hay decisiones")
+
+    _parchea_golpe(monkeypatch)
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    pj = _pj()
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    atk = Attack("Golpe", "1d6", ability="str")
+    atk_mod.attack_roll(pj, enemigo, atk, random.Random(1), log=ctx.log,
+                        ctx=ctx)
+    assert enemigo.hp == 60 - (5 + 3)
+    assert not any("Psionic Strike" in line for line in ctx.log)
