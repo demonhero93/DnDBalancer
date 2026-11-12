@@ -125,9 +125,11 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: tabla remediada (85/20584, tests 55/22585/1432), sección
   `## Champion (PHB 2024)`, nota iniciativa en Ambush, ESTADO ACTUAL
   + bullet Champion, candidatas actualizadas. Commit de Docs.
-- [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
+- [x] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` + commit final con el
   grafo.
+  **Hecho**: 3 + 1432 passed; capas total 1 (excepción conocida);
+  grafo 4087/14882/123. FIN sesión Champion.
 
 ## Fighter: cómo añadir una subclase
 

@@ -1961,6 +1961,14 @@ CHAMPION (2026-11-11)
     b98d67d..3c63d66). TODO: Champion ya no es candidata (solo
     Eldritch Knight y Psi Warrior) con condiciones de reabrir (ya en
     B). Commit de Docs.
+  - (9) Verificación: ``pytest tests/test_arquitectura.py`` → 3
+    passed; ``pytest`` → **1432 passed** (200 warnings);
+    ``tools/capas.py`` → total 1, solo la excepción conocida
+    ``model.combatant → rules.conditions``; ``graphify update .`` →
+    4087 nodos, 14882 aristas, 123 comunidades (aviso informativo de
+    etiquetas sin confirmar: ``graphify label``; backup
+    ``graphify-out/2026-11-12/``). Grafo + backup commiteados. Casilla
+    ``Verificación`` de ``TODO.md`` [x]. FIN sesión Champion.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
