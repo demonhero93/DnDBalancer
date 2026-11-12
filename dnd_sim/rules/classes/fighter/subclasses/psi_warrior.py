@@ -55,7 +55,8 @@ from .....core.dice import roll_dice
 from .....core.enums import DamageType
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick
-from ....conditions import Condition, EscapeCheck, apply_condition
+from ....conditions import (Condition, EscapeCheck, apply_condition,
+                            remove_condition)
 from ....damage import apply_damage_modifiers, inflict_damage
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
@@ -107,8 +108,41 @@ class PsiWarriorFeatures(Trait):
 
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         # «Una vez por turno» de Psionic Strike (A3): se reinicia al
-        # empezar el turno. A6 añade aquí la purga de Guarded Mind.
+        # empezar el turno.
         self.psionic_strike_used_this_turn = False
+        # Guarded Mind (A6): purga de Hechizado/Asustado con un dado.
+        if self.level >= 15 and actor is self.owner:
+            self._guarded_mind(ctx)
+
+    def _guarded_mind(self, ctx: Any) -> None:
+        """Guarded Mind (15): gasta un dado para terminar Hechizado/Asustado.
+
+        Patrón Mindless Rage: si el dueño tiene alguna de las dos
+        condiciones y hay dado, ``pick`` «no»/«sí»; al aceptar gasta el
+        dado y retira TODAS las que tenga (los guards van antes del
+        ``pick``: sin condición, sin ``rng`` o sin dados, ni consulta ni
+        azar).
+        """
+        owner = self.owner
+        tracker = getattr(owner, "conditions", None)
+        if tracker is None:
+            return
+        afectadas = [cond for cond in (Condition.CHARMED,
+                                       Condition.FRIGHTENED)
+                     if tracker.has(cond)]
+        if not afectadas:
+            return  # sin condición: ni consulta ni RNG
+        rng = getattr(ctx, "rng", None) if ctx is not None else None
+        if rng is None or self.dados_restantes <= 0:
+            return
+        if pick(rng, ("no", "si")) == "no":
+            return
+        self.dados_restantes -= 1
+        for cond in afectadas:
+            remove_condition(owner, cond, ctx)
+        nombres = ", ".join(c.value for c in afectadas)
+        _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Guarded Mind: "
+                       f"termina {nombres}")
 
     def reset(self) -> None:
         """Un combate nuevo = un día descansado: dados psiónicos llenos."""
@@ -253,6 +287,10 @@ def apply_psi_warrior(pj: Any, level: int | None = None,
         dados_lados=psionic_die_sides(lvl),
     )
     trait.owner = pj
+    # Guarded Mind (15): resistencia a daño psíquico permanente
+    # (patrón Storm Soul: si ya la tenía, no se toca).
+    if lvl >= 15 and DamageType.PSYCHIC not in pj.resistances:
+        pj.resistances = set(pj.resistances) | {DamageType.PSYCHIC}
     pj.traits.append(trait)
     return trait
 

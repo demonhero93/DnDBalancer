@@ -26,7 +26,7 @@ from dnd_sim.rules.classes.fighter import (
     PsiWarriorFeatures,
     apply_psi_warrior,
 )
-from dnd_sim.rules.conditions import Condition
+from dnd_sim.rules.conditions import Condition, apply_condition
 from dnd_sim.rules.saves import SaveResult
 
 
@@ -535,3 +535,112 @@ def test_sin_subclase_el_protective_field_no_consulta_ni_tira_rng(
     monkeypatch.setattr(psi_mod, "pick", _revienta)
     _recibe(pj, enemigo, ctx, 10)
     assert enemigo.hp == 60 - 10
+
+
+# --- A6: Guarded Mind ---------------------------------------------------------
+
+
+def _guardado(level: int = 15, **kwargs) -> tuple:
+    """PJ Psi Warrior a nivel >= 15 con contexto de turno."""
+    pj, trait = _psi(level=level, **kwargs)
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj], log=[])
+    return pj, trait, ctx
+
+
+def test_guarded_mind_concede_resistencia_psiquica_a_partir_del_nivel_15():
+    from dnd_sim.core.enums import DamageType
+    from dnd_sim.rules.damage import apply_damage_modifiers
+
+    pj15, _, _ = _guardado(level=15)
+    assert DamageType.PSYCHIC in pj15.resistances
+    # La resistencia mitiga el daño psíquico redondeando hacia abajo.
+    assert apply_damage_modifiers(10, DamageType.PSYCHIC, pj15) == 5
+    pj14, _, _ = _guardado(level=14)
+    assert DamageType.PSYCHIC not in pj14.resistances
+
+
+def test_guarded_mind_no_acumula_la_resistencia_si_ya_la_tenia():
+    from dnd_sim.core.enums import DamageType
+
+    pj = _pj(level=15)
+    pj.resistances = {DamageType.PSYCHIC}
+    apply_fighter(pj, level=15, fighting_style="Archery")
+    apply_psi_warrior(pj, level=15)
+    assert pj.resistances == {DamageType.PSYCHIC}
+
+
+def test_guarded_mind_purga_charmed_y_frightened_gastando_un_dado(
+        monkeypatch):
+    llamadas = _parchea_campo(monkeypatch, decide="si")
+    pj, trait, ctx = _guardado()
+    apply_condition(pj, Condition.CHARMED, ctx)
+    apply_condition(pj, Condition.FRIGHTENED, ctx)
+    trait.on_turn_start(pj, ctx)
+    assert len(llamadas) == 1
+    assert trait.dados_restantes == psionic_dice_count(15) - 1
+    assert not pj.conditions.has(Condition.CHARMED)
+    assert not pj.conditions.has(Condition.FRIGHTENED)
+    assert any("Guarded Mind" in line for line in ctx.log)
+
+
+def test_guarded_mind_con_pick_no_no_purga_ni_gasta(monkeypatch):
+    llamadas = _parchea_campo(monkeypatch, decide="no")
+    pj, trait, ctx = _guardado()
+    apply_condition(pj, Condition.CHARMED, ctx)
+    trait.on_turn_start(pj, ctx)
+    assert len(llamadas) == 1
+    assert trait.dados_restantes == psionic_dice_count(15)
+    assert pj.conditions.has(Condition.CHARMED)
+
+
+def test_guarded_mind_sin_condicion_no_consulta_pick(monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("sin condición no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    pj, trait, ctx = _guardado()
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    trait.on_turn_start(pj, ctx)
+    assert trait.dados_restantes == psionic_dice_count(15)
+
+
+def test_guarded_mind_sin_dados_no_purga(monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("sin dados no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    pj, trait, ctx = _guardado()
+    trait.dados_restantes = 0
+    apply_condition(pj, Condition.CHARMED, ctx)
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    trait.on_turn_start(pj, ctx)
+    assert pj.conditions.has(Condition.CHARMED)
+
+
+def test_guarded_mind_no_actua_por_debajo_del_nivel_quince(monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("nivel < 15 no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    pj, trait, ctx = _guardado(level=14)
+    apply_condition(pj, Condition.CHARMED, ctx)
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    trait.on_turn_start(pj, ctx)
+    assert pj.conditions.has(Condition.CHARMED)
+
+
+def test_guarded_mind_sin_ctx_rng_no_purga(monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("sin rng no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    pj, trait, ctx = _guardado()
+    apply_condition(pj, Condition.CHARMED, ctx)
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    trait.on_turn_start(pj, None)
+    assert pj.conditions.has(Condition.CHARMED)

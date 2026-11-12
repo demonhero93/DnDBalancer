@@ -2062,6 +2062,21 @@ PSI WARRIOR (2026-11-12)
     passed**). 8 tests (reducción dado+INT, reacción compartida, sin
     dados sin pick, protege al propio objetivo, no baja de 0, pick «no»,
     nivel < 6, sin subclase cero consulta). Commit de A5.
+  - (6) Guarded Mind (A6): resistencia permanente al daño psíquico en
+    ``apply_psi_warrior`` — ``if lvl >= 15 and DamageType.PSYCHIC not in
+    pj.resistances: pj.resistances = set(...) | {DamageType.PSYCHIC}``
+    (patrón Storm Soul, sin acumular; ``DamageType`` ya se importaba
+    desde A3). Purga en ``on_turn_start``: ``if self.level >= 15 and
+    actor is self.owner: self._guarded_mind(ctx)``; ``_guarded_mind``
+    recorre ``(CHARMED, FRIGHTENED)`` con ``tracker.has(cond)``,
+    ``rng = getattr(ctx, \"rng\", None)``, guards sin RNG (sin
+    condición / sin ``rng`` / sin dados → return antes del ``pick``),
+    ``pick`` «no»/«sí», al gastar: resta 1 dado, ``remove_condition``
+    de TODAS las que tenga y log «usa Guarded Mind». Import ampliado
+    con ``remove_condition``. 8 tests (resistencia mitiga 10→5, no
+    acumula, purga ambas con 1 dado, pick «no», sin condición sin
+    pick, sin dados, nivel 14, sin ctx/rng). Suite **1472 passed**.
+    Commit de A6.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
