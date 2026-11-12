@@ -33,9 +33,12 @@ y ARCHITECTURE.md.
 
 ## Fighter: pendientes reales
 
-- **Subclases Fighter**: candidatas Champion, Eldritch Knight, Psi
-  Warrior (Arcane Archer y Battle Master implementados, ver planes
-  abajo).
+- **Subclases Fighter**: candidatas Eldritch Knight, Psi Warrior
+  (Arcane Archer, Battle Master, Cavalier y Champion implementados,
+  ver planes abajo).
+- **Champion**: hecho (plan abajo). Heroic Warrior y Defy Death son
+  dato sin efecto: reabrir SOLO si el sim modela Inspiración Heroica
+  o salvaciones de muerte, respectivamente.
 - **Arcane Archer**: Piercing/Seeking implementados (2026-11-08, ver
   plan abajo y PASOS). Efectos parciales restantes (motivo en el
   docstring de `arcane_archer.py`):
@@ -108,11 +111,13 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: guards nivel ≥18/dueño/vivo/≥1 PG/Bloodied; cura
   `min(amount, pg_max - pg)` con `log_line`; 8 tests,
   suite 1432 passed.
-- [ ] B — Decisiones de diseño: 3 tests de freeze de registro
+- [x] B — Decisiones de diseño: 3 tests de freeze de registro
   explicados ANTES; límites con test freeze (Heroic Warrior, Defy
   Death, movimiento tras crítico); `TODO.md` con Champion hecha y
   pendientes reales (Eldritch Knight, Psi Warrior, condiciones de
   reabrir Heroic Warrior/Defy Death).
+  **Hecho**: freeze ya en A2/A4; `TODO.md` candidatas y condiciones
+  de reabrir actualizados. Commit de B.
 - [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, helper de
   crítico por umbral, soporte de ventaja en iniciativa/pruebas,
   recuentos), `PASOS-ANTERIORES.txt` (bloque CHAMPION + ESTADO
@@ -143,9 +148,9 @@ fighter: `arcane_archer.py`, `battle_master.py` y `cavalier.py`):
 5. Actualizar `ARCHITECTURE.md` (tabla de paquetes con fachada) y el
    bloque Guerrero de `PASOS-ANTERIORES.txt`.
 
-Pendientes (candidatas PHB 2024): Champion, Eldritch Knight, Psi
-Warrior. Arcane Archer y Battle Master YA están implementados
-(`CLASSES["fighter"].subclasses` = `{"arcane_archer", "battle_master"}`).
+Pendientes (candidatas PHB 2024): Eldritch Knight, Psi Warrior.
+Arcane Archer, Battle Master, Cavalier y Champion YA están
+implementados (`CLASSES["fighter"].subclasses` tiene sus 4 claves).
 
 ## Grafo y verificación
 

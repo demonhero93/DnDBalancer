@@ -1936,6 +1936,15 @@ CHAMPION (2026-11-11)
     cura, CON negativa → 0, recorte a PG máximos con max_hp 12,
     nivel 17 no actúa, 0 PG no cura, un solo turno = una curación
     exacta), suite 1432 passed. Commit de A6.
+  - (7) Decisiones de diseño (B): congelados ya cubiertos en A2 (Heroic
+    Warrior, Defy Death) y A4 (movimiento tras crítico); aquí se cierra
+    el lado de documentación: ``TODO.md`` listas de candidatas Fighter
+    → solo Eldritch Knight y Psi Warrior (Champion hecho), nota de
+    reabrir Heroic Warrior SOLO si el sim modela Inspiración Heroica y
+    Defy Death SOLO si modela salvaciones de muerte, y recuento de
+    claves registradas a 4. Ningún test nuevo (los 3 freeze de registro
+    y los de dato sin efecto ya estaban verdes desde A2/A4). Commit de
+    B.
 
 ESTADO ACTUAL
    - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y
