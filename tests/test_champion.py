@@ -537,3 +537,62 @@ def test_sin_subclase_no_hay_estilos_extra():
     f = _fighter(pj)
     assert f.estilos_extra == []
     assert f.estilos == ("Archery",)
+
+
+# --- A6: Heroic Rally --------------------------------------------------------
+
+def _rally(level: int = 18, con: int = 16, max_hp: int = 70,
+           hp: int = 30) -> tuple:
+    pj = _pj(level=level, max_hp=max_hp, abilities=_abilities(con=con))
+    pj.hp = hp
+    apply_fighter(pj, level=level)
+    trait = apply_champion(pj, level=level)
+    return pj, trait
+
+
+def test_heroic_rally_cura_si_esta_bloodied_con_al_menos_1_pg():
+    pj, trait = _rally(hp=30)  # 30*2 <= 70; CON 16 → +3 → 8 PG
+    trait.on_turn_start(pj, None)
+    assert pj.hp == 38
+
+
+def test_la_mitad_exacta_de_los_pg_maximos_cuenta_como_bloodied():
+    pj, trait = _rally(hp=35)  # 35*2 == 70
+    trait.on_turn_start(pj, None)
+    assert pj.hp == 43
+
+
+def test_no_cura_por_encima_de_la_mitad_de_los_pg_maximos():
+    pj, trait = _rally(hp=36)  # 36*2 > 70
+    trait.on_turn_start(pj, None)
+    assert pj.hp == 36
+
+
+def test_con_muy_baja_heroic_rally_da_cero_y_no_cura():
+    pj, trait = _rally(con=1, hp=30)  # mod CON negativo → 0 PG
+    trait.on_turn_start(pj, None)
+    assert pj.hp == 30
+
+
+def test_heroic_rally_recorta_la_curacion_a_los_pg_maximos():
+    pj, trait = _rally(max_hp=12, hp=6)  # CON 16 → 8, sobra 6
+    trait.on_turn_start(pj, None)
+    assert pj.hp == 12
+
+
+def test_por_debajo_del_nivel_18_heroic_rally_no_actua():
+    pj, trait = _rally(level=17, hp=30)
+    trait.on_turn_start(pj, None)
+    assert pj.hp == 30
+
+
+def test_heroic_rally_no_cura_si_tiene_0_pg():
+    pj, trait = _rally(hp=0)
+    trait.on_turn_start(pj, None)
+    assert pj.hp == 0
+
+
+def test_un_solo_turno_de_heroic_rally_aplica_una_sola_curacion():
+    pj, trait = _rally(con=10, hp=20)  # mod 0 → 5 PG por turno
+    trait.on_turn_start(pj, None)  # una sola evaluación del hook
+    assert pj.hp == 25  # 20 + 5 exactamente, no 20 + 10

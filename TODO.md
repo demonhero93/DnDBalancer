@@ -102,9 +102,12 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   aplica mutaciones (Defense) + tests.
   **Hecho**: refactor 1415 idéntico; `estilos_extra` + `estilos`;
   6 hooks por membresía; gate nivel ≥7; 9 tests, suite 1424 passed.
-- [ ] A6 — Heroic Rally: `on_turn_start` (patrón Life-Giving Force),
+- [x] A6 — Heroic Rally: `on_turn_start` (patrón Life-Giving Force),
   Bloodied `pg * 2 <= pg_max`, `heroic_rally_amount` recortado a los
   PG máximos, sin RNG + tests.
+  **Hecho**: guards nivel ≥18/dueño/vivo/≥1 PG/Bloodied; cura
+  `min(amount, pg_max - pg)` con `log_line`; 8 tests,
+  suite 1432 passed.
 - [ ] B — Decisiones de diseño: 3 tests de freeze de registro
   explicados ANTES; límites con test freeze (Heroic Warrior, Defy
   Death, movimiento tras crítico); `TODO.md` con Champion hecha y

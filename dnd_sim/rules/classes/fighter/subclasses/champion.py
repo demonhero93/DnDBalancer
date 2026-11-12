@@ -45,7 +45,9 @@ from .....core.classes import (
     MAX_LEVEL,
     MIN_LEVEL,
     champion_crit_threshold,
+    heroic_rally_amount,
 )
+from .....core.log import log_line as _log_line
 from .....core.randomness import pick
 from ....traits.base import Trait
 from ..features import FighterFeatures
@@ -125,6 +127,31 @@ class ChampionFeatures(Trait):
             return
         if skill == "athletics":
             mods.advantage_sources.append("Atleta notable")
+
+    def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
+        """Heroic Rally (18): cura al inicio de cada turno propio.
+
+        Sin RNG y sin decisión: si el dueño está vivo, tiene al menos
+        1 PG y está Bloodied (``pg * 2 <= pg_max``), recupera
+        ``heroic_rally_amount(mod CON)`` PG recortado a los PG
+        máximos. Heroic Warrior (10) es dato sin efecto: el sim no
+        modela la Inspiración Heroica.
+        """
+        if self.level < 18 or actor is not self.owner:
+            return
+        if not getattr(actor, "alive", True):
+            return
+        pg = int(getattr(actor, "hp", 0) or 0)
+        pg_max = int(getattr(actor, "max_hp", 0) or 0)
+        if pg < 1 or pg * 2 > pg_max:
+            return  # no está Bloodied o ya no queda nada que curar
+        con_mod = int(actor.abilities.mod("con"))
+        cura = min(heroic_rally_amount(con_mod), pg_max - pg)
+        if cura <= 0:
+            return  # CON tan baja que la tabla da 0
+        actor.hp = pg + cura  # nunca por encima de los PG máximos
+        _log_line(ctx, f"{getattr(actor, 'name', actor)} recupera "
+                       f"{cura} PG con Heroic Rally")
 
 
 def apply_champion(pj: Any, level: int | None = None,
