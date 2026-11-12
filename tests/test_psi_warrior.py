@@ -26,8 +26,16 @@ from dnd_sim.rules.classes.fighter import (
     PsiWarriorFeatures,
     apply_psi_warrior,
 )
-from dnd_sim.rules.conditions import Condition, apply_condition
-from dnd_sim.rules.saves import SaveResult
+from dnd_sim.rules.classes.fighter.subclasses.psi_warrior import (
+    PsiBulwarkAction,
+)
+from dnd_sim.rules.conditions import (
+    Condition,
+    apply_condition,
+    remove_condition,
+)
+from dnd_sim.rules.roll_modifiers import effective_ac
+from dnd_sim.rules.saves import SaveResult, saving_throw
 
 
 # --- A1: tablas --------------------------------------------------------------
@@ -644,3 +652,124 @@ def test_guarded_mind_sin_ctx_rng_no_purga(monkeypatch):
     monkeypatch.setattr(psi_mod, "pick", _revienta)
     trait.on_turn_start(pj, None)
     assert pj.conditions.has(Condition.CHARMED)
+
+
+# --- A7: Bulwark of Force -----------------------------------------------------
+
+
+def _bulwark(level: int = 15, **kwargs) -> tuple:
+    """PJ Psi Warrior + aliado vivo + enemigo con contexto de combate."""
+    kwargs.setdefault("fighting_style", "Archery")
+    pj, trait = _psi(level=level, **kwargs)
+    aliado = _pj()
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, aliado, enemigo], log=[])
+    return pj, trait, aliado, enemigo, ctx
+
+
+def test_el_bulwark_concede_media_cobertura_al_dueno_y_a_los_aliados():
+    pj, trait, aliado, enemigo, ctx = _bulwark()
+    accion = PsiBulwarkAction()
+    assert accion.can_use(ctx)
+    assert effective_ac(pj) == 15
+    accion.execute(ctx)
+    # Uso gratuito primero: sin gastar dados.
+    assert trait.bulwark_uso_gratuito is False
+    assert trait.dados_restantes == psionic_dice_count(15)
+    assert trait.bulwark_activo is True
+    assert effective_ac(pj) == 15 + 2
+    assert effective_ac(aliado) == 15 + 2
+    assert effective_ac(enemigo) == 10  # el enemigo no se beneficia
+    assert pj.state.cobertura_bulwark is pj
+    assert any("Bulwark of Force" in line for line in ctx.log)
+
+
+def test_el_bulwark_limita_los_objetivos_a_max_uno_mod_int():
+    pj, trait, aliado, enemigo, ctx = _bulwark()
+    aliado2 = _pj()
+    ctx.combatants.append(aliado2)
+    PsiBulwarkAction().execute(ctx)
+    cubiertos = [c for c in (pj, aliado, aliado2, enemigo)
+                 if c.state.cobertura_bulwark is not None]
+    assert len(cubiertos) == bulwark_targets(2) == 2
+    assert enemigo not in cubiertos
+    assert effective_ac(enemigo) == 10
+
+
+def test_el_bulwark_gasta_un_dado_sin_uso_gratuito():
+    pj, trait, _, _, ctx = _bulwark()
+    trait.bulwark_uso_gratuito = False
+    accion = PsiBulwarkAction()
+    assert accion.can_use(ctx)
+    accion.execute(ctx)
+    assert trait.dados_restantes == psionic_dice_count(15) - 1
+    assert trait.bulwark_activo is True
+
+
+def test_el_bulwark_no_es_elegible_si_ya_activo():
+    pj, trait, _, _, ctx = _bulwark()
+    accion = PsiBulwarkAction()
+    accion.execute(ctx)
+    assert not accion.can_use(ctx)
+
+
+def test_el_bulwark_no_es_elegible_sin_uso_gratuito_ni_dados():
+    pj, trait, _, _, ctx = _bulwark()
+    trait.bulwark_uso_gratuito = False
+    trait.dados_restantes = 0
+    assert not PsiBulwarkAction().can_use(ctx)
+
+
+def test_el_bulwark_dura_todo_el_combate():
+    pj, trait, _, _, ctx = _bulwark()
+    PsiBulwarkAction().execute(ctx)
+    for _ in range(3):
+        trait.on_turn_start(pj, ctx)
+    assert trait.bulwark_activo is True
+    assert effective_ac(pj) == 15 + 2
+
+
+def test_el_bulwark_se_ignora_con_dueno_incapacitado_y_se_reanuda():
+    pj, trait, _, _, ctx = _bulwark()
+    PsiBulwarkAction().execute(ctx)
+    assert effective_ac(pj) == 15 + 2
+    apply_condition(pj, Condition.INCAPACITATED, ctx)
+    assert effective_ac(pj) == 15
+    remove_condition(pj, Condition.INCAPACITATED, ctx)
+    assert effective_ac(pj) == 15 + 2
+
+
+def test_el_bulwark_no_se_acumula_con_at_range():
+    pj, trait, _, _, ctx = _bulwark()
+    pj.state.at_range = True
+    PsiBulwarkAction().execute(ctx)
+    # La mayor gana y no se suman: sigue siendo +2, no +4.
+    assert effective_ac(pj) == 15 + 2
+
+
+def test_el_bulwark_bonifica_las_salvaciones_de_des_pero_no_las_otras(
+        monkeypatch):
+    import dnd_sim.rules.saves as saves_mod
+
+    def _d20(rng, mode=None):
+        return D20Result(value=10, rolls=[10], mode=mode or RollMode.NORMAL)
+
+    monkeypatch.setattr(saves_mod, "roll_d20", _d20)
+    pj, trait, _, _, ctx = _bulwark()
+    rng = random.Random(1)
+    dex_antes = saving_throw(pj, "dex", 20, rng).total
+    str_antes = saving_throw(pj, "str", 20, rng).total
+    PsiBulwarkAction().execute(ctx)
+    assert saving_throw(pj, "dex", 20, rng).total == dex_antes + 2
+    assert saving_throw(pj, "str", 20, rng).total == str_antes
+
+
+def test_el_bulwark_no_actua_por_debajo_del_nivel_quince():
+    pj, trait, _, _, ctx = _bulwark(level=14)
+    assert not any(isinstance(a, PsiBulwarkAction) for a in pj.actions)
+    assert not PsiBulwarkAction().can_use(ctx)
+    # Sin la subclase no hay ninguna acción de Bulwark.
+    solo = _pj()
+    apply_fighter(solo, level=15, fighting_style="Archery")
+    assert not any(isinstance(a, PsiBulwarkAction) for a in solo.actions)

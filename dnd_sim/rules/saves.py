@@ -107,6 +107,17 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
         bonus = target.saving_throw_bonus(ab)
     except Exception:
         pass
+    # Bulwark of Force (Psi Warrior): +2 solo a salvaciones de DES
+    # (misma magnitud que la cobertura; ``at_range`` no da salvaciones,
+    # así que aquí no hay qué acotar).
+    if ab == "dex":
+        try:
+            from .roll_modifiers import (
+                RANGED_COVER_AC_BONUS, cobertura_bulwark_activa)
+            if cobertura_bulwark_activa(target):
+                bonus = int(bonus) + RANGED_COVER_AC_BONUS
+        except Exception:
+            pass
     result = roll_d20(rng, mode)
     total = result.value + int(bonus)
     # Suelo del total (Indomitable Might): si el rasgo fija un mínimo y la

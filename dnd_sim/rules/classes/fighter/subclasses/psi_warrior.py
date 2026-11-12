@@ -48,6 +48,7 @@ from typing import Any
 from .....core.classes import (
     MAX_LEVEL,
     MIN_LEVEL,
+    bulwark_targets,
     psionic_dice_count,
     psionic_die_sides,
 )
@@ -55,12 +56,13 @@ from .....core.dice import roll_dice
 from .....core.enums import DamageType
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick
+from .....model.actions import ActionType, CombatAction
 from ....conditions import (Condition, EscapeCheck, apply_condition,
                             remove_condition)
 from ....damage import apply_damage_modifiers, inflict_damage
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
-from ..features import FighterFeatures
+from ..features import FighterFeatures, _contexto, _es_aliado
 
 
 def _de(actor: Any, clase: type) -> Any:
@@ -259,6 +261,83 @@ class PsiWarriorFeatures(Trait):
         return nuevo
 
 
+def _elegibles_bulwark(actor: Any, ctx: Any) -> list:
+    """Aliados vivos de ``actor`` (incluido él) para Bulwark; sin RNG."""
+    elegibles = [actor] if getattr(actor, "alive", True) else []
+    for otro in getattr(ctx, "combatants", None) or []:
+        if otro is actor:
+            continue
+        if _es_aliado(actor, otro):
+            elegibles.append(otro)
+    return elegibles
+
+
+class PsiBulwarkAction(CombatAction):
+    """Bulwark of Force (15, acción bonus): media cobertura a aliados.
+
+    Elige con ``pick`` uniforme sin repetición hasta ``max(1, mod INT)``
+    criaturas vivas del bando (incluido el dueño) y pone
+    ``state.cobertura_bulwark`` en cada una: +2 a la CA y a las
+    salvaciones de DES mientras el dueño siga vivo y sin estar
+    Incapacitado (lectura dinámica en rules); dura todo el combate.
+    Gasta primero el uso gratuito (sin RNG ni dado) y, si no queda, un
+    dado de energía psiónica. La elegibilidad no consume RNG.
+    """
+
+    def __init__(self) -> None:
+        self.name = "Bulwark of Force"
+        self.action_type = ActionType.BONUS_ACTION
+        self.usage = None  # el límite es el uso gratuito + la reserva
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None or not getattr(actor, "can_act", True):
+            return False
+        trait = _de(actor, PsiWarriorFeatures)
+        if trait is None or trait.level < 15:
+            return False
+        if trait.bulwark_activo:
+            return False  # una vez activo no se vuelve a activar
+        if not trait.bulwark_uso_gratuito and trait.dados_restantes <= 0:
+            return False
+        return bool(_elegibles_bulwark(actor, ctx))
+
+    def execute(self, context: Any) -> None:
+        actor = getattr(context, "actor", None)
+        rng = getattr(context, "rng", None)
+        if actor is None or rng is None:
+            return
+        trait = _de(actor, PsiWarriorFeatures)
+        if trait is None or trait.bulwark_activo:
+            return
+        if not trait.bulwark_uso_gratuito and trait.dados_restantes <= 0:
+            return
+        elegibles = _elegibles_bulwark(actor, context)
+        if not elegibles:
+            return
+        # Gasto: primero el uso gratuito (sin dado), después un dado.
+        if trait.bulwark_uso_gratuito:
+            trait.bulwark_uso_gratuito = False
+        else:
+            trait.dados_restantes -= 1
+        max_obj = bulwark_targets(int(actor.abilities.mod("int")))
+        restantes = list(elegibles)
+        objetivos = []
+        while restantes and len(objetivos) < max_obj:
+            idx = int(pick(rng, tuple(range(len(restantes)))))
+            objetivos.append(restantes.pop(idx))
+        for objetivo in objetivos:
+            objetivo.state.cobertura_bulwark = actor
+        trait.bulwark_activo = True
+        trait.bulwark_objetivos = objetivos
+        _log_line(context, f"{getattr(actor, 'name', actor)} usa Bulwark "
+                           f"of Force: media cobertura a "
+                           f"{len(objetivos)} criatura(s)")
+
+
 def apply_psi_warrior(pj: Any, level: int | None = None,
                       rng: random.Random | None = None
                       ) -> PsiWarriorFeatures:
@@ -292,7 +371,11 @@ def apply_psi_warrior(pj: Any, level: int | None = None,
     if lvl >= 15 and DamageType.PSYCHIC not in pj.resistances:
         pj.resistances = set(pj.resistances) | {DamageType.PSYCHIC}
     pj.traits.append(trait)
+    # Bulwark of Force (15): acción bonus, elegibilidad sin RNG (el
+    # ``pick`` del encuentro decide entre las acciones candidatas).
+    if lvl >= 15:
+        pj.actions.append(PsiBulwarkAction())
     return trait
 
 
-__all__ = ["PsiWarriorFeatures", "apply_psi_warrior"]
+__all__ = ["PsiWarriorFeatures", "PsiBulwarkAction", "apply_psi_warrior"]

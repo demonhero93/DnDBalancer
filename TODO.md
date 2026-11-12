@@ -174,10 +174,13 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   Mindless Rage) con `pick` + tests.
   **Hecho**: resistencia en `apply_psi_warrior` + `_guarded_mind`;
   8 tests, suite 1472 passed.
-- [ ] A7 — Bulwark of Force: `PsiBulwarkAction` (acción adicional,
+- [x] A7 — Bulwark of Force: `PsiBulwarkAction` (acción adicional,
   `usage=None`), cobertura reutilizada o bonificador temporal
   documentado, uso gratuito primero y luego dado, validez dinámica
   + tests.
+  **Hecho**: campo `cobertura_bulwark` + `cobertura_bulwark_activa` +
+  rama en `effective_ac`/`saving_throw` (DES); 10 tests, suite 1482
+  passed.
 - [ ] A8 — Telekinetic Master: `TelekineticMasterAction` +
   `TelekineticMasterAttackAction` (helper de ataque adicional
   existente), concentración reutilizada o simple + tests con

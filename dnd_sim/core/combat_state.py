@@ -53,6 +53,12 @@ class CombatState:
     # Lo pone ``rules.utility.DodgeAction`` y lo limpia ``begin_turn`` y
     # ``Combatant.reset()``; los efectos viven en roll_modifiers.
     dodging: bool = False
+    # Bulwark of Force (Psi Warrior): ref al dueño que concede media
+    # cobertura (+2 CA y +2 a las salvaciones de DES) a ESTE combatiente.
+    # El bonificador se ignora mientras el dueño no esté vivo o esté
+    # Incapacitado (lectura dinámica en rules). Lo pone la acción de la
+    # subclase y lo limpia ``Combatant.reset()``.
+    cobertura_bulwark: Any = None
     # Maestría Vex: nombre del objetivo → ronda de caducidad. La marca
     # quien ACIERTA y la consume su propia tirada siguiente (la guarda el
     # SUJETO que gana la ventaja). La limpia ``Combatant.reset()``.

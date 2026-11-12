@@ -38,11 +38,34 @@ from ..core.randomness import pick
 RANGED_COVER_AC_BONUS = 2
 
 
+def cobertura_bulwark_activa(target: Any) -> bool:
+    """¿Vigente Bulwark of Force sobre ``target``?
+
+    El dueño guardado en ``state.cobertura_bulwark`` debe seguir vivo y
+    sin estar Incapacitado (propiedad ``can_act``); si muere o queda
+    incapacitado el bonificador se ignora y se reanuda al recuperarse
+    (en el sim el efecto dura todo el combate).
+    """
+    state = getattr(target, "state", None)
+    dueno = getattr(state, "cobertura_bulwark", None)
+    if dueno is None:
+        return False
+    if not getattr(dueno, "alive", True):
+        return False
+    return bool(getattr(dueno, "can_act", True))
+
+
 def effective_ac(target: Any) -> int:
-    """CA efectiva de un objetivo (+2 si está a distancia)."""
+    """CA efectiva de un objetivo (+2 si está a distancia o con Bulwark).
+
+    La cobertura del Bulwark y ``at_range`` dan la MISMA magnitud y no
+    se suman (la mayor gana; aquí empatan: +2).
+    """
     ac = int(getattr(target, "ac", 10) or 10)
     state = getattr(target, "state", None)
-    if state is not None and getattr(state, "at_range", False):
+    if state is None:
+        return ac
+    if getattr(state, "at_range", False) or cobertura_bulwark_activa(target):
         return ac + RANGED_COVER_AC_BONUS
     return ac
 
@@ -482,4 +505,4 @@ def check_modifiers(target: Any, ability: str,
 
 __all__ = ["AttackRange", "AttackModifiers", "SaveModifiers", "CheckModifiers",
            "attack_modifiers", "save_modifiers", "check_modifiers",
-           "resolve_attack_range", "effective_ac", "RANGED_COVER_AC_BONUS"]
+           "resolve_attack_range", "effective_ac", "cobertura_bulwark_activa", "RANGED_COVER_AC_BONUS"]

@@ -285,6 +285,9 @@ class Combatant:
             self.state.attacked_this_turn = False
             self.state.forced_save_this_turn = False
             self.state.dodging = False
+            # Bulwark of Force (Psi Warrior): sin cobertura heredada al
+            # empezar un combate nuevo.
+            self.state.cobertura_bulwark = None
             # Marcas de maestría (Vex/Sap): un combate nuevo empieza sin ellas.
             self.state.maestria_ventaja.clear()
             self.state.maestria_desventaja.clear()

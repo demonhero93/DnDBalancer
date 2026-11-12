@@ -2077,6 +2077,17 @@ PSI WARRIOR (2026-11-12)
     acumula, purga ambas con 1 dado, pick «no», sin condición sin
     pick, sin dados, nivel 14, sin ctx/rng). Suite **1472 passed**.
     Commit de A6.
+  - (7) Bulwark of Force (A7): campo ``cobertura_bulwark`` (ref al
+    dueño) en ``CombatState`` + ``Combatant.reset()`` lo limpia;
+    ``cobertura_bulwark_activa`` (dueño vivo y ``can_act``) y rama en
+    ``effective_ac``: ``at_range`` o Bulwark → +2, sin sumar (la mayor
+    gana); ``saving_throw`` +2 al ``bonus`` de DES si vigente;
+    ``PsiBulwarkAction`` (bonus, ``usage=None``) en la subclase:
+    elegibilidad sin RNG (nivel 15, no activo, uso gratuito o dado,
+    aliados vivos incluido el dueño), ``execute`` gasta gratuito→dado
+    y elige con ``pick`` sin repetición hasta ``max(1, mod INT)``
+    objetivos; registrada en ``apply`` si ``lvl >= 15``. 10 tests,
+    suite **1482 passed**. Commit de A7.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
