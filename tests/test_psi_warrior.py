@@ -417,3 +417,121 @@ def test_el_telekinetic_thrust_no_se_aplica_si_no_se_gasta_el_dado(
     _ataca(pj, enemigo, ctx)
     assert trait.dados_restantes == psionic_dice_count(7)
     assert not enemigo.conditions.has(Condition.PRONE)
+
+
+# --- A5: Protective Field -----------------------------------------------------
+
+
+def _parchea_campo(monkeypatch, *, dado: int = 4,
+                   decide: str = "si") -> list:
+    """pick y dado de Psi parcheados en el módulo consumidor."""
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    llamadas: list[str] = []
+    monkeypatch.setattr(
+        psi_mod, "pick",
+        lambda rng, seq: (llamadas.append(tuple(seq)), decide)[1])
+    monkeypatch.setattr(psi_mod, "roll_dice",
+                        lambda expr, rng, crit=False: dado)
+    return llamadas
+
+
+def _recibe(pj, objetivo, ctx, cantidad: int) -> int:
+    """Daño central (fase 1a del pipeline) sobre ``objetivo``."""
+    from dnd_sim.rules.damage import inflict_damage
+
+    return inflict_damage(objetivo, cantidad, "slashing", source=pj,
+                          ctx=ctx, rng=ctx.rng)
+
+
+def test_el_protective_field_reduce_el_dado_mas_el_mod_de_int(monkeypatch):
+    _parchea_campo(monkeypatch, dado=4)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    _recibe(pj, enemigo, ctx, 10)
+    # 10 - (4 del dado + 2 de mod INT) = 4 aplicados.
+    assert enemigo.hp == 60 - 4
+    assert trait.dados_restantes == psionic_dice_count(6) - 1
+    assert pj.state.reaction_used is True
+    assert any("Protective Field" in line for line in ctx.log)
+
+
+def test_el_protective_field_comparte_la_reaccion_del_turno(monkeypatch):
+    llamadas = _parchea_campo(monkeypatch, dado=4)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    _recibe(pj, enemigo, ctx, 10)
+    _recibe(pj, enemigo, ctx, 10)  # misma reacción ya gastada
+    assert len(llamadas) == 1  # el segundo ni siquiera consulta el pick
+    assert trait.dados_restantes == psionic_dice_count(6) - 1
+    assert enemigo.hp == 60 - 4 - 10
+
+
+def test_sin_dados_restantes_el_protective_field_no_consulta_pick(
+        monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("sin dados no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    _parchea_campo(monkeypatch)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    trait.dados_restantes = 0
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    _recibe(pj, enemigo, ctx, 10)
+    assert enemigo.hp == 60 - 10
+    assert pj.state.reaction_used is False
+
+
+def test_el_protective_field_puede_proteger_al_propio_objetivo(monkeypatch):
+    _parchea_campo(monkeypatch, dado=4)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    _recibe(pj, pj, ctx, 10)  # «tú u otra criatura»: se protege a sí mismo
+    assert pj.hp == 70 - 4  # 10 - (4 + 2 de mod INT)
+
+
+def test_el_protective_field_no_baja_el_daño_de_cero(monkeypatch):
+    _parchea_campo(monkeypatch, dado=20)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    _recibe(pj, enemigo, ctx, 3)  # reducción 20+2 > 3 → 0 aplicado
+    assert enemigo.hp == 60
+
+
+def test_el_protective_field_no_se_activa_si_el_pick_dice_no(monkeypatch):
+    llamadas = _parchea_campo(monkeypatch, decide="no")
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    _recibe(pj, enemigo, ctx, 10)
+    assert len(llamadas) == 1
+    assert enemigo.hp == 60 - 10
+    assert trait.dados_restantes == psionic_dice_count(6)
+    assert pj.state.reaction_used is False
+
+
+def test_el_protective_field_no_actua_por_debajo_del_nivel_seis(
+        monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("nivel < 6 no consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    _parchea_campo(monkeypatch)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=5)
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    _recibe(pj, enemigo, ctx, 10)
+    assert enemigo.hp == 60 - 10
+
+
+def test_sin_subclase_el_protective_field_no_consulta_ni_tira_rng(
+        monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("sin la subclase no hay decisiones")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    _parchea_campo(monkeypatch)
+    pj = _pj()
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    _recibe(pj, enemigo, ctx, 10)
+    assert enemigo.hp == 60 - 10

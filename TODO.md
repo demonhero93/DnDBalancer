@@ -161,11 +161,14 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   EscapeCheck de Topple + tests.
   **Hecho**: `_telekinetic_thrust` tras gastar el dado; 4 tests,
   suite 1456 passed.
-- [ ] A5 — Protective Field (paso delicado, aislado): punto central
+- [x] A5 — Protective Field (paso delicado, aislado): punto central
   de daño o punto Parry/Warding, guards de la sección 1, reducción
   `max(1, dado + mod INT)`, reacción compartida + tests. Suite
   completa en verde ANTES de seguir (Parry/Warding/Interception/
   Protection sin cambios).
+  **Hecho**: walker `_proteccion_psionica` en fase 1a de
+  `inflict_damage` (todos los combatientes incluido el target); 8
+  tests, suite 1464 passed.
 - [ ] A6 — Guarded Mind: resistencia psíquica permanente (patrón
   Storm Soul) + purga Hechizado/Asustado en `on_turn_start` (patrón
   Mindless Rage) con `pick` + tests.

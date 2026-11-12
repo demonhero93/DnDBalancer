@@ -189,6 +189,41 @@ class PsiWarriorFeatures(Trait):
                        f"(Telekinetic Thrust de "
                        f"{getattr(owner, 'name', owner)})")
 
+    def proteccion_psionica(self, objetivo: Any, cantidad: int,
+                            tipo_dano: Any, fuente: Any, *,
+                            ctx: Any = None, rng: Any = None) -> int | None:
+        """Protective Field (6): reacción que reduce el daño con un dado.
+
+        Lo llama el motor (walker ``_proteccion_psionica`` de
+        ``rules/damage.py``) en la fase 1a para cualquier combatiente
+        del contexto. Guards primero (sin RNG): nivel, cantidad,
+        ``rng`` y reacción libre —compartida con Warding/Retaliation…:
+        ``state.reaction_used``— más reserva de dados. Decisión con
+        ``pick`` «no»/«sí»; al aceptar se gasta la reacción y un dado,
+        la reducción es ``max(1, dado + mod INT)`` sin bajar de 0, y se
+        registra en el log. Devuelve ``None`` = sin cambios.
+        """
+        if (self.level < 6 or cantidad <= 0 or rng is None
+                or objetivo is None):
+            return None
+        estado = getattr(self.owner, "state", None)
+        if (estado is None or estado.reaction_used
+                or self.dados_restantes <= 0):
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        estado.reaction_used = True
+        self.dados_restantes -= 1
+        owner = self.owner
+        mod_int = int(owner.abilities.mod("int"))
+        crudo = int(roll_dice(f"1d{self.dados_lados}", rng))
+        reduccion = max(1, crudo + mod_int)
+        nuevo = max(0, int(cantidad) - reduccion)
+        _log_line(ctx, f"{getattr(owner, 'name', owner)} usa Protective "
+                       f"Field: -{min(reduccion, int(cantidad))} de daño "
+                       f"(1d{self.dados_lados}={crudo}+{mod_int})")
+        return nuevo
+
 
 def apply_psi_warrior(pj: Any, level: int | None = None,
                       rng: random.Random | None = None

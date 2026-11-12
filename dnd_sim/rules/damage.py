@@ -266,6 +266,37 @@ def _mitigacion_de_otros(target: "Combatant", amount: int,
     return amount
 
 
+def _proteccion_psionica(target: "Combatant", amount: int,
+                         damage_type: Any, source: Any, ctx: Any,
+                         rng: Any) -> int:
+    """Fase 1a: Protective Field (Psi Warrior) reduce el daño entrante.
+
+    Duck-typing SIN ``HOOK_NAMES`` (patrón ``_decidir_maniobra``): cada
+    combatiente del contexto puede definir
+    ``proteccion_psionica(objetivo, cantidad, tipo_dano, fuente, *,
+    ctx, rng)`` y devolver la nueva cantidad (o ``None`` = sin
+    cambios). A diferencia de 1b se pregunta a TODOS los combatientes
+    incluido el propio objetivo («tú u otra criatura»); los guards de
+    nivel, reacción, dados y ``pick`` viven en el rasgo. Sin rasgos que
+    lo defina, ni consulta ni RNG.
+    """
+    combatientes = getattr(ctx, "combatants", None) or []
+    nuevo = int(amount)
+    for combatiente in combatientes:
+        traits = getattr(combatiente, "traits", None)
+        if not traits:
+            continue
+        for rasgo in traits:
+            metodo = getattr(rasgo, "proteccion_psionica", None)
+            if not callable(metodo):
+                continue
+            resultado = metodo(target, nuevo, damage_type, source,
+                              ctx=ctx, rng=rng)
+            if resultado is not None:
+                nuevo = max(0, int(resultado))
+    return nuevo
+
+
 def _absorber_pv_temporales(target: "Combatant", amount: int) -> int:
     """Fase 1c: gasta los PV temporales del objetivo con el daño recibido.
 
@@ -376,6 +407,12 @@ def inflict_damage(target: "Combatant", amount: int,
     # un contexto con la lista de combatientes; sin él, no intervienen.
     if original > 0 and amt > 0 and ctx is not None:
         amt = _mitigacion_de_otros(target, amt, damage_type, source, ctx)
+    # 1a. Protective Field (Psi Warrior): reacción que reduce el daño de
+    # cualquier combatiente del contexto (el propio objetivo incluido),
+    # justo antes de que toquen los PV (y antes de los PV temporales).
+    if original > 0 and amt > 0 and ctx is not None:
+        amt = _proteccion_psionica(target, amt, damage_type, source, ctx,
+                                   rng)
     # 1c. PV temporales: absorben lo que sobre antes de tocar los PV
     # normales (lo que se gasta aquí no vuelve a contar como daño a PV).
     if original > 0 and amt > 0:

@@ -2046,6 +2046,22 @@ PSI WARRIOR (2026-11-12)
     (CD y PRONE, salvación pasa → sin PRONE, nivel 7 gate con
     ``saving_throw`` que revienta si se consulta, sin gasto de dado no
     hay salvación). Suite **1456 passed**. Commit de A4.
+  - (5) Protective Field (A5, paso delicado): walker NUEVO
+    ``_proteccion_psionica`` en ``rules/damage.py`` — fase 1a del
+    pipeline de ``inflict_damage``, entre 1b (``reduce_damage_to_allies``)
+    y 1c (PV temporales), duck-typing SIN ``HOOK_NAMES`` que recorre
+    TODOS los ``ctx.combatants`` incluido el propio objetivo («tú u
+    otra criatura»; a diferencia de 1b, que salta al target). Método
+    ``proteccion_psionica(objetivo, cantidad, tipo_dano, fuente, *,
+    ctx, rng)`` en el rasgo: guards sin RNG (nivel >= 6, cantidad > 0,
+    ``rng``, reacción libre ``state.reaction_used`` compartida con
+    Warding/Retaliation…, reserva de dados), ``pick`` «no»/«sí», al
+    aceptar gasta reacción + dado, reducción ``max(1, dado + mod INT)``
+    sin bajar de 0, log. Sin cambios en Parry/Warding/Interception/
+    Protection (suite completa en verde ANTES de seguir: **1464
+    passed**). 8 tests (reducción dado+INT, reacción compartida, sin
+    dados sin pick, protege al propio objetivo, no baja de 0, pick «no»,
+    nivel < 6, sin subclase cero consulta). Commit de A5.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
