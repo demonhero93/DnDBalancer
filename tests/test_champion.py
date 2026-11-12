@@ -16,12 +16,15 @@ import pytest
 
 from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import (
+    FIGHTER_STYLES,
     champion_crit_threshold,
     heroic_rally_amount,
 )
+from dnd_sim.core.enums import AttackRange
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
     ChampionFeatures,
+    FighterFeatures,
     apply_cavalier,
     apply_champion,
 )
@@ -453,3 +456,84 @@ def test_moverse_tras_un_critico_es_dato_sin_efecto():
     # El modelo no tiene campo de velocidad: no hay nada que mover.
     pj, _ = _champion()
     assert not hasattr(pj, "speed")
+
+
+# --- A5: Additional Fighting Style --------------------------------------------
+
+def _fighter(pj) -> FighterFeatures:
+    for trait in pj.traits:
+        if isinstance(trait, FighterFeatures):
+            return trait
+    raise AssertionError("falta FighterFeatures")
+
+
+def test_el_segundo_estilo_difiere_del_primero_y_esta_en_el_pool():
+    pj, _ = _champion(level=7)
+    f = _fighter(pj)
+    assert f.estilos_extra
+    segundo = f.estilos_extra[0]
+    assert segundo != f.estilo
+    assert segundo in FIGHTER_STYLES
+    assert set(f.estilos) == {f.estilo, segundo}
+
+
+def test_kwarg_explicito_de_estilo_adicional_valido():
+    pj, _ = _champion(level=7, fighting_style="Archery",
+                      additional_fighting_style="Defense")
+    assert _fighter(pj).estilos_extra == ["Defense"]
+
+
+def test_kwarg_que_repite_el_primero_da_value_error():
+    with pytest.raises(ValueError, match="repite"):
+        _champion(level=7, fighting_style="Archery",
+                  additional_fighting_style="Archery")
+
+
+def test_kwarg_estilo_inventado_da_value_error():
+    with pytest.raises(ValueError, match="no es un Estilo"):
+        _champion(level=7, additional_fighting_style="Silly Style")
+
+
+def test_los_dos_estilos_funcionan_a_la_ves():
+    pj, _ = _champion(level=7, fighting_style="Dueling",
+                      additional_fighting_style="Defense")
+    f = _fighter(pj)
+    # Defense: +1 CA al aplicarse el segundo estilo.
+    assert pj.ac == 16
+    # Dueling: +2 a daño cuerpo a cuerpo a una mano.
+    objetivo = Monster("Bobo", max_hp=60, ac=10, abilities=_abilities())
+    daño = f.extra_attack_damage(
+        pj, objetivo, AttackRange.MELEE,
+        atk=Attack("Espada", "1d8", ability="str"))
+    assert daño == 2
+
+
+def test_defense_como_primero_no_duplica_la_ca():
+    pj, _ = _champion(level=7, fighting_style="Defense")
+    f = _fighter(pj)
+    assert pj.ac == 16  # +1 una sola vez: el segundo nunca es Defense
+    assert f.estilos_extra[0] != "Defense"
+
+
+def test_por_debajo_del_nivel_7_no_concede_estilo_adicional():
+    pj, _ = _champion(level=6, fighting_style="Archery",
+                      additional_fighting_style="Defense")
+    f = _fighter(pj)
+    assert f.estilos_extra == []
+    assert pj.ac == 15
+
+
+def test_misma_semilla_elige_el_mismo_segundo_estilo():
+    a, _ = _champion(level=7, fighting_style="Archery",
+                     rng=random.Random(0))
+    b, _ = _champion(level=7, fighting_style="Archery",
+                     rng=random.Random(0))
+    assert _fighter(a).estilos_extra == _fighter(b).estilos_extra
+
+
+def test_sin_subclase_no_hay_estilos_extra():
+    pj = _pj()
+    apply_fighter(pj, level=7, fighting_style="Archery")
+    f = _fighter(pj)
+    assert f.estilos_extra == []
+    assert f.estilos == ("Archery",)

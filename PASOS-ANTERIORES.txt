@@ -1902,6 +1902,30 @@ CHAMPION (2026-11-11)
     Atletismo ventaja, otras habilidades no, anulación con
     veneno/POISONED, sin competencia, Atletismo normal sin subclase,
     movimiento sin efecto), suite 1415 passed. Commit de A4.
+  - (5) Additional Fighting Style (A5): refactor previo en
+    ``fighter/features.py`` — campo ``estilos_extra: list[str]`` +
+    propiedad ``estilos`` que devuelve el principal y los adicionales;
+    los 6 hooks de estilos pasan de igualdad con ``self.estilo`` a
+    pertenencia al conjunto (GWF, Thrown, Dueling, Protection,
+    Interception, Archery). Suite completa ANTES de seguir: 1415
+    passed idéntica (sin cambio de resultados; el atributo ``estilo``
+    y la mutación Defense de ``apply_fighter`` quedan intactos).
+    ``apply_champion`` completa el kwarg: validación SIEMPRE (no en
+    ``FIGHTER_STYLES`` → ValueError; == primero → «repite… una dote no
+    se toma dos veces») y, solo con nivel >= 7, ``pick`` uniforme
+    entre ``FIGHTER_STYLES`` menos el primero (kwarg explícito o
+    semilla 0 vía ``_RNG_CREACION``), ``estilos_extra.append`` y
+    ``+1 CA`` si el segundo es Defense (una sola vez: el pool excluye
+    el primero). Documentado: ``apply_class`` no reenvía ``**kwargs``;
+    el kwarg se pasa llamando a ``apply_champion`` directamente
+    (mismo criterio que ``rng`` en Cavalier). 9 tests (segundo ≠
+    primero/en pool, kwarg válido, repetir primero, estilo inventado,
+    Defense+Dueling a la vez con CA y +2 daño, Defense primero sin
+    duplicar CA, nivel 6 sin estilo, determinismo con misma semilla —
+    fix del test: fijar ``fighting_style="Archery"`` porque
+    ``apply_fighter`` avanza el ``_RNG_CREACION`` global y cambiaba el
+    primero entre llamadas —, sin subclase sin ``estilos_extra``),
+    suite 1424 passed. Commit de A5.
 
 ESTADO ACTUAL
    - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y

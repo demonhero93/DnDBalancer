@@ -16,7 +16,9 @@ Rasgos por nivel (Fighter 3 / 7 / 10 / 15 / 18):
   tras un crítico es dato sin efecto (``# TODO``: sin movimiento).
 - **Additional Fighting Style** (7): un segundo Estilo de Combate,
   elegido con ``pick`` o con el kwarg ``additional_fighting_style``
-  validado (en A5, junto con la propiedad ``estilos``).
+  validado; entra en la propiedad ``estilos`` de ``FighterFeatures``
+  (ambos estilos funcionan a la vez) y su mutación Defense (+1 CA)
+  se aplica una sola vez al aplicarlo.
 - **Heroic Warrior** (10): gana Inspiración Heroica al inicio de cada
   turno si no la tiene → dato sin efecto (el sim no modela la
   Inspiración Heroica); congelado con test freeze.
@@ -44,6 +46,7 @@ from .....core.classes import (
     MIN_LEVEL,
     champion_crit_threshold,
 )
+from .....core.randomness import pick
 from ....traits.base import Trait
 from ..features import FighterFeatures
 
@@ -132,13 +135,16 @@ def apply_champion(pj: Any, level: int | None = None,
 
     Exige que ``pj`` ya tenga :class:`FighterFeatures`
     (:func:`apply_fighter`) y nivel >= 3. ``additional_fighting_style``
-    (Additional Fighting Style) se VALIDA aquí: debe ser un Estilo de
-    ``FIGHTER_STYLES`` y distinto del que ya tiene el PJ; su elección
-    con ``pick``/aplicación de efectos llega en A5 (el kwarg todavía
-    no se aplica). ``rng`` por defecto con semilla 0 (patrón del
-    resto de subclases); hasta A5 no consume azar.
+    (Additional Fighting Style, nivel 7+) se VALIDA siempre: debe ser un
+    Estilo de ``FIGHTER_STYLES`` y distinto del que ya tiene el PJ; sin
+    kwarg, el segundo estilo se elige con ``pick`` uniforme entre el
+    pool menos el primero. ``rng`` por defecto con semilla 0 (patrón
+    del resto de subclases). Como ``apply_class`` no reenvía ``**kwargs``
+    a la subclase, el kwarg se pasa llamando a ``apply_champion``
+    directamente (mismo criterio que ``rng`` en Cavalier).
     """
-    if _de(pj, FighterFeatures) is None:
+    fighter = _de(pj, FighterFeatures)
+    if fighter is None:
         raise ValueError(
             "Primero aplica la clase guerrero con apply_fighter(pj)."
         )
@@ -155,14 +161,26 @@ def apply_champion(pj: Any, level: int | None = None,
                 f"Combate de la clase Guerrero: opciones "
                 f"{sorted(FIGHTER_STYLES)}."
             )
-        primero = _de(pj, FighterFeatures).estilo
-        if additional_fighting_style == primero:
+        if additional_fighting_style == fighter.estilo:
             raise ValueError(
                 "Additional Fighting Style repite el Estilo de Combate "
-                f"que ya tiene el PJ ({primero!r}): una dote no se toma "
-                "dos veces."
+                f"que ya tiene el PJ ({fighter.estilo!r}): una dote no se "
+                "toma dos veces."
             )
-    # Elección con pick y mutaciones del segundo estilo (Defense): A5.
+    # Additional Fighting Style (7): el segundo estilo entra en la
+    # propiedad ``estilos`` (los hooks la consultan) y su mutación
+    # Defense (+1 CA) se aplica UNA vez aquí —el pool excluye el
+    # primero—. Por debajo del nivel 7 no se concede nada (y el kwarg
+    # validado arriba tampoco se aplica).
+    if lvl >= 7:
+        generador = rng if rng is not None else _RNG_CREACION
+        pool = tuple(s for s in FIGHTER_STYLES if s != fighter.estilo)
+        segundo = (additional_fighting_style
+                   if additional_fighting_style is not None
+                   else pick(generador, pool))
+        fighter.estilos_extra.append(segundo)
+        if segundo == "Defense":
+            pj.ac += 1
     trait = ChampionFeatures(name="Champion", level=lvl)
     trait.owner = pj
     pj.traits.append(trait)

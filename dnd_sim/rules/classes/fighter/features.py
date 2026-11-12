@@ -146,6 +146,10 @@ class FighterFeatures(Trait):
     epic_boon_level: int = 19
     # Estilo de Combate elegido (1): clave en ``FIGHTER_STYLES``.
     estilo: str | None = None
+    # Estilos adicionales (Additional Fighting Style, Champion 7):
+    # vacío por defecto; los hooks consultan la propiedad ``estilos``.
+    estilos_extra: list[str] = field(default_factory=list, repr=False,
+                                     compare=False)
     # ¿Lleva escudo? (dato: el modelo no guarda equipo; quien construye
     # el PJ lo activa. Protection lo exige; Interception escudo o arma.)
     tiene_escudo: bool = False
@@ -173,6 +177,18 @@ class FighterFeatures(Trait):
     # Dueño (para que ``reset`` pueda apagar los flags en el combatiente).
     owner: Any = field(default=None, repr=False, compare=False)
 
+    @property
+    def estilos(self) -> tuple[str, ...]:
+        """Estilos de Combate activos: el principal y los adicionales.
+
+        Los hooks de cada estilo comprueban pertenencia al conjunto, de
+        modo que los dos estilos de Champion (7) funcionan a la vez.
+        El atributo ``estilo`` (principal) sigue intacto para los tests
+        y las mutaciones de ``apply_fighter`` (Defense: +1 CA una sola
+        vez, al aplicar el estilo que corresponda).
+        """
+        return tuple(s for s in (self.estilo, *self.estilos_extra) if s)
+
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
         # «Una vez por turno»: el límite se reinicia al empezar el turno.
         self.surge_used_this_turn = False
@@ -193,7 +209,7 @@ class FighterFeatures(Trait):
         motor no guarda si una arma ``versatile`` se empuña a dos manos,
         así que ese caso queda sin modelar (decisión documentada).
         """
-        if (self.estilo != "Great Weapon Fighting"
+        if ("Great Weapon Fighting" not in self.estilos
                 or attacker is not self.owner or atk is None
                 or rango is not AttackRange.MELEE):
             return 0
@@ -209,9 +225,9 @@ class FighterFeatures(Trait):
         if attacker is not self.owner or atk is None:
             return 0
         props = set(getattr(atk, "properties", None) or set())
-        if self.estilo == "Thrown Weapon Fighting" and "thrown" in props:
+        if "Thrown Weapon Fighting" in self.estilos and "thrown" in props:
             return 2
-        if (self.estilo == "Dueling" and rango is AttackRange.MELEE
+        if ("Dueling" in self.estilos and rango is AttackRange.MELEE
                 and "two-handed" not in props):
             return 2
         return 0
@@ -227,7 +243,7 @@ class FighterFeatures(Trait):
         la reacción es un ``pick`` uniforme; sin RNG el rasgo se
         abstiene sin consumir azar.
         """
-        if self.estilo != "Protection" or not self.tiene_escudo:
+        if "Protection" not in self.estilos or not self.tiene_escudo:
             return None
         owner = self.owner
         if owner is None or attacker is owner or target is owner:
@@ -262,7 +278,7 @@ class FighterFeatures(Trait):
         un ``pick`` uniforme; sin RNG el rasgo se abstiene. Devuelve el
         daño restante (mínimo 0), como Spirit Shield.
         """
-        if self.estilo != "Interception":
+        if "Interception" not in self.estilos:
             return None
         owner = self.owner
         if owner is None or target is None or target is owner:
@@ -312,7 +328,7 @@ class FighterFeatures(Trait):
         """Archery: +2 a distancia. Ataques Estudiados: ventaja marcada."""
         if attacker is not self.owner:
             return None
-        if self.estilo == "Archery" and rango is AttackRange.RANGED:
+        if "Archery" in self.estilos and rango is AttackRange.RANGED:
             mods.bonus += 2
         if self.level < 13:
             return None
