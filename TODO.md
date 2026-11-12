@@ -131,6 +131,57 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: 3 + 1432 passed; capas total 1 (excepción conocida);
   grafo 4087/14882/123. FIN sesión Champion.
 
+## Psi Warrior: plan de sesión
+
+(una casilla = un commit; entrada en PASOS tras cada paso)
+
+- [x] A1 — Tablas en `core/classes.py` (`psionic_dice_count`,
+  `psionic_die_sides`, `bulwark_targets`) + tests de tablas por nivel.
+  **Hecho**: PB local `2 + (lvl - 1) // 4` en core; 3 tests, fichero
+  `tests/test_psi_warrior.py`.
+- [ ] A2 — Esqueleto `fighter/subclasses/psi_warrior.py`
+  (`PsiWarriorFeatures` con dados, usos gratuitos, flags por turno y
+  estado de Bulwark/Telekinetic Master; `apply_psi_warrior`) +
+  registro `"psi_warrior"` y reexportes + tests (registro/
+  equivalencia, error clase/nivel, dados por nivel, Telekinetic
+  Movement y Psi-Powered Leap dato sin efecto, cero RNG sin
+  subclase). Cambio esperado en los 4 tests de freeze de registro
+  (explicado en PASOS ANTES de tocarlos).
+- [ ] A3 — Psionic Strike: opción de impacto tras acertar y causar
+  daño (duck-typing desde `attack.py`, patrón Arcane Shot/maniobras),
+  `pick` «no»/«sí», dado tirado una vez, daño de fuerza = dado + mod
+  INT con `apply_damage_modifiers`, flag por turno + tests.
+- [ ] A4 — Telekinetic Thrust: salvación FUE CD `8+PB+mod INT` al
+  aplicarse Psionic Strike con nivel >= 7, fallo → PRONE con
+  EscapeCheck de Topple + tests.
+- [ ] A5 — Protective Field (paso delicado, aislado): punto central
+  de daño o punto Parry/Warding, guards de la sección 1, reducción
+  `max(1, dado + mod INT)`, reacción compartida + tests. Suite
+  completa en verde ANTES de seguir (Parry/Warding/Interception/
+  Protection sin cambios).
+- [ ] A6 — Guarded Mind: resistencia psíquica permanente (patrón
+  Storm Soul) + purga Hechizado/Asustado en `on_turn_start` (patrón
+  Mindless Rage) con `pick` + tests.
+- [ ] A7 — Bulwark of Force: `PsiBulwarkAction` (acción adicional,
+  `usage=None`), cobertura reutilizada o bonificador temporal
+  documentado, uso gratuito primero y luego dado, validez dinámica
+  + tests.
+- [ ] A8 — Telekinetic Master: `TelekineticMasterAction` +
+  `TelekineticMasterAttackAction` (helper de ataque adicional
+  existente), concentración reutilizada o simple + tests con
+  integración `run_combat` semilla fija.
+- [ ] B — Decisiones: 4 tests de freeze de registro explicados
+  ANTES; límites con test freeze (movimiento, empuje, 30 ft,
+  Telekinesis); `TODO.md` con Psi Warrior hecha y pendientes
+  reales (Eldritch Knight, concentración parcial, descansos).
+- [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, grafo acíclico
+  `fighter.features ← fighter.subclasses`, puntos de consulta del
+  motor, recuentos), `PASOS-ANTERIORES.txt` (bloque PSI WARRIOR +
+  ESTADO ACTUAL), `TODO.md` (receta y pendientes).
+- [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
+  `python tools/capas.py`, `graphify update .` + commit final con el
+  grafo.
+
 ## Fighter: cómo añadir una subclase
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de

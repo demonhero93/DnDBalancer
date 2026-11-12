@@ -1970,6 +1970,17 @@ CHAMPION (2026-11-11)
     ``graphify-out/2026-11-12/``). Grafo + backup commiteados. Casilla
     ``Verificación`` de ``TODO.md`` [x]. FIN sesión Champion.
 
+PSI WARRIOR (2026-11-12)
+  - (1) Tablas (A1): ``psionic_dice_count(level)`` = 0 por debajo del
+    nivel 3 y 2 × PB (``2 + (level - 1) // 4`` calculado localmente
+    en ``core``) → 4/6/8/10/12 en 3-4/5-8/9-12/13-16/17+;
+    ``psionic_die_sides(level)`` → 6/8/10/12 en <5/5-10/11-16/17+;
+    ``bulwark_targets(int_mod)`` = ``max(1, int_mod)``. Las tres en
+    ``core/classes.py`` con ``__all__``. Tests nuevos en
+    ``tests/test_psi_warrior.py`` (3 tests de tablas por nivel).
+    Ningún test existente cambia (funciones puras nuevas). Commit de
+    A1.
+
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
      22585 líneas (1432 tests en verde, medido 2026-11-12).

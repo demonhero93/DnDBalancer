@@ -202,6 +202,40 @@ def heroic_rally_amount(con_mod: int) -> int:
     return max(0, 5 + int(con_mod))
 
 
+def psionic_dice_count(level: int) -> int:
+    """Dados de Energía Psiónica de Psi Warrior: 2 × bonificador de competencia.
+
+    0 por debajo del nivel 3; 4 / 6 / 8 / 10 / 12 en los rangos 3-4 /
+    5-8 / 9-12 / 13-16 / 17+. Un combate = día descansado: el rasgo los
+    gasta y ``reset`` los rellena todos (patrón dados de superioridad).
+    """
+    lvl = _clamp(level)
+    if lvl < 3:
+        return 0
+    pb = 2 + (lvl - 1) // 4  # bonificador de competencia (tabla PHB)
+    return 2 * pb
+
+
+def psionic_die_sides(level: int) -> int:
+    """Tamaño del Dado de Energía Psiónica según el nivel: d6 / d8 / d10 / d12.
+
+    d6 en niveles < 5, d8 en 5-10, d10 en 11-16 y d12 en 17+.
+    """
+    lvl = _clamp(level)
+    if lvl >= 17:
+        return 12
+    if lvl >= 11:
+        return 10
+    if lvl >= 5:
+        return 8
+    return 6
+
+
+def bulwark_targets(int_mod: int) -> int:
+    """Máximo de criaturas que protege Bulwark of Force (mínimo 1)."""
+    return max(1, int(int_mod))
+
+
 #: Nivel en el que el Fighter gana cada feature (PHB 2024).
 #: Solo documentación/paridad: la simulación consulta el ``level`` directo.
 FIGHTER_FEATURES: dict[int, tuple[str, ...]] = {
@@ -357,6 +391,7 @@ __all__ = [
     "action_surge_uses",
     "arcane_shot_options_known",
     "arcane_shot_uses",
+    "bulwark_targets",
     "cavalier_mark_extra_damage",
     "cavalier_mark_uses",
     "champion_crit_threshold",
@@ -365,6 +400,8 @@ __all__ = [
     "heroic_rally_amount",
     "indomitable_uses",
     "maneuvers_known_count",
+    "psionic_dice_count",
+    "psionic_die_sides",
     "rage_damage",
     "rage_uses",
     "second_wind_uses",
