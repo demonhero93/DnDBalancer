@@ -113,11 +113,11 @@ class PsiWarriorFeatures(Trait):
         # empezar el turno.
         self.psionic_strike_used_this_turn = False
         # Guarded Mind (A6): purga de Hechizado/Asustado con un dado.
-        if self.level >= 15 and actor is self.owner:
+        if self.level >= 10 and actor is self.owner:
             self._guarded_mind(ctx)
 
     def _guarded_mind(self, ctx: Any) -> None:
-        """Guarded Mind (15): gasta un dado para terminar Hechizado/Asustado.
+        """Guarded Mind (10): gasta un dado para terminar Hechizado/Asustado.
 
         Patrón Mindless Rage: si el dueño tiene alguna de las dos
         condiciones y hay dado, ``pick`` «no»/«sí»; al aceptar gasta el
@@ -366,9 +366,9 @@ def apply_psi_warrior(pj: Any, level: int | None = None,
         dados_lados=psionic_die_sides(lvl),
     )
     trait.owner = pj
-    # Guarded Mind (15): resistencia a daño psíquico permanente
+    # Guarded Mind (10): resistencia a daño psíquico permanente
     # (patrón Storm Soul: si ya la tenía, no se toca).
-    if lvl >= 15 and DamageType.PSYCHIC not in pj.resistances:
+    if lvl >= 10 and DamageType.PSYCHIC not in pj.resistances:
         pj.resistances = set(pj.resistances) | {DamageType.PSYCHIC}
     pj.traits.append(trait)
     # Bulwark of Force (15): acción bonus, elegibilidad sin RNG (el

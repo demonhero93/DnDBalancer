@@ -549,23 +549,23 @@ def test_sin_subclase_el_protective_field_no_consulta_ni_tira_rng(
 
 
 def _guardado(level: int = 15, **kwargs) -> tuple:
-    """PJ Psi Warrior a nivel >= 15 con contexto de turno."""
+    """PJ Psi Warrior a nivel >= 10 (gate de Guarded Mind) + contexto."""
     pj, trait = _psi(level=level, **kwargs)
     ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
                            combatants=[pj], log=[])
     return pj, trait, ctx
 
 
-def test_guarded_mind_concede_resistencia_psiquica_a_partir_del_nivel_15():
+def test_guarded_mind_concede_resistencia_psiquica_a_partir_del_nivel_10():
     from dnd_sim.core.enums import DamageType
     from dnd_sim.rules.damage import apply_damage_modifiers
 
-    pj15, _, _ = _guardado(level=15)
-    assert DamageType.PSYCHIC in pj15.resistances
+    pj10, _, _ = _guardado(level=10)
+    assert DamageType.PSYCHIC in pj10.resistances
     # La resistencia mitiga el daño psíquico redondeando hacia abajo.
-    assert apply_damage_modifiers(10, DamageType.PSYCHIC, pj15) == 5
-    pj14, _, _ = _guardado(level=14)
-    assert DamageType.PSYCHIC not in pj14.resistances
+    assert apply_damage_modifiers(10, DamageType.PSYCHIC, pj10) == 5
+    pj9, _, _ = _guardado(level=9)
+    assert DamageType.PSYCHIC not in pj9.resistances
 
 
 def test_guarded_mind_no_acumula_la_resistencia_si_ya_la_tenia():
@@ -581,12 +581,12 @@ def test_guarded_mind_no_acumula_la_resistencia_si_ya_la_tenia():
 def test_guarded_mind_purga_charmed_y_frightened_gastando_un_dado(
         monkeypatch):
     llamadas = _parchea_campo(monkeypatch, decide="si")
-    pj, trait, ctx = _guardado()
+    pj, trait, ctx = _guardado(level=10)
     apply_condition(pj, Condition.CHARMED, ctx)
     apply_condition(pj, Condition.FRIGHTENED, ctx)
     trait.on_turn_start(pj, ctx)
     assert len(llamadas) == 1
-    assert trait.dados_restantes == psionic_dice_count(15) - 1
+    assert trait.dados_restantes == psionic_dice_count(10) - 1
     assert not pj.conditions.has(Condition.CHARMED)
     assert not pj.conditions.has(Condition.FRIGHTENED)
     assert any("Guarded Mind" in line for line in ctx.log)
@@ -628,13 +628,13 @@ def test_guarded_mind_sin_dados_no_purga(monkeypatch):
     assert pj.conditions.has(Condition.CHARMED)
 
 
-def test_guarded_mind_no_actua_por_debajo_del_nivel_quince(monkeypatch):
+def test_guarded_mind_no_actua_por_debajo_del_nivel_diez(monkeypatch):
     def _revienta(rng, seq):
-        raise AssertionError("nivel < 15 no se consulta el pick")
+        raise AssertionError("nivel < 10 no se consulta el pick")
 
     import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
 
-    pj, trait, ctx = _guardado(level=14)
+    pj, trait, ctx = _guardado(level=9)
     apply_condition(pj, Condition.CHARMED, ctx)
     monkeypatch.setattr(psi_mod, "pick", _revienta)
     trait.on_turn_start(pj, ctx)

@@ -172,8 +172,8 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
 - [x] A6 — Guarded Mind: resistencia psíquica permanente (patrón
   Storm Soul) + purga Hechizado/Asustado en `on_turn_start` (patrón
   Mindless Rage) con `pick` + tests.
-  **Hecho**: resistencia en `apply_psi_warrior` + `_guarded_mind`;
-  8 tests, suite 1472 passed.
+  **Hecho**: resistencia en `apply_psi_warrior` + `_guarded_mind`
+  (nivel 10, corregido en fix A6); 8 tests, suite 1472 passed.
 - [x] A7 — Bulwark of Force: `PsiBulwarkAction` (acción adicional,
   `usage=None`), cobertura reutilizada o bonificador temporal
   documentado, uso gratuito primero y luego dado, validez dinámica

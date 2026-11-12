@@ -2088,6 +2088,13 @@ PSI WARRIOR (2026-11-12)
     y elige con ``pick`` sin repetición hasta ``max(1, mod INT)``
     objetivos; registrada en ``apply`` si ``lvl >= 15``. 10 tests,
     suite **1482 passed**. Commit de A7.
+  - (7-fix) Guarded Mind en nivel 10 (corrección de A6): el enunciado
+    fija Guarded Mind en el nivel 10 (tabla de rasgos), no 15; gates
+    ``lvl >= 10`` (resistencia en ``apply``) y ``self.level >= 10``
+    (purga en ``on_turn_start``) + docstrings (10); tests A6
+    adaptados: resistencia en nivel 10 / no en 9, purga con nivel 10
+    y ``psionic_dice_count(10)``, gate negativo en nivel 9. Bulwark
+    sigue en 15. Suite **1482 passed**. Commit de fix A6.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
