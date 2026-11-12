@@ -139,7 +139,7 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   `psionic_die_sides`, `bulwark_targets`) + tests de tablas por nivel.
   **Hecho**: PB local `2 + (lvl - 1) // 4` en core; 3 tests, fichero
   `tests/test_psi_warrior.py`.
-- [ ] A2 — Esqueleto `fighter/subclasses/psi_warrior.py`
+- [x] A2 — Esqueleto `fighter/subclasses/psi_warrior.py`
   (`PsiWarriorFeatures` con dados, usos gratuitos, flags por turno y
   estado de Bulwark/Telekinetic Master; `apply_psi_warrior`) +
   registro `"psi_warrior"` y reexportes + tests (registro/
@@ -147,6 +147,9 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   Movement y Psi-Powered Leap dato sin efecto, cero RNG sin
   subclase). Cambio esperado en los 4 tests de freeze de registro
   (explicado en PASOS ANTES de tocarlos).
+  **Hecho**: `psi_warrior.py` con `reset`/`on_turn_start`; sin
+  `_RNG_CREACION` (no hay elección al crear; documentado en PASOS
+  (2)); 8 tests + 3 A1, suite 1443 passed.
 - [ ] A3 — Psionic Strike: opción de impacto tras acertar y causar
   daño (duck-typing desde `attack.py`, patrón Arcane Shot/maniobras),
   `pick` «no»/«sí», dado tirado una vez, daño de fuerza = dado + mod
