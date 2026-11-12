@@ -16,16 +16,16 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 
 | Carpeta | Mód. | Líneas | Contenido |
 |---|---:|---:|---|
-| `dnd_sim/core/` | 13 | 1067 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
-| `dnd_sim/model/` | 4 | 1046 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 33 | 10937 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías. |
+| `dnd_sim/core/` | 13 | 1090 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
+| `dnd_sim/model/` | 4 | 1050 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
+| `dnd_sim/rules/` | 34 | 11212 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
 | `dnd_sim/rules/traits/` | 6 | 1299 | Los rasgos de monstruo (paquete, ver abajo). |
-| `dnd_sim/rules/spells/` | 5 | 915 | Hechizos (paquete). |
+| `dnd_sim/rules/spells/` | 5 | 917 | Hechizos (paquete). |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
-| `dnd_sim/engine/combat/` | 3 | 1185 | El motor: tirada de ataque y bucle de rondas (paquete). |
+| `dnd_sim/engine/combat/` | 3 | 1206 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
-| `dnd_sim/__init__.py` | 1 | 190 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **84** | **20257** | + `tests/` con 54 ficheros y 21980 líneas (1387 tests). |
+| `dnd_sim/__init__.py` | 1 | 192 | Fachada: reexporta la API pública ordenada por capa. |
+| **Total** | **85** | **20584** | + `tests/` con 55 ficheros y 22585 líneas (1432 tests). |
 
 ## Reglas de dependencia
 
@@ -60,8 +60,8 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (26 hooks, incl. `after_failed_check` y `defensa_ante_ataque`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master y Cavalier). |
-| `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier y Champion). |
+| `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos por umbral `evaluar_d20`, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
 
@@ -157,7 +157,10 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   `roll_initiative` con duck-typing puro (el motor no importa
   rules): guards sin RNG + pick «no»/«sí» + un dado de superioridad
   sumado antes del mod DES. La parte de Sigilo es dato sin efecto
-  (el motor no tira habilidades en combate).
+  (el motor no tira habilidades en combate). El mismo bucle consulta
+  `ventaja_iniciativa()`/`desventaja_iniciativa()` (Champion,
+  Remarkable Athlete) y combina las fuentes con la regla estándar:
+  solo Champion consume RNG nuevo aquí.
 
 ## Cavalier (XGE)
 
@@ -199,11 +202,56 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   the Saddle (monturas), velocidad 0 de la marca (modelo sin campo
   de velocidad) y los 5 ft de Warding (el sim no guarda posiciones).
 
+## Champion (PHB 2024)
+
+- **Rango crítico ampliado (3/15)**: helpers nuevos
+  `umbral_critico(attacker, atk)` y `evaluar_d20(roll, attacker, atk)`
+  en `rules/roll_modifiers.py`; el motor los usa en `attack_roll`
+  (decisión de crítico/impacto automático y de 1 natural, sustituyendo
+  el `roll == 20` literal). `umbral_critico` recorre los traits del
+  ATACANTE por duck-typing (`fn(atk)`, sin entrada en `HOOK_NAMES`) y
+  devuelve el mínimo con 20; sin rasgo → 20 sin RNG.
+  `ChampionFeatures.umbral_critico` devuelve
+  `champion_crit_threshold(nivel)` de `core/classes.py` (20 / 19
+  desde el 3 / 18 desde el 15) y 20 para ataques de hechizo gracias
+  al campo nuevo `spell_attack` (default `False` en `model/attack.py`;
+  `spells/casting.py` lo pone a `True` — `magical` no sirve: también
+  lo llevan armas mágicas y naturales). Un crítico por rango ampliado
+  cuenta como crítico en todos los consumidores (dados doblados,
+  Warding Maneuver, Sweeping, Studied Attacks, reacciones,
+  Precision).
+- **Remarkable Athlete (3)**: `ventaja_iniciativa()` en
+  `ChampionFeatures` lo consulta `roll_initiative` (recuento de
+  fuentes: flag `initiative_with_advantage` o trait, contra
+  `desventaja_iniciativa()`; solo ventaja/desventaja tira dos d20 con
+  `roll_d20`, ambas o ninguna → `d20` normal, RNG del resto exacto).
+  `modify_check_modifiers` añade ventaja en Atletismo (patrón Furia;
+  se anula con desventaja en `CheckModifiers.mode`; sin competencia
+  añadida). Moverse tras un crítico: `# TODO` dato sin efecto.
+- **Additional Fighting Style (7)**: `FighterFeatures.estilos_extra`
+  + propiedad `estilos` (principal + adicionales); los 6 hooks de
+  estilos comprueban pertenencia al conjunto (el atributo `estilo` y
+  la mutación Defense de `apply_fighter` quedan intactos).
+  `apply_champion` valida siempre el kwarg `additional_fighting_style`
+  (en el pool y ≠ primero) y, solo con nivel ≥ 7, elige con `pick`
+  entre `FIGHTER_STYLES` menos el primero (semilla 0 vía
+  `_RNG_CREACION`) y aplica `+1 CA` si el segundo es Defense —una
+  sola vez, el pool excluye el primero—. `apply_class` no reenvía
+  `**kwargs`: el kwarg se pasa llamando a `apply_champion` directo.
+- **Heroic Rally (18)**: `on_turn_start` con guards (nivel ≥ 18,
+  dueño, vivo, ≥ 1 PG, Bloodied `pg * 2 <= pg_max`); cura
+  `min(heroic_rally_amount(mod CON), pg_max - pg)` vía `log_line`,
+  sin RNG.
+- **Datos sin efecto (freeze en `tests/test_champion.py`)**: Heroic
+  Warrior (sin Inspiración Heroica) y Defy Death (sin salvaciones de
+  muerte); reabrir solo si el sim los modela (condiciones en
+  `TODO.md`).
+
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1387 tests
+pytest                              # 1432 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

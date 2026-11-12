@@ -118,10 +118,13 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   reabrir Heroic Warrior/Defy Death).
   **Hecho**: freeze ya en A2/A4; `TODO.md` candidatas y condiciones
   de reabrir actualizados. Commit de B.
-- [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, helper de
+- [x] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, helper de
   crítico por umbral, soporte de ventaja en iniciativa/pruebas,
   recuentos), `PASOS-ANTERIORES.txt` (bloque CHAMPION + ESTADO
   ACTUAL), `TODO.md` (receta y pendientes).
+  **Hecho**: tabla remediada (85/20584, tests 55/22585/1432), sección
+  `## Champion (PHB 2024)`, nota iniciativa en Ambush, ESTADO ACTUAL
+  + bullet Champion, candidatas actualizadas. Commit de Docs.
 - [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` + commit final con el
   grafo.
@@ -129,7 +132,8 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
 ## Fighter: cómo añadir una subclase
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de
-fighter: `arcane_archer.py`, `battle_master.py` y `cavalier.py`):
+fighter: `arcane_archer.py`, `battle_master.py`, `cavalier.py` y
+`champion.py`):
 
 1. Crear `rules/classes/fighter/subclasses/<clave>.py` con un
    `SubclassDef(name="<nombre visible>", class_name="fighter",

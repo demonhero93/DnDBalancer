@@ -1945,13 +1945,29 @@ CHAMPION (2026-11-11)
     claves registradas a 4. Ningún test nuevo (los 3 freeze de registro
     y los de dato sin efecto ya estaban verdes desde A2/A4). Commit de
     B.
+  - (8) Docs: ``ARCHITECTURE.md`` — tabla remediada con conteo por
+    carpetas (85 módulos/20584 líneas; tests 55/22585/1432; core
+    13/1090, model 4/1050, rules 34/11212, traits 6/1299, spells
+    5/917, engine 3/224, engine/combat 3/1206, data 16/3394, fachada
+    1/192 — suma cuadra), fila ``rules/classes/`` con
+    ``fighter/subclasses/{…,cavalier,champion}``, fila
+    ``engine/combat`` con «críticos por umbral ``evaluar_d20``»,
+    nota de ``ventaja_iniciativa``/``desventaja_iniciativa`` en el
+    bullet de Ambush, sección ``## Champion (PHB 2024)`` (6 puntos:
+    umbral crítico + ``spell_attack``, Remarkable Athlete,
+    Additional Fighting Style, Heroic Rally, datos sin efecto) y
+    ``pytest # 1432 tests``. PASOS ESTADO ACTUAL con los mismos
+    recuentos (medido 2026-11-12) + bullet Champion (commits
+    b98d67d..3c63d66). TODO: Champion ya no es candidata (solo
+    Eldritch Knight y Psi Warrior) con condiciones de reabrir (ya en
+    B). Commit de Docs.
 
 ESTADO ACTUAL
-   - 84 módulos en dnd_sim/ (20257 líneas); tests/ con 54 ficheros y
-     21980 líneas (1387 tests en verde, medido 2026-11-11).
+   - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
+     22585 líneas (1432 tests en verde, medido 2026-11-12).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
-     subclases bárbaro y Arcane Archer/Battle Master/Cavalier del
-     fighter, con las 8 opciones de Arcane Shot: Piercing/Seeking sin
+     subclases bárbaro y Arcane Archer/Battle Master/Cavalier/Champion
+     del fighter, con las 8 opciones de Arcane Shot: Piercing/Seeking sin
      tirada vía sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
@@ -2106,6 +2122,23 @@ ESTADO ACTUAL
      8+PB+FUE → PRONE); clave "cavalier" en registro y reexports;
      tests/test_cavalier.py (76); commits 1c4ef39..c77240f (9 pasos,
      ver bloque CAVALIER).
+   - Subclase Champion (Campeón, PHB 2024) en
+     rules/classes/fighter/subclasses/champion.py: Improved/Superior
+     Critical (helpers umbral_critico/evaluar_d20 en
+     rules/roll_modifiers.py consultados desde attack_roll, campo
+     spell_attack en model/attack.py para no afectar a hechizos;
+     champion_crit_threshold 20/19/18), Remarkable Athlete (ventaja
+     en iniciativa vía ventaja_iniciativa() duck-typing en
+     roll_initiative con anulación estándar, ventaja en Atletismo vía
+     modify_check_modifiers patrón Furia; movimiento tras crítico dato
+     sin efecto), Additional Fighting Style (7: estilos_extra +
+     propiedad estilos en FighterFeatures, 6 hooks por membresía,
+     kwarg additional_fighting_style validado y pick menos el
+     primero con Defense +1 CA una vez), Heroic Warrior y Defy Death
+     (datos sin efecto), Heroic Rally (18: on_turn_start Bloodied con
+     heroic_rally_amount recortado); clave "champion" en registro y
+     reexports; tests/test_champion.py (45); commits b98d67d..3c63d66
+     (7 pasos, ver bloque CHAMPION).
    - Ataque Temerario aleatorio por turno
      (RECKLESS_USE_PROBABILITY = 0.5, CLI --reckless-p) y utilitarias
      (rules/utility.py: Dodge/Agarrar/Empujar, UTILITY_ACTION_PROBABILITY
