@@ -2149,6 +2149,18 @@ PSI WARRIOR (2026-11-12)
     seguridad ``graphify-out/2026-11-13/``). ``.tmp_*`` borrados.
     Commit final con el grafo.
 
+RUNE KNIGHT (2026-11-13)
+  - (1) Tablas (A1): en ``core/classes.py``, ``runes_known_count`` =
+    0/2/3/4/5 en <3/3-6/7-9/10-14/15+; ``giants_might_die_sides`` =
+    6/8/10 en <10/10-17/18+; ``rune_uses`` = 1/2 en <15/15+;
+    ``runic_shield_uses`` y ``giants_might_uses`` = PB local
+    (``2 + (level - 1) // 4``); pool ``RUNES`` con las 6 claves
+    (``cloud, fire, frost, hill, stone, storm``). Las seis en
+    ``__all__``. Tests nuevos en ``tests/test_rune_knight.py``
+    (6 tests de tablas por nivel; PB de nivel 15 = 5, rango 13-16).
+    Ningún test existente cambia (funciones puras nuevas). Suite
+    **1505 passed**. Commit de A1.
+
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y
      23617 líneas (1499 tests en verde, medido 2026-11-13).

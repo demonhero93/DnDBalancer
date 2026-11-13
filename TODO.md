@@ -214,6 +214,41 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: 3 passed, 1499 passed, capas total 1 (excepción
   conocida), grafo 4262/15557/136. Commit final con el grafo.
 
+## Rune Knight: plan de sesión
+
+Pasos (una casilla = un commit; tras cada uno, entrada en
+`PASOS-ANTERIORES.txt` y suite completa):
+
+- [x] A1 — Tablas en `core/classes.py`: `runes_known_count`,
+  `giants_might_die_sides`, `rune_uses`, `runic_shield_uses`,
+  `giants_might_uses`, pool `RUNES` + tests por nivel.
+  **Hecho**: 6 funciones + `RUNES` en `__all__`; 6 tests, suite
+  1505 passed.
+- [ ] A2 — Esqueleto `rune_knight.py` + registro `rune_knight` en los
+  4 puntos + tests (registro, apply, kwargs, pasivos sin efecto).
+- [ ] A3 — Consulta perezosa `modificar_salvacion`/`modificar_prueba`
+  (duck-typing, sin HOOK_NAMES) + tests de RNG idéntico.
+- [ ] A4 — `GiantsMightAction` (acción adicional, tamaño, ventaja
+  FUE, daño extra 1d6/d8/d10) + tests.
+- [ ] A5 — Runic Shield (reacción en el punto de Warding, re-tirada
+  de UN d20) + tests.
+- [ ] A6 — Ganchos `on_any_turn_start`/`on_any_turn_end` en Trait +
+  encounter + test_traits + cuenta de hooks + tests.
+- [ ] A7 — Runas Hill y Frost (`RuneInvokeAction`) + tests.
+- [ ] A8 — Fire Rune (marca en CombatState, Restringido, 2d6) + tests.
+- [ ] A9 — Stone Rune (`on_any_turn_end`, Hechizado+Incapacitado) +
+  tests.
+- [ ] A10 — Storm Rune (acción + reacción ventaja/desventaja por
+  alianza) + tests.
+- [ ] A11 — Cloud Rune (redirección en el punto de Warding) + tests.
+- [ ] A12 — Master of Runes (2 usos) + tests de cierre.
+- [ ] B — Decisiones: test de registro explicado ANTES; límites con
+  test freeze; TODO con Rune Knight hecha y pendientes reales.
+- [ ] Docs — `ARCHITECTURE.md` (fila, hooks N, consulta, recuentos),
+  PASOS (bloque RUNE KNIGHT + ESTADO ACTUAL), TODO (receta).
+- [ ] Verificación — arquitectura + suite + capas + graphify +
+  commit final con grafo.
+
 ## Fighter: cómo añadir una subclase
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de

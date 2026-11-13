@@ -236,6 +236,61 @@ def bulwark_targets(int_mod: int) -> int:
     return max(1, int(int_mod))
 
 
+def runes_known_count(level: int) -> int:
+    """Runas conocidas de Rune Knight: 2 / 3 / 4 / 5 por rango.
+
+    0 por debajo del nivel 3; 2 en 3-6, 3 en 7-9 (Runic Shield), 4 en
+    10-14 (Great Stature) y 5 en 15+ (Master of Runes).
+    """
+    lvl = _clamp(level)
+    if lvl < 3:
+        return 0
+    if lvl >= 15:
+        return 5
+    if lvl >= 10:
+        return 4
+    if lvl >= 7:
+        return 3
+    return 2
+
+
+def giants_might_die_sides(level: int) -> int:
+    """Dado de daño extra de Giant's Might: d6 / d8 / d10.
+
+    d6 por debajo del nivel 10, d8 en 10-17 (Great Stature) y d10 en
+    18+ (Runic Juggernaut).
+    """
+    lvl = _clamp(level)
+    if lvl >= 18:
+        return 10
+    if lvl >= 10:
+        return 8
+    return 6
+
+
+def rune_uses(level: int) -> int:
+    """Usos por runa conocida: 1 por combate; 2 desde el nivel 15."""
+    lvl = _clamp(level)
+    return 2 if lvl >= 15 else 1
+
+
+def runic_shield_uses(level: int) -> int:
+    """Usos de Runic Shield: bonificador de competencia."""
+    lvl = _clamp(level)
+    return 2 + (lvl - 1) // 4  # bonificador de competencia (tabla PHB)
+
+
+def giants_might_uses(level: int) -> int:
+    """Usos de Giant's Might: bonificador de competencia."""
+    lvl = _clamp(level)
+    return 2 + (lvl - 1) // 4  # bonificador de competencia (tabla PHB)
+
+
+#: Pool de runas de Rune Knight (TCE). El orden fija la muestra.
+RUNES: tuple[str, ...] = ("cloud", "fire", "frost", "hill", "stone",
+                           "storm")
+
+
 #: Nivel en el que el Fighter gana cada feature (PHB 2024).
 #: Solo documentación/paridad: la simulación consulta el ``level`` directo.
 FIGHTER_FEATURES: dict[int, tuple[str, ...]] = {
@@ -397,6 +452,8 @@ __all__ = [
     "champion_crit_threshold",
     "extra_attacks_for",
     "fighter_extra_attacks_for",
+    "giants_might_die_sides",
+    "giants_might_uses",
     "heroic_rally_amount",
     "indomitable_uses",
     "maneuvers_known_count",
@@ -404,9 +461,13 @@ __all__ = [
     "psionic_die_sides",
     "rage_damage",
     "rage_uses",
+    "rune_uses",
+    "runes_known_count",
+    "runic_shield_uses",
     "second_wind_uses",
     "superiority_die_sides",
     "superiority_dice_count",
     "warding_maneuver_uses",
     "weapon_mastery_count",
+    "RUNES",
 ]
