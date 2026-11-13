@@ -2262,6 +2262,25 @@ RUNE KNIGHT (2026-11-13)
     excluidos, reacción compartida, sin usos sin RNG, nivel 6, dos
     guardias → una sola repetición, sin subclase cero RNG). Suite
     **1541 passed**. Commit de A5.
+  - (6) Ganchos de turno ajeno (A6): ``Trait.on_any_turn_start`` y
+    ``Trait.on_any_turn_end`` (métodos base no-op; el bucle del
+    encuentro avisa a TODOS los vivos con el actor como argumento, a
+    diferencia de ``on_turn_start``/``on_turn_end`` que son del propio
+    actor) + entrada en ``HOOK_NAMES`` (26 → **28 hooks**; el test del
+    catálogo los cubre). Helper ``_avisar_ganchos_de_turno(order,
+    actor, ctx, *, inicio)`` en ``engine/combat/encounter.py``: recorre
+    ``order`` saltando no vivos y sin traits, ``hooks()`` perezoso; la
+    llamada de INICIO va tras el corte de fin de combate y ANTES del
+    turno perdido por incapacitación, la de FIN tras ``end_turn`` con
+    guard ``actor.alive`` (un muerto a mitad de turno no la dispara).
+    Sin rasgos que sobrescriban: ``hooks`` devuelve ``[]`` y no se
+    consume RNG. Dispatch de turnos propios intacto (``usage.py`` /
+    ``conditions.py``). ``ARCHITECTURE.md``: 26 → 28. 4 tests en
+    ``tests/test_traits.py`` (catálogo + sin override sin RNG,
+    pares inicio/fin por turno en orden con ``run_combat``, recibe al
+    combatiente que actúa —el espía del PJ ve los turnos del
+    monstruo—, muerto no se avisa). Suite **1545 passed**. Commit de
+    A6.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

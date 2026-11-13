@@ -126,6 +126,27 @@ def _invoke_policy(policy, ctx: CombatContext, candidates: list):
             return policy(ctx)
 
 
+def _avisar_ganchos_de_turno(order: list[Combatant], actor: Combatant,
+                             ctx: CombatContext, *, inicio: bool) -> None:
+    """Avisa ``on_any_turn_start``/``on_any_turn_end`` a todos los vivos.
+
+    El argumento es el combatiente que actúa (``actor``); lo reciben los
+    rasgos de todos los combatientes vivos de ``order``, no solo los suyos.
+    Import local de ``hooks`` al estilo del resto del motor: sin rasgos
+    que sobrescriban el gancho la lista sale vacía y no se consume RNG.
+    """
+    metodo = "on_any_turn_start" if inicio else "on_any_turn_end"
+    for criatura in order:
+        if not getattr(criatura, "alive", True):
+            continue
+        traits = getattr(criatura, "traits", None)
+        if not traits:
+            continue
+        from ...rules.traits import hooks
+        for rasgo in hooks(traits, metodo):
+            getattr(rasgo, metodo)(actor, ctx)
+
+
 def run_combat(combatants: list[Combatant], rng: random.Random,
                verbose: bool = False, max_rounds: int = 100,
                policy=None) -> CombatResult:
@@ -213,6 +234,11 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
             # sin nadie en pie, el combate termina aquí mismo.
             if combat_finished(order):
                 break
+            # Ganchos «cualquier turno» (p. ej. runas de Rune Knight): a
+            # los rasgos de TODOS los vivos, con el actor como argumento.
+            # Si nadie los sobrescribe, `hooks` no devuelve nada y no se
+            # consume RNG.
+            _avisar_ganchos_de_turno(order, actor, ctx, inicio=True)
             if not ctx.skip_turn:
                 accion_ejecutada = False
 
@@ -291,6 +317,11 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
             # Final del turno: salvaciones de repetición y duración de las
             # condiciones del propio combatiente.
             end_turn(actor, ctx)
+            # Ganchos «cualquier turno» de fin: solo si el actor sigue
+            # vivo (un muerto no «termina» su turno; el combate ya se
+            # corta más arriba si se decidió aquí).
+            if actor.alive:
+                _avisar_ganchos_de_turno(order, actor, ctx, inicio=False)
             # Fase legendaria: los demás monstruos legítimos pueden usar una
             # acción legendaria tras el turno de este combatiente.
             legendary_phase(actor, ctx)

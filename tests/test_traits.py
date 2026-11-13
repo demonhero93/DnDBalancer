@@ -283,3 +283,102 @@ def test_on_turn_start_tambien_se_dispara_estando_incapacitado():
     begin_turn(pj, ctx)
     assert llamadas == [pj]
     assert any("incapacitado" in l for l in ctx.log)
+
+
+# --- Ganchos de turno ajeno (on_any_turn_start / on_any_turn_end) ----------- #
+
+def _atacante() -> Monster:
+    """Monstruo hostil al PJ para que el combate termine."""
+    return Monster(
+        name="Orco", max_hp=40, ac=10,
+        abilities=Abilities(str=14, dex=12, con=14, int=8, wis=10, cha=8),
+        attacks=[Attack(name="Hacha", damage="1d8", ability="str",
+                        attack_bonus=3)],
+    )
+
+
+def test_ganchos_de_turno_ajeno_estan_en_el_catalogo_y_sin_override_no_llaman():
+    from dnd_sim.engine.combat.encounter import _avisar_ganchos_de_turno
+
+    assert "on_any_turn_start" in HOOK_NAMES
+    assert "on_any_turn_end" in HOOK_NAMES
+    base = Trait(name="Base")
+    assert callable(base.on_any_turn_start)
+    assert callable(base.on_any_turn_end)
+    assert hooks([base], "on_any_turn_start") == []
+    assert hooks([base], "on_any_turn_end") == []
+    # Sin rasgos que sobrescriban el gancho, el aviso no consume RNG.
+    pj = _pj()
+    pj.traits = [Trait(name="Base")]
+    ctx = _ctx(pj, [pj])
+    antes = ctx.rng.getstate()
+    _avisar_ganchos_de_turno([pj], pj, ctx, inicio=True)
+    _avisar_ganchos_de_turno([pj], pj, ctx, inicio=False)
+    assert ctx.rng.getstate() == antes
+
+
+def test_ganchos_de_turno_ajeno_se_llaman_una_vez_por_turno_en_orden():
+    llamadas: list = []
+
+    class RasgoEspia(Trait):
+        def on_any_turn_start(self, actor, ctx=None):
+            llamadas.append(("inicio", actor))
+
+        def on_any_turn_end(self, actor, ctx=None):
+            llamadas.append(("fin", actor))
+
+    pj = _pj(hp=100)
+    pj.traits = [RasgoEspia(name="Espía")]
+    run_combat([pj, _atacante()], random.Random(5), max_rounds=6)
+    assert llamadas, "el espía debe ver los turnos del combate"
+    # Pares consecutivos (inicio, fin) del mismo actor; si el combate
+    # termina a mitad de un turno, sobra un «inicio» final.
+    i = 0
+    while i + 1 < len(llamadas):
+        tipo_i, actor_i = llamadas[i]
+        tipo_j, actor_j = llamadas[i + 1]
+        assert (tipo_i, tipo_j) == ("inicio", "fin")
+        assert actor_i is actor_j
+        i += 2
+    if i < len(llamadas):
+        assert llamadas[i][0] == "inicio"
+
+
+def test_ganchos_de_turno_ajeno_reciben_al_combatiente_que_actua():
+    llamadas: list = []
+
+    class RasgoEspia(Trait):
+        def on_any_turn_start(self, actor, ctx=None):
+            llamadas.append(actor)
+
+    pj = _pj(hp=100)
+    enemigo = _atacante()
+    pj.traits = [RasgoEspia(name="Espía")]
+    run_combat([pj, enemigo], random.Random(5), max_rounds=4)
+    assert any(a is pj for a in llamadas)
+    # El espía del PJ ve también los turnos del monstruo.
+    assert any(a is enemigo for a in llamadas)
+
+
+def test_ganchos_de_turno_ajeno_no_se_llaman_para_combatientes_muertos():
+    llamadas: list = []
+
+    class RasgoEspia(Trait):
+        def on_any_turn_start(self, actor, ctx=None):
+            llamadas.append(("inicio", actor))
+
+        def on_any_turn_end(self, actor, ctx=None):
+            llamadas.append(("fin", actor))
+
+    from dnd_sim.engine.combat.encounter import _avisar_ganchos_de_turno
+
+    vivo = _pj(name="Vivo")
+    vivo.traits = [RasgoEspia(name="EspíaVivo")]
+    muerto = _pj(name="Muerto")
+    muerto.hp = 0
+    muerto.traits = [RasgoEspia(name="EspíaMuerto")]
+    ctx = _ctx(vivo, [vivo, muerto])
+    _avisar_ganchos_de_turno([vivo, muerto], vivo, ctx, inicio=True)
+    _avisar_ganchos_de_turno([vivo, muerto], vivo, ctx, inicio=False)
+    # Solo el rasgo del vivo se avisa (el del muerto, nunca).
+    assert llamadas == [("inicio", vivo), ("fin", vivo)]

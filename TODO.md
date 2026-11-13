@@ -244,8 +244,10 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   de UN d20) + tests.
   **Hecho**: walker `_repetir_d20_del_bando` + método `repetir_d20`;
   10 tests, suite 1541 passed.
-- [ ] A6 — Ganchos `on_any_turn_start`/`on_any_turn_end` en Trait +
+- [x] A6 — Ganchos `on_any_turn_start`/`on_any_turn_end` en Trait +
   encounter + test_traits + cuenta de hooks + tests.
+  **Hecho**: 28 hooks en `HOOK_NAMES`, helper en `encounter.py`,
+  4 tests, suite 1545 passed.
 - [ ] A7 — Runas Hill y Frost (`RuneInvokeAction`) + tests.
 - [ ] A8 — Fire Rune (marca en CombatState, Restringido, 2d6) + tests.
 - [ ] A9 — Stone Rune (`on_any_turn_end`, Hechizado+Incapacitado) +

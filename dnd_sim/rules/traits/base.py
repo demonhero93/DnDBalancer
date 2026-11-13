@@ -282,6 +282,27 @@ class Trait:
         """
         return None
 
+    # --- Turnos de cualquier combatiente ------------------------------------
+    def on_any_turn_start(self, actor: Any, ctx: Any = None) -> None:
+        """Hook: ``actor`` empieza su turno (lo ven todos los rasgos).
+
+        A diferencia de ``on_turn_start`` (solo los rasgos del propio
+        actor), el bucle del encuentro avisa con este gancho a los rasgos
+        de **todos** los combatientes vivos, con el combatiente que actúa
+        como argumento. Sin rasgos que lo sobrescriban no se llama ni se
+        consume RNG. Por defecto no hace nada.
+        """
+        return None
+
+    def on_any_turn_end(self, actor: Any, ctx: Any = None) -> None:
+        """Hook: ``actor`` termina su turno (lo ven todos los rasgos).
+
+        Mismo criterio que ``on_any_turn_start``: llamado desde el bucle
+        del encuentro a los rasgos de todos los combatientes vivos con el
+        combatiente que actúa como argumento. Por defecto no hace nada.
+        """
+        return None
+
     # --- Supervivencia a 0 PV ----------------------------------------------
     def survives_at_zero_hp(self, owner: Any) -> bool:
         """Hook: ¿sigue vivo ``owner`` aunque tenga 0 PV (o menos)?
@@ -397,6 +418,8 @@ HOOK_NAMES: tuple[str, ...] = (
     "on_rage_end",
     "on_turn_start",
     "on_turn_end",
+    "on_any_turn_start",
+    "on_any_turn_end",
     "survives_at_zero_hp",
     "on_reduced_to_zero_hp",
     "extra_actions",
