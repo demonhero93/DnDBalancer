@@ -25,7 +25,7 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 | `dnd_sim/engine/combat/` | 3 | 1206 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
 | `dnd_sim/__init__.py` | 1 | 192 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **85** | **20584** | + `tests/` con 55 ficheros y 22585 líneas (1432 tests). |
+| **Total** | **86** | **21276** | + `tests/` con 56 ficheros y 23617 líneas (1499 tests). |
 
 ## Reglas de dependencia
 
@@ -60,7 +60,7 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (26 hooks, incl. `after_failed_check` y `defensa_ante_ataque`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier y Champion). |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion,psi_warrior}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier, Champion y Psi Warrior). |
 | `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos por umbral `evaluar_d20`, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
@@ -247,11 +247,50 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   muerte); reabrir solo si el sim los modela (condiciones en
   `TODO.md`).
 
+## Psi Warrior (PHB 2024)
+
+- **Psionic Power (3)**: tablas nuevas `psionic_dice_count` /
+  `psionic_die_sides` / `bulwark_targets` en `core/classes.py`;
+  reserva única de dados (2 × PB) compartida por todos los rasgos;
+  un combate = un día descansado (`reset` los rellena).
+- **Protective Field (3)**: walker NUEVO `_proteccion_psionica` en la
+  fase 1a de `rules/damage.py` (entre `reduce_damage_to_allies` y los
+  PV temporales), que recorre TODOS los combatientes incluido el
+  target; duck-typing por `getattr`, sin entrada en `HOOK_NAMES`.
+  Guards sin RNG (nivel ≥ 3, daño > 0, objetivo = dueño o aliado
+  vivo — nunca enemigos —, reacción libre compartida, dados) y
+  `pick` «no»/«sí»; reduce `max(1, dado + mod INT)` sin bajar de 0.
+- **Psionic Strike (3)**: walker NUEVO `_dano_extra_de_rasgo` en
+  `engine/combat/attack.py`, tras el `inflict_damage` principal y
+  antes del bucle `extra_damage` (duck-typing, sin `HOOK_NAMES`);
+  daño de fuerza `dado + mod INT` una vez por turno (flag; solo
+  armas — `spell_attack` queda excluido —, los naturales cuentan).
+- **Telekinetic Thrust (7)**: al gastarse el dado, salvación de FUE
+  CD 8 + PB + mod INT → `PRONE` con `EscapeCheck`; el empuje de 10 ft
+  es dato sin efecto.
+- **Guarded Mind (10)**: resistencia permanente a psíquico (patrón
+  Storm Soul, sin acumular) + purga de Hechizado/Asustado en
+  `on_turn_start` con `pick` y `remove_condition`.
+- **Bulwark of Force (15)**: `PsiBulwarkAction` (acción bonus,
+  `usage=None`); campo nuevo `cobertura_bulwark` (ref al dueño) en
+  `CombatState` + `effective_ac` +2 (máx. con `at_range`, sin sumar)
+  y salvaciones de DES +2 mientras el dueño siga vivo y sin estar
+  Incapacitado (`can_act`); uso gratuito primero y luego un dado.
+- **Telekinetic Master (18)**: `TelekineticMasterAction` +
+  `TelekineticMasterAttackAction` (helper `attack_roll` +
+  `copy.copy(context)`, patrón Unwavering Mark); concentración
+  SIMPLE: flag mientras el dueño no esté Incapacitado ni muerto, SIN
+  salvaciones de CON («concentración parcial» en `TODO.md`).
+- **Datos sin efecto (freeze en `tests/test_psi_warrior.py`)**:
+  Telekinetic Movement y Psi-Powered Leap (sin movimiento), empuje
+  de 10 ft de Thrust, distancias de 30 ft y el efecto de Telekinesis
+  (solo concede el ataque adicional).
+
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1432 tests
+pytest                              # 1499 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

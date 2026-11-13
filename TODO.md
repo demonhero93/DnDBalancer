@@ -201,10 +201,13 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: corrección Protective Field (gate nivel 3 + guard de
   aliado; 5 tests reescritos + 3 de deuda), 3 tests de límites,
   candidatas y pendientes actualizados; suite 1499 passed.
-- [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, grafo acíclico
+- [x] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, grafo acíclico
   `fighter.features ← fighter.subclasses`, puntos de consulta del
   motor, recuentos), `PASOS-ANTERIORES.txt` (bloque PSI WARRIOR +
   ESTADO ACTUAL), `TODO.md` (receta y pendientes).
+  **Hecho**: sección `## Psi Warrior (PHB 2024)`, recuentos
+  86/21276 + 56/23617/1499, ESTADO ACTUAL y receta; grafo ya
+  documentado. Commit de Docs.
 - [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` + commit final con el
   grafo.
@@ -212,8 +215,8 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
 ## Fighter: cómo añadir una subclase
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de
-fighter: `arcane_archer.py`, `battle_master.py`, `cavalier.py` y
-`champion.py`):
+fighter: `arcane_archer.py`, `battle_master.py`, `cavalier.py`,
+`champion.py` y `psi_warrior.py`):
 
 1. Crear `rules/classes/fighter/subclasses/<clave>.py` con un
    `SubclassDef(name="<nombre visible>", class_name="fighter",

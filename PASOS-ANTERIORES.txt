@@ -2132,14 +2132,22 @@ PSI WARRIOR (2026-11-12)
     ``valid_targets`` sin geometria; Telekinesis: sin ``spells``, solo
     el ataque adicional). 6 tests nuevos; suite **1499 passed**.
     Commit de B.
+  - (10) Docs (Docs): ``ARCHITECTURE.md`` — recuentos (86 módulos /
+    21276 líneas; tests 56 ficheros / 23617 líneas / 1499), fila
+    ``rules/classes/`` con ``psi_warrior``, sección nueva
+    ``## Psi Warrior (PHB 2024)`` (tablas, walkers, Bulwark,
+    concentración simple y datos sin efecto) y recuento de la receta.
+    ``PASOS-ANTERIORES.txt`` — ESTADO ACTUAL con recuentos y registro
+    con Psi Warrior. ``TODO.md`` — receta con ``psi_warrior.py``.
+    Commit de Docs.
 
 ESTADO ACTUAL
-   - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
-     22585 líneas (1432 tests en verde, medido 2026-11-12).
+   - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y
+     23617 líneas (1499 tests en verde, medido 2026-11-13).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
-     subclases bárbaro y Arcane Archer/Battle Master/Cavalier/Champion
-     del fighter, con las 8 opciones de Arcane Shot: Piercing/Seeking sin
-     tirada vía sustituir_ataque).
+     subclases bárbaro y Arcane Archer/Battle Master/Cavalier/Champion/
+     Psi Warrior del fighter, con las 8 opciones de Arcane Shot:
+     Piercing/Seeking sin tirada vía sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities
