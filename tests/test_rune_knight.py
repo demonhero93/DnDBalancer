@@ -3,8 +3,8 @@
 Solo cubren lo que existe: en A1, las tablas de ``core/classes.py``; en
 A2, el esqueleto, el registro y los datos sin efecto; en A3, la consulta
 perezosa ``modificar_salvacion``/``modificar_prueba``; en A4, Giant's
-Might. El resto de casillas (runas, reacciones, ganchos de turno) se
-añade aquí.
+Might; en A5, Runic Shield. El resto de casillas (runas, ganchos de
+turno) se añade aquí.
 """
 
 from __future__ import annotations
@@ -496,3 +496,210 @@ def test_sin_subclase_giant_might_no_consulta_rng(monkeypatch):
     enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
     attack_roll(pj, enemigo, pj.attacks[0], random.Random(1),
                 log=[], ctx=_ctx(pj, enemigo))
+
+
+# --- A5: Runic Shield --------------------------------------------------------
+
+
+def _escudo_partida(*, level: int = 7, ac_objetivo: int = 15) -> tuple:
+    """Monstruo ataca a un aliado del Rune Knight (NPC hostil a PJ)."""
+    atacante = Monster("Orco", max_hp=60, ac=10, abilities=_abilities(),
+                       attacks=[Attack("Hacha", "1d8", ability="str")])
+    guardia = _pj(level=level, name="Guardia")
+    apply_fighter(guardia, level=level, fighting_style="Archery")
+    trait = apply_rune_knight(guardia, level=level)
+    aliado = _pj(name="Alicia", ac=ac_objetivo)
+    ctx = _ctx(atacante, guardia, aliado)
+    return atacante, guardia, aliado, trait, ctx
+
+
+def _parchea_escudo(monkeypatch, *, roll_atacante: int = 15,
+                    roll_repetido: int = 3, decide: str = "si") -> list:
+    """Tiradas fijas: d20 del atacante, d20 de la repetición y pick."""
+    import dnd_sim.engine.combat.attack as attack_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    llamadas_pick = []
+    monkeypatch.setattr(
+        attack_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(value=roll_atacante,
+                                         rolls=[roll_atacante],
+                                         mode=mode or RollMode.NORMAL))
+    monkeypatch.setattr(
+        rk_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(value=roll_repetido,
+                                         rolls=[roll_repetido],
+                                         mode=mode or RollMode.NORMAL))
+
+    def _pick(rng, seq):
+        llamadas_pick.append(tuple(seq))
+        return decide
+
+    monkeypatch.setattr(rk_mod, "pick", _pick)
+    return llamadas_pick
+
+
+def test_runic_shield_convierte_un_impacto_en_fallo(monkeypatch):
+    atacante, guardia, aliado, trait, ctx = _escudo_partida()
+    llamadas = _parchea_escudo(monkeypatch, roll_atacante=15,
+                               roll_repetido=3, decide="si")
+    usos = trait.runic_shield_usos
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    # El golpe original entraba (15 + bonus >= 15); el 3 repele.
+    assert len(llamadas) == 1
+    assert aliado.hp == 70
+    assert trait.runic_shield_usos == usos - 1
+    assert guardia.state.reaction_used is True
+    assert any("Runic Shield" in line for line in ctx.log)
+
+
+def test_runic_shield_no_actua_si_el_golpe_original_falla(monkeypatch):
+    atacante, guardia, aliado, trait, ctx = _escudo_partida()
+
+    def _revienta(rng, seq):
+        raise AssertionError("un fallo original no consulta la repetición")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    _parchea_escudo(monkeypatch, roll_atacante=1, decide="si")
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    usos = trait.runic_shield_usos
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp == 70
+    assert trait.runic_shield_usos == usos
+    assert guardia.state.reaction_used is False
+
+
+def test_runic_shield_un_uno_natural_en_la_repeticion_falla_aunque_entre(
+        monkeypatch):
+    # CA del aliado en 2: el total nuevo (1 + bonus) entraría, pero el
+    # 1 natural falla siempre.
+    atacante, guardia, aliado, trait, ctx = _escudo_partida(ac_objetivo=2)
+    _parchea_escudo(monkeypatch, roll_atacante=15, roll_repetido=1,
+                    decide="si")
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp == 70
+
+
+def test_runic_shield_un_veinte_natural_en_la_repeticion_es_critico(
+        monkeypatch):
+    atacante, guardia, aliado, trait, ctx = _escudo_partida()
+    _parchea_escudo(monkeypatch, roll_atacante=15, roll_repetido=20,
+                    decide="si")
+    import dnd_sim.engine.combat.attack as attack_mod
+
+    # Dado del arma: 5 normal y 10 crítico (el crítico lo duplica).
+    monkeypatch.setattr(
+        attack_mod, "roll_dice",
+        lambda expr, rng, crit=False, **kw: 10 if crit else 5)
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    # Orco FUE 16 (+3): bruto 10 + 3 = 13 (sin crítico serían 8).
+    assert aliado.hp == 70 - 13
+
+
+def test_runic_shield_no_actua_sobre_el_dueno_ni_contra_enemigos(
+        monkeypatch):
+    atacante, guardia, aliado, trait, ctx = _escudo_partida()
+    llamadas = _parchea_escudo(monkeypatch, roll_atacante=15, decide="si")
+    usos = trait.runic_shield_usos
+    # (a) «OTRA criatura»: el propio dueño como objetivo no se protege.
+    attack_roll(atacante, guardia, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert llamadas == []
+    # (b) el dueño ataca a un enemigo: su rasgo no está en ese bando.
+    attack_roll(guardia, atacante, guardia.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert llamadas == []
+    assert trait.runic_shield_usos == usos
+    assert guardia.state.reaction_used is False
+
+
+def test_runic_shield_gasta_la_reaccion_compartida(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    atacante, guardia, aliado, trait, ctx = _escudo_partida()
+    _parchea_escudo(monkeypatch, decide="si")
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert guardia.state.reaction_used is True
+    usos = trait.runic_shield_usos
+
+    def _revienta(rng, seq):
+        raise AssertionError("sin reacción no se consulta el pick")
+
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert trait.runic_shield_usos == usos
+
+
+def test_runic_shield_sin_usos_no_consulta_rng(monkeypatch):
+    atacante, guardia, aliado, trait, ctx = _escudo_partida()
+    llamadas = _parchea_escudo(monkeypatch, decide="si")
+    trait.runic_shield_usos = 0
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert llamadas == []
+    assert guardia.state.reaction_used is False
+    assert aliado.hp < 70  # el golpe entra sin repetición
+
+
+def test_runic_shield_no_actua_por_debajo_del_nivel_siete(monkeypatch):
+    atacante, guardia, aliado, trait, ctx = _escudo_partida(level=6)
+    llamadas = _parchea_escudo(monkeypatch, decide="si")
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert llamadas == []
+    assert trait.runic_shield_usos == runic_shield_uses(6)
+
+
+def test_runic_shield_sin_reentrada_solo_una_repeticion_por_ataque(
+        monkeypatch):
+    atacante, guardia, aliado, trait, ctx = _escudo_partida()
+    guardia2 = _pj(level=7, name="Guardia2")
+    apply_fighter(guardia2, level=7, fighting_style="Archery")
+    trait2 = apply_rune_knight(guardia2, level=7)
+    ctx.combatants.append(guardia2)
+    llamadas = []
+    for t in (trait, trait2):
+        original = t.repetir_d20
+
+        def espia(*args, _orig=original, **kwargs):
+            llamadas.append(1)
+            return _orig(*args, **kwargs)
+
+        t.repetir_d20 = espia
+    _parchea_escudo(monkeypatch, decide="si")
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert len(llamadas) == 1
+
+
+def test_sin_subclase_runic_shield_no_consulta_rng(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin la subclase no hay repetición")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    monkeypatch.setattr(rk_mod, "roll_d20", _revienta)
+    import dnd_sim.engine.combat.attack as attack_mod
+
+    monkeypatch.setattr(
+        attack_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(value=15, rolls=[15],
+                                         mode=mode or RollMode.NORMAL))
+    atacante = Monster("Orco", max_hp=60, ac=10, abilities=_abilities(),
+                       attacks=[Attack("Hacha", "1d8", ability="str")])
+    aliado = _pj(name="Alicia")
+    fighter = _pj(level=5, name="SinSubclase")
+    apply_fighter(fighter, level=5, fighting_style="Archery")
+    ctx = _ctx(atacante, fighter, aliado)
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp < 70  # el golpe entra sin repetición
+    assert fighter.state.reaction_used is False

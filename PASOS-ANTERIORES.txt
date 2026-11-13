@@ -2238,6 +2238,30 @@ RUNE KNIGHT (2026-11-13)
     espía, Enorme a 18, no elegible sin usos ni con acción bonus
     gastada (`TurnResources`), sin subclase cero RNG). Suite
     **1531 passed**. Commit de A4.
+  - (5) Runic Shield (A5): walker NUEVO ``_repetir_d20_del_bando`` en
+    ``engine/combat/attack.py`` tras el bloque de Warding Maneuver y
+    ANTES de ``hit = crit or (...)`` (se reasignan ``roll/total/crit/
+    fallo_natural`` y la línea existente recalcula el impacto).
+    Duck-typing SIN ``HOOK_NAMES`` (patrón ``_sustituir_ataque``):
+    recorre ``_bando_del(target, ctx)`` y llama a ``repetir_d20`` del
+    primer rasgo que lo defina; la primera aceptación devuelve la
+    tupla y se detiene (una sola repetición por ataque, sin
+    reentrada). Condición de consulta: ``crit or (not fallo_natural
+    and total >= ca_efectiva)`` — solo tras impacto original, con la
+    CA ya modificada por Parry/Warding. Método ``repetir_d20`` en el
+    rasgo: guards sin RNG (nivel < 7, sin usos, dueño muerto o
+    incapacitado, reacción usada, sin ``rng``, ``target is owner`` —
+    «OTRA criatura»— y objetivo hostil al dueño), ``pick``
+    «no»/«sí»; al aceptar gasta uso + reacción y tira
+    ``roll_d20(rng, RollMode.NORMAL)`` (UN d20, sin conservar la
+    ventaja original), crítico/1 natural con ``evaluar_d20`` (umbral
+    de Champion), ``total = roll + bonus`` recibido del motor
+    (``bonus + modifiers.bonus``) y log. 10 tests (impacto → fallo,
+    fallo original sin consulta, 1 natural de la repetición falla
+    aunque entre, 20 natural crítico con daño 10+3, dueño y enemigos
+    excluidos, reacción compartida, sin usos sin RNG, nivel 6, dos
+    guardias → una sola repetición, sin subclase cero RNG). Suite
+    **1541 passed**. Commit de A5.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

@@ -235,6 +235,33 @@ def _defensa_del_bando(target: Any, attacker: Any, rango: Any, *,
                            resistencia=resistencia)
 
 
+def _repetir_d20_del_bando(target: Any, attacker: Any, rango: Any, *,
+                           bonus: int, ctx: Any, rng: Any,
+                           atk: Any = None, log: Any = None) -> Any:
+    """Primera repetición de d20 que el bando del defensor fuerza.
+
+    Runic Shield (Rune Knight): duck-typing SIN entrada en
+    ``HOOK_NAMES`` (patrón ``_sustituir_ataque``) — el motor solo mira
+    si el rasgo define ``repetir_d20``. Se consulta en el mismo punto
+    que Warding Maneuver y solo si el golpe iba a entrar; el primer
+    rasgo que acepta devuelve ``(roll, total, crit, fallo_natural)`` y
+    se detiene (una sola repetición por ataque: sin reentrada). Sin
+    rasgos que lo definan ni sin ``rng``: ni consulta ni RNG.
+    """
+    if target is None or rng is None:
+        return None
+    for criatura in _bando_del(target, ctx):
+        for rasgo in getattr(criatura, "traits", None) or []:
+            fn = getattr(rasgo, "repetir_d20", None)
+            if not callable(fn):
+                continue
+            resultado = fn(target, attacker, rango, bonus=bonus,
+                           ctx=ctx, rng=rng, atk=atk, log=log)
+            if resultado is not None:
+                return resultado
+    return None
+
+
 def _oportunidad_contra_bando(target: Any, attacker: Any, *,
                               ctx: Any = None, rng: Any = None,
                               log: Any = None) -> None:
@@ -527,6 +554,18 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             resistencia_defensor = bool(defensa.resistencia)
             if not crit and defensa.ac_extra:
                 ca_efectiva += defensa.ac_extra
+    # Runic Shield (Rune Knight): si el golpe iba a entrar, el bando
+    # del defensor puede forzar la repetición del d20 (un solo d20 en
+    # modo normal, sin conservar la ventaja original). El total nuevo
+    # se compara con la CA ya modificada y el crítico/1 natural se
+    # reevalúan con el umbral del atacante; si ahora falla, no hay
+    # daño ni efectos de impacto (la línea siguiente recalcula ``hit``).
+    if crit or (not fallo_natural and total >= ca_efectiva):
+        repetido = _repetir_d20_del_bando(
+            target, attacker, rango, bonus=bonus + modifiers.bonus,
+            ctx=ctx, rng=rng, atk=atk, log=log)
+        if repetido is not None:
+            roll, total, crit, fallo_natural = repetido
     hit = crit or (not fallo_natural and total >= ca_efectiva)
     # (6b) Punto ÚNICO de decisión de maniobras (Battle Master): tras
     # conocer la tirada y ANTES de aplicar efectos. Puede corregir el

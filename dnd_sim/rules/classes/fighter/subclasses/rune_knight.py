@@ -53,10 +53,11 @@ from .....core.classes import (
     runes_known_count,
     runic_shield_uses,
 )
-from .....core.dice import roll_dice
+from .....core.dice import RollMode, roll_d20, roll_dice
 from .....core.log import log_line as _log_line
-from .....core.randomness import sample
+from .....core.randomness import pick, sample
 from .....model.actions import ActionType, CombatAction
+from ....roll_modifiers import evaluar_d20
 from ....traits.base import Trait
 from ..features import FighterFeatures, _contexto
 
@@ -154,6 +155,54 @@ class RuneKnightFeatures(Trait):
                          ctx: Any = None) -> tuple[bool, bool, int]:
         """Giant's Might: ventaja en pruebas de FUE (consulta A3)."""
         return self._fue_giants_might(habilidad, sujeto), False, 0
+
+    def repetir_d20(self, target: Any, attacker: Any, rango: Any, *,
+                    bonus: int, ctx: Any = None, rng: Any = None,
+                    atk: Any = None, log: Any = None) -> Any:
+        """Runic Shield (7): fuerza al atacante a repetir el d20.
+
+        Se decide tras acertar y antes del daño (mismo punto que
+        Warding Maneuver). Solo contra OTRA criatura aliada viva del
+        dueño (no el propio dueño ni un enemigo), con usos y reacción
+        libre; sin RNG el rasgo se abstiene. La decisión es un
+        ``pick`` «no»/«sí». La repetición es UN solo d20 en modo
+        normal (sin conservar la ventaja original): el motor recibe
+        ``(roll, total, crit, fallo_natural)`` y reevalúa el impacto
+        con la CA; el crítico y el 1 natural salen del umbral del
+        atacante (``evaluar_d20``, Champion). Guard de reentrada: el
+        motor la consulta una sola vez por ataque.
+        """
+        owner = self.owner
+        if (
+            self.level < 7
+            or owner is None
+            or target is None
+            or target is owner
+            or int(self.runic_shield_usos) <= 0
+            or not getattr(owner, "alive", True)
+            or not getattr(owner, "can_react", True)
+            or getattr(getattr(owner, "state", None), "reaction_used", True)
+            or rng is None
+        ):
+            return None
+        hostil = getattr(owner, "is_hostile_to", None)
+        if hostil is not None and hostil(target):
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        self.runic_shield_usos -= 1
+        owner.state.reaction_used = True
+        nuevo = roll_d20(rng, RollMode.NORMAL)
+        roll = int(nuevo.value)
+        crit, fallo_natural = evaluar_d20(roll, attacker, atk)
+        total = roll + int(bonus)
+        if log is not None:
+            log.append(
+                f"  {owner.name} hace repetir el ataque a "
+                f"{getattr(attacker, 'name', attacker)} (Runic Shield): "
+                f"nuevo d20 {roll} -> {total}"
+            )
+        return roll, total, crit, fallo_natural
 
     def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
                             *, crit: bool = False, ctx: Any = None,

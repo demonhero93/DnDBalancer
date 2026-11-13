@@ -240,8 +240,10 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   FUE, daño extra 1d6/d8/d10) + tests.
   **Hecho**: campo `giants_might_activo` + acción + consulta A3 +
   `extra_attack_damage`; 9 tests, suite 1531 passed.
-- [ ] A5 — Runic Shield (reacción en el punto de Warding, re-tirada
+- [x] A5 — Runic Shield (reacción en el punto de Warding, re-tirada
   de UN d20) + tests.
+  **Hecho**: walker `_repetir_d20_del_bando` + método `repetir_d20`;
+  10 tests, suite 1541 passed.
 - [ ] A6 — Ganchos `on_any_turn_start`/`on_any_turn_end` en Trait +
   encounter + test_traits + cuenta de hooks + tests.
 - [ ] A7 — Runas Hill y Frost (`RuneInvokeAction`) + tests.
