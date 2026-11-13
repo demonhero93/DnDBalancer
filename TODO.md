@@ -33,9 +33,14 @@ y ARCHITECTURE.md.
 
 ## Fighter: pendientes reales
 
-- **Subclases Fighter**: candidatas Eldritch Knight, Psi Warrior
-  (Arcane Archer, Battle Master, Cavalier y Champion implementados,
-  ver planes abajo).
+- **Subclases Fighter**: candidata Eldritch Knight (Arcane Archer,
+  Battle Master, Cavalier, Champion y Psi Warrior implementados, ver
+  planes abajo).
+- **Psi Warrior**: hecho (plan abajo). Protective Field usa el punto
+  central de `inflict_damage` (fase 1a), así que no aplica el
+  «solo daño de ataques». Concentración de Telekinetic Master =
+  versión simple (ver A8). Recuperación de dados por descanso corto:
+  cuando existan descansos.
 - **Champion**: hecho (plan abajo). Heroic Warrior y Defy Death son
   dato sin efecto: reabrir SOLO si el sim modela Inspiración Heroica
   o salvaciones de muerte, respectivamente.
@@ -189,10 +194,13 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   no esté Incapacitado ni muerto, SIN salvaciones de CON: sin
   mecánica de ruptura reutilizable — «concentración parcial» queda
   como pendiente real en B); 11 tests, suite 1493 passed.
-- [ ] B — Decisiones: 4 tests de freeze de registro explicados
+- [x] B — Decisiones: 4 tests de freeze de registro explicados
   ANTES; límites con test freeze (movimiento, empuje, 30 ft,
   Telekinesis); `TODO.md` con Psi Warrior hecha y pendientes
   reales (Eldritch Knight, concentración parcial, descansos).
+  **Hecho**: corrección Protective Field (gate nivel 3 + guard de
+  aliado; 5 tests reescritos + 3 de deuda), 3 tests de límites,
+  candidatas y pendientes actualizados; suite 1499 passed.
 - [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, grafo acíclico
   `fighter.features ← fighter.subclasses`, puntos de consulta del
   motor, recuentos), `PASOS-ANTERIORES.txt` (bloque PSI WARRIOR +
@@ -224,9 +232,10 @@ fighter: `arcane_archer.py`, `battle_master.py`, `cavalier.py` y
 5. Actualizar `ARCHITECTURE.md` (tabla de paquetes con fachada) y el
    bloque Guerrero de `PASOS-ANTERIORES.txt`.
 
-Pendientes (candidatas PHB 2024): Eldritch Knight, Psi Warrior.
-Arcane Archer, Battle Master, Cavalier y Champion YA están
-implementados (`CLASSES["fighter"].subclasses` tiene sus 4 claves).
+Pendientes (candidata PHB 2024): Eldritch Knight.
+Arcane Archer, Battle Master, Cavalier, Champion y Psi Warrior YA
+están implementados (`CLASSES["fighter"].subclasses` tiene sus 5
+claves).
 
 ## Grafo y verificación
 

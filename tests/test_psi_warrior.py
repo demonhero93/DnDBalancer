@@ -454,12 +454,20 @@ def _recibe(pj, objetivo, ctx, cantidad: int) -> int:
                           ctx=ctx, rng=ctx.rng)
 
 
+def _amiga(ctx):
+    """Aliada viva en el contexto (mismo bando, no hostil)."""
+    amiga = _pj()
+    ctx.combatants.append(amiga)
+    return amiga
+
+
 def test_el_protective_field_reduce_el_dado_mas_el_mod_de_int(monkeypatch):
     _parchea_campo(monkeypatch, dado=4)
     pj, trait, enemigo, ctx = _bajo_golpe(level=6)
-    _recibe(pj, enemigo, ctx, 10)
+    amiga = _amiga(ctx)
+    _recibe(pj, amiga, ctx, 10)
     # 10 - (4 del dado + 2 de mod INT) = 4 aplicados.
-    assert enemigo.hp == 60 - 4
+    assert amiga.hp == 70 - 4
     assert trait.dados_restantes == psionic_dice_count(6) - 1
     assert pj.state.reaction_used is True
     assert any("Protective Field" in line for line in ctx.log)
@@ -468,11 +476,12 @@ def test_el_protective_field_reduce_el_dado_mas_el_mod_de_int(monkeypatch):
 def test_el_protective_field_comparte_la_reaccion_del_turno(monkeypatch):
     llamadas = _parchea_campo(monkeypatch, dado=4)
     pj, trait, enemigo, ctx = _bajo_golpe(level=6)
-    _recibe(pj, enemigo, ctx, 10)
-    _recibe(pj, enemigo, ctx, 10)  # misma reacción ya gastada
+    amiga = _amiga(ctx)
+    _recibe(pj, amiga, ctx, 10)
+    _recibe(pj, amiga, ctx, 10)  # misma reacción ya gastada
     assert len(llamadas) == 1  # el segundo ni siquiera consulta el pick
     assert trait.dados_restantes == psionic_dice_count(6) - 1
-    assert enemigo.hp == 60 - 4 - 10
+    assert amiga.hp == 70 - 4 - 10
 
 
 def test_sin_dados_restantes_el_protective_field_no_consulta_pick(
@@ -485,9 +494,10 @@ def test_sin_dados_restantes_el_protective_field_no_consulta_pick(
     _parchea_campo(monkeypatch)
     pj, trait, enemigo, ctx = _bajo_golpe(level=6)
     trait.dados_restantes = 0
+    amiga = _amiga(ctx)
     monkeypatch.setattr(psi_mod, "pick", _revienta)
-    _recibe(pj, enemigo, ctx, 10)
-    assert enemigo.hp == 60 - 10
+    _recibe(pj, amiga, ctx, 10)
+    assert amiga.hp == 70 - 10
     assert pj.state.reaction_used is False
 
 
@@ -501,29 +511,32 @@ def test_el_protective_field_puede_proteger_al_propio_objetivo(monkeypatch):
 def test_el_protective_field_no_baja_el_daño_de_cero(monkeypatch):
     _parchea_campo(monkeypatch, dado=20)
     pj, trait, enemigo, ctx = _bajo_golpe(level=6)
-    _recibe(pj, enemigo, ctx, 3)  # reducción 20+2 > 3 → 0 aplicado
-    assert enemigo.hp == 60
+    amiga = _amiga(ctx)
+    _recibe(pj, amiga, ctx, 3)  # reducción 20+2 > 3 → 0 aplicado
+    assert amiga.hp == 70
 
 
 def test_el_protective_field_no_se_activa_si_el_pick_dice_no(monkeypatch):
     llamadas = _parchea_campo(monkeypatch, decide="no")
     pj, trait, enemigo, ctx = _bajo_golpe(level=6)
-    _recibe(pj, enemigo, ctx, 10)
+    amiga = _amiga(ctx)
+    _recibe(pj, amiga, ctx, 10)
     assert len(llamadas) == 1
-    assert enemigo.hp == 60 - 10
+    assert amiga.hp == 70 - 10
     assert trait.dados_restantes == psionic_dice_count(6)
     assert pj.state.reaction_used is False
 
 
-def test_el_protective_field_no_actua_por_debajo_del_nivel_seis(
+def test_el_protective_field_no_actua_por_debajo_del_nivel_tres(
         monkeypatch):
     def _revienta(rng, seq):
-        raise AssertionError("nivel < 6 no consulta el pick")
+        raise AssertionError("nivel < 3 no consulta el pick")
 
     import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
 
     _parchea_campo(monkeypatch)
-    pj, trait, enemigo, ctx = _bajo_golpe(level=5)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=3)
+    trait.level = 2  # apply exige >= 3; el guard vive en el método
     monkeypatch.setattr(psi_mod, "pick", _revienta)
     _recibe(pj, enemigo, ctx, 10)
     assert enemigo.hp == 60 - 10
@@ -545,6 +558,56 @@ def test_sin_subclase_el_protective_field_no_consulta_ni_tira_rng(
     monkeypatch.setattr(psi_mod, "pick", _revienta)
     _recibe(pj, enemigo, ctx, 10)
     assert enemigo.hp == 60 - 10
+
+
+def test_el_protective_field_no_protege_a_un_enemigo(monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("contra un enemigo no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    _parchea_campo(monkeypatch)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    _recibe(pj, enemigo, ctx, 10)
+    assert enemigo.hp == 60 - 10
+    assert pj.state.reaction_used is False
+    assert trait.dados_restantes == psionic_dice_count(6)
+
+
+def test_el_protective_field_no_actua_con_cero_de_dano(monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("0 de daño no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.psi_warrior as psi_mod
+
+    _parchea_campo(monkeypatch)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    amiga = _amiga(ctx)
+    hp_antes = amiga.hp
+    monkeypatch.setattr(psi_mod, "pick", _revienta)
+    _recibe(pj, amiga, ctx, 0)
+    assert amiga.hp == hp_antes
+    assert pj.state.reaction_used is False
+
+
+def test_sin_reaccion_el_protective_field_no_toca_rng():
+    class _RngExplosivo:
+        """Cualquier uso del rng debe revienta (no hay elegibilidad)."""
+
+        def __getattr__(self, nombre):
+            def _revienta(*args, **kwargs):
+                raise AssertionError("rng tocado sin elegibilidad")
+            return _revienta
+
+    pj, trait, enemigo, ctx = _bajo_golpe(level=6)
+    amiga = _amiga(ctx)
+    pj.state.reaction_used = True
+    ctx.rng = _RngExplosivo()
+    _recibe(pj, amiga, ctx, 10)
+    # Daño completo: sin reacción no se consulta ni pick ni dado.
+    assert amiga.hp == 70 - 10
+    assert trait.dados_restantes == psionic_dice_count(6)
 
 
 # --- A6: Guarded Mind ---------------------------------------------------------
@@ -924,3 +987,39 @@ def test_telekinetic_master_integra_en_run_combat_con_semilla_fija():
     assert trait.telekinetic_master_activo
     assert res.action_uses.get("Telekinetic Master", 0) >= 1
     assert res.action_uses.get("Ataque de Telekinetic Master", 0) >= 1
+
+
+# --- B: limites del modelo (dato sin efecto) ----------------------------------
+
+
+def test_el_empuje_de_10_ft_de_telekinetic_thrust_es_dato_sin_efecto(
+        monkeypatch):
+    """Sin movimiento: Thrust solo derriba (decision A4, enunciado)."""
+    llamadas: list = []
+    _parchea_golpe(monkeypatch)
+    _salvacion(monkeypatch, llamadas, pasa=False)
+    pj, trait, enemigo, ctx = _bajo_golpe(level=7)
+    _ataca(pj, enemigo, ctx)
+    assert enemigo.conditions.has(Condition.PRONE)
+    # Sin posiciones ni velocidad nadie se desplaza 10 ft.
+    assert not hasattr(pj, "speed")
+    assert enemigo.state.at_range is False
+
+
+def test_las_distancias_de_30_ft_son_dato_sin_efecto():
+    """Sin geometria el limite «a 30 ft» se cumple siempre."""
+    from dnd_sim.core.targeting import valid_targets
+
+    pj, trait, enemigo, ctx = _master()
+    assert not hasattr(pj, "speed")
+    assert enemigo in valid_targets(pj, ctx)
+
+
+def test_el_efecto_de_telekinesis_solo_concede_el_ataque_adicional():
+    """Sin hechizo Telekinesis (fuera de alcance): solo el ataque."""
+    pj, trait, enemigo, ctx = _master()
+    assert not getattr(pj, "spells", None)
+    assert not hasattr(pj, "speed")
+    TelekineticMasterAction().execute(ctx)
+    assert trait.telekinetic_master_activo
+    assert TelekineticMasterAttackAction().can_use(ctx)

@@ -2115,6 +2115,23 @@ PSI WARRIOR (2026-11-12)
     strike único, incapacitado/muerto, nivel 17, sin subclase,
     integración ``run_combat`` semilla 7). Suite **1493 passed**.
     Commit de A8.
+  - (9) B — decisiones y limites (B): correccion de Protective Field
+    segun el enunciado (la entrada (5) historica dice nivel 6: se
+    corrige aqui, sin reescribir el historial). ``proteccion_psionica``
+    pasa el gate a ``level < 3`` (nivel >= 3) y gana el guard de
+    aliado ``if objetivo is not owner and not _es_aliado(owner,
+    objetivo): return None`` antes del ``pick`` («tu o una criatura que
+    ves»: nunca enemigos, cero RNG); docstring (6)→(3). Tests A5
+    reescritos: la victima pasa del ``enemigo`` a una aliada ``_pj()``
+    (reduce, reaccion compartida, sin dados, no baja de cero, pick
+    «no») y el gate de nivel pasa a nivel 2 sobre
+    ``_bajo_golpe(level=3)``. Anadidos 3 tests de deuda (no protege a
+    enemigo con pick que revienta, 0 de dano sin pick, sin reaccion
+    con rng que revienta) y 3 de limites del modelo (empuje 10 ft sin
+    efecto: PRONE + sin ``speed``; 30 ft: sin ``speed`` +
+    ``valid_targets`` sin geometria; Telekinesis: sin ``spells``, solo
+    el ataque adicional). 6 tests nuevos; suite **1499 passed**.
+    Commit de B.
 
 ESTADO ACTUAL
    - 85 módulos en dnd_sim/ (20584 líneas); tests/ con 55 ficheros y
