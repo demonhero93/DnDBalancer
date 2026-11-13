@@ -208,9 +208,11 @@ tests parchean `bm_mod.pick`/`roll_dice` en el módulo único
   **Hecho**: sección `## Psi Warrior (PHB 2024)`, recuentos
   86/21276 + 56/23617/1499, ESTADO ACTUAL y receta; grafo ya
   documentado. Commit de Docs.
-- [ ] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
+- [x] Verificación — `pytest tests/test_arquitectura.py`, `pytest`,
   `python tools/capas.py`, `graphify update .` + commit final con el
   grafo.
+  **Hecho**: 3 passed, 1499 passed, capas total 1 (excepción
+  conocida), grafo 4262/15557/136. Commit final con el grafo.
 
 ## Fighter: cómo añadir una subclase
 

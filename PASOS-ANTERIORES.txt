@@ -2140,6 +2140,14 @@ PSI WARRIOR (2026-11-12)
     ``PASOS-ANTERIORES.txt`` — ESTADO ACTUAL con recuentos y registro
     con Psi Warrior. ``TODO.md`` — receta con ``psi_warrior.py``.
     Commit de Docs.
+  - (11) Verificacion (Verificacion): ``pytest
+    tests/test_arquitectura.py`` → 3 passed; ``pytest`` → 1499 passed
+    (200 warnings); ``python tools/capas.py`` → total 1, solo la
+    excepcion conocida ``model.combatant -> rules.conditions``;
+    ``graphify update .`` → 4262 nodos / 15557 aristas / 136
+    comunidades (grafo, reporte y etiquetas actualizados, copia de
+    seguridad ``graphify-out/2026-11-13/``). ``.tmp_*`` borrados.
+    Commit final con el grafo.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y
