@@ -16,7 +16,7 @@ from typing import Any
 
 from ..core.dice import RollMode, roll_d20
 from ..core.skills import normalize_skill, skill_ability
-from .roll_modifiers import check_modifiers
+from .roll_modifiers import check_modifiers, fusionar_modo, modificar_prueba
 
 from .saves import normalize_ability
 
@@ -176,7 +176,14 @@ def ability_check(target: Any, ability: str, dc: int, rng: random.Random,
     """
     ab = normalize_ability(ability)
     mods, resolved = _resolve_mods(target, ab, None, mode)
+    # A3: consulta perezosa a los rasgos (duck-typing, sin HOOK_NAMES);
+    # sin ``ctx`` no se consulta a nadie (cero coste y cero RNG).
+    bonus_q = 0
+    if ctx is not None:
+        ventaja, desventaja, bonus_q = modificar_prueba(ab, target, ctx)
+        resolved = fusionar_modo(resolved, ventaja, desventaja)
     bonus = ability_check_bonus(target, ab)
+    bonus += int(bonus_q)
     # El hechizo de guía añade +1d4 a una prueba (y se consume).
     bonus += _guia(target, rng)
     res = _finish_check(ab, None, dc, rng, resolved, bonus,
@@ -197,7 +204,15 @@ def skill_check(target: Any, skill: str, dc: int, rng: random.Random,
     # Primal Knowledge: la habilidad puede tirarse con otra característica
     # (p. ej. Sigilo como FUE con Furia) y con esa se suma el bono.
     eff_ability = getattr(mods, "ability_override", None) or skill_ability(name)
+    # A3: consulta perezosa con la característica efectiva (duck-typing,
+    # sin ``HOOK_NAMES``); sin ``ctx``, sin consulta ni RNG.
+    bonus_q = 0
+    if ctx is not None:
+        ventaja, desventaja, bonus_q = modificar_prueba(eff_ability, target,
+                                                        ctx)
+        resolved = fusionar_modo(resolved, ventaja, desventaja)
     bonus = skill_bonus(target, name, ability=eff_ability)
+    bonus += int(bonus_q)
     # El hechizo de guía añade +1d4 a una prueba (y se consume).
     bonus += _guia(target, rng)
     res = _finish_check(eff_ability, name, dc, rng, resolved, bonus,

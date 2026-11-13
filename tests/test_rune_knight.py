@@ -1,13 +1,15 @@
 """Tests de la subclase Rune Knight (TCE, PHB 2024).
 
-Solo cubren lo que existe: en A1, las tablas de ``core/classes.py``;
-en A2, el esqueleto, el registro y los datos sin efecto. El resto de
+Solo cubren lo que existe: en A1, las tablas de ``core/classes.py``; en
+A2, el esqueleto, el registro y los datos sin efecto; en A3, la consulta
+perezosa ``modificar_salvacion``/``modificar_prueba``. El resto de
 casillas (runas, reacciones, ganchos de turno) se añade aquí.
 """
 
 from __future__ import annotations
 
 import random
+from types import SimpleNamespace
 
 import pytest
 
@@ -20,12 +22,16 @@ from dnd_sim.core.classes import (
     runes_known_count,
     runic_shield_uses,
 )
+from dnd_sim.core.dice import RollMode
+from dnd_sim.rules.checks import ability_check, ability_check_bonus, skill_check
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
     RuneKnightFeatures,
     apply_champion,
     apply_rune_knight,
 )
+from dnd_sim.rules.conditions import Condition, apply_condition
+from dnd_sim.rules.saves import saving_throw
 
 
 # --- A1: tablas --------------------------------------------------------------
@@ -190,3 +196,149 @@ def test_sin_la_subclase_rune_knight_no_se_consume_rng(monkeypatch):
     apply_champion(pj, level=3)
     otro = _pj(level=3)
     apply_class(otro, "fighter", level=3, fighting_style="Archery")
+
+
+# --- A3: consulta perezosa de salvaciones y pruebas --------------------------
+
+
+def _ctx(*combatantes) -> SimpleNamespace:
+    """Contexto mínimo con ``combatants`` para la consulta."""
+    return SimpleNamespace(round=1, actor=combatantes[0],
+                           rng=random.Random(1),
+                           combatants=list(combatantes), log=[])
+
+
+class _EspiaSalvacion:
+    """Rasgo espía con el método ``modificar_salvacion`` (A3)."""
+
+    def __init__(self, ventaja: bool = True, desventaja: bool = False,
+                 bonus: int = 0) -> None:
+        self.ventaja = ventaja
+        self.desventaja = desventaja
+        self.bonus = bonus
+        self.llamadas: list = []
+
+    def modificar_salvacion(self, habilidad, sujeto, ctx):
+        self.llamadas.append((habilidad, sujeto, ctx))
+        return self.ventaja, self.desventaja, self.bonus
+
+
+class _EspiaPrueba:
+    """Rasgo espía con el método ``modificar_prueba`` (A3)."""
+
+    def __init__(self, ventaja: bool = True, desventaja: bool = False,
+                 bonus: int = 0) -> None:
+        self.ventaja = ventaja
+        self.desventaja = desventaja
+        self.bonus = bonus
+        self.llamadas: list = []
+
+    def modificar_prueba(self, habilidad, sujeto, ctx):
+        self.llamadas.append((habilidad, sujeto, ctx))
+        return self.ventaja, self.desventaja, self.bonus
+
+
+def test_sin_rasgos_que_definan_la_consulta_no_consume_rng():
+    pj = _pj()
+    ctx = _ctx(pj)
+    rng1 = random.Random(7)
+    sr1 = saving_throw(pj, "str", 12, rng1, ctx=ctx)
+    rng2 = random.Random(7)
+    sr2 = saving_throw(pj, "str", 12, rng2, ctx=ctx)
+    assert sr1 == sr2
+    assert rng1.getstate() == rng2.getstate()
+    # Sin ``ctx`` la consulta no se hace ni siquiera con un rasgo espía.
+    espia = _EspiaSalvacion()
+    pj.traits.append(espia)
+    saving_throw(pj, "str", 12, random.Random(3), ctx=None)
+    assert espia.llamadas == []
+
+
+def test_un_rasgo_espia_de_salvacion_confirma_la_consulta():
+    pj = _pj()
+    espia = _EspiaSalvacion()
+    pj.traits.append(espia)
+    ctx = _ctx(pj)
+    sr = saving_throw(pj, "str", 20, random.Random(1), ctx=ctx)
+    assert espia.llamadas == [("str", pj, ctx)]
+    assert sr.mode == RollMode.ADVANTAGE
+
+
+def test_ventaja_y_desventaja_se_anulan_en_la_consulta_de_salvacion():
+    pj = _pj()
+    pj.traits.append(_EspiaSalvacion(ventaja=True, desventaja=True))
+    sr = saving_throw(pj, "str", 12, random.Random(1), ctx=_ctx(pj))
+    assert sr.mode == RollMode.NORMAL
+
+
+def test_el_bonificador_de_la_consulta_se_suma_a_la_salvacion(monkeypatch):
+    import dnd_sim.rules.saves as saves_mod
+
+    def _d20_fijo(rng, mode=None):
+        return SimpleNamespace(value=10, rolls=[10])
+
+    monkeypatch.setattr(saves_mod, "roll_d20", _d20_fijo)
+    pj = _pj()
+    pj.traits.append(_EspiaSalvacion(ventaja=False, bonus=5))
+    sr = saving_throw(pj, "str", 12, random.Random(1), ctx=_ctx(pj))
+    assert sr.total == 10 + pj.saving_throw_bonus("str") + 5
+
+
+def test_un_rasgo_espia_de_prueba_confirma_la_consulta():
+    pj = _pj()
+    espia = _EspiaPrueba()
+    pj.traits.append(espia)
+    ctx = _ctx(pj)
+    res = ability_check(pj, "con", 20, random.Random(1), ctx=ctx)
+    assert espia.llamadas == [("con", pj, ctx)]
+    assert res.mode == RollMode.ADVANTAGE
+
+
+def test_ventaja_y_desventaja_se_anulan_en_la_consulta_de_prueba():
+    pj = _pj()
+    pj.traits.append(_EspiaPrueba(ventaja=True, desventaja=True))
+    res = ability_check(pj, "str", 12, random.Random(1), ctx=_ctx(pj))
+    assert res.mode == RollMode.NORMAL
+
+
+def test_el_bonificador_de_la_consulta_se_suma_a_la_prueba(monkeypatch):
+    import dnd_sim.rules.checks as checks_mod
+
+    def _d20_fijo(rng, mode=None):
+        return SimpleNamespace(value=10, rolls=[10])
+
+    monkeypatch.setattr(checks_mod, "roll_d20", _d20_fijo)
+    pj = _pj()
+    pj.traits.append(_EspiaPrueba(ventaja=False, bonus=4))
+    res = ability_check(pj, "str", 12, random.Random(1), ctx=_ctx(pj))
+    assert res.total == 10 + ability_check_bonus(pj, "str") + 4
+
+
+def test_en_pruebas_de_habilidad_se_pasa_la_caracteristica_efectiva():
+    pj = _pj()
+    espia = _EspiaPrueba()
+    pj.traits.append(espia)
+    skill_check(pj, "athletics", 20, random.Random(1), ctx=_ctx(pj))
+    assert espia.llamadas[-1][0] == "str"
+
+
+def test_la_consulta_mira_a_los_otros_vivos_y_no_a_muertos_o_incapacitados():
+    pj = _pj()
+    vivo, muerto, incapaz = _pj(), _pj(), _pj()
+    muerto.hp = 0
+    ctx0 = _ctx(pj)
+    apply_condition(incapaz, Condition.INCAPACITATED, ctx0)
+    espia_vivo = _EspiaSalvacion(ventaja=True)
+    # Si muerto o incapaz se consultaran, su (ventaja y desventaja) anularía
+    # la ventaja del espía vivo y el modo final sería NORMAL.
+    espia_muerto = _EspiaSalvacion(ventaja=True, desventaja=True)
+    espia_incapaz = _EspiaSalvacion(ventaja=True, desventaja=True)
+    vivo.traits.append(espia_vivo)
+    muerto.traits.append(espia_muerto)
+    incapaz.traits.append(espia_incapaz)
+    ctx = _ctx(pj, vivo, muerto, incapaz)
+    sr = saving_throw(pj, "str", 12, random.Random(1), ctx=ctx)
+    assert espia_vivo.llamadas
+    assert espia_muerto.llamadas == []
+    assert espia_incapaz.llamadas == []
+    assert sr.mode == RollMode.ADVANTAGE

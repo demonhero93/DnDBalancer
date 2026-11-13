@@ -2190,6 +2190,31 @@ RUNE KNIGHT (2026-11-13)
     no Fighter, nivel <3); runas conocidas por nivel; kwarg inválido →
     ``ValueError``; pasivos y Bonus Proficiencies congelados; sin la
     subclase cero RNG. Suite **1513 passed**. Commit de A2.
+  - (3) Consulta perezosa de salvaciones y pruebas (A3): añade
+    ``fusionar_modo``, ``_modificar_tirada`` y las funciones
+    ``modificar_salvacion``/``modificar_prueba(habilidad, sujeto, ctx)
+    -> (ventaja, desventaja, bonus)`` en ``rules/roll_modifiers.py``
+    (duck-typing SIN entrada en ``HOOK_NAMES``, patrón
+    ``umbral_critico``; en ``__all__``). Se consultan los rasgos del
+    PROPIO sujeto y los de ``ctx.combatants`` vivos que puedan
+    reaccionar (``alive`` y ``can_react``; el sujeto no se repite); sin
+    ``ctx``/sujeto o sin rasgos que lo definan: ni consulta ni RNG.
+    Integración: en ``saving_throw`` tras resolver el modo (se fusiona
+    con ``fusionar_modo``) y el bonificador se suma al de ficha; en
+    ``ability_check`` igual y en ``skill_check`` con la característica
+    efectiva (decisión: la firma lleva UNA habilidad, no el nombre de
+    la habilidad). Decisiones documentadas: (a) la consulta COMPLEMENTA
+    a los hooks existentes (``modify_save_modifiers``/
+    ``grant_save_modifiers``/``modify_check_modifiers``) y no los
+    sustituye — la ventaja de Remarkable Athlete sigue por su hook, sin
+    duplicar; (b) el modo explícito de la llamada cuenta como una
+    fuente más y se anula con la estándar. Suite completa idéntica
+    **1513 passed** tras tocar el motor (antes de los tests); 9 tests
+    nuevos (mismo RNG y mismo ``SaveResult`` sin rasgos, sin ``ctx`` no
+    consulta, espías confirman llamada y argumentos, anulación
+    ventaja+desventaja, bonificador suma en salvación y prueba,
+    habilidad efectiva en pruebas de habilidad, otros vivos consultados
+    y muertos/incapacitados no). Suite **1522 passed**. Commit de A3.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

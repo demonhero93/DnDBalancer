@@ -231,8 +231,11 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   validado) y clave `"rune_knight"` en los 4 puntos de registro.
   **Hecho**: 3 freeze tests de registro ampliados (explicados en
   PASOS); 8 tests, suite 1513 passed.
-- [ ] A3 — Consulta perezosa `modificar_salvacion`/`modificar_prueba`
+- [x] A3 — Consulta perezosa `modificar_salvacion`/`modificar_prueba`
   (duck-typing, sin HOOK_NAMES) + tests de RNG idéntico.
+  **Hecho**: en `roll_modifiers` con `fusionar_modo`; complementa (no
+  sustituye) los hooks existentes (decisión en PASOS); `skill_check`
+  pasa la característica efectiva; 9 tests, suite 1522 passed.
 - [ ] A4 — `GiantsMightAction` (acción adicional, tamaño, ventaja
   FUE, daño extra 1d6/d8/d10) + tests.
 - [ ] A5 — Runic Shield (reacción en el punto de Warding, re-tirada

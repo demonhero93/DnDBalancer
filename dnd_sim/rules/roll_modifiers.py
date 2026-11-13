@@ -503,6 +503,88 @@ def check_modifiers(target: Any, ability: str,
     return mods
 
 
+# --- Consulta perezosa de salvaciones y pruebas (duck-typing) -----------------
+
+def fusionar_modo(mode: Any, ventaja: bool, desventaja: bool) -> RollMode:
+    """Combina un modo ya resuelto con fuentes nuevas (regla estándar).
+
+    Ventaja y desventaja se anulan entre sí; un modo ya fijado (p. ej.
+    ``mode`` explícito en la llamada) cuenta como una fuente más.
+    """
+    actual = mode if isinstance(mode, RollMode) else RollMode.NORMAL
+    adv = actual == RollMode.ADVANTAGE or bool(ventaja)
+    dis = actual == RollMode.DISADVANTAGE or bool(desventaja)
+    if adv and not dis:
+        return RollMode.ADVANTAGE
+    if dis and not adv:
+        return RollMode.DISADVANTAGE
+    return RollMode.NORMAL
+
+
+def _modificar_tirada(metodo: str, habilidad: str, sujeto: Any,
+                      ctx: Any) -> tuple[bool, bool, int]:
+    """``(ventaja, desventaja, bonus)`` de los rasgos que lo definen.
+
+    Duck-typing SIN entrada en ``HOOK_NAMES`` (patrón
+    :func:`umbral_critico`): se mira el método ``metodo`` de los rasgos
+    del PROPIO ``sujeto`` y de los combatientes **vivos que puedan
+    reaccionar** de ``ctx.combatants`` (el sujeto no se repite). Sin
+    ``ctx``, sin ``sujeto`` o sin rasgos que lo definan: ni consulta ni
+    RNG (el método del rasgo es puro: decide el motor, no tira dados).
+    """
+    if ctx is None or sujeto is None:
+        return False, False, 0
+    rasgos = list(getattr(sujeto, "traits", None) or [])
+    for otro in getattr(ctx, "combatants", None) or []:
+        if otro is sujeto:
+            continue
+        if not getattr(otro, "alive", True):
+            continue
+        if not getattr(otro, "can_react", True):
+            continue
+        rasgos.extend(getattr(otro, "traits", None) or [])
+    ventaja = False
+    desventaja = False
+    bonus = 0
+    for rasgo in rasgos:
+        fn = getattr(rasgo, metodo, None)
+        if not callable(fn):
+            continue
+        v, d, b = fn(habilidad, sujeto, ctx)
+        ventaja = ventaja or bool(v)
+        desventaja = desventaja or bool(d)
+        bonus += int(b or 0)
+    return ventaja, desventaja, bonus
+
+
+def modificar_salvacion(habilidad: str, sujeto: Any,
+                        ctx: Any) -> tuple[bool, bool, int]:
+    """Consulta perezosa para salvaciones (A3, sin ``HOOK_NAMES``).
+
+    Los rasgos devuelven ``(ventaja, desventaja, bonus)`` según la
+    habilidad y el sujeto; el motor fusiona con la regla estándar y
+    suma el bonificador. Complementa (no sustituye) a los hooks
+    ``modify_save_modifiers``/``grant_save_modifiers`` existentes.
+    """
+    return _modificar_tirada("modificar_salvacion", habilidad, sujeto, ctx)
+
+
+def modificar_prueba(habilidad: str, sujeto: Any,
+                     ctx: Any) -> tuple[bool, bool, int]:
+    """Consulta perezosa para pruebas de característica (sin ``HOOK_NAMES``).
+
+    Misma firma que :func:`modificar_salvacion`. Extiende —sin
+    duplicarla— la ventaja que Remarkable Athlete ya concede vía
+    ``modify_check_modifiers``: esa ruta sigue intacta y esta consulta
+    solo aporta lo que los hooks no cubren (bonificadores planos y
+    fuentes de terceros). Para pruebas de habilidad se pasa la
+    característica efectiva (no el nombre de la habilidad).
+    """
+    return _modificar_tirada("modificar_prueba", habilidad, sujeto, ctx)
+
+
 __all__ = ["AttackRange", "AttackModifiers", "SaveModifiers", "CheckModifiers",
            "attack_modifiers", "save_modifiers", "check_modifiers",
-           "resolve_attack_range", "effective_ac", "cobertura_bulwark_activa", "RANGED_COVER_AC_BONUS"]
+           "resolve_attack_range", "effective_ac", "cobertura_bulwark_activa",
+           "RANGED_COVER_AC_BONUS", "fusionar_modo", "modificar_salvacion",
+           "modificar_prueba"]

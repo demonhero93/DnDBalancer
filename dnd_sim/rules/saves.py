@@ -102,11 +102,19 @@ def saving_throw(target: Any, ability: str, dc: int, rng: random.Random,
         mode = modifiers.mode
     else:
         mode = _resolve_mode_str(mode)
+    # A3: consulta perezosa a los rasgos (duck-typing, sin HOOK_NAMES);
+    # sin ``ctx`` no se consulta a nadie (cero coste y cero RNG).
+    bonus_q = 0
+    if ctx is not None:
+        from .roll_modifiers import fusionar_modo, modificar_salvacion
+        ventaja, desventaja, bonus_q = modificar_salvacion(ab, target, ctx)
+        mode = fusionar_modo(mode, ventaja, desventaja)
     bonus = 0
     try:
         bonus = target.saving_throw_bonus(ab)
     except Exception:
         pass
+    bonus = int(bonus) + int(bonus_q)
     # Bulwark of Force (Psi Warrior): +2 solo a salvaciones de DES
     # (misma magnitud que la cobertura; ``at_range`` no da salvaciones,
     # así que aquí no hay qué acotar).
