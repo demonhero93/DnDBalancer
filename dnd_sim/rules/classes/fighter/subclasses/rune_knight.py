@@ -47,14 +47,18 @@ from .....core.classes import (
     MAX_LEVEL,
     MIN_LEVEL,
     RUNES,
+    giants_might_die_sides,
     giants_might_uses,
     rune_uses,
     runes_known_count,
     runic_shield_uses,
 )
+from .....core.dice import roll_dice
+from .....core.log import log_line as _log_line
 from .....core.randomness import sample
+from .....model.actions import ActionType, CombatAction
 from ....traits.base import Trait
-from ..features import FighterFeatures
+from ..features import FighterFeatures, _contexto
 
 #: Creación reproducible (patrón de todas las subclases de Fighter).
 _RNG_CREACION = random.Random(0)
@@ -66,6 +70,18 @@ def _de(actor: Any, clase: type) -> Any:
         if isinstance(trait, clase):
             return trait
     return None
+
+
+#: Orden PHB de los tamaños (patrón ``giant.py``).
+_TAMANOS = ("tiny", "small", "medium", "large", "huge", "gargantuan")
+
+
+def _orden_tamano(valor: Any) -> int:
+    """Orden PHB de un tamaño (acepta combatiente o cadena de tamaño)."""
+    tamaño = str(getattr(valor, "size", valor) or "medium").strip().lower()
+    if tamaño not in _TAMANOS:
+        return _TAMANOS.index("medium")
+    return _TAMANOS.index(tamaño)
 
 
 @dataclass
@@ -88,6 +104,8 @@ class RuneKnightFeatures(Trait):
     # del daño extra (flag se reinicia en ``on_turn_start``).
     giants_might_usos: int = 0
     giants_might_used_this_turn: bool = False
+    # Giant's Might activo (dura todo el combate; lo pone la acción).
+    giants_might_activo: bool = False
     # Runic Shield (7): usos por descanso largo; la reacción compartida
     # vive en ``state.reaction_used``.
     runic_shield_usos: int = 0
@@ -114,10 +132,90 @@ class RuneKnightFeatures(Trait):
         self.usos_runa = {r: rune_uses(self.level) for r in self.runas}
         self.giants_might_usos = giants_might_uses(self.level)
         self.giants_might_used_this_turn = False
+        self.giants_might_activo = False
         self.runic_shield_usos = runic_shield_uses(self.level)
         self.frost_activo = False
         self.hill_activo = False
         self.storm_activo = False
+
+    # --- Giant's Might (3) ---------------------------------------------------
+    def _fue_giants_might(self, habilidad: Any, sujeto: Any) -> bool:
+        """¿La consulta es una prueba/salvación de FUE del dueño activo?"""
+        if not self.giants_might_activo or sujeto is not self.owner:
+            return False
+        return str(habilidad or "").strip().lower() in ("str", "strength")
+
+    def modificar_salvacion(self, habilidad: Any, sujeto: Any,
+                            ctx: Any = None) -> tuple[bool, bool, int]:
+        """Giant's Might: ventaja en salvaciones de FUE (consulta A3)."""
+        return self._fue_giants_might(habilidad, sujeto), False, 0
+
+    def modificar_prueba(self, habilidad: Any, sujeto: Any,
+                         ctx: Any = None) -> tuple[bool, bool, int]:
+        """Giant's Might: ventaja en pruebas de FUE (consulta A3)."""
+        return self._fue_giants_might(habilidad, sujeto), False, 0
+
+    def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
+                            *, crit: bool = False, ctx: Any = None,
+                            rng: Any = None, atk: Any = None) -> int:
+        """Giant's Might: 1d6 (d8 con 10, d10 con 18) una vez por turno.
+
+        El motor lo suma al bruto del arma, así que el daño extra es
+        del mismo tipo que el ataque. Sin ``rng`` o sin ataque no se
+        consume la vez del turno (no hay dados que tirar).
+        """
+        if (not self.giants_might_activo or attacker is not self.owner
+                or self.giants_might_used_this_turn or atk is None
+                or rng is None or getattr(atk, "spell_attack", False)):
+            return 0
+        self.giants_might_used_this_turn = True
+        lados = giants_might_die_sides(self.level)
+        return int(roll_dice(f"1d{lados}", rng, crit=crit))
+
+
+class GiantsMightAction(CombatAction):
+    """Giant's Might (3, acción adicional): tamaño, FUE y daño extra.
+
+    Elegible sin RNG (nivel >= 3, sin activar y con usos); el ``pick``
+    del encuentro decide entre las acciones candidatas. Una vez
+    activo dura todo el combate y no se vuelve a activar; el uso se
+    gasta al ejecutar y el tamaño lo restaura ``Combatant.reset``.
+    """
+
+    def __init__(self) -> None:
+        self.name = "Giant's Might"
+        self.action_type = ActionType.BONUS_ACTION
+        self.usage = None  # los usos viven en el rasgo
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None:
+            return False
+        trait = _de(actor, RuneKnightFeatures)
+        if trait is None or trait.level < 3:
+            return False
+        if trait.giants_might_activo:
+            return False
+        return int(trait.giants_might_usos) > 0
+
+    def execute(self, context: Any) -> None:
+        actor = context.actor
+        trait = _de(actor, RuneKnightFeatures)
+        if (trait is None or trait.giants_might_activo
+                or int(trait.giants_might_usos) <= 0):
+            return  # sin usos o ya activo: se abstiene
+        trait.giants_might_usos -= 1
+        trait.giants_might_activo = True
+        nuevo = "huge" if trait.level >= 18 else "large"
+        if _orden_tamano(actor) < _orden_tamano(nuevo):
+            actor.size = nuevo
+            _log_line(context, f"{getattr(actor, 'name', actor)} crece a "
+                               f"{nuevo} (Giant's Might)")
+        _log_line(context, f"{getattr(actor, 'name', actor)} activa "
+                           f"Giant's Might")
 
 
 def apply_rune_knight(pj: Any, level: int | None = None,
@@ -173,7 +271,9 @@ def apply_rune_knight(pj: Any, level: int | None = None,
     )
     trait.owner = pj
     pj.traits.append(trait)
+    # Acción adicional de Giant's Might (elegibilidad sin RNG).
+    pj.actions.append(GiantsMightAction())
     return trait
 
 
-__all__ = ["RuneKnightFeatures", "apply_rune_knight"]
+__all__ = ["GiantsMightAction", "RuneKnightFeatures", "apply_rune_knight"]

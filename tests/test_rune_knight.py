@@ -2,8 +2,9 @@
 
 Solo cubren lo que existe: en A1, las tablas de ``core/classes.py``; en
 A2, el esqueleto, el registro y los datos sin efecto; en A3, la consulta
-perezosa ``modificar_salvacion``/``modificar_prueba``. El resto de
-casillas (runas, reacciones, ganchos de turno) se añade aquí.
+perezosa ``modificar_salvacion``/``modificar_prueba``; en A4, Giant's
+Might. El resto de casillas (runas, reacciones, ganchos de turno) se
+añade aquí.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
+from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import (
     RUNES,
     giants_might_die_sides,
@@ -22,13 +23,19 @@ from dnd_sim.core.classes import (
     runes_known_count,
     runic_shield_uses,
 )
-from dnd_sim.core.dice import RollMode
+from dnd_sim.core.dice import D20Result, RollMode
+from dnd_sim.core.enums import AttackRange
+from dnd_sim.engine.combat.attack import attack_roll
+from dnd_sim.model.actions import TurnResources
 from dnd_sim.rules.checks import ability_check, ability_check_bonus, skill_check
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
     RuneKnightFeatures,
     apply_champion,
     apply_rune_knight,
+)
+from dnd_sim.rules.classes.fighter.subclasses.rune_knight import (
+    GiantsMightAction,
 )
 from dnd_sim.rules.conditions import Condition, apply_condition
 from dnd_sim.rules.saves import saving_throw
@@ -342,3 +349,150 @@ def test_la_consulta_mira_a_los_otros_vivos_y_no_a_muertos_o_incapacitados():
     assert espia_muerto.llamadas == []
     assert espia_incapaz.llamadas == []
     assert sr.mode == RollMode.ADVANTAGE
+
+
+# --- A4: Giant's Might -------------------------------------------------------
+
+
+def _giant_pj(level: int = 5) -> tuple:
+    """PJ con Fighter + Rune Knight (runas al azar según nivel)."""
+    pj = _pj(level=level)
+    apply_fighter(pj, level=level, fighting_style="Archery")
+    trait = apply_rune_knight(pj, level=level)
+    return pj, trait
+
+
+def test_giant_might_se_activa_una_vez_y_gasta_un_uso():
+    pj, trait = _giant_pj()
+    accion = GiantsMightAction()
+    ctx = _ctx(pj)
+    assert accion.can_use(ctx) is True
+    usos = trait.giants_might_usos
+    accion.execute(ctx)
+    assert trait.giants_might_activo is True
+    assert trait.giants_might_usos == usos - 1
+    assert any("Giant's Might" in line for line in ctx.log)
+    # Una vez activo dura todo el combate y no se vuelve a activar.
+    assert accion.can_use(ctx) is False
+
+
+def test_giant_might_el_tamano_vuelve_al_original_en_reset():
+    pj, trait = _giant_pj()
+    assert pj.size == "medium"
+    GiantsMightAction().execute(_ctx(pj))
+    assert pj.size == "large"
+    pj.reset()
+    assert pj.size == pj.size_base == "medium"
+    assert trait.giants_might_activo is False
+    assert trait.giants_might_usos == giants_might_uses(5)
+
+
+def test_giant_might_da_ventaja_solo_en_fuerza():
+    pj, _ = _giant_pj()
+    GiantsMightAction().execute(_ctx(pj))
+    ctx = _ctx(pj)
+    assert saving_throw(
+        pj, "str", 15, random.Random(1), ctx=ctx).mode == RollMode.ADVANTAGE
+    assert saving_throw(
+        pj, "con", 15, random.Random(1), ctx=ctx).mode == RollMode.NORMAL
+    assert saving_throw(
+        pj, "dex", 15, random.Random(1), ctx=ctx).mode == RollMode.NORMAL
+    assert ability_check(
+        pj, "str", 15, random.Random(1), ctx=ctx).mode == RollMode.ADVANTAGE
+    assert ability_check(
+        pj, "int", 15, random.Random(1), ctx=ctx).mode == RollMode.NORMAL
+
+
+def test_giant_might_daño_extra_una_vez_por_turno():
+    pj, trait = _giant_pj()
+    trait.giants_might_activo = True
+    ctx = _ctx(pj)
+    enemigo = _pj(name="Enemigo")
+    arma = pj.attacks[0]
+    rng = random.Random(3)
+    v1 = trait.extra_attack_damage(pj, enemigo, AttackRange.MELEE,
+                                   ctx=ctx, rng=rng, atk=arma)
+    assert 1 <= v1 <= 6
+    v2 = trait.extra_attack_damage(pj, enemigo, AttackRange.MELEE,
+                                   ctx=ctx, rng=rng, atk=arma)
+    assert v2 == 0
+    # El flag «una vez por turno» se reinicia al empezar el turno.
+    trait.on_turn_start(pj, ctx)
+    v3 = trait.extra_attack_damage(pj, enemigo, AttackRange.MELEE,
+                                   ctx=ctx, rng=rng, atk=arma)
+    assert 1 <= v3 <= 6
+
+
+def test_giant_might_el_daño_extra_es_del_tipo_del_arma(monkeypatch):
+    import dnd_sim.engine.combat.attack as attack_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(attack_mod, "roll_d20",
+                        lambda rng, mode=None: D20Result(
+                            value=15, rolls=[15],
+                            mode=mode or RollMode.NORMAL))
+    monkeypatch.setattr(attack_mod, "roll_dice",
+                        lambda expr, rng, **kw: 5)
+    monkeypatch.setattr(rk_mod, "roll_dice",
+                        lambda expr, rng, **kw: 2)
+    pj, trait = _giant_pj()
+    trait.giants_might_activo = True
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    enemigo.resistances = {"slashing"}
+    attack_roll(pj, enemigo, pj.attacks[0], random.Random(1),
+                log=[], ctx=_ctx(pj, enemigo))
+    # Bruto = 5 (arma) + 3 (mod FUE) + 2 (extra) = 10; la resistencia a
+    # cortante mitiga TODO el bruto → el extra viaja con el tipo del arma.
+    assert enemigo.max_hp - enemigo.hp == 5
+
+
+def test_giant_might_el_dado_de_daño_sube_con_el_nivel(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    exprs: list = []
+
+    def _espia(expr, rng, **kwargs):
+        exprs.append(expr)
+        return 1
+
+    monkeypatch.setattr(rk_mod, "roll_dice", _espia)
+    for nivel, esperado in ((3, "1d6"), (10, "1d8"), (18, "1d10")):
+        pj, trait = _giant_pj(level=nivel)
+        trait.giants_might_activo = True
+        trait.extra_attack_damage(pj, _pj(), AttackRange.MELEE,
+                                  ctx=_ctx(pj), rng=random.Random(1),
+                                  atk=pj.attacks[0])
+    assert exprs == ["1d6", "1d8", "1d10"]
+
+
+def test_giant_might_en_nivel_dieciocho_el_tamano_es_enorme():
+    pj, _ = _giant_pj(level=18)
+    GiantsMightAction().execute(_ctx(pj))
+    assert pj.size == "huge"
+
+
+def test_giant_might_no_es_elegible_sin_usos_ni_con_la_accion_gastada():
+    pj, trait = _giant_pj()
+    accion = GiantsMightAction()
+    ctx = _ctx(pj)
+    assert accion.can_use(ctx) is True
+    trait.giants_might_usos = 0
+    assert accion.can_use(ctx) is False
+    trait.giants_might_usos = giants_might_uses(5)
+    assert accion.can_use(
+        ctx, resources=TurnResources(bonus_action_used=True)) is False
+
+
+def test_sin_subclase_giant_might_no_consulta_rng(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin la subclase no hay Giant's Might")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(rk_mod, "roll_dice", _revienta)
+    pj = _pj()
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    assert not any(isinstance(a, GiantsMightAction) for a in pj.actions)
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    attack_roll(pj, enemigo, pj.attacks[0], random.Random(1),
+                log=[], ctx=_ctx(pj, enemigo))

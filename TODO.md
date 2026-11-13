@@ -236,8 +236,10 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   **Hecho**: en `roll_modifiers` con `fusionar_modo`; complementa (no
   sustituye) los hooks existentes (decisión en PASOS); `skill_check`
   pasa la característica efectiva; 9 tests, suite 1522 passed.
-- [ ] A4 — `GiantsMightAction` (acción adicional, tamaño, ventaja
+- [x] A4 — `GiantsMightAction` (acción adicional, tamaño, ventaja
   FUE, daño extra 1d6/d8/d10) + tests.
+  **Hecho**: campo `giants_might_activo` + acción + consulta A3 +
+  `extra_attack_damage`; 9 tests, suite 1531 passed.
 - [ ] A5 — Runic Shield (reacción en el punto de Warding, re-tirada
   de UN d20) + tests.
 - [ ] A6 — Ganchos `on_any_turn_start`/`on_any_turn_end` en Trait +

@@ -2215,6 +2215,29 @@ RUNE KNIGHT (2026-11-13)
     ventaja+desventaja, bonificador suma en salvación y prueba,
     habilidad efectiva en pruebas de habilidad, otros vivos consultados
     y muertos/incapacitados no). Suite **1522 passed**. Commit de A3.
+  - (4) Giant's Might (A4): campo `giants_might_activo` (+ en
+    `reset`), `_TAMANOS`/`_orden_tamano` local (patrón `giant.py`) y
+    acción `GiantsMightAction(CombatAction)` (`BONUS_ACTION`,
+    `usage=None`) registrada en `apply_rune_knight`
+    (`pj.actions.append`): `can_use` sin RNG (nivel>=3, sin activar,
+    `giants_might_usos>0`, más `super().can_use` para la acción
+    adicional libre) y `execute` sin RNG (gasta 1 uso, marca activo,
+    tamaño `large`/`huge` según nivel >=18 con log; la restauración la
+    hace `Combatant.reset` vía `size_base`). Ventaja FUE por la
+    consulta de A3: `modificar_salvacion`/`modificar_prueba` en el
+    rasgo → `(es FUE y activo y sujeto es el dueño, False, 0)`, sin
+    RNG. Daño extra vía hook existente `extra_attack_damage` (ya en
+    HOOK_NAMES; el motor lo suma al bruto del arma → mismo tipo que el
+    ataque automático): guards (activo, dueño, flag de turno, `atk`,
+    `rng`, `spell_attack`), flag solo al tirar, `roll_dice`
+    `1d6/1d8/1d10` (`giants_might_die_sides`) con la regla de
+    críticos del motor. 9 tests (activación única + uso, tamaño y
+    restauración en reset, ventaja solo FUE en salvaciones y pruebas,
+    extra una vez por turno con reinicio en `on_turn_start`, tipo del
+    arma vía resistencia a cortante (10→5), dado por nivel con
+    espía, Enorme a 18, no elegible sin usos ni con acción bonus
+    gastada (`TurnResources`), sin subclase cero RNG). Suite
+    **1531 passed**. Commit de A4.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y
