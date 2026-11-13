@@ -4,8 +4,9 @@
 Extra Attack...). Este ``__init__`` reexporta la API (``from
 dnd_sim.rules.classes.fighter import apply_fighter``) y declara la
 clase en el registro genérico de :mod:`dnd_sim.rules.classes.base` con
-su tabla de subclases (Arcane Archer, Battle Master, Cavalier y
-Champion; ver ``TODO.md`` para la receta).
+su tabla de subclases (Arcane Archer, Battle Master, Cavalier,
+Champion, Psi Warrior y Rune Knight; ver ``TODO.md`` para la
+receta).
 """
 from __future__ import annotations
 
@@ -18,11 +19,13 @@ from .subclasses import (
     CavalierFeatures,
     ChampionFeatures,
     PsiWarriorFeatures,
+    RuneKnightFeatures,
     apply_arcane_archer,
     apply_battle_master,
     apply_cavalier,
     apply_champion,
     apply_psi_warrior,
+    apply_rune_knight,
 )
 
 #: Registro de la clase Fighter con sus subclases (claves normalizadas).
@@ -50,12 +53,16 @@ FIGHTER_CLASS = register_class(ClassDef(
             name="Psi Warrior", class_name="fighter",
             min_level=3, apply=apply_psi_warrior,
         ),
+        "rune_knight": SubclassDef(
+            name="Rune Knight", class_name="fighter",
+            min_level=3, apply=apply_rune_knight,
+        ),
     },
 ))
 
 __all__ = ["ActionSurgeAction", "ARCANE_SHOTS", "ArcaneArcherFeatures",
            "BattleMasterFeatures", "CavalierFeatures", "ChampionFeatures",
            "FIGHTER_CLASS", "FighterFeatures", "PsiWarriorFeatures",
-           "SecondWindAction", "apply_arcane_archer", "apply_battle_master",
-           "apply_cavalier", "apply_champion", "apply_fighter",
-           "apply_psi_warrior"]
+           "RuneKnightFeatures", "SecondWindAction", "apply_arcane_archer",
+           "apply_battle_master", "apply_cavalier", "apply_champion",
+           "apply_fighter", "apply_psi_warrior", "apply_rune_knight"]

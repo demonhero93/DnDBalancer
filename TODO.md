@@ -226,6 +226,11 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   1505 passed.
 - [ ] A2 — Esqueleto `rune_knight.py` + registro `rune_knight` en los
   4 puntos + tests (registro, apply, kwargs, pasivos sin efecto).
+- [x] A2 — Esqueleto y registro: `rune_knight.py`
+  (`RuneKnightFeatures` + `apply_rune_knight`, kwarg `runes`
+  validado) y clave `"rune_knight"` en los 4 puntos de registro.
+  **Hecho**: 3 freeze tests de registro ampliados (explicados en
+  PASOS); 8 tests, suite 1513 passed.
 - [ ] A3 — Consulta perezosa `modificar_salvacion`/`modificar_prueba`
   (duck-typing, sin HOOK_NAMES) + tests de RNG idéntico.
 - [ ] A4 — `GiantsMightAction` (acción adicional, tamaño, ventaja

@@ -2160,6 +2160,36 @@ RUNE KNIGHT (2026-11-13)
     (6 tests de tablas por nivel; PB de nivel 15 = 5, rango 13-16).
     Ningún test existente cambia (funciones puras nuevas). Suite
     **1505 passed**. Commit de A1.
+  - (2) Esqueleto y registro (A2): módulo nuevo
+    ``rules/classes/fighter/subclasses/rune_knight.py`` — docstring
+    español con la tabla de rasgos; ``RuneKnightFeatures`` (``runas``,
+    ``usos_runa``, usos Giant's Might/Runic Shield, flag por turno,
+    estados Frost/Hill/Storm, datos sin efecto ``pasivos_runas`` y
+    ``bonus_proficiencies``), ``on_turn_start`` (flag) y ``reset``;
+    ``apply_rune_knight`` valida clase guerrero y nivel >= 3, kwarg
+    ``runes`` con ``sample`` del pool (o explícito validado por nombre
+    y recuento; patrón maniobras de Battle Master), ``rng`` por
+    defecto semilla 0 (``_RNG_CREACION``). Registro clave
+    ``"rune_knight"`` en ``fighter/__init__.py`` (``SubclassDef``),
+    ``fighter/subclasses/__init__.py``, ``rules/classes/__init__.py``
+    y fachada ``dnd_sim/__init__.py`` (imports + ``__all__``; docstrings
+    de paquete actualizados a seis subclases).
+
+    **Cambio de tests existentes (explicado ANTES de tocarlos,
+    sección 3 de la tarea):** los tests que congelan el set de claves
+    de subclases registradas del Guerrero pasan a incluir
+    ``"rune_knight"`` — ``tests/test_fighter.py``
+    ``test_clase_fighter_esta_registrada_con_arcane_archer``,
+    ``tests/test_arcane_archer.py::test_registro_arcane_archer_bajo_fighter``
+    y ``tests/test_battle_master.py::test_registro_battle_master_bajo_fighter``.
+    Son el ÚNICO tipo de test existente que cambia (añadir la clave al
+    registro lo exige); ningún otro resultado se toca.
+
+    Tests nuevos A2 en ``tests/test_rune_knight.py``: registro y
+    equivalencia ``apply_class``/``apply_rune_knight``; errores (clase
+    no Fighter, nivel <3); runas conocidas por nivel; kwarg inválido →
+    ``ValueError``; pasivos y Bonus Proficiencies congelados; sin la
+    subclase cero RNG. Suite **1513 passed**. Commit de A2.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

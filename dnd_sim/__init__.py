@@ -69,9 +69,9 @@ from .rules.classes.barbarian.subclasses.zealot import (
 from .rules.classes.fighter import (
     ActionSurgeAction, ArcaneArcherFeatures, BattleMasterFeatures,
     CavalierFeatures, ChampionFeatures, FighterFeatures,
-    PsiWarriorFeatures, SecondWindAction,
+    PsiWarriorFeatures, RuneKnightFeatures, SecondWindAction,
     apply_arcane_archer, apply_battle_master, apply_cavalier,
-    apply_champion, apply_fighter, apply_psi_warrior,
+    apply_champion, apply_fighter, apply_psi_warrior, apply_rune_knight,
 )
 from .rules.classes.base import apply_class
 from .rules.checks import (CheckResult, ability_check, ability_check_bonus,
@@ -154,7 +154,7 @@ __all__ = [
     "PsiWarriorFeatures",
     "RANGED_COVER_AC_BONUS",
     "Race", "RageAction", "Regeneration", "Relentless", "RepeatSave",
-    "RollMode", "SaveAction",
+    "RollMode", "RuneKnightFeatures", "SaveAction",
     "SaveDamage", "SaveDamageOutcome", "SaveModifiers", "SaveResult",
     "SecondWindAction", "Spell",
     "SpellAction", "SpellAttackAction", "SpellFixedDamageAction",
@@ -172,7 +172,7 @@ __all__ = [
     "apply_champion",
     "apply_class",
     "apply_arcane_archer", "apply_condition", "apply_fighter", "apply_giant",
-    "apply_psi_warrior", "apply_storm_herald",
+    "apply_psi_warrior", "apply_rune_knight", "apply_storm_herald",
     "apply_wild_heart", "apply_wild_magic", "apply_world_tree",
     "apply_zealot",
     "al_acertar", "al_fallar",
