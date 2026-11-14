@@ -2484,6 +2484,15 @@ RUNE KNIGHT (2026-11-13)
     casilla Docs ``[x]`` y receta con ``rune_knight.py``.
     PASOS: esta entrada + ESTADO ACTUAL con recuentos y subclases
     (6 del fighter). Suite **1599 passed**. Commit de Docs.
+  - (15) Verificación (casilla Verificación): ``pytest
+    tests/test_arquitectura.py`` → 3 passed; suite completa →
+    **1599 passed** (200 warnings); ``python tools/capas.py`` →
+    ``total: 1`` con SOLO la excepción conocida
+    ``model.combatant -> rules.conditions``; ``graphify update .``
+    → 4538 nodos, 16593 aristas, 142 comunidades (backup de grafo
+    curado en ``graphify-out/2026-11-14/``). Commit final con el
+    grafo actualizado. Suite **1599 passed**. Commit de
+    Verificación.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y

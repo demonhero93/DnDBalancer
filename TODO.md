@@ -293,8 +293,10 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   **Hecho**: fila `rules/classes/` con `rune_knight`, sección
   «Rune Knight (TCE)», recuentos 87/22372 y 57 ficheros/25462/1599;
   PASOS (14) + ESTADO ACTUAL; receta con `rune_knight.py`.
-- [ ] Verificación — arquitectura + suite + capas + graphify +
+- [x] Verificación — arquitectura + suite + capas + graphify +
   commit final con grafo.
+  **Hecho**: arquitectura 3 passed, suite 1599 passed, capas solo
+  la excepción conocida, grafo 4538 nodos/16593 aristas.
 
 ## Fighter: cómo añadir una subclase
 
