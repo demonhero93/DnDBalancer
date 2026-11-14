@@ -271,7 +271,11 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
 - [x] A11 — Cloud Rune (redirección en el punto de Warding) + tests.
   **Hecho**: walker `_redirigir_del_bando` + `redirigir_ataque` (CA
   recalculada contra el nuevo objetivo); 9 tests, suite 1590 passed.
-- [ ] A12 — Master of Runes (2 usos) + tests de cierre.
+- [x] A12 — Master of Runes (2 usos) + tests de cierre.
+  **Hecho**: efectos ya en tablas A1 (`rune_uses` 2 en 15+,
+  `runes_known_count` 5 en 15+); 4 tests de cierre (frontera 14/15,
+  3 invocaciones, Stone doble uso, integración `run_combat` semilla
+  fija), suite 1594 passed.
 - [ ] B — Decisiones: test de registro explicado ANTES; límites con
   test freeze; TODO con Rune Knight hecha y pendientes reales.
 - [ ] Docs — `ARCHITECTURE.md` (fila, hooks N, consulta, recuentos),

@@ -2432,6 +2432,25 @@ RUNE KNIGHT (2026-11-13)
     Fixes: CA del refuerzo a 25 (total real 15+FUE+prof ≥ 20 entraba
     a 20) y ataque con d20 parcheado en el test sin subclase. Suite
     **1590 passed**. Commit de A11.
+  - (12) Master of Runes (A12): los efectos de la característica ya
+    estaban en las tablas de A1 (``rune_uses`` da 2 usos por runa
+    desde el nivel 15 y ``runes_known_count`` la quinta runa en 15+)
+    y en el registro de ``apply_rune_knight``; la casilla se cierra
+    con 4 tests de cierre. (a) Frontera 14/15: ``_invocada`` a nivel
+    15 → 5 runas y todos los usos a 2; nivel 14 → 4 runas y usos a 1.
+    (b) A nivel 15 se registran las TRES ``RuneInvokeAction``
+    (frost/hill/storm) con runas explícitas (fire/cloud conocidas sin
+    acción, patrón A8/A9/A11). (c) Stone Rune con Master of Runes:
+    dos marcas en dos turnos (2→1→0 usos) con retirada por daño
+    entre medias, 2 consultas de ``pick``; contraste con nivel 5 (1
+    sola consulta: el 2.º turno se niega ANTES del pick por usos).
+    (d) Integración ``run_combat`` con semilla fija: PJ nivel 15 con
+    storm vs muñeco 400 PV, dos corridas con ``random.Random(7)``
+    repiten ``winner`` y ``rounds`` (``run_combat`` llama a
+    ``reset()`` al empezar) y hay usos de acción registrados.
+    Docstring de cabecera de ``tests/test_rune_knight.py``
+    actualizado hasta A12. Sin cambios de producción. Suite
+    **1594 passed**. Commit de A12.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

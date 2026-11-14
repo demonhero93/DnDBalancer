@@ -3,8 +3,9 @@
 Solo cubren lo que existe: en A1, las tablas de ``core/classes.py``; en
 A2, el esqueleto, el registro y los datos sin efecto; en A3, la consulta
 perezosa ``modificar_salvacion``/``modificar_prueba``; en A4, Giant's
-Might; en A5, Runic Shield; en A7, las runas Hill y Frost. El resto de
-casillas (ganchos de turno, demás runas) se añade aquí.
+Might; en A5, Runic Shield; en A6, los ganchos de turno; en A7, las
+runas Hill y Frost; en A8-A11, Fire/Stone/Storm/Cloud; en A12, Master
+of Runes y el cierre con integración ``run_combat``.
 """
 
 from __future__ import annotations
@@ -1613,3 +1614,69 @@ def test_sin_subclase_la_cloud_rune_no_consulta_rng(monkeypatch):
     attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
                 log=ctx.log, ctx=ctx)
     assert aliado.hp < 70
+
+
+# --- A12: Master of Runes y cierre --------------------------------------------
+
+
+def test_master_of_runes_da_cinco_runas_y_dos_usos_desde_el_nivel_15():
+    """Master of Runes (15): quinta runa y doble invocación por runa."""
+    pj15, trait15 = _invocada("frost", level=15)
+    assert len(trait15.runas) == 5
+    assert all(trait15.usos_runa[r] == 2 for r in trait15.runas)
+    pj14, trait14 = _invocada("frost", level=14)
+    assert len(trait14.runas) == 4
+    assert all(trait14.usos_runa[r] == 1 for r in trait14.runas)
+
+
+def test_master_of_runes_registra_las_tres_acciones_de_invocacion():
+    pj = _pj(level=15)
+    apply_fighter(pj, level=15, fighting_style="Archery")
+    apply_rune_knight(pj, level=15,
+                      runes=("frost", "hill", "storm", "fire", "cloud"))
+    invocadas = [a.runa for a in pj.actions
+                 if isinstance(a, RuneInvokeAction)]
+    assert invocadas == ["frost", "hill", "storm"]
+
+
+def test_stone_rune_consume_los_dos_usos_de_master_of_runes(monkeypatch):
+    """Con Master of Runes, Stone puede marcar en dos turnos seguidos."""
+    pj, trait, enemigo, ctx = _piedra(level=15)
+    llamadas = _parchea_fuego(monkeypatch, salva=1)
+    trait.on_any_turn_end(enemigo, ctx)
+    assert trait.usos_runa["stone"] == 1
+    # El daño retira la marca y el próximo turno vuelve a gastar el 2.º uso.
+    enemigo.hp = 55
+    trait.on_any_turn_start(enemigo, ctx)
+    assert enemigo.state.stone_de is None
+    trait.on_any_turn_end(enemigo, ctx)
+    assert trait.usos_runa["stone"] == 0
+    assert enemigo.state.stone_de is pj
+    assert len(llamadas) == 2
+    # Sin Master of Runes (nivel 5) solo hay una invocación: el segundo
+    # turno se niega ANTES del pick.
+    pj5, trait5, enemigo5, ctx5 = _piedra()
+    llamadas5 = _parchea_fuego(monkeypatch, salva=1)
+    trait5.on_any_turn_end(enemigo5, ctx5)
+    enemigo5.hp = 55
+    trait5.on_any_turn_start(enemigo5, ctx5)
+    trait5.on_any_turn_end(enemigo5, ctx5)
+    assert trait5.usos_runa["stone"] == 0
+    assert len(llamadas5) == 1
+
+
+def test_rune_knight_integra_en_run_combat_con_semilla_fija():
+    from dnd_sim.engine.combat import run_combat
+
+    pj, trait = _invocada("storm", level=15)
+    muneco = Monster("Muñeco", max_hp=400, ac=16, abilities=_abilities())
+    res = run_combat([pj, muneco], random.Random(7), verbose=True,
+                     max_rounds=50)
+    # La misma semilla sobre los mismos objetos repite el combate
+    # (run_combat llama a reset() al empezar).
+    res2 = run_combat([pj, muneco], random.Random(7), verbose=True,
+                      max_rounds=50)
+    assert res.winner == res2.winner
+    assert res.rounds == res2.rounds
+    assert res.rounds >= 1
+    assert res.action_uses
