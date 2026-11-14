@@ -98,6 +98,13 @@ class CombatState:
     # ``rules.mastery.consumir_marcas``). La limpia ``Combatant.reset()``.
     distracting: dict[str, int] = field(
         default_factory=dict, repr=False, compare=False)
+    # Fire Rune (Rune Knight): dueño de la runa y ronda de caducidad
+    # (~1 minuto = todo el combate) en ESTE combatiente mientras esté
+    # Restringido por ella; da 2d6 de fuego al inicio de su turno y se
+    # repite la salvación de FUE al final (lo ponen y limpian los rasgos
+    # de la subclase y ``Combatant.reset()``).
+    fire_runa: Any = None
+    fire_runa_hasta: int = 0
 
     def enfeeble_mitiga(self, ronda: int | None) -> bool:
         """¿Vigente la marca de Enfeebling en ``ronda``?

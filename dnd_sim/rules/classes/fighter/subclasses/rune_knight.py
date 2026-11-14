@@ -56,9 +56,13 @@ from .....core.classes import (
 from .....core.dice import RollMode, roll_d20, roll_dice
 from .....core.enums import DamageType
 from .....core.log import log_line as _log_line
+from .....core.proficiency import proficiency_bonus
 from .....core.randomness import pick, sample
 from .....model.actions import ActionType, CombatAction
+from ....conditions import Condition, apply_condition, remove_condition
+from ....damage import inflict_damage
 from ....roll_modifiers import evaluar_d20
+from ....saves import saving_throw
 from ....traits.base import Trait
 from ..features import FighterFeatures, _contexto
 
@@ -231,19 +235,26 @@ class RuneKnightFeatures(Trait):
     def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
                             *, crit: bool = False, ctx: Any = None,
                             rng: Any = None, atk: Any = None) -> int:
-        """Giant's Might: 1d6 (d8 con 10, d10 con 18) una vez por turno.
+        """Giant's Might + Fire Rune al impactar con un arma (A4/A8).
 
-        El motor lo suma al bruto del arma, así que el daño extra es
-        del mismo tipo que el ataque. Sin ``rng`` o sin ataque no se
-        consume la vez del turno (no hay dados que tirar).
+        Giant's Might: 1d6 (d8 con 10, d10 con 18) una vez por turno,
+        del mismo tipo que el arma (el motor lo suma al bruto). Fire
+        Rune: decide su ``pick`` y aplica sus efectos aparte (tipo
+        fuego, salvación y marca), así que no aporta al bruto. Sin
+        ``rng``, sin ``target`` o sin ataque no se consume nada (no hay
+        dados que tirar).
         """
-        if (not self.giants_might_activo or attacker is not self.owner
-                or self.giants_might_used_this_turn or atk is None
+        if (attacker is not self.owner or target is None or atk is None
                 or rng is None or getattr(atk, "spell_attack", False)):
             return 0
-        self.giants_might_used_this_turn = True
-        lados = giants_might_die_sides(self.level)
-        return int(roll_dice(f"1d{lados}", rng, crit=crit))
+        bonus = 0
+        if (self.giants_might_activo
+                and not self.giants_might_used_this_turn):
+            self.giants_might_used_this_turn = True
+            lados = giants_might_die_sides(self.level)
+            bonus = int(roll_dice(f"1d{lados}", rng, crit=crit))
+        self._fire_rune(target, ctx, rng, crit=crit)
+        return bonus
 
     # --- Runas Hill y Frost (A7) ----------------------------------------------
     def _otorgar_hill(self, actor: Any, ctx: Any) -> None:
@@ -267,6 +278,125 @@ class RuneKnightFeatures(Trait):
             if resis is not None:
                 resis.discard(tipo)
         self.hill_concedidas.clear()
+
+    # --- Fire Rune (A8) --------------------------------------------------------
+    def _cd_fuego(self) -> int:
+        """CD de la salvación de Fire Rune: 8 + PB + mod CON."""
+        owner = self.owner
+        mod_con = owner.abilities.mod("con") if owner is not None else 0
+        return 8 + proficiency_bonus(self.level) + int(mod_con)
+
+    def _fire_rune(self, target: Any, ctx: Any, rng: Any, *,
+                   crit: bool = False) -> None:
+        """Fire Rune: 2d6 de fuego + salvación de FUE al impactar (A8).
+
+        Guards sin RNG (runa desconocida, sin usos, dueño
+        incapacitado o sin ``rng``); el ``pick`` solo se consulta al
+        gastar. Si la salvación falla, el objetivo queda Restringido
+        con marca en su ``CombatState`` hasta que supere la salvación
+        de fin de turno. Sin ``escape`` en la condición: es efecto de
+        la runa, no un agarre, así que ninguna prueba lo rompe.
+        """
+        owner = self.owner
+        if ("fire" not in self.runas or target is None
+                or int(self.usos_runa.get("fire", 0)) <= 0
+                or not getattr(owner, "can_act", True) or rng is None):
+            return  # sin elegibilidad: ni consulta ni RNG
+        if pick(rng, ("no", "si")) == "no":
+            return
+        self.usos_runa["fire"] = int(self.usos_runa["fire"]) - 1
+        extra = int(roll_dice("2d6", rng, crit=crit))
+        inflict_damage(target, extra, DamageType.FIRE, source=owner,
+                       ctx=ctx, rng=rng)
+        _log_line(ctx, f"  {getattr(owner, 'name', owner)} invoca la "
+                       f"Fire Rune: {extra} de daño de fuego")
+        sr = saving_throw(target, "str", self._cd_fuego(), rng, ctx=ctx)
+        if sr.success:
+            return  # la salvación de la invocación no restringe
+        estado = getattr(target, "state", None)
+        if estado is None:
+            return
+        ronda = int(getattr(ctx, "round", 1) or 1) if ctx is not None else 1
+        # Una sola marca por objetivo: la caducidad se refresca pero la
+        # condición solo se aplica la primera vez (sin apilar instancias).
+        ya_marcado = getattr(estado, "fire_runa", None) is not None
+        estado.fire_runa = owner
+        estado.fire_runa_hasta = ronda + 100
+        if not ya_marcado:
+            apply_condition(target, Condition.RESTRAINED, ctx, source=owner)
+        _log_line(ctx, f"  {getattr(target, 'name', target)} queda "
+                       f"Restringido (Fire Rune)")
+
+    def _limpiar_fire(self, target: Any) -> None:
+        """Retira la marca de Fire y la condición del objetivo."""
+        estado = getattr(target, "state", None)
+        if estado is not None:
+            estado.fire_runa = None
+            estado.fire_runa_hasta = 0
+        if (getattr(target, "conditions", None) is not None
+                and target.conditions.has(Condition.RESTRAINED)):
+            remove_condition(target, Condition.RESTRAINED, None)
+
+    @staticmethod
+    def _fire_vigente(target: Any, ctx: Any) -> Any:
+        """Marca de Fire vigente sobre ``target`` (o ``None``)."""
+        estado = getattr(target, "state", None)
+        marca = getattr(estado, "fire_runa", None)
+        if marca is None or estado is None:
+            return None
+        if ctx is not None:
+            ronda = int(getattr(ctx, "round", 0) or 0)
+            if ronda > int(getattr(estado, "fire_runa_hasta", 0) or 0):
+                return None  # caducada (~1 minuto)
+        return marca
+
+    def on_any_turn_start(self, actor: Any, ctx: Any = None) -> None:
+        """Marca de Fire: limpieza y daño de 2d6 al inicio del turno (A8)."""
+        # El objetivo muerto deja de ser válido: la marca se retira aquí
+        # (los muertos no tienen turno propio, así que se barre en el
+        # turno del dueño de la runa).
+        if actor is self.owner:
+            for otro in getattr(ctx, "combatants", None) or []:
+                estado = getattr(otro, "state", None)
+                if (otro is not actor and estado is not None
+                        and getattr(estado, "fire_runa", None) is self.owner
+                        and not getattr(otro, "alive", True)):
+                    self._limpiar_fire(otro)
+        estado = getattr(actor, "state", None)
+        if (estado is None
+                or getattr(estado, "fire_runa", None) is not self.owner):
+            return
+        if not getattr(actor, "alive", True) or (
+                ctx is not None and self._fire_vigente(actor, ctx) is None):
+            self._limpiar_fire(actor)
+            return
+        rng = getattr(ctx, "rng", None) if ctx is not None else None
+        if rng is None:
+            return  # sin RNG no hay dados
+        extra = int(roll_dice("2d6", rng))
+        inflict_damage(actor, extra, DamageType.FIRE, source=self.owner,
+                       ctx=ctx, rng=rng)
+        _log_line(ctx, f"  {getattr(actor, 'name', actor)} sufre "
+                       f"{extra} de daño de fuego (Fire Rune)")
+
+    def on_any_turn_end(self, actor: Any, ctx: Any = None) -> None:
+        """Fire Rune: salvación de FUE al final del turno (A8)."""
+        estado = getattr(actor, "state", None)
+        if (estado is None
+                or getattr(estado, "fire_runa", None) is not self.owner):
+            return
+        if not getattr(actor, "alive", True) or (
+                ctx is not None and self._fire_vigente(actor, ctx) is None):
+            self._limpiar_fire(actor)
+            return
+        rng = getattr(ctx, "rng", None) if ctx is not None else None
+        if rng is None:
+            return  # sin RNG no se tira: el efecto sigue vigente
+        sr = saving_throw(actor, "str", self._cd_fuego(), rng, ctx=ctx)
+        if sr.success:
+            self._limpiar_fire(actor)
+            _log_line(ctx, f"  {getattr(actor, 'name', actor)} supera la "
+                           f"Fire Rune")
 
 
 class GiantsMightAction(CombatAction):

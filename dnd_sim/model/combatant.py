@@ -285,6 +285,9 @@ class Combatant:
             self.state.attacked_this_turn = False
             self.state.forced_save_this_turn = False
             self.state.dodging = False
+            # Fire Rune (Rune Knight): sin marca al empezar un combate.
+            self.state.fire_runa = None
+            self.state.fire_runa_hasta = 0
             # Bulwark of Force (Psi Warrior): sin cobertura heredada al
             # empezar un combate nuevo.
             self.state.cobertura_bulwark = None

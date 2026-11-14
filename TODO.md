@@ -224,9 +224,9 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   `giants_might_uses`, pool `RUNES` + tests por nivel.
   **Hecho**: 6 funciones + `RUNES` en `__all__`; 6 tests, suite
   1505 passed.
-- [ ] A2 — Esqueleto `rune_knight.py` + registro `rune_knight` en los
+- [x] A2 — Esqueleto `rune_knight.py` + registro `rune_knight` en los
   4 puntos + tests (registro, apply, kwargs, pasivos sin efecto).
-- [x] A2 — Esqueleto y registro: `rune_knight.py`
+  **Hecho**: esqueleto y registro: `rune_knight.py`
   (`RuneKnightFeatures` + `apply_rune_knight`, kwarg `runes`
   validado) y clave `"rune_knight"` en los 4 puntos de registro.
   **Hecho**: 3 freeze tests de registro ampliados (explicados en
@@ -254,7 +254,11 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   pasiva de veneno; ventaja de Hill en salvaciones de veneno = dato
   sin efecto (el motor no distingue salvación contra veneno; ver
   pendientes reales). 7 tests, suite 1552 passed.
-- [ ] A8 — Fire Rune (marca en CombatState, Restringido, 2d6) + tests.
+- [x] A8 — Fire Rune (marca en CombatState, Restringido, 2d6) + tests.
+  **Hecho**: en `extra_attack_damage` (daño `2d6` fuego aparte +
+  salvación FUE 8+PB+CON); `fire_runa`/`fire_runa_hasta` en
+  `CombatState`, RESTRAINED sin escape, ganchos de turno; 10 tests,
+  suite 1562 passed.
 - [ ] A9 — Stone Rune (`on_any_turn_end`, Hechizado+Incapacitado) +
   tests.
 - [ ] A10 — Storm Rune (acción + reacción ventaja/desventaja por

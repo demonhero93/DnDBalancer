@@ -2309,6 +2309,40 @@ RUNE KNIGHT (2026-11-13)
     concedido, pasiva de veneno solo con Hill, una invocación por
     runa aunque nivel 15 tenga 2 usos, sin acción/usos/runa, sin
     subclase cero RNG). Suite **1552 passed**. Commit de A7.
+  - (8) Fire Rune (A8): todo en el punto ``extra_attack_damage`` ya
+    existente (método Arcane Shot de aplicación al impactar; se gasta
+    y aplica SOLO al impactar con arma): guard combinado de ``atk``/
+    ``rng``/``target``/``spell_attack`` compartido con Giant's Might
+    y ``bonus = 0`` si GM no toca. ``_fire_rune``: guards sin RNG
+    (runa ``fire`` desconocida, ``usos_runa[fire]<=0``, ``not
+    owner.can_act``, ``rng is None`` → return antes del ``pick``),
+    ``pick`` «no»/«sí» solo al gastar, gasta 1 uso,
+    ``roll_dice("2d6", rng, crit=crit)`` (regla de críticos) +
+    ``inflict_damage(..., DamageType.FIRE, ...)`` aparte (el return
+    del hook sería tipo arma: por eso NO suma al bruto) y
+    ``saving_throw(target, "str", 8+PB+mod CON, ctx=ctx)`` con
+    ``proficiency_bonus`` de ``core.proficiency`` (fix: no vive en
+    core.classes). Fallo → marca ``CombatState.fire_runa`` (ref al
+    dueño) + ``fire_runa_hasta`` (ronda+100 = ~1 minuto) +
+    ``Condition.RESTRAINED`` SIN ``escape`` (efecto de runa, no
+    agarre: ``begin_turn`` no intenta escaparla); una sola marca por
+    objetivo (la caducidad se refresca, la condición no se apila) y
+    ``Combatant.reset`` limpia los dos campos. Ganchos nuevos
+    ``on_any_turn_start``: barre en el turno del dueño las marcas a
+    muertos (los muertos no tienen turno propio) y, si el actor está
+    marcado y vivo/vigente, 2d6 de fuego SIN salvación;
+    ``on_any_turn_end``: si está marcado repite la salvación de FUE y
+    al superarla ``remove_condition`` + limpia la marca. Fix de tests
+    A4/A5: ``_giant_pj``/``_escudo_partida`` fijan
+    ``_runas_sin_fuego(nivel)`` (el ``_RNG_CREACION`` compartido
+    hacía que el pick de Fire ensuciara contadores ajenos) y el
+    helper de Fire devuelve DOS caras cuando el motor pide ADVANTAGE
+    (2.º ataque contra Restringido: ``_mode_tag`` lee ``rolls[1]``).
+    10 tests (fallo → Restringido + daño 6+5+3 y marca, éxito → solo
+    daño, 2d6 al inicio, salvaciones de fin de turno fallida/exitosa,
+    escape no la rompe, dos invocaciones con nivel 15 → una sola
+    marca, muerto limpia, reset limpia, guards + pick «no», sin
+    subclase cero RNG). Suite **1562 passed**. Commit de A8.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

@@ -41,6 +41,7 @@ from dnd_sim.rules.classes.fighter.subclasses.rune_knight import (
 from dnd_sim.rules.conditions import Condition, apply_condition
 from dnd_sim.rules.damage import apply_damage_modifiers
 from dnd_sim.rules.saves import saving_throw
+from dnd_sim.rules.usage import begin_turn
 
 
 # --- A1: tablas --------------------------------------------------------------
@@ -356,11 +357,17 @@ def test_la_consulta_mira_a_los_otros_vivos_y_no_a_muertos_o_incapacitados():
 # --- A4: Giant's Might -------------------------------------------------------
 
 
+def _runas_sin_fuego(level: int) -> tuple:
+    """Runas del pool sin Fire, con la cantidad que exige el nivel."""
+    otras = [r for r in RUNES if r != "fire"]
+    return tuple(otras[:runes_known_count(level)])
+
+
 def _giant_pj(level: int = 5) -> tuple:
-    """PJ con Fighter + Rune Knight (runas al azar según nivel)."""
+    """PJ con Fighter + Rune Knight (runas sin Fire: aíslan a Giant's)."""
     pj = _pj(level=level)
     apply_fighter(pj, level=level, fighting_style="Archery")
-    trait = apply_rune_knight(pj, level=level)
+    trait = apply_rune_knight(pj, level=level, runes=_runas_sin_fuego(level))
     return pj, trait
 
 
@@ -509,7 +516,9 @@ def _escudo_partida(*, level: int = 7, ac_objetivo: int = 15) -> tuple:
                        attacks=[Attack("Hacha", "1d8", ability="str")])
     guardia = _pj(level=level, name="Guardia")
     apply_fighter(guardia, level=level, fighting_style="Archery")
-    trait = apply_rune_knight(guardia, level=level)
+    # Runas sin Fire: el pick de Fire Rune ensuciaría los contadores.
+    trait = apply_rune_knight(guardia, level=level,
+                              runes=_runas_sin_fuego(level))
     aliado = _pj(name="Alicia", ac=ac_objetivo)
     ctx = _ctx(atacante, guardia, aliado)
     return atacante, guardia, aliado, trait, ctx
@@ -829,3 +838,232 @@ def test_sin_subclase_cero_rng_en_invocacion_y_consultas(monkeypatch):
     ctx = _ctx(pj)
     saving_throw(pj, "str", 15, random.Random(1), ctx=ctx)
     ability_check(pj, "str", 15, random.Random(1), ctx=ctx)
+
+
+# --- A8: Fire Rune ------------------------------------------------------------
+
+
+def _fuego(level: int = 5) -> tuple:
+    """PJ con Fire Rune, enemigo y contexto de combate."""
+    pj, trait = _invocada("fire", level=level)
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    return pj, trait, enemigo, ctx
+
+
+def _parchea_fuego(monkeypatch, *, ataque=15, dado_arma=5, dado_fuego=6,
+                   salva=1, decide="si") -> list:
+    """Impacto y daños fijos, pick y salvación de FUE fijas."""
+    import dnd_sim.engine.combat.attack as attack_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.saves as saves_mod
+
+    llamadas_pick = []
+    # Restringido da ventaja al segundo ataque: el resultado fijo lleva
+    # dos caras cuando el motor pide ADVANTAGE (log con rolls[1]).
+    def _d20(rng, mode=None):
+        m = mode or RollMode.NORMAL
+        caras = [ataque] if m == RollMode.NORMAL else [ataque, ataque]
+        return D20Result(value=ataque, rolls=caras, mode=m)
+
+    monkeypatch.setattr(attack_mod, "roll_d20", _d20)
+    monkeypatch.setattr(attack_mod, "roll_dice",
+                        lambda expr, rng, **kw: dado_arma)
+    monkeypatch.setattr(rk_mod, "roll_dice",
+                        lambda expr, rng, **kw: dado_fuego)
+    monkeypatch.setattr(
+        saves_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(value=salva, rolls=[salva],
+                                         mode=mode or RollMode.NORMAL))
+
+    def _pick(rng, seq):
+        llamadas_pick.append(tuple(seq))
+        return decide
+
+    monkeypatch.setattr(rk_mod, "pick", _pick)
+    return llamadas_pick
+
+
+def test_fire_rune_al_fallar_la_salvacion_restringe_con_dano_extra(
+        monkeypatch):
+    pj, trait, enemigo, ctx = _fuego()
+    llamadas = _parchea_fuego(monkeypatch, decide="si", salva=1)
+    usos = trait.usos_runa["fire"]
+    attack_roll(pj, enemigo, pj.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    # Daño: 6 (fuego) + 5 (arma) + 3 (FUE) = 14; salvación 1+3 < 14
+    # (CD 8+PB3+CON3).
+    assert enemigo.max_hp - enemigo.hp == 6 + 5 + 3
+    assert trait.usos_runa["fire"] == usos - 1
+    assert len(llamadas) == 1
+    assert enemigo.conditions.has(Condition.RESTRAINED)
+    assert enemigo.state.fire_runa is pj
+    assert enemigo.state.fire_runa_hasta > ctx.round
+    assert any("Fire Rune" in line for line in ctx.log)
+
+
+def test_fire_rune_si_supera_la_salvacion_solo_hay_dano(monkeypatch):
+    pj, trait, enemigo, ctx = _fuego()
+    llamadas = _parchea_fuego(monkeypatch, salva=20)
+    attack_roll(pj, enemigo, pj.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert enemigo.max_hp - enemigo.hp == 6 + 5 + 3
+    assert len(llamadas) == 1
+    assert trait.usos_runa["fire"] == 0
+    assert not enemigo.conditions.has(Condition.RESTRAINED)
+    assert enemigo.state.fire_runa is None
+
+
+def test_fire_rune_dania_2d6_al_inicio_del_turno_del_objetivo(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    pj, trait, enemigo, ctx = _fuego()
+    monkeypatch.setattr(rk_mod, "roll_dice",
+                        lambda expr, rng, **kw: 4)
+    enemigo.state.fire_runa = pj
+    enemigo.state.fire_runa_hasta = 101
+    trait.on_any_turn_start(enemigo, ctx)
+    assert enemigo.max_hp - enemigo.hp == 4
+    assert any("Fire Rune" in line for line in ctx.log)
+    # Sin marca no hay daño ni dados.
+    enemigo.state.fire_runa = None
+    trait.on_any_turn_start(enemigo, ctx)
+    assert enemigo.max_hp - enemigo.hp == 4
+
+
+def test_fire_rune_las_salvaciones_de_fin_de_turno(monkeypatch):
+    import dnd_sim.rules.saves as saves_mod
+
+    pj, trait, enemigo, ctx = _fuego()
+    enemigo.state.fire_runa = pj
+    enemigo.state.fire_runa_hasta = 101
+    apply_condition(enemigo, Condition.RESTRAINED, ctx, source=pj)
+    # Fallo: la marca y la condición siguen.
+    monkeypatch.setattr(
+        saves_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(value=1, rolls=[1],
+                                         mode=mode or RollMode.NORMAL))
+    trait.on_any_turn_end(enemigo, ctx)
+    assert enemigo.state.fire_runa is pj
+    assert enemigo.conditions.has(Condition.RESTRAINED)
+    # Éxito: termina el efecto.
+    monkeypatch.setattr(
+        saves_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(value=20, rolls=[20],
+                                         mode=mode or RollMode.NORMAL))
+    trait.on_any_turn_end(enemigo, ctx)
+    assert enemigo.state.fire_runa is None
+    assert enemigo.state.fire_runa_hasta == 0
+    assert not enemigo.conditions.has(Condition.RESTRAINED)
+    assert any("supera la Fire Rune" in line for line in ctx.log)
+
+
+def test_fire_rune_no_se_rompe_con_pruebas_de_escape(monkeypatch):
+    pj, trait, enemigo, ctx = _fuego()
+    _parchea_fuego(monkeypatch, salva=1)
+    attack_roll(pj, enemigo, pj.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert enemigo.conditions.has(Condition.RESTRAINED)
+    # Solo las condiciones con ``escape`` adjunto se intentan al turno.
+    begin_turn(enemigo, ctx)
+    assert not any("prueba STR" in line for line in ctx.log)
+    assert enemigo.conditions.has(Condition.RESTRAINED)
+    assert enemigo.state.fire_runa is pj
+
+
+def test_fire_rune_dos_invocaciones_dejan_una_sola_marca(monkeypatch):
+    pj, trait, enemigo, ctx = _fuego(level=15)
+    llamadas = _parchea_fuego(monkeypatch, salva=1)
+    assert trait.usos_runa["fire"] == 2  # Master of Runes
+    attack_roll(pj, enemigo, pj.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert trait.usos_runa["fire"] == 1
+    attack_roll(pj, enemigo, pj.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert trait.usos_runa["fire"] == 0
+    assert len(llamadas) == 2
+    assert enemigo.state.fire_runa is pj
+    restringidos = [i for i in enemigo.conditions.instances
+                    if i.condition is Condition.RESTRAINED]
+    assert len(restringidos) == 1
+
+
+def test_fire_rune_el_objetivo_muerto_limpia_la_marca(monkeypatch):
+    pj, trait, enemigo, ctx = _fuego()
+    enemigo.state.fire_runa = pj
+    enemigo.state.fire_runa_hasta = 101
+    apply_condition(enemigo, Condition.RESTRAINED, ctx, source=pj)
+    enemigo.hp = 0
+    enemigo.mark_dead()
+    assert enemigo.alive is False
+    # Los muertos no tienen turno: la barre el del dueño de la runa.
+    trait.on_any_turn_start(pj, ctx)
+    assert enemigo.state.fire_runa is None
+    assert not enemigo.conditions.has(Condition.RESTRAINED)
+
+
+def test_fire_rune_reset_limpia_la_marca():
+    pj, trait, enemigo, ctx = _fuego()
+    enemigo.state.fire_runa = pj
+    enemigo.state.fire_runa_hasta = 101
+    apply_condition(enemigo, Condition.RESTRAINED, ctx, source=pj)
+    enemigo.reset()
+    assert enemigo.state.fire_runa is None
+    assert enemigo.state.fire_runa_hasta == 0
+    assert not enemigo.conditions.has(Condition.RESTRAINED)
+
+
+def test_fire_rune_guards_sin_rng_y_pick_no(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin elegibilidad no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    pj, trait, enemigo, ctx = _fuego()
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    # Sin usos.
+    trait.usos_runa["fire"] = 0
+    trait.extra_attack_damage(pj, enemigo, AttackRange.MELEE,
+                              ctx=ctx, rng=ctx.rng, atk=pj.attacks[0])
+    assert enemigo.hp == 60
+    # Dueño incapacitado.
+    trait.usos_runa["fire"] = 1
+    apply_condition(pj, Condition.INCAPACITATED, ctx)
+    trait.extra_attack_damage(pj, enemigo, AttackRange.MELEE,
+                              ctx=ctx, rng=ctx.rng, atk=pj.attacks[0])
+    assert enemigo.hp == 60
+    # Con elegibilidad y pick «no»: la runa no se gasta.
+    pj.conditions.clear()
+    llamadas = _parchea_fuego(monkeypatch, decide="no")
+    attack_roll(pj, enemigo, pj.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert len(llamadas) == 1
+    assert trait.usos_runa["fire"] == 1
+    assert enemigo.max_hp - enemigo.hp == 5 + 3  # solo el arma
+    assert not enemigo.conditions.has(Condition.RESTRAINED)
+
+
+def test_sin_subclase_la_fire_rune_no_consulta_rng(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin la subclase no hay decisiones")
+
+    import dnd_sim.engine.combat.attack as attack_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    monkeypatch.setattr(rk_mod, "roll_dice", _revienta)
+    monkeypatch.setattr(
+        attack_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(value=15, rolls=[15],
+                                         mode=mode or RollMode.NORMAL))
+    monkeypatch.setattr(attack_mod, "roll_dice",
+                        lambda expr, rng, **kw: 5)
+    pj = _pj(level=5)
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    attack_roll(pj, enemigo, pj.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert enemigo.max_hp - enemigo.hp == 5 + 3
