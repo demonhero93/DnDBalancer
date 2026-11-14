@@ -2451,6 +2451,24 @@ RUNE KNIGHT (2026-11-13)
     Docstring de cabecera de ``tests/test_rune_knight.py``
     actualizado hasta A12. Sin cambios de producción. Suite
     **1594 passed**. Commit de A12.
+  - (13) Decisiones B (casilla B): el test de registro ya estaba
+    explicado ANTES en la entrada (2) de este bloque (A2 tocó
+    ``test_fighter``/``test_arcane_archer``/``test_battle_master``
+    al registrar la clave; nada nuevo que tocar). Sección nueva
+    ``# --- B: limites del modelo (dato sin efecto)`` al final de
+    ``tests/test_rune_knight.py`` con 5 tests freeze (sin tocar
+    ningún test existente): velocidad/alcance (ni ``speed`` ni
+    ``reach`` existen en el modelo; Giant's Might activo no los
+    crea), distancias (``valid_targets`` incluye al enemigo sin
+    geometría), pruebas características de Storm (solo ataques:
+    ``modificar_prueba`` devuelve ``(False, False, 0)`` con Storm
+    activo), runas despertadas (sin campos ``despert*``/``awaken*``
+    en el trait) y ventaja de Hill en salvaciones de veneno (solo
+    resistencia; el motor no distingue el tipo de salvación,
+    ``modificar_salvacion`` → ``(False, False, 0)``). ``TODO.md``:
+    casilla B ``[x]``, bullet «Rune Knight» en *pendientes reales*
+    (6 subclases listadas) y receta «5 claves» → «6 claves».
+    Suite **1599 passed**. Commit de B.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

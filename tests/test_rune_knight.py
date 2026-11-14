@@ -1680,3 +1680,58 @@ def test_rune_knight_integra_en_run_combat_con_semilla_fija():
     assert res.rounds == res2.rounds
     assert res.rounds >= 1
     assert res.action_uses
+
+
+# --- B: limites del modelo (dato sin efecto) ----------------------------------
+
+
+def test_la_velocidad_y_el_alcance_son_dato_sin_efecto():
+    """Ni Giant's Might ni las runas modelan velocidad ni alcance."""
+    pj, trait = _giant_pj()
+    GiantsMightAction().execute(_ctx(pj))
+    assert trait.giants_might_activo is True
+    # Sin sistema de movimiento no hay velocidad (ni velocidad 0).
+    assert not hasattr(pj, "speed")
+    # Sin reglas de alcance el crecimiento de tamaño no daña más lejos.
+    assert all(not hasattr(ataque, "reach") for ataque in pj.attacks)
+
+
+def test_las_distancias_de_las_runas_son_dato_sin_efecto():
+    """Sin geometría los rangos (30 ft, 5 ft) se cumplen siempre."""
+    from dnd_sim.core.targeting import valid_targets
+
+    pj, trait = _invocada("cloud")
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = _ctx(pj, enemigo)
+    assert not hasattr(pj, "speed")
+    assert enemigo in valid_targets(pj, ctx)
+
+
+def test_las_pruebas_caracteristicas_de_storm_son_dato_sin_efecto():
+    """Storm solo da ventaja en ATAQUES: ninguna prueba cambia."""
+    from dnd_sim.rules.roll_modifiers import modificar_prueba
+
+    pj, trait = _invocada("storm")
+    ctx = _ctx(pj)
+    RuneInvokeAction("storm").execute(ctx)
+    assert trait.storm_activo is True
+    assert modificar_prueba("cha", pj, ctx) == (False, False, 0)
+
+
+def test_las_runas_despertadas_son_dato_sin_efecto():
+    """Sin «runas despertadas» (fuera del sim): solo el pool base."""
+    pj, trait = _invocada("frost")
+    campos = set(trait.__dataclass_fields__)
+    assert not any("despert" in campo for campo in campos)
+    assert not any("awaken" in campo for campo in campos)
+
+
+def test_la_ventaja_de_hill_en_salvaciones_de_veneno_es_dato_sin_efecto():
+    """Hill solo da resistencia: la salvación de veneno no cambia."""
+    from dnd_sim.rules.roll_modifiers import modificar_salvacion
+
+    pj, trait = _invocada("hill")
+    ctx = _ctx(pj)
+    assert DamageType.POISON in pj.resistances
+    # El motor no distingue el tipo de salvación: sin ventaja (A7).
+    assert modificar_salvacion("con", pj, ctx) == (False, False, 0)

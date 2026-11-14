@@ -34,8 +34,14 @@ y ARCHITECTURE.md.
 ## Fighter: pendientes reales
 
 - **Subclases Fighter**: candidata Eldritch Knight (Arcane Archer,
-  Battle Master, Cavalier, Champion y Psi Warrior implementados, ver
-  planes abajo).
+  Battle Master, Cavalier, Champion, Psi Warrior y Rune Knight
+  implementados, ver planes abajo).
+- **Rune Knight**: hecho (plan abajo). Límites congelados como dato
+  sin efecto en `tests/test_rune_knight.py` (velocidad, alcance,
+  distancias, runas despertadas, pruebas características de Storm,
+  ventaja de Hill en salvaciones de veneno): sin posiciones ni
+  movimiento, ningún efecto mide distancia. Reabrir solo si existe
+  sistema de movimiento/posiciones o salvaciones tipadas.
 - **Psi Warrior**: hecho (plan abajo). Protective Field usa el punto
   central de `inflict_damage` (fase 1a), así que no aplica el
   «solo daño de ataques». Concentración de Telekinetic Master =
@@ -276,8 +282,12 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   `runes_known_count` 5 en 15+); 4 tests de cierre (frontera 14/15,
   3 invocaciones, Stone doble uso, integración `run_combat` semilla
   fija), suite 1594 passed.
-- [ ] B — Decisiones: test de registro explicado ANTES; límites con
+- [x] B — Decisiones: test de registro explicado ANTES; límites con
   test freeze; TODO con Rune Knight hecha y pendientes reales.
+  **Hecho**: registro ya explicado en PASOS (2) antes de tocarlo
+  (A2); 5 tests freeze de límites (velocidad/alcance, distancias,
+  pruebas Storm, runas despertadas, ventaja Hill en salvaciones de
+  veneno); pendientes reales abajo. Suite 1599 passed.
 - [ ] Docs — `ARCHITECTURE.md` (fila, hooks N, consulta, recuentos),
   PASOS (bloque RUNE KNIGHT + ESTADO ACTUAL), TODO (receta).
 - [ ] Verificación — arquitectura + suite + capas + graphify +
@@ -307,9 +317,9 @@ fighter: `arcane_archer.py`, `battle_master.py`, `cavalier.py`,
    bloque Guerrero de `PASOS-ANTERIORES.txt`.
 
 Pendientes (candidata PHB 2024): Eldritch Knight.
-Arcane Archer, Battle Master, Cavalier, Champion y Psi Warrior YA
-están implementados (`CLASSES["fighter"].subclasses` tiene sus 5
-claves).
+Arcane Archer, Battle Master, Cavalier, Champion, Psi Warrior y
+Rune Knight YA están implementados (`CLASSES["fighter"].subclasses`
+tiene sus 6 claves).
 
 ## Grafo y verificación
 
