@@ -16,16 +16,16 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 
 | Carpeta | Mód. | Líneas | Contenido |
 |---|---:|---:|---|
-| `dnd_sim/core/` | 13 | 1090 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
-| `dnd_sim/model/` | 4 | 1050 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 34 | 11212 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
-| `dnd_sim/rules/traits/` | 6 | 1299 | Los rasgos de monstruo (paquete, ver abajo). |
+| `dnd_sim/core/` | 13 | 1207 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
+| `dnd_sim/model/` | 4 | 1058 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
+| `dnd_sim/rules/` | 36 | 12711 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
+| `dnd_sim/rules/traits/` | 6 | 1322 | Los rasgos de monstruo (paquete, ver abajo). |
 | `dnd_sim/rules/spells/` | 5 | 917 | Hechizos (paquete). |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
-| `dnd_sim/engine/combat/` | 3 | 1206 | El motor: tirada de ataque y bucle de rondas (paquete). |
+| `dnd_sim/engine/combat/` | 3 | 1344 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
-| `dnd_sim/__init__.py` | 1 | 192 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **86** | **21276** | + `tests/` con 56 ficheros y 23617 líneas (1499 tests). |
+| `dnd_sim/__init__.py` | 1 | 195 | Fachada: reexporta la API pública ordenada por capa. |
+| **Total** | **87** | **22372** | + `tests/` con 57 ficheros y 25462 líneas (1599 tests). |
 
 ## Reglas de dependencia
 
@@ -60,7 +60,7 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (28 hooks, incl. `on_any_turn_start`, `on_any_turn_end`, `after_failed_check` y `defensa_ante_ataque`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion,psi_warrior}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier, Champion y Psi Warrior). |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion,psi_warrior,rune_knight}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier, Champion, Psi Warrior y Rune Knight). |
 | `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos por umbral `evaluar_d20`, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
@@ -285,6 +285,48 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   Telekinetic Movement y Psi-Powered Leap (sin movimiento), empuje
   de 10 ft de Thrust, distancias de 30 ft y el efecto de Telekinesis
   (solo concede el ataque adicional).
+
+## Rune Knight (TCE)
+
+- **Rune Carver (3)**: tablas nuevas `runes_known_count` /
+  `giants_might_die_sides` / `rune_uses` / `runic_shield_uses` /
+  `giants_might_uses` + pool `RUNES` en `core/classes.py`; runas
+  conocidas 2/3/4/5 por nivel, kwarg `runes` validado (patrón
+  maniobras de Battle Master) y `sample` con RNG de creación; una
+  invocación por combate y runa (`rune_uses`: 1; 2 desde 15 con
+  Master of Runes); CD de runas y de Fire/Stone 8 + PB + mod CON.
+- **Giant's Might (3)**: `GiantsMightAction` (usos = PB); durante
+  todo el combate Grande (`size_base`, patrón Giant Stature), ventaja
+  en pruebas y salvaciones de FUE (consulta A3) y daño extra 1d6
+  (d8 desde 10, d10 desde 18) una vez por turno.
+- **Consulta A3 en `roll_modifiers`**: `modificar_salvacion` /
+  `modificar_prueba` por duck-typing (sin entrada en `HOOK_NAMES`,
+  con `fusionar_modo`); complementa a los hooks existentes y
+  `skill_check` pasa la característica efectiva.
+- **Runic Shield (7)**: walker NUEVO `_repetir_d20_del_bando` (sin
+  `HOOK_NAMES`) + método `repetir_d20` en el rasgo: reacción que
+  fuerza al atacante de un aliado impactado a repetir el d20; usos =
+  PB.
+- **Runas (7-15)**: frost (+2 pruebas/salvaciones FUE y CON vía
+  consulta A3) e hill (resistencias temporales a F/P/C con lista de
+  fuente propia + resistencia pasiva a veneno), ambas con
+  `RuneInvokeAction`; fire (`extra_attack_damage`: 2d6 fuego +
+  salvación → `RESTRAINED` con marcas `fire_runa`/`fire_runa_hasta`
+  en `CombatState`); stone (`on_any_turn_end` → Hechizado +
+  Incapacitado, CD con `_cd_runa`); storm (`grant_attack_modifiers`
+  en `HOOK_NAMES`: ventaja/desventaja por alianza, pick de reacción
+  patrón Protección); cloud (walker `_redirigir_del_bando` +
+  `redirigir_ataque` en el punto de Warding, CA recalculada contra
+  el nuevo objetivo).
+- **Ganchos nuevos (6)**: `on_any_turn_start` / `on_any_turn_end` en
+  `Trait`, en `HOOK_NAMES` (28 hooks) y dispatch en
+  `engine/combat/encounter.py`.
+- **Master of Runes (15)**: 5 runas conocidas y 2 invocaciones por
+  runa (tablas A1).
+- **Datos sin efecto (freeze en `tests/test_rune_knight.py`)**:
+  Bonus Proficiencies, crecimiento de Great Stature, alcance +5 ft y
+  velocidad 0 de Stone, runas despertadas, pruebas características de
+  Storm y ventaja de Hill en salvaciones de veneno.
 
 ## Cómo comprobar que todo sigue en orden
 

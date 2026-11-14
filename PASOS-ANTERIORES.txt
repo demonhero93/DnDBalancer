@@ -2469,13 +2469,28 @@ RUNE KNIGHT (2026-11-13)
     casilla B ``[x]``, bullet «Rune Knight» en *pendientes reales*
     (6 subclases listadas) y receta «5 claves» → «6 claves».
     Suite **1599 passed**. Commit de B.
+  - (14) Docs (casilla Docs): ``ARCHITECTURE.md`` — recuentos
+    actualizados (``dnd_sim/`` 87 módulos/22372 líneas con las filas
+    core 13/1207, model 4/1058, rules 36/12711, traits 6/1322,
+    combat 3/1344, facade 1/195; ``tests/`` 57 ficheros/25462 líneas
+    y 1599 tests, suma verificada = total), fila ``rules/classes/``
+    con ``rune_knight`` (módulo único, no paquete) y «Rune Knight» en
+    la lista de subclases, y sección nueva «Rune Knight (TCE)» tras
+    Psi Warrior (Rune Carver, Giant's Might, consulta A3, Runic
+    Shield, las 6 runas, ganchos nuevos con HOOK_NAMES = 28, Master
+    of Runes y límites congelados). Hooks sin cambios: los walkers
+    ``repetir_d20``/``redirigir_ataque``/``modificar_salvacion``/
+    ``modificar_prueba`` no entraron en HOOK_NAMES. ``TODO.md``:
+    casilla Docs ``[x]`` y receta con ``rune_knight.py``.
+    PASOS: esta entrada + ESTADO ACTUAL con recuentos y subclases
+    (6 del fighter). Suite **1599 passed**. Commit de Docs.
 
 ESTADO ACTUAL
-   - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y
-     23617 líneas (1499 tests en verde, medido 2026-11-13).
+   - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y
+     25462 líneas (1599 tests en verde, medido 2026-11-14).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro y Arcane Archer/Battle Master/Cavalier/Champion/
-     Psi Warrior del fighter, con las 8 opciones de Arcane Shot:
+     Psi Warrior/Rune Knight del fighter, con las 8 opciones de Arcane Shot:
      Piercing/Seeking sin tirada vía sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance

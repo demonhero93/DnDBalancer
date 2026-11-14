@@ -288,8 +288,11 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   (A2); 5 tests freeze de límites (velocidad/alcance, distancias,
   pruebas Storm, runas despertadas, ventaja Hill en salvaciones de
   veneno); pendientes reales abajo. Suite 1599 passed.
-- [ ] Docs — `ARCHITECTURE.md` (fila, hooks N, consulta, recuentos),
+- [x] Docs — `ARCHITECTURE.md` (fila, hooks N, consulta, recuentos),
   PASOS (bloque RUNE KNIGHT + ESTADO ACTUAL), TODO (receta).
+  **Hecho**: fila `rules/classes/` con `rune_knight`, sección
+  «Rune Knight (TCE)», recuentos 87/22372 y 57 ficheros/25462/1599;
+  PASOS (14) + ESTADO ACTUAL; receta con `rune_knight.py`.
 - [ ] Verificación — arquitectura + suite + capas + graphify +
   commit final con grafo.
 
@@ -297,7 +300,7 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de
 fighter: `arcane_archer.py`, `battle_master.py`, `cavalier.py`,
-`champion.py` y `psi_warrior.py`):
+`champion.py`, `psi_warrior.py` y `rune_knight.py`):
 
 1. Crear `rules/classes/fighter/subclasses/<clave>.py` con un
    `SubclassDef(name="<nombre visible>", class_name="fighter",
