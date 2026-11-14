@@ -3,8 +3,8 @@
 Solo cubren lo que existe: en A1, las tablas de ``core/classes.py``; en
 A2, el esqueleto, el registro y los datos sin efecto; en A3, la consulta
 perezosa ``modificar_salvacion``/``modificar_prueba``; en A4, Giant's
-Might; en A5, Runic Shield. El resto de casillas (runas, ganchos de
-turno) se añade aquí.
+Might; en A5, Runic Shield; en A7, las runas Hill y Frost. El resto de
+casillas (ganchos de turno, demás runas) se añade aquí.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from dnd_sim.core.classes import (
     runic_shield_uses,
 )
 from dnd_sim.core.dice import D20Result, RollMode
-from dnd_sim.core.enums import AttackRange
+from dnd_sim.core.enums import AttackRange, DamageType
 from dnd_sim.engine.combat.attack import attack_roll
 from dnd_sim.model.actions import TurnResources
 from dnd_sim.rules.checks import ability_check, ability_check_bonus, skill_check
@@ -36,8 +36,10 @@ from dnd_sim.rules.classes.fighter import (
 )
 from dnd_sim.rules.classes.fighter.subclasses.rune_knight import (
     GiantsMightAction,
+    RuneInvokeAction,
 )
 from dnd_sim.rules.conditions import Condition, apply_condition
+from dnd_sim.rules.damage import apply_damage_modifiers
 from dnd_sim.rules.saves import saving_throw
 
 
@@ -703,3 +705,127 @@ def test_sin_subclase_runic_shield_no_consulta_rng(monkeypatch):
                 log=ctx.log, ctx=ctx)
     assert aliado.hp < 70  # el golpe entra sin repetición
     assert fighter.state.reaction_used is False
+
+
+# --- A7: runas Hill y Frost --------------------------------------------------
+
+
+def _invocada(runa: str = "frost", level: int = 5) -> tuple:
+    """PJ con Fighter + Rune Knight y ``runa`` entre las conocidas."""
+    pj = _pj(level=level)
+    apply_fighter(pj, level=level, fighting_style="Archery")
+    otras = [r for r in RUNES if r != runa]
+    elegidas = ([runa] + otras)[:runes_known_count(level)]
+    trait = apply_rune_knight(pj, level=level, runes=tuple(elegidas))
+    return pj, trait
+
+
+def test_rune_invoke_registrada_solo_para_runas_frost_y_hill():
+    pj = _pj(level=5)
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    apply_rune_knight(pj, level=5, runes=("frost", "hill"))
+    runas = [a.runa for a in pj.actions if isinstance(a, RuneInvokeAction)]
+    assert runas == ["frost", "hill"]
+    otro = _pj(level=5)
+    apply_fighter(otro, level=5, fighting_style="Archery")
+    apply_rune_knight(otro, level=5, runes=("cloud", "fire"))
+    assert not any(isinstance(a, RuneInvokeAction) for a in otro.actions)
+
+
+def test_frost_invocado_suma_dos_a_fue_y_con_en_pruebas_y_salvaciones():
+    pj, trait = _invocada("frost")
+    accion = RuneInvokeAction("frost")
+    ctx = _ctx(pj)
+    assert accion.can_use(ctx) is True
+
+    def _sal(abilidad):
+        return saving_throw(pj, abilidad, 1, random.Random(3),
+                            ctx=ctx).total
+
+    def _prueba(abilidad):
+        return ability_check(pj, abilidad, 1, random.Random(3),
+                             ctx=ctx).total
+
+    b_str, b_con, b_dex = _sal("str"), _sal("con"), _sal("dex")
+    p_str, p_dex = _prueba("str"), _prueba("dex")
+    accion.execute(ctx)
+    assert trait.frost_activo is True
+    assert _sal("str") == b_str + 2
+    assert _sal("con") == b_con + 2
+    assert _sal("dex") == b_dex
+    assert _prueba("str") == p_str + 2
+    assert _prueba("dex") == p_dex
+
+
+def test_hill_concede_resistencia_bpc_no_acumula_y_se_revoca_al_reset():
+    pj, trait = _invocada("hill")
+    # Resistencia preexistente: Hill no debe duplicarla al revocar.
+    pj.resistances = set(pj.resistances) | {"slashing"}
+    accion = RuneInvokeAction("hill")
+    ctx = _ctx(pj)
+    accion.execute(ctx)
+    assert trait.hill_activo is True
+    tipos = {DamageType.BLUDGEONING, DamageType.PIERCING,
+             DamageType.SLASHING}
+    assert tipos <= set(pj.resistances)
+    # No acumula: 10 de cortante se mitiga UNA sola vez (regla estándar).
+    assert apply_damage_modifiers(10, "slashing", pj) == 5
+    # Sin resistencia a fuego, el daño no cambia.
+    assert apply_damage_modifiers(10, "fire", pj) == 10
+    # El reset revoca SOLO lo que Hill concedió; la preexistente queda.
+    pj.reset()
+    assert DamageType.SLASHING in pj.resistances
+    assert DamageType.BLUDGEONING not in pj.resistances
+    assert trait.hill_activo is False
+
+
+def test_pasivo_de_veneno_solo_si_conoces_hill():
+    pj, _ = _invocada("hill")
+    assert DamageType.POISON in pj.resistances
+    otro = _pj(level=5)
+    apply_fighter(otro, level=5, fighting_style="Archery")
+    apply_rune_knight(otro, level=5, runes=("cloud", "fire"))
+    assert DamageType.POISON not in otro.resistances
+
+
+def test_una_invocacion_por_runa_aunque_en_nivel_15_haya_dos_usos():
+    pj, trait = _invocada("frost", level=15)
+    accion = RuneInvokeAction("frost")
+    ctx = _ctx(pj)
+    assert trait.usos_runa["frost"] == 2  # Master of Runes
+    assert accion.can_use(ctx) is True
+    accion.execute(ctx)
+    assert trait.usos_runa["frost"] == 1  # gasta un uso
+    assert accion.can_use(ctx) is False  # ya invocada: no se repite
+    accion.execute(ctx)  # reentrada: no gasta el segundo uso
+    assert trait.usos_runa["frost"] == 1
+
+
+def test_rune_invoke_no_elegible_sin_accion_sin_usos_y_sin_runas():
+    pj, trait = _invocada("frost")
+    ctx = _ctx(pj)
+    accion = RuneInvokeAction("frost")
+    # Acción bonus ya gastada.
+    assert accion.can_use(
+        ctx, resources=TurnResources(bonus_action_used=True)) is False
+    # Sin usos.
+    trait.usos_runa["frost"] = 0
+    assert accion.can_use(ctx) is False
+    # Runa desconocida (solo se conocen frost/cloud).
+    assert RuneInvokeAction("hill").can_use(ctx) is False
+
+
+def test_sin_subclase_cero_rng_en_invocacion_y_consultas(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin la subclase no hay decisiones")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    monkeypatch.setattr(rk_mod, "roll_d20", _revienta)
+    pj = _pj(level=5)
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    assert not any(isinstance(a, RuneInvokeAction) for a in pj.actions)
+    ctx = _ctx(pj)
+    saving_throw(pj, "str", 15, random.Random(1), ctx=ctx)
+    ability_check(pj, "str", 15, random.Random(1), ctx=ctx)

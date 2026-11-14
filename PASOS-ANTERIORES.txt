@@ -2281,6 +2281,34 @@ RUNE KNIGHT (2026-11-13)
     combatiente que actúa —el espía del PJ ve los turnos del
     monstruo—, muerto no se avisa). Suite **1545 passed**. Commit de
     A6.
+  - (7) Runas Hill y Frost (A7): ``RuneInvokeAction(runa)`` (acción
+    bonus, ``usage=None``, una instancia por runa conocida) en
+    ``rune_knight.py``: elegibilidad sin RNG (runa conocida, usos,
+    sin invocar, acción bonus libre vía ``super().can_use``) y
+    ``execute`` que gasta 1 uso y activa la runa; registrada en
+    ``apply_rune_knight`` SOLO para ``frost``/``hill`` conocidas
+    (Fire/Stone/Cloud son reacciones: A8/A9/A11). Frost: flag
+    ``frost_activo`` + bonus +2 en ``modificar_salvacion``/
+    ``modificar_prueba`` (solo FUE/CON del dueño, vía
+    ``_bonus_frost``). Hill: resistencias B/P/C con lista de fuente
+    propia ``_HILL_RESISTENCIAS`` (patrón Bear:
+    ``_otorgar_hill``/``_revocar_hill``, campo ``hill_concedidas``,
+    ``reset()`` revoca SOLO lo concedido); pasiva: resistencia
+    PERMANENTE a veneno en ``apply_rune_knight`` solo si se conoce
+    Hill (sin acumular). Ventaja en salvaciones de veneno = dato sin
+    efecto: el motor no distingue «salvación contra veneno»
+    (``save_modifiers`` solo mira ``magic_resistance``; POISONED en
+    ``check_modifiers`` da desventaja en TODA prueba) — documentado
+    en docstring y pendiente en TODO. Decisión de test: comparar
+    totales con dc=1 (con dc=20 el ``after_failed_check`` de Tactical
+    Mind altera el total); ``inflict_damage`` recibe daño YA
+    modificado (las resistencias las aplica ``apply_damage_modifiers``
+    en el caller), así que el test unitario usa ese helper. 7 tests
+    (registro solo frost/hill, Frost +2 FUE/CON pruebas y salvaciones
+    y 0 en DES, Hill mitiga 10→5 sin acumular y reset revoca solo lo
+    concedido, pasiva de veneno solo con Hill, una invocación por
+    runa aunque nivel 15 tenga 2 usos, sin acción/usos/runa, sin
+    subclase cero RNG). Suite **1552 passed**. Commit de A7.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

@@ -54,6 +54,7 @@ from .....core.classes import (
     runic_shield_uses,
 )
 from .....core.dice import RollMode, roll_d20, roll_dice
+from .....core.enums import DamageType
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick, sample
 from .....model.actions import ActionType, CombatAction
@@ -83,6 +84,14 @@ def _orden_tamano(valor: Any) -> int:
     if tamaño not in _TAMANOS:
         return _TAMANOS.index("medium")
     return _TAMANOS.index(tamaño)
+
+#: Resistencias temporales de Hill (patrón Bear: lista de fuente propia,
+#: solo se concede lo que falte y se revoca solo lo concedido).
+_HILL_RESISTENCIAS: frozenset = frozenset({
+    DamageType.BLUDGEONING,
+    DamageType.PIERCING,
+    DamageType.SLASHING,
+})
 
 
 @dataclass
@@ -114,6 +123,9 @@ class RuneKnightFeatures(Trait):
     # ``reset``). Fire/Stone marcan objetivos en ``CombatState`` (A8/A9).
     frost_activo: bool = False
     hill_activo: bool = False
+    # Resistencias B/P/C que Hill concedió (para revocarlas en reset).
+    hill_concedidas: list = field(default_factory=list, repr=False,
+                                  compare=False)
     storm_activo: bool = False
     # Datos sin efecto congelados (decisión del maintainer): pasivos de
     # las runas (salvo la resistencia a veneno de Hill, A7) y Bonus
@@ -136,6 +148,7 @@ class RuneKnightFeatures(Trait):
         self.giants_might_activo = False
         self.runic_shield_usos = runic_shield_uses(self.level)
         self.frost_activo = False
+        self._revocar_hill()
         self.hill_activo = False
         self.storm_activo = False
 
@@ -146,15 +159,26 @@ class RuneKnightFeatures(Trait):
             return False
         return str(habilidad or "").strip().lower() in ("str", "strength")
 
+    def _bonus_frost(self, habilidad: Any, sujeto: Any) -> int:
+        """Frost: +2 a pruebas y salvaciones de FUE/CON del dueño."""
+        if not self.frost_activo or sujeto is not self.owner:
+            return 0
+        if str(habilidad or "").strip().lower() in (
+                "str", "strength", "con", "constitution"):
+            return 2
+        return 0
+
     def modificar_salvacion(self, habilidad: Any, sujeto: Any,
                             ctx: Any = None) -> tuple[bool, bool, int]:
-        """Giant's Might: ventaja en salvaciones de FUE (consulta A3)."""
-        return self._fue_giants_might(habilidad, sujeto), False, 0
+        """Giant's Might (ventaja FUE) + Frost (+2 FUE/CON), consulta A3."""
+        return (self._fue_giants_might(habilidad, sujeto), False,
+                self._bonus_frost(habilidad, sujeto))
 
     def modificar_prueba(self, habilidad: Any, sujeto: Any,
                          ctx: Any = None) -> tuple[bool, bool, int]:
-        """Giant's Might: ventaja en pruebas de FUE (consulta A3)."""
-        return self._fue_giants_might(habilidad, sujeto), False, 0
+        """Giant's Might (ventaja FUE) + Frost (+2 FUE/CON), consulta A3."""
+        return (self._fue_giants_might(habilidad, sujeto), False,
+                self._bonus_frost(habilidad, sujeto))
 
     def repetir_d20(self, target: Any, attacker: Any, rango: Any, *,
                     bonus: int, ctx: Any = None, rng: Any = None,
@@ -221,6 +245,29 @@ class RuneKnightFeatures(Trait):
         lados = giants_might_die_sides(self.level)
         return int(roll_dice(f"1d{lados}", rng, crit=crit))
 
+    # --- Runas Hill y Frost (A7) ----------------------------------------------
+    def _otorgar_hill(self, actor: Any, ctx: Any) -> None:
+        """Hill: resistencias temporales B/P/C (patrón Bear)."""
+        previas = set(getattr(actor, "resistances", None) or set())
+        nuevas = [t for t in sorted(_HILL_RESISTENCIAS, key=lambda t: t.value)
+                  if t not in previas]
+        if not nuevas:
+            return
+        actor.resistances = previas | set(nuevas)
+        for tipo in nuevas:
+            self.hill_concedidas.append((actor, tipo))
+        _log_line(ctx, f"  {getattr(actor, 'name', actor)} gana "
+                       f"resistencia a "
+                       f"{', '.join(t.value for t in nuevas)} (Hill)")
+
+    def _revocar_hill(self) -> None:
+        """Retira SOLO las resistencias que Hill concedió."""
+        for objeto, tipo in self.hill_concedidas:
+            resis = getattr(objeto, "resistances", None)
+            if resis is not None:
+                resis.discard(tipo)
+        self.hill_concedidas.clear()
+
 
 class GiantsMightAction(CombatAction):
     """Giant's Might (3, acción adicional): tamaño, FUE y daño extra.
@@ -267,6 +314,69 @@ class GiantsMightAction(CombatAction):
                            f"Giant's Might")
 
 
+#: Nombres de las runas para la acción y el log.
+_NOMBRES_RUNA = {
+    "cloud": "Cloud Rune",
+    "fire": "Fire Rune",
+    "frost": "Frost Rune",
+    "hill": "Hill Rune",
+    "stone": "Stone Rune",
+    "storm": "Storm Rune",
+}
+
+
+class RuneInvokeAction(CombatAction):
+    """Invocación de una runa (acción bonus; A7: Frost y Hill).
+
+    Una instancia por runa conocida: la elegibilidad no consume RNG
+    (runa conocida, usos restantes, sin invocar y acción bonus libre;
+    el ``pick`` del encuentro decide entre las acciones candidatas).
+    Una vez invocada, la runa dura todo el combate y no se vuelve a
+    invocar: los usos extra de Master of Runes quedan para las runas
+    de efecto por invocación (Fire/Stone, A8/A9).
+    """
+
+    def __init__(self, runa: str) -> None:
+        self.runa = runa
+        self.name = _NOMBRES_RUNA.get(runa, f"Rune ({runa})")
+        self.action_type = ActionType.BONUS_ACTION
+        self.usage = None  # los usos viven en el rasgo
+
+    def can_use(self, *args: Any, **kwargs: Any) -> bool:
+        if not super().can_use(*args, **kwargs):
+            return False
+        ctx = _contexto(args, kwargs)
+        actor = getattr(ctx, "actor", None)
+        if actor is None:
+            return False
+        trait = _de(actor, RuneKnightFeatures)
+        if trait is None or self.runa not in trait.runas:
+            return False
+        if int(trait.usos_runa.get(self.runa, 0)) <= 0:
+            return False
+        return not getattr(trait, f"{self.runa}_activo", False)
+
+    def execute(self, context: Any) -> None:
+        actor = context.actor
+        trait = _de(actor, RuneKnightFeatures)
+        if (trait is None or self.runa not in trait.runas
+                or int(trait.usos_runa.get(self.runa, 0)) <= 0
+                or getattr(trait, f"{self.runa}_activo", False)):
+            return
+        if self.runa not in ("frost", "hill"):
+            return  # runas de reacción: A8-A11 las añaden
+        trait.usos_runa[self.runa] = int(trait.usos_runa[self.runa]) - 1
+        if self.runa == "frost":
+            trait.frost_activo = True
+            _log_line(context, f"{actor.name} invoca Frost Rune: +2 a "
+                               f"pruebas y salvaciones de FUE y CON")
+        else:
+            trait.hill_activo = True
+            trait._otorgar_hill(actor, context)
+            _log_line(context, f"{actor.name} invoca Hill Rune: "
+                               f"resistencia a B/P/C durante el combate")
+
+
 def apply_rune_knight(pj: Any, level: int | None = None,
                       runes: tuple[str, ...] | None = None,
                       rng: random.Random | None = None
@@ -310,6 +420,13 @@ def apply_rune_knight(pj: Any, level: int | None = None,
                 f"llegaron {len(elegidas)}."
             )
 
+    # Pasivo de Hill: resistencia permanente a veneno (solo si se
+    # conoce la runa; sin acumular si ya la tenía, patrón Guarded
+    # Mind). La ventaja en salvaciones contra veneno NO se modela: el
+    # motor no distingue «salvación contra veneno» (dato sin efecto).
+    if "hill" in elegidas and DamageType.POISON not in pj.resistances:
+        pj.resistances = set(pj.resistances) | {DamageType.POISON}
+
     trait = RuneKnightFeatures(
         name="Rune Knight",
         level=lvl,
@@ -322,7 +439,13 @@ def apply_rune_knight(pj: Any, level: int | None = None,
     pj.traits.append(trait)
     # Acción adicional de Giant's Might (elegibilidad sin RNG).
     pj.actions.append(GiantsMightAction())
+    # Invocaciones de runa (A7): una acción bonus por runa de efecto
+    # continuo conocida (Fire/Stone/Cloud son reacciones, A8/A9/A11).
+    for runa in ("frost", "hill"):
+        if runa in elegidas:
+            pj.actions.append(RuneInvokeAction(runa))
     return trait
 
 
-__all__ = ["GiantsMightAction", "RuneKnightFeatures", "apply_rune_knight"]
+__all__ = ["GiantsMightAction", "RuneInvokeAction", "RuneKnightFeatures",
+           "apply_rune_knight"]

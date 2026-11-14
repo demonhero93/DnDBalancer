@@ -248,7 +248,12 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   encounter + test_traits + cuenta de hooks + tests.
   **Hecho**: 28 hooks en `HOOK_NAMES`, helper en `encounter.py`,
   4 tests, suite 1545 passed.
-- [ ] A7 — Runas Hill y Frost (`RuneInvokeAction`) + tests.
+- [x] A7 — Runas Hill y Frost (`RuneInvokeAction`) + tests.
+  **Hecho**: acción por runa (solo frost/hill en apply), Frost +2
+  FUE/CON vía consulta A3, Hill B/P/C con lista de fuente propia +
+  pasiva de veneno; ventaja de Hill en salvaciones de veneno = dato
+  sin efecto (el motor no distingue salvación contra veneno; ver
+  pendientes reales). 7 tests, suite 1552 passed.
 - [ ] A8 — Fire Rune (marca en CombatState, Restringido, 2d6) + tests.
 - [ ] A9 — Stone Rune (`on_any_turn_end`, Hechizado+Incapacitado) +
   tests.
