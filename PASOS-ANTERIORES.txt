@@ -1,12 +1,12 @@
 RESUMEN DE LOS PASOS ANTERIORES — DnDBalancer / dnd_sim
 =========================================================
-Documento de contexto (para humanos y para IA). Última revisión: 2026-11-02.
-Fuente: historial git + ARCHITECTURE.md.
+Documento de contexto (para humanos y para IA). Última revisión: 2026-11-14.
+Fuente: historial git + ARCHITECTURE.md. Versión compacta.
 
 1. NÚCLEO DE SIMULACIÓN (2026-10-15)
-   - f33c0c2: tiradas de salvación y tiradas de ataque (`roll_saving_throw`,
-     `roll_attack`) con tests unitarios en tests/test_combat.py.
-   - 2b5d6b3: añadido dnd_sim/actions.py (acciones de combate).
+   - f33c0c2: tiradas de salvación y de ataque (roll_saving_throw,
+     roll_attack) con tests en tests/test_combat.py.
+   - 2b5d6b3: dnd_sim/actions.py (acciones de combate).
 
 2. BATERÍA DE TESTS DE REGLAS 5e (2026-10-20 / 10-21)
    - 7421142: efectos de área, multiataques, uso de acciones.
@@ -14,2493 +14,387 @@ Fuente: historial git + ARCHITECTURE.md.
    - 516290b: mecánicas de hechizos e interacciones.
 
 3. HECHIZOS, RASGOS Y DAÑO (2026-10-23)
-   - af5c4e0: hechizos, rasgos de monstruos y daño adicional de armas.
-   - a1a436e: corrección de invisible (ventaja al atacar y al lanzar hechizo
-     se rompía).
+   - af5c4e0: hechizos, rasgos de monstruos, daño adicional de armas.
+   - a1a436e: fix invisible (ventaja al atacar/lanzar se rompía).
 
 4. RASGOS DE MONSTRUO (2026-10-25)
    - 93645a7: Regeneration, Pack Tactics, Martial Advantage, Turn Resistance.
    - b724e4b: Parry, Relentless, Undead Fortitude, Superior Invisibility.
 
-5. LIMPIEZA Y REORGOLLO POR CAPAS (2026-10-25)
-   - f7cc46c: limpieza de imports y desacople de dependencias; nacen
-     dnd_sim/core/ y dnd_sim/data/.
-   - ba00c83: dnd_sim reorganizado en carpetas por capa
-     (core, model, rules, engine, data).
-   - f6f9710: traits.py (1016 líneas) partido en el paquete rules/traits/.
-   - 15d1bd2: spells.py (818 líneas) y combat.py (652) partidos en paquetes.
-   - 6cc4368: ARCHITECTURE.md, test de capas (tests/test_arquitectura.py) y
-     fachada dnd_sim/__init__.py ordenada por capa.
-   - 8d4e31e: grafo de Graphify regenerado tras la reorganización.
+5. LIMPIEZA Y REORGANIZACIÓN POR CAPAS (2026-10-25)
+   - f7cc46c: limpieza de imports; nacen dnd_sim/core/ y dnd_sim/data/.
+   - ba00c83: reorganización en capas (core, model, rules, engine, data).
+   - f6f9710: traits.py (1016 líneas) partido en rules/traits/.
+   - 15d1bd2: spells.py (818) y combat.py (652) partidos en paquetes.
+   - 6cc4368: ARCHITECTURE.md, tests/test_arquitectura.py y fachada
+     dnd_sim/__init__.py ordenada por capa.
+   - 8d4e31e: grafo de Graphify regenerado.
 
 6. DATOS Y TESTS RECIENTES (2026-10-27 / 10-29)
-   - 2bcaba3: ficheros de datos de hechizos y tests de muerte en combate.
-   - 99ebee7: tests de subclase Battlerager, bonos de competencia, razas y
-     habilidades.
+   - 2bcaba3: ficheros de datos de hechizos y tests de muerte.
+   - 99ebee7: tests de subclase Battlerager, bonos de competencia, razas.
 
 7. REGISTRO DE CLASES Y PATH OF THE BEAST (2026-10-30)
-   - Registro genérico de clases/subclases en rules/classes/base.py:
-     CLASSES, register_class, apply_class(pj, clase, subclase, **kwargs)
-     con validación de existencia y nivel ANTES de aplicar.
+   - Registro genérico en rules/classes/base.py: CLASSES, register_class,
+     apply_class(pj, clase, subclase, **kwargs) con validación de
+     existencia y nivel ANTES de aplicar.
    - Paquete rules/classes/barbarian/ (features.py + subclasses/):
-     ancestral_guardian, battlerager y beast reubicados desde
-     rules/classes/*.py; API pública idéntica (fachada actualizada).
-   - Subclase Path of the Beast (Tasha's sobre PHB 2024), en
-     subclasses/beast.py: Form of the Beast (mordisco que cura PB,
-     garras con ataque extra, cola estilo Parry 1d8), Bestial Soul
-     (PENDIENTE: exige flag `magical` en Attack), Fiereza Infecciosa
-     (CD 8+CON+PB, usos=PB) y Call the Hunt (temp HP por aliado).
-   - Hooks nuevos en rules/traits/base.py: on_rage_start, on_rage_end,
-     after_attack_roll; after_dealing_hit con atk/damage; parámetro
-     allow_friendly en attack_roll; Combatant.dynamic_weapons.
-   - Tests nuevos: tests/test_clases.py (10) y tests/test_beast.py (50).
-   - Suite completa en verde: 671 tests.
-   - Commits: ff30aac (registro de clases + Path of the Beast),
-     667bc0a (docs: reglas, log de sesión y TODO), 37b2806 (grafo).
+     ancestral_guardian, battlerager y beast reubicados; API pública
+     idéntica. Path of the Beast en subclasses/beast.py (Bestial Soul
+     PENDIENTE: exige flag `magical` en Attack).
+   - Hooks nuevos: on_rage_start, on_rage_end, after_attack_roll,
+     after_dealing_hit; allow_friendly en attack_roll;
+     Combatant.dynamic_weapons.
+   - Tests: test_clases.py (10), test_beast.py (50). Suite: 671 passed.
+   - Commits: ff30aac, 667bc0a, 37b2806.
 
-8. TEMERARIO, BERSERKER Y UTILITARIAS (2026-11-02)  [SIN COMMITEAR]
-   - Ataque Temerario aleatorio (revisión del TODO): constante
-     RECKLESS_USE_PROBABILITY = 0.5 en rules/classes/barbarian/features.py
-     + CLI --reckless-p en main.py; una decisión por turno propio en la
-     primera tirada de ataque de FUE (0.0/1.0 sin RNG, en medio UNA
-     tirada); reacciones y turnos ajenos no deciden ni reciben; efecto en
-     roll_modifiers con fuente "Ataque Temerario"; estado
-     reckless_decided se limpia en on_turn_start y reset(); log
-     "X ataca con temeridad" / "X decide no atacar con temeridad".
-   - Berserker retocado: Frenzy paga en la primera acertada que cualifica
-     (campo frenzy_pagado, sin pagar en reacciones ni en turnos ajenos);
-     Intimidating Presence elige con pick entre "gratis" y "furia"
-     (ActionUsage.restore devuelve el uso gratis); Retaliation con guardas
-     de vida/alcance/hostilidad y armas dinámicas; Mindless Rage purga
-     todas las instancias. tests/test_berserker.py (39).
-   - Utilitarias (módulo nuevo rules/utility.py):
-     UTILITY_ACTION_PROBABILITY = 0.05 + CLI --utility-p; disponibilidad
-     primero, probabilidad después (0/1 sin RNG, en medio un random()).
-     Dodge es una ACTION creada en encounter.py (estado dodging:
-     desventaja de ataques contra él, ventaja en salvaciones DES, se
-     pierde al incapacitarse y al empezar su turno); Agarrar/Empujar
-     sustituyen UN ataque en los tres bucles de model/actions.py
-     (nunca a distancia): salvación FUE o DES del objetivo vs 8+FUE+PB;
-     fallo → GRAPPLED con escape de acción o PRONE con escape libre CD 10.
-   - Condición GRAPPLED fuera de EXCLUDED_CONDITIONS y en el Enum con la
-     regla PHB 2024 en roll_modifiers: quien está agarrado ataca con
-     desventaja salvo contra su agarrador ("atacante agarrado"); keyword
-     "grappled" en data/condition_parser.py.
-   - Tests nuevos: tests/test_reckless.py (11) y tests/test_utility.py
-     (17); tests/test_berserker.py ampliado a 39. 7 tests con semilla
-     exacta anclados a p=0 (utility) para conservar el A/B original.
-   - Límite de tamaño de Agarrar (último TODO del bloque): campo
-     Combatant.size ("medium" por defecto, normalizado en
-     __post_init__), load_monster lee data["size"] de la API y
-     ataque_utilitario filtra el pool: objetivo como máximo un tamaño
-     mayor que el actor (orden PHB en rules/utility.py). Tests:
-     test_utility.py +2 (large permitido, huge solo Empujar) y
-     test_loader.py +1 (size del owlbear).
-   - Suite completa en verde: 817 tests.
+8. TEMERARIO, BERSERKER Y UTILITARIAS (2026-11-02)
+   - Ataque Temerario aleatorio: RECKLESS_USE_PROBABILITY = 0.5 en
+     barbarian/features.py + CLI --reckless-p; una decisión por turno
+     propio en la primera tirada de ataque de FUE; efecto en
+     roll_modifiers con fuente "Ataque Temerario".
+   - Berserker retocado: Frenzy paga en la primera acertada que
+     cualifica; Intimidating Presence elige con pick "gratis"/"furia";
+     Retaliation con guardas; Mindless Rage purga todas las instancias.
+     tests/test_berserker.py (39).
+   - rules/utility.py: UTILITY_ACTION_PROBABILITY = 0.05 + CLI
+     --utility-p. Dodge (ACTION, estado dodging), Agarrar/Empujar
+     sustituyen UN ataque (salvación FUE/DES vs 8+FUE+PB; → GRAPPLED o
+     PRONE con escape). Condición GRAPPLED con regla PHB 2024 en
+     roll_modifiers.
+   - tests/test_reckless.py (11), tests/test_utility.py (17). 7 tests
+     anclados a p=0. Límite de tamaño de Agarrar: Combatant.size.
+   - Suite: 817 passed.
 
-9. PATH OF THE GIANT (2026-11-02)  [SIN COMMITEAR]
-   Plan (antes de escribir código):
-   1. Modelo: campo Combatant.size_base (normalizado en __post_init__
-      como size) para restaurar el tamaño al terminar la Furia y en
-      reset().
-   2. Base bárbaro: guardia de rango en
-      BarbarianFeatures.extra_attack_damage (la Furia solo suma en
-      cuerpo a cuerpo; los arrojadizos con FUE los cubre Crushing
-      Throw, que la subclase añade).
-   3. Módulo rules/classes/barbarian/subclasses/giant.py: tabla
-      GIANT_FEATURES, trait GiantFeatures (Giant Stature/Demiurgic
-      Colossus en size, Crushing Throw y Elemental Cleaver en
-      extra_attack_damage, restauración en on_rage_end/reset) y acción
-      bonus MightyImpelAction (patrón Intimidating Presence).
-   4. Registro y fachadas: subclasses/__init__.py, barbarian/__init__.py
-      (clave "giant") y dnd_sim/__init__.py.
-   5. Tests: tests/test_giant.py (tamaño, Crushing Throw, Elemental
-      Cleaver, Mighty Impel, niveles inferiores, límite de Agarrar,
-      semilla fija).
-   6. Docs y verificación: TODO.md (dudas y simplificaciones),
-      ARCHITECTURE.md (fila rules/classes + recuentos), este bloque +
-      ESTADO ACTUAL, regla 7 completa y graphify.
-   Commits: (a) campo size_base, (b) rasgos del Giant + registro,
-   (c) tests, (d) documentación y grafo.
-   Hecho:
-   - (1) `model/combatant.py`: campo `size_base` (normalizado en
-     `__post_init__` a partir de `size`) y `reset()` restaura
-     `size = size_base`.
-   - (2) `rules/classes/barbarian/features.py`: guardia de rango en
-     `BarbarianFeatures.extra_attack_damage` — la Furia base ya no
-     suma en ataques RANGED (los arrojadizos con FUE los cubre
-     Crushing Throw; sin doble conteo).
-   - (3) Módulo nuevo `rules/classes/barbarian/subclasses/giant.py`:
-     `GIANT_FEATURES` {3: Giant's Power+Giant's Havoc, 6: Elemental
-     Cleaver, 10: Mighty Impel, 14: Demiurgic Colossus}; trait
-     `GiantFeatures` (hooks on_rage_start/on_rage_end/extra_attack_
-     damage/reset) y `MightyImpelAction` (bonus action usage=None,
-     patrón Intimidating Presence). Constantes: `_ELEMENTALES` (5
-     tipos, `pick` uniforme); tamaño con `_orden_tamano` de
-     rules/utility.py (filtro de Agarrar dinámico, verificado).
-   - (4) Registro: clave `"giant"` en `barbarian/__init__.py`,
-     reexportos en `subclasses/__init__.py` y fachada
-     `dnd_sim/__init__.py` (GiantFeatures, MightyImpelAction,
-     apply_giant).
-   - (5) `tests/test_giant.py`: 21 tests (tabla, apply/apply_class,
-     tamaño Large/Huge + restauración en on_rage_end y reset, niveles
-     inferiores, Crushing Throw unito+integración con d20 fijo,
-     guardia de la Furia base, Elemental Cleaver (imbuye/+1d6/2d6/
-     restaura), Mighty Impel (con/sin agarrado, sin Furia, objetivo
-     grande), límite de Agarrar con tamaño gigante, semilla fija).
-   - (6) Docs: TODO.md (dudas y simplificaciones), ARCHITECTURE.md
-     (fila rules/classes + recuentos: 72 módulos, 43 ficheros de
-     tests) y este bloque. Verificación: arquitectura 3 passed,
-     suite **838 passed**, capas.py 1 violación conocida,
-     graphify update ..
+9. PATH OF THE GIANT (2026-11-02)
+   - Combatant.size_base (restaura tamaño en Furia/reset);
+     guardia de rango en BarbarianFeatures.extra_attack_damage.
+   - giant.py: GIANT_FEATURES {3, 6, 10, 14}, GiantFeatures,
+     MightyImpelAction; registro "giant"; test_giant.py (21).
+   - Suite: 838 passed.
 
 10. PATH OF THE STORM HERALD (2026-11-03)
-
-   Plan (antes de escribir código):
-   (0) git status limpio (Giant ya cerrado: 37121aa, ee6f5f3, 791df78,
-       7b8132a). Lectura: ARCHITECTURE, Reglas de Proyecto,
-       berserker.py, giant.py, subclasses/base.py (aquí:
-       rules/classes/base.py), features.py, area.py, targeting.py,
-       saves.py, damage.py, conditions.py, PASOS y TODO. Reglas de la
-       sección 2 del enunciado; NO se consulta la API (no está en SRD).
-   (1) Módulo nuevo `rules/classes/barbarian/subclasses/storm_herald.py`:
-       constantes (`STORM_HERALD_FEATURES`, `ENTORNOS`, tablas de
-       escalado 2/3/4/5/6 y 1d6..4d6, `STORM_AURA_COVERAGE_PROBABILITY`
-       = 1.0), helpers de aura (cobertura por criatura; enemigos con
-       `valid_targets` y aliados propios), trait `StormHeraldFeatures`
-       (Storm Soul permanente en apply; activación del aura en
-       `on_rage_start`; Shielding Storm con lista de fuente propia;
-       Raging Storm con patrón de reacción de Retaliation + pick;
-       `on_rage_end`/`reset` revocan) y `StormAuraAction` (bonus
-       action, usage=None; la decisión de activar la hace el `pick` del
-       encuentro entre candidatas, patrón Intimidating Presence).
-   (2) Registro: 3 claves `storm_herald_desert/sea/tundra`
-       (`apply_class` solo pasa `level`: closures con el entorno),
-       reexportos en `subclasses/__init__.py`, `barbarian/__init__.py`
-       y fachada `dnd_sim/__init__.py` (orden alfabético por capa).
-   (3) `tests/test_storm_herald.py` en español: 3 entornos con sus
-       escalados, activación por Furia y por acción adicional, aura
-       fuera de Furia, Storm Soul permanente, Shielding Storm con y
-       sin resistencia ajena, Raging Storm desert/sea/tundra, niveles
-       inferiores, magia del daño del aura, semilla fija.
-   (4) Docs: TODO.md (simplificaciones y dudas), ARCHITECTURE.md (fila
-       `rules/classes/` + recuentos) y este bloque + ESTADO ACTUAL.
-   (5) Verificación regla 7: `pytest tests/test_arquitectura.py`,
-       `pytest`, `python tools/capas.py`, `graphify update .`.
-   Commits: (a) módulo `storm_herald.py` (helpers de aura + entorno +
-   rasgos), (b) registro y fachada, (c) tests, (d) documentación y
-   grafo. (La propuesta separaba «soporte» de «rasgos» dentro del
-   mismo fichero; un commit = una idea: el módulo va entero y el
-   registro aparte.)
-   Hecho:
-   - (1) `rules/classes/barbarian/subclasses/storm_herald.py` nuevo:
-     `STORM_HERALD_FEATURES` {3: Storm Aura, 6: Storm Soul, 10:
-     Shielding Storm, 14: Raging Storm}; `ENTORNOS`
-     (desert/sea/tundra); constantes `ESCALADO` 2/3/4/5/6 y
-     `1d6..4d6`; `STORM_AURA_COVERAGE_PROBABILITY = 1.0`; helpers
-     `_en_aura`/`_enemigos_en_aura`/`_aliados_en_aura` (criterio de
-     rules/area + valid_targets); trait `StormHeraldFeatures`
-     (`activar_aura` en `on_rage_start`, `_otorgar_resistencia` con
-     lista `_concedidas`, `after_being_hit` con patrón Retaliation +
-     `pick`, tundra `velocidad_cero`, `on_rage_end`/`reset`
-     revocan) y `StormAuraAction` (bonus action, usage=None).
-     Storm Soul (≥6) se añade la resistencia al aplicar (permanente).
-   - (2) Registro: claves `storm_herald_desert/sea/tundra`
-     (closures porque `apply_class` solo pasa `level`) en
-     `barbarian/__init__.py`, reexportos en `subclasses/__init__.py`
-     y fachada `dnd_sim/__init__.py` (StormAuraAction,
-     StormHeraldFeatures, apply_storm_herald).
-   - (3) `tests/test_storm_herald.py`: 28 tests (tabla, apply,
-     entornos, escalados desert/sea, magia del daño, PV temporales
-     sin acumular, activación por Furia y por acción, fuera de Furia,
-     sin enemigos, Storm Soul permanente, Shielding con/sin resistencia
-     ajena y en reset, Raging desert/sea/tundra, niveles inferiores,
-     semilla fija).
-   - (4) Docs: TODO.md (simplificaciones), ARCHITECTURE.md (fila
-     rules/classes + recuentos: 73 módulos, 44 ficheros de tests) y
-     este bloque. Verificación: arquitectura 3 passed, suite
-     **866 passed**, capas.py 1 violación conocida, graphify update .
-     (2676 nodos, 9598 aristas).
+    - storm_herald.py: STORM_HERALD_FEATURES, ENTORNOS
+      (desert/sea/tundra), tablas 2/3/4/5/6 y 1d6..4d6,
+      STORM_AURA_COVERAGE_PROBABILITY = 1.0, helpers de aura,
+      StormHeraldFeatures (Storm Soul permanente; aura en
+      on_rage_start; Shielding Storm lista de fuente propia; Raging
+      Storm patrón Retaliation) y StormAuraAction (usage=None).
+    - Registro: 3 claves storm_herald_desert/sea/tundra (closures:
+      apply_class solo pasa level). tests/test_storm_herald.py (28).
+    - Suite: 866 passed.
 
 11. PATH OF THE WILD HEART (2026-11-03)
-
-   Plan (antes de escribir código):
-   (0) git status limpio (Storm Herald ya cerrado: 20b3fb1, 1c0f577,
-       371e9a4, 0237629). Lectura: ARCHITECTURE, Reglas de Proyecto,
-       storm_herald.py (helpers de aura y lista de fuente propia para
-       resistencias), berserker.py (trait + patrón de reacción),
-       giant.py, rules/classes/base.py, features.py (_contexto,
-       on_rage_start/on_rage_end), roll_modifiers.py, traits/base.py
-       (HOOK_NAMES), conditions.py y utility.py (PRONE de Empujar).
-       Reglas de la sección 2 del enunciado; NO se consulta la API
-       (no está en SRD).
-   (1) Hook nuevo en el motor para Wolf/Lion: `grant_attack_modifiers`
-       en Trait + HOOK_NAMES, despachado desde
-       roll_modifiers.attack_modifiers a los rasgos del RESTO de
-       combatientes del contexto (mismo patrón que
-       reduce_damage_to_allies en damage.py; el atacante ya corre en
-       el bloque 5 de modify_attack_modifiers). Tests de no regresión:
-       sin la subclase no cambia el modo y no se consume RNG.
-   (2) Módulo nuevo `rules/classes/barbarian/subclasses/wild_heart.py`:
-       constantes (`WILD_HEART_FEATURES`, `RAGE_OPTIONS`
-       bear/eagle/wolf, `POWER_OPTIONS` lion/ram — Falcon excluido por
-       sin efecto mecánico, `WILD_HEART_COVERAGE_PROBABILITY` = 1.0
-       para «a 5 pies» sin posiciones), trait `WildHeartFeatures`
-       (opciones por activación con pick en on_rage_start; Bear con
-       lista de fuente propia; Wolf/Lion vía grant_attack_modifiers;
-       Ram en extra_attack_damage con el PRONE y escape de Empujar;
-       on_rage_end/reset limpian opciones y revocan). Sin acción
-       propia: las opciones se eligen solas al entrar en Furia.
-   (3) Registro: clave `wild_heart`, reexportos en subclasses/__init__,
-       barbarian/__init__ y fachada `dnd_sim/__init__` (alfabético).
-   (4) `tests/test_wild_heart.py` en español: tabla, apply, Bear
-       (concede/retira al terminar y en reset/no quita una resistencia
-       ajena/no cubre fuerza/necrótico/psíquico/radiante), Eagle sin
-       efecto mecánico, Wolf (ventaja a aliados, no al propio
-       bárbaro, sin Furia no, a distancia incluido, sin enemigo en
-       rango no), Lion (desventaja contra otros objetivos, no contra
-       el bárbaro ni contra otro con el beneficio), Ram (PRONE al
-       acertar melee a Large o menor, no Huge, no distancia, no fallo,
-       no sin Furia), renovación en cada activación, niveles
-       inferiores sin rasgos superiores, semilla fija.
-   (5) Docs: TODO.md (dudas/simplificaciones), ARCHITECTURE.md (fila
-       `rules/classes/` + recuentos) y este bloque + ESTADO ACTUAL.
-   (6) Verificación regla 7: `pytest tests/test_arquitectura.py`,
-       `pytest`, `python tools/capas.py`, `graphify update .`.
-   Commits: (a) hook del motor + sus tests de no regresión, (b)
-   módulo wild_heart.py + registro y fachada, (c) tests de la
-   subclase, (d) documentación y grafo.
-   Hecho:
-   - (1) Hook `grant_attack_modifiers` en `rules/traits/base.py`
-     (método no-op + HOOK_NAMES) y despacho en
-     `roll_modifiers.attack_modifiers` (bloque 5b: rasgos del RESTO de
-     combatientes del contexto, patrón `reduce_damage_to_allies` de
-     damage.py; el atacante se salta porque ya corrió en el bloque 5).
-     Fila nueva en el catálogo de hooks de `rules/traits/__init__.py`.
-     Commits 4c90b58. Tests de no regresión: sin la subclase el modo
-     no cambia y el RNG queda intacto.
-   - (2) `rules/classes/barbarian/subclasses/wild_heart.py` nuevo:
-     `WILD_HEART_FEATURES` {3: Animal Speaker + Rage of the Wilds, 6:
-     Aspect of the Wilds, 10: Nature Speaker, 14: Power of the Wilds};
-     `RAGE_OPTIONS` (bear/eagle/wolf), `POWER_OPTIONS` (lion/ram;
-     Falcon fuera por sin efecto), `ASPECTOS` (owl/panther/salmon),
-     `WILD_HEART_COVERAGE_PROBABILITY = 1.0`; trait
-     `WildHeartFeatures` (opciones con `pick` en `on_rage_start`; Bear
-     con lista `_concedidas`, sin B/P/S para no duplicar el recorte de
-     la Furia; Wolf/Lion en `grant_attack_modifiers`; Ram en
-     `extra_attack_damage` con PRONE y escape de Empujar;
-     `on_rage_end`/`reset` limpian opciones y revocan). Sin acción
-     propia: las opciones se eligen solas al entrar en Furia.
-   - (3) Registro: clave `wild_heart` en `barbarian/__init__.py`,
-     reexportos en `subclasses/__init__.py` y fachada
-     `dnd_sim/__init__.py` (WildHeartFeatures, apply_wild_heart).
-     Commits 68c97cc.
-   - (4) `tests/test_wild_heart.py`: 30 tests (2 de no regresión del
-     hook; tabla, apply/apply_class/aspecto, Bear concede/no concede
-     excluidos/retira/no quita previa/reset, Eagle sin efecto, Wolf
-     ventaja/no al propio bárbaro/sin Furia/a distancia/sin enemigo
-     en rango, Lion desventaja/no al bárbaro/no a otro protegido, Ram
-     derriba/no Huge/no distancia/no sin Furia/no en fallo con d20
-     fijo, renovación por activación, niveles inferiores, semilla
-     fija, Aspect sin efecto). Commit 1df57f0.
-   - (5) Docs: TODO.md (dudas y simplificaciones), ARCHITECTURE.md
-     (fila rules/classes + recuentos: 74 módulos, 45 ficheros) y este
-     bloque. Verificación: arquitectura 3 passed, suite **896
-     passed**, capas.py 1 violación conocida, graphify update .
-     (2758 nodos, 9940 aristas).
+    - Hook nuevo grant_attack_modifiers en Trait + HOOK_NAMES,
+      despachado en roll_modifiers (bloque 5b, patrón
+      reduce_damage_to_allies; commit 4c90b58).
+    - wild_heart.py: WILD_HEART_FEATURES, RAGE_OPTIONS (bear/eagle/wolf),
+      POWER_OPTIONS (lion/ram; Falcon excluida), ASPECTOS, trait
+      WildHeartFeatures (opciones con pick en on_rage_start). Sin
+      acción propia. tests/test_wild_heart.py (30).
+    - Commits: 68c97cc, 1df57f0. Suite: 896 passed.
 
 12. PATH OF WILD MAGIC (2026-11-04)
-   Reglas: TCE 2020 (tabla Wild Surge de 8 efectos marcados
-   [VERIFICAR]); CD 8 + PB + mod CON; todo el daño de la subclase es
-   mágico; los efectos duran la Furia y se olvidan en on_rage_end/reset.
-   Plan (antes de escribir código):
-   1. Hook nuevo `after_failed_save`: no-op en Trait + HOOK_NAMES +
-      despacho en rules/saves.py (`saving_throw` gana `ctx=None`;
-      `_avisar_fallo_salvacion` en los dos retornos, solo con fallo y
-      ctx; cero coste/RNG sin rasgos que sobrescriban). Se pasa ctx
-      desde apply_save_damage, utility (empujar), conditions (salvación
-      de repetición y efectos de área), attack (rider) y features
-      (Furia Inaguantable). Commit (a); tests de no regresión en (c).
-   2. Módulo `rules/classes/barbarian/subclasses/wild_magic.py`:
-      WILD_MAGIC_FEATURES {3: Magic Awareness + Wild Surge, 6:
-      Bolstering Magic, 10: Unstable Backlash, 14: Controlled Surge};
-      WILD_SURGE_TABLE con 8 entradas (nombre + función); trait
-      WildMagicFeatures (efecto actual, infusión con armas previas,
-      on_rage_start → _tirar_surge con pick y DOBLE tirada + pick en
-      14, after_being_hit = Retribution + Unstable Backlash,
-      after_failed_save = Unstable Backlash, on_rage_end/reset =
-      _revocar); WildSurgeAction (bonus usage=None, patrón
-      StormAuraAction, solo con Intangible Spirit); apply_wild_magic.
-   3. Registro: clave "wild_magic" en barbarian/__init__.py;
-      reexportos en subclasses/__init__.py y fachada dnd_sim/__init__.py
-      (import bloque + __all__ alfabético). Pasos 2-3 = commit (b).
-   4. tests/test_wild_magic.py (~28 tests, patrón test_wild_heart:
-      helpers, monkeypatch al módulo que define, d20 fijo vía
-      attack.roll_d20). Commit (c).
-   5. Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
-      ARCHITECTURE.md (fila rules/classes + recuentos: 75 módulos, 46
-      ficheros, N tests) y este bloque con ESTADO ACTUAL. Commit (d).
-   6. Verificación regla 7 (arquitectura, suite, capas.py) +
-      graphify update . antes del commit (d).
-
-   Hecho:
-   - (1) hooks: Trait.after_failed_save + HOOK_NAMES + despacho en
-     saves.registrar_resistencia (llamada tras CADA saving_throw con
-     ctx; solo fallo y rasgos que sobrescriban, cero RNG sin ellos).
-     El despacho vive en registrar_resistencia, NO en saving_throw:
-     así ningún stub de test ni firma cambia.
-   - (2) wild_magic.py: tabla de 8, trait con efecto/infusión/
-     retribución/backlash, WildSurgeAction, apply_wild_magic.
-   - (3) Registro "wild_magic" + reexportos en subclasses/__init__.py
-     y fachada.
-   - (4) tests/test_wild_magic.py: 30 tests (tabla, apply/apply_class,
-     activación por Furia, renovación, sin RNG, doble tirada solo en
-     14, Shadowy Tendrils con/sin fallo y PV no acumulables, efectos
-     sin efecto, espíritu can_use/execute, Infusion marca/restaura en
-     on_rage_end y reset, Retribution daño/furia/decisión, Backlash
-     reacción/sustituye/sin reacción/salvación fallida/nivel 3,
-     Controlled Surge, hook no regresión + RNG intacto, semilla fija).
-     Commit 5adca98.
-   - (5) Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
-     ARCHITECTURE.md (fila rules/classes + recuentos: 75 módulos, 46
-     ficheros, 926 tests) y este bloque con ESTADO ACTUAL. Commit (d).
+    - TCE 2020; hook after_failed_save (despacho en
+      saves.registrar_resistencia; commit de hooks en f7e696a no: en (c)).
+    - wild_magic.py: WILD_SURGE_TABLE de 8 efectos; WildSurgeAction;
+      registro "wild_magic". tests/test_wild_magic.py (30).
+    - Commit 5adca98. Suite: 926 tests.
 
 13. PATH OF THE WORLD TREE (2026-11-04)
-   Reglas: PHB 2024 (sección 2). CD Topple 8 + PB + mod de la
-   característica del ataque. Una sola clave "world_tree".
-   Plan (antes de escribir código):
-   1. Campo opcional en model/attack.py: `properties: set[str]` y
-      `mastery: str` (defaults vacíos → fichas existentes sin cambio
-      de comportamiento ni RNG). Commit (a); tests de no regresión en
-      (c).
-   2. Módulo `rules/classes/barbarian/subclasses/world_tree.py`:
-      WORLD_TREE_FEATURES {3: Vitality of the Tree, 6: Branches of the
-      Tree, 10: Battering Roots, 14: Travel Along the Tree};
-      WORLD_TREE_COVERAGE_PROBABILITY=1.0 con `_en_10_pies` (criterio
-      del aura del Storm Herald, copiado sin tocar Storm); trait
-      WorldTreeFeatures: on_rage_start = Vitality Surge (temp_hp =
-      max(actual, level), automático, sin RNG, sin revocar al terminar
-      — política de la Furia base), on_turn_start = Life-Giving Force
-      (aliados heridos a 10 ft, pick entre candidatos + no curar,
-      rage_damage d6 con roll_dice, hp = min(max, hp+total), log), no
-      reacción on_rage_end; extra_attack_damage = Battering Roots
-      (solo MELEE, properties heavy/versatile, mastery != "topple",
-      turno propio sin is_reaction y ctx.actor=owner, pick, salvación
-      CON CD, PRONE con EscapeCheck de Empujar); Branches y Travel solo
-      dato (sin hook, sin reacción, sin RNG). apply_world_tree sin
-      acción propia.
-   3. Registro: clave "world_tree" en barbarian/__init__.py;
-      reexportos en subclasses/__init__.py y fachada dnd_sim/__init__.py.
-      Pasos 2-3 = commit (b).
-   4. tests/test_world_tree.py (~26 tests, patrón test_wild_magic).
-      Commit (c).
-   5. Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
-      ARCHITECTURE.md (fila rules/classes + recuentos: 76 módulos, 47
-      ficheros, N tests) y este bloque con ESTADO ACTUAL. Commit (d).
-   6. Verificación regla 7 (arquitectura, suite, capas.py) +
-      graphify update . antes del commit (d).
+    - PHB 2024. Campo Attack.properties/mastery (commit 89b2c67).
+    - world_tree.py: WORLD_TREE_FEATURES; on_rage_start Vitality
+      Surge; on_turn_start Life-Giving Force; extra_attack_damage
+      Battering Roots (Topple CON). Branches/Travel dato sin efecto.
+    - Registro "world_tree". tests/test_world_tree.py (27).
+    - Commits: bb4e10c, 06ab704. Suite: 953 passed.
 
-   Hecho:
-   - (1) `model/attack.py`: campos `properties: set[str]` y
-     `mastery: str` (defaults vacíos; fichas existentes intactas).
-     Commit 89b2c67.
-   - (2) `world_tree.py`: WORLD_TREE_FEATURES, cobertura 1.0 con
-     `_en_10_pies` + `_aliados_heridos` (criterio del aura del Storm,
-     copiado sin tocarlo), trait con on_rage_start (Vitality Surge,
-     temp_hp = max(actual, nivel), sin RNG, sin revocar),
-     on_turn_start (Life-Giving Force: aliados heridos a 10 ft, pick
-     con opción None, rage_damage d6, hp = min(max), log) y
-     extra_attack_damage (Topple: MELEE, heavy/versatile, mastery !=
-     "topple", sin reacción y ctx.actor=owner, pick, salvación CON CD
-     8+PB+mod del ataque, PRONE con EscapeCheck de Empujar); sin
-     acción propia.
-   - (3) Registro "world_tree" en barbarian/__init__.py + reexportos
-     en subclasses/__init__.py y fachada. Commit bb4e10c.
-   - (4) tests/test_world_tree.py: 27 tests (tabla, apply/apply_class,
-     Vitality Surge nivel/no acumula/no revoca/nivel 3, Life-Giving
-     curación+rage_damage+log/no máximo/no a sí mismo/solo
-     heridos/sin candidatos sin RNG/sin Furia/turno ajeno/decisión no,
-     Topple falla/sin propiedades/ranged/turno propio/duplicado/no
-     Furia/nivel 6, Branches+Travel sin RNG, campos Attack por defecto,
-     semilla fija). Commit 06ab704.
-   - (5) Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
-     ARCHITECTURE.md (fila rules/classes + recuentos: 76 módulos, 47
-     ficheros, 953 tests) y este bloque con ESTADO ACTUAL.
-     Verificación: arquitectura 3 passed, suite **953 passed**,
-     capas.py 1 violación conocida, graphify update .
-
-14. PATH OF THE ZEALOT (2026-11-04)  [SIN COMMITEAR]
-   Reglas: PHB 2024 (sección 2 del enunciado). CD 8 + PB + mod FUE
-   (solo si alguna salvación la necesita). Una sola clave "zealot".
-   Plan (antes de escribir código):
-   1. Hooks en el motor: (i) `grant_save_modifiers` (no-op en Trait +
-      HOOK_NAMES + bucle en roll_modifiers.save_modifiers con `ctx`,
-      patrón del bloque 5b de attack_modifiers, saltando al propio
-      objetivo); `saving_throw` gana `ctx=None` y se pasa desde los 5
-      call sites con ctx en scope (apply_save_damage, utility,
-      conditions ×2, attack rider); (ii) `after_failed_save` pasa a
-      PODER devolver un SaveResult que sustituya al original:
-      saves._avisar_fallo_salvacion lo recoge y registrar_resistencia
-      lo devuelve (los call sites ya usan el retorno). Stubs de test
-      que no acepten el kwarg extra se ajustan con **kw (no congelados).
-      Commit (a); tests de no regresión en (c).
-   2. Módulo `rules/classes/barbarian/subclasses/zealot.py`:
-      ZEALOT_FEATURES {3: Divine Fury + Warrior of the Gods, 6:
-      Fanatical Focus, 10: Zealous Presence, 14: Rage of the Gods};
-      ZEALOT_COVERAGE_PROBABILITY=1.0 (60 pies, criterio aura);
-      trait ZealotFeatures (divine_pagado limpio en on_turn_start/
-      reset; fanatical_usado limpio en on_rage_start/reset;
-      presence_usage ActionUsage(PER_DAY,1) + presencia_activa;
-      dados_restantes con reserva 4/5/6/7; forma_usada/forma_activa/
-      revivificada + _forma_concedidas); WarriorHealAction y
-      ZealousPresenceAction (ambas bonus usage=None, patrón
-      IntimidatingPresenceAction con pick gratis/furia);
-      apply_zealot sin Furia propia.
-   3. Registro: clave "zealot" en barbarian/__init__.py; reexportos en
-      subclasses/__init__.py y fachada dnd_sim/__init__.py. (b)
-   4. tests/test_zealot.py (~35 tests, patrones wild_magic/world_tree).
-      Commit (c).
-   5. Docs: TODO.md (dudas [VERIFICAR] y simplificaciones),
-      ARCHITECTURE.md (fila rules/classes + recuentos: 77 módulos, 48
-      ficheros, 953+N tests) y este bloque con ESTADO ACTUAL.
-   6. Verificación regla 7 + graphify update . antes del commit (d).
-
-   Hecho:
-   - (1) Hooks: Trait.grant_save_modifiers + HOOK_NAMES + bucle en
-     roll_modifiers.save_modifiers con `ctx` (patrón bloque 5b de
-     attack_modifiers, saltando al propio objetivo); `saving_throw`
-     gana `ctx=None` y se pasa desde los 5 call sites con ctx en scope
-     (apply_save_damage, utility, conditions ×2, attack rider);
-     `after_failed_save` puede devolver un SaveResult que sustituya al
-     original (saves._avisar_fallo_salvacion lo recoge, corta el
-     bucle si lo salva y registrar_resistencia lo devuelve). 6 stubs
-     de test con `**kw` (no congelados). Suite 953 passed.
-     Commit f7e696a.
-   - (2)(3) zealot.py completo (ZEALOT_FEATURES, trait ZealotFeatures con
-     Divine Fury/Warrior+WarriorHealAction/Fanatical/Presence+
-     ZealousPresenceAction/Rage of the Gods+Revivification, apply_zealot;
-     ZEALOT_COVERAGE_PROBABILITY=1.0) + registro clave "zealot" en
-     barbarian/__init__, reexportos en subclasses/__init__ y fachada.
-     Smoke OK (nivel 8 → 5 dados, acciones presentes). Suite 953
-     passed. Commit 45906c3.
-   - (4) tests/test_zealot.py (hecho y commiteado en 67f9bb3; la línea
-     «Pendiente» era stale).
+14. PATH OF THE ZEALOT (2026-11-04)
+    - Hooks: grant_save_modifiers (bloque 5b de save_modifiers) y
+      after_failed_save con poder devolver SaveResult. Commit f7e696a.
+    - zealot.py: ZEALOT_FEATURES, ZealotFeatures (Divine Fury,
+      WarriorHealAction, Fanatical Focus, ZealousPresenceAction,
+      Rage of the Gods + Revivification), apply_zealot.
+    - Registro "zealot". Commit 45906c3. tests/test_zealot.py en 67f9bb3.
 
 15. CLASE FIGHTER (GUERRERO) (2026-11-05)
-   Reglas: PHB 2024 dadas en el prompt de sesión (sin API; la API solo
-   para monstruos/hechizos). Una sola clave "fighter". SIN alias
-   "guerrero": tests/test_clases.py usa esa clave como clase
-   desconocida y el bárbaro tampoco tiene alias en español.
-   Plan completo en TODO.md («Fighter: plan de sesión», 13 casillas;
-   cada casilla = un commit).
-
-   Hecho:
-   - (1)(2) Estructura, registro y datos de nivel:
-     rules/classes/fighter/ (features.py: FighterFeatures + apply_fighter
-     con salvaciones FUE+CON y validación de FIGHTER_SKILLS;
-     __init__.py: register_class(ClassDef("fighter", subclasses={}));
-     subclasses/__init__.py vacío con la receta apuntada), core/classes.py
-     (FIGHTER_SKILLS de 9 opciones, FIGHTER_FEATURES 1-20,
-     fighter_extra_attacks_for 1/2/3/4 en 1/5/11/20 — aparte de
-     extra_attacks_for, que es del bárbaro y no cambia), reexport en
-     rules/classes/__init__.py y fachada dnd_sim/__init__.py, entrada
-     dnd_sim.rules.classes.fighter en tests/test_arquitectura.py.
-     tests/test_fighter.py (9 tests: registro con tabla de subclases
-     vacía, equivalencia apply_class/apply_fighter, rasgo, salvaciones,
-     skills ok/ValueError, subclase "champion" inexistente → ValueError,
-     golpes por nivel, paridad de claves de FIGHTER_FEATURES).
-     Decisiones: competencias de armas/armaduras sin campos en el
-     modelo → dato documentado en el docstring; apply_fighter aún no
-     añade acciones (llegan en los pasos 3-9). Suite completa 1017
-     passed antes de tocar datos de nivel; afectados 61 passed.
-     Commit 09ea36e.
-   - (3) Second Wind (Tomar Aliento): `second_wind_uses` en
-     core/classes.py (2/3/4 en 1-3/4-9/10+); usos en el rasgo
-     (ActionUsage PER_DAY, patrón presence_usage del Berserker, se
-     restablece en `FighterFeatures.reset` → Combatant.reset = un
-     combate = un día descansado) para que Tactical Mind comparta el
-     mismo contador; SecondWindAction (bonus, usage=None) elegible SOLO
-     si PV < PV máximos y quedan usos (sin RNG en la elegibilidad),
-     cura `1d10 + nivel` recortada a los PV máximos, gasta el uso al
-     ejecutarse. Decisión: los usos viven en el rasgo, no en la acción,
-     porque Tactical Mind (2) también los gasta desde un hook.
-     tests/test_fighter.py +5 (total 14).
-    - (4) Oleada de Acción (Action Surge): `action_surge_uses` en
-      core/classes.py (1/2 en <17/17+); usos en el rasgo
-      (ActionUsage PER_DAY, se restablece en reset) + flag
-      `surge_used_this_turn` (máx. 1 por turno, se reinicia en
-      `on_turn_start`); ActionSurgeAction (bonus, usage=None) solo
-      elegible si nivel >= 2, quedan usos, no usada ya en el turno y la
-      acción del turno está gastada (así no se gasta un uso en vano);
-      al ejecutarse pone `resources.action_used = False`. Encuentro:
-      el bucle `for action_type in (ACTION, BONUS)` se extrajo al
-      cierre `_pasada(action_type) -> bool` (mismo orden, cortes y
-      stats) y ahora, si tras ACTION+BONUS hay acción ejecutada y el
-      recurso de acción quedó libre, corre UNA tercera pasada de ACTION.
-      Guard: sin Oleada `action_used` queda True → cero cambio de RNG
-      para el resto de clases (suite completa 1032 passed, 0
-      regresiones). Reexport de ActionSurgeAction en fighter/,
-      rules/classes/ y fachada. Decisión: la acción Magia no existe en
-      el motor, así que la prohibición PHB no es aplicable.
-      tests/test_fighter.py +8 (total 22): usos por nivel, ausencia en
-      nivel 1, restaura acción y gasta uso, 1/turno, no elegible sin
-      acción gastada/sin usos/con bonus ya gastada, integración de la
-      3ª pasada en run_combat.
-      Commit e1ef58e.
-    - (5) Extra Attack (5/11/20): `fighter_extra_attacks_for` (2/3/4)
-      aplicado en apply_fighter con el MISMO patrón del bárbaro: si el
-      PJ tiene `weapons` → `pj.extra_attacks = max(…, golpes-1)`; si no
-      → MultiattackAction con AttackEntry ciclados que sustituye a los
-      AttackAction. Sin ataques, no hace nada (no lanza). Decisión:
-      reutilizar el mecanismo ya probado del bárbaro en vez de un
-      canal nuevo (extra_attacks_for del bárbaro NO se toca).
-      tests/test_fighter.py +4 (total 26): sustitución por nivel con
-      recuento de golpes 2/3/4, sin ataques no explota, camino de
-      armas con extra_attacks, nivel <5 no hace nada.
-      Commit 27d8bb2.
-    - (6) Indomitable (9): hook ``after_failed_save`` en
-      FighterFeatures (patrón Fanatical Focus del Zealot): guards de
-      nivel/owner/usos/auto_fail/RNG, decisión con ``pick``,
-      ``saving_throw`` nuevo cuyo total suma +nivel de Guerrero y
-      SUSTITUYE al original (no hay recursión: saving_throw no
-      re-despacha el hook). Usos 1/2/3 (9-12/13-16/17+) con helper
-      ``indomitable_uses`` en core/classes.py (0 por debajo del 9);
-      sin usos o sin RNG no hay re-tirada ni azar. Sin acción propia.
-      tests/test_fighter.py +7 (total 33): tabla de usos, ausencia
-      antes del 9, bonificador = nivel, la nueva tirada manda aunque
-      vuelva a fallar (uso gastado igual), sin usos sin RNG, nivel <9
-      sin pick, reset de usos. Suite completa: 1043 passed.
-      Commit 81fa1e3.
-    - (7) Ataques Estudiados (13): hooks existentes
-      ``after_attack_roll`` (marca al fallar) + ``modify_attack_modifiers``
-      (ventaja). Marca por NOMBRE del objetivo con caducidad medida en
-      turnos propios (``on_turn_start`` incrementa ``turno_guerrero`` y
-      limpia caducadas; se marca en el turno N → caduca en N+2, o sea
-      vale hasta el fin de tu siguiente turno). La ventaja se CONSUME al
-      concederla (solo el siguiente ataque, acierte o falle). Guards:
-      nivel >=13 y atacante = dueño. Sin RNG ni acción propia.
-      tests/test_fighter.py +7 (total 40): ventaja tras fallo, por
-      objetivo, acierto no marca, un solo ataque con ventaja, expira a
-      los 2 turnos, nivel <13 no actúa, atacante ajeno no actúa.
-      Suite completa: 1050 passed.
-      Commit 02448f9.
-    - (8) Estilos de Combate (1): pick uniforme en apply_fighter
-      (kwarg ``fighting_style`` explícito validado, o ``rng`` del
-      llamante; sin rng, semilla fija 0 = personaje reproducible).
-      Pool en ``FIGHTER_STYLES`` (core/classes.py) SOLO con los
-      implementados; los demás son dato sin efecto (casilla 9). Tres
-      commits por grupos de motor:
-      (8a) infra + Defense (+1 CA con armadura dada por supuesta) +
-      Dueling (+2 daño melee sin propiedad two-handed, sin saber si
-      hay otra arma en la mano) + Thrown (+2 con propiedad thrown) vía
-      extra_attack_damage. Commit 3d97afc.
-      (8b) Archery: campo nuevo ``bonus: int = 0`` en AttackModifiers
-      + `total = roll + bonus + modifiers.bonus` en attack.py (default
-      0 = sin cambio) + modify_attack_modifiers del rasgo (ojo: el
-      early-return de Studied Attacks se reestructuró para no tapar el
-      estilo). Commit 3a7bf6b.
-      (8c) GWF: kwarg opcional ``floor`` en core.dice.roll_dice (no
-      cambia llamadas al RNG) + hook nuevo ``damage_dice_upgrades`` en
-      Trait/HOOK_NAMES + _piso_dados_rasgos en attack.py; SIN piso se
-      llama roll_dice igual que siempre (los tests existentes parchean
-      roll_dice sin kwarg floor: 8 fallos de TypeError, resuelto con
-      la rama sin piso). Rasgo: 3 solo melee + arma two-handed;
-      versatile a dos manos no modelable (documentado). Commit
-      2d3746c.
-      tests/test_fighter.py +14 (fichero total 54): pick/determinismo,
-      kwarg explícito, ValueError,
-      apply_class reenvía, Defense CA, Dueling condiciones, Thrown
-      condiciones, atacante ajeno, Archery mods+motor (d20 fijo 10 y
-      AC = to_hit+11), no-otro-estilo, roll_dice floor, GWF devuelto y
-      motor con spy de floor==3. Suite completa: 1064 passed.
-    - (9) Maestría con Armas (1) y datos sin efecto:
-      ``weapon_mastery_count`` en core/classes.py (3/4/5/6 en los
-      niveles 1/4/10/16) + ``sample`` de armas del PJ en
-      ``trait.maestrias`` (pool ``weapons`` o, si el PJ no los usa, de
-      ``attacks``; sin ninguno, lista vacía). Dato puro: el motor no
-      aplica maestría a PJs y el campo NO se limpia en ``reset``.
-      Tactical Mind: ``checks.py`` no recibe ``ctx`` → sin gancho
-      ``after_failed_check`` (no se creó uno solo por esto); Tactical
-      Shift sin sistema de movimiento; Tactical Master sin infra
-      Push/Sap/Slow; ASI y Don Épico sin efecto; estilos restantes
-      (Protection/Interception/Blind/Unarmed/TWF) sin efecto. Todo en
-      TODO.md «Fighter: datos sin efecto». Ojo: la cuenta es 4 ya desde
-      el nivel 4 (test corregido: nivel 5 → 4 armas, no 3).
-      tests/test_fighter.py +5 (fichero total 59): tabla de cuenta,
-      pool de ataques, armas distintas hasta el máximo, menos armas que
-      el máximo → todas, sin armas → []. Suite completa: 1069 passed.
-      Commit 8ca3e5e.
-    - (10) Plantilla de main.py: la plantilla «Guerrero» existente
-      (index 0 de PARTY_TEMPLATES) gana ``class_name="fighter"`` (sin
-      subclase): apply_class le aplica salvaciones (ya las traía),
-      skills (las de la plantilla están todas en FIGHTER_SKILLS),
-      Estilo de Combate, Tomar Aliento y Extra Attack. Se actualizó el
-      comentario de _build_party (ya no es solo bárbaro). Ningún test
-      existente cambió: test_skills quiere str/con y athletics en
-      Guerrero ✓; test_beast usa el índice 4 (Barbaro) ✓.
-      tests/test_fighter.py +1 (total 60): la plantilla de main
-      construye un PJ con el rasgo FighterFeatures.
-      Suite completa: 1070 passed.
-      Commit 8605d28.
-    - (11) Fixture de niveles: tests/fixtures/fighter_levels.json
-      (escrito a mano desde el PHB, formato {level, features:[{name}]}
-      como el test del bárbaro) y test
-      test_features_de_clase_coinciden_con_la_fixture en
-      tests/test_fighter.py: FIGHTER_FEATURES[nivel] == nombres de la
-      fixture, nivel por nivel. tests/test_fighter.py +1 (total 61).
-      Verificado: fighter + arquitectura + clases = 74 passed.
-      Commit 27532b9.
-    - (12) Docs: TODO.md gana la sección «Fighter: cómo añadir una
-      subclase» (receta en 5 pasos al patrón bárbaro + candidatas
-      Champion/Battle Master/Eldritch Knight/Psi Warrior como
-      pendientes); PASOS: encabezado del bloque 15 sin el stale
-      «[SIN COMMITEAR]», línea stale del Zealot «(4) Pendiente:
-      tests/test_zealot.py» corregida (commiteado en 67f9bb3), bloque
-      Guerrero añadido a ESTADO ACTUAL (formato igual que las subclases
-      bárbaro) y recuentos actualizados (80 módulos, 49 ficheros de
-      tests, 17142 líneas, 1071 tests); ARCHITECTURE.md: fighter/ en la
-      tabla de paquetes con fachada, grafo acíclico con
-      base ← fighter.features ← fighter.subclasses, recuentos
-      recalculados con conteo crudo de líneas (las filas suman el
-      total) y «1071 tests» en Cómo comprobar.
-    - (13) Verificación final: pytest tests/test_arquitectura.py (3
-      passed), suite completa (1071 passed, 0 fallos), tools/capas.py
-      (1 violación: la excepción conocida model.combatant →
-      rules.conditions) y `graphify update .` (3219 nodos, 11681
-      aristas, 96 comunidades; grafo y GRAPH_REPORT.md regenerados en
-      graphify-out/).
+    - PHB 2024; clave "fighter" SIN alias. Plan en TODO.md (histórico).
+    - (1)(2) Estructura: rules/classes/fighter/ (features.py:
+      FighterFeatures + apply_fighter con salvaciones FUE+CON y
+      FIGHTER_SKILLS), core/classes.py (FIGHTER_SKILLS de 9,
+      FIGHTER_FEATURES 1-20, fighter_extra_attacks_for 1/5/11/20),
+      tests/test_fighter.py. Commit 09ea36e. Suite: 1017 passed.
+    - (3) Second Wind: second_wind_uses 2/3/4, SecondWindAction
+      (bonus, 1d10+nivel), usos en el rasgo (Tactical Mind comparte
+      contador). +5 tests.
+    - (4) Action Surge: action_surge_uses 1/2, flag
+      surge_used_this_turn; 3ª pasada de ACTION en encounter.py
+      (_pasada). Commit e1ef58e. Suite: 1032.
+    - (5) Extra Attack: fighter_extra_attacks_for (extra_attacks o
+      Multiattack). Commit 27d8bb2.
+    - (6) Indomitable (9): after_failed_save patrón Fanatical Focus,
+      usos 1/2/3. Commit 81fa1e3. Suite: 1043.
+    - (7) Studied Attacks (13): after_attack_roll marca + ventaja
+      caduca en 2 turnos propios. Commit 02448f9. Suite: 1050.
+    - (8) Estilos de Combate: FIGHTER_STYLES con pick en apply_fighter.
+      (8a) Defense/Dueling/Thrown. Commit 3d97afc. (8b) Archery con
+      campo AttackModifiers.bonus. Commit 3a7bf6b. (8c) GWF con kwarg
+      floor en roll_dice + hook damage_dice_upgrades. Commit 2d3746c.
+      Suite: 1064.
+    - (9) Weapon Mastery (1): weapon_mastery_count 3/4/5/6 +
+      trait.maestrias (dato). Tactical Mind/Shift/Master, ASI, Don
+      Épico, estilos restantes: dato sin efecto. Commit 8ca3e5e.
+      Suite: 1069.
+    - (10) Plantilla «Guerrero» de main.py con class_name="fighter".
+      Commit 8605d28. (11) Fixture fighter_levels.json.
+      Commit 27532b9. (12) Docs. (13) Verificación: 1071 passed,
+      grafo 3219 nodos.
 
 CIERRE DE PENDIENTES DEL FIGHTER (2026-11-06)
-  - (A1) Tactical Mind (2) con gancho nuevo ``after_failed_check``:
-    checks.py gana ``ctx=None`` en ability_check/skill_check +
-    _avisar_fallo_prueba (espejo de _avisar_fallo_salvacion: sin ctx,
-    sin fallo o sin rasgos → sin RNG; un CheckResult devuelto
-    sustituye). Trait.after_failed_check + entrada en HOOK_NAMES tras
-    after_failed_save (test_traits itera el catálogo ✓). Callers con
-    ctx en scope pasan ctx=ctx: conditions.attempt_escapes (skill y
-    ability) y attach.intentar_desenganche; utility.py no usa checks.
-    Rasgo FighterFeatures.after_failed_check: guards nivel>=2,
-    dueño, no éxito previo, usos de Tomar Aliento disponibles, rng;
-    pick «no/si»; +1d10; el uso SOLO se gasta si la tirada final
-    pasa (si no, el resultado nuevo se devuelve igual con el d10).
-    Ficheros: rules/checks.py, rules/traits/base.py,
-    rules/conditions.py, rules/attach.py,
-    rules/classes/fighter/features.py.
-    Test existente tocado (firma, NO resultado):
-    tests/test_checks_escapes.py _check_fijo ganó ``ctx=None`` en el
-    fake de ability_check — el fake no aceptaba el kwarg nuevo y el
-    escape silenciosamente no veía el resultado parcheado; sin cambio
-    de semillas ni de asserts.
-    tests/test_fighter.py +6 (total 67): gasta si la tirada final
-    pasa, no gasta si aún falla, sin usos → sin RNG (spy de pick),
-    sin ctx nada, salvaciones no disparan el gancho, despacho real
-    desde ability_check con ctx (d20=1 → +1d10 y sin gasto).
-    Suite completa: 1077 passed.
-    Commit 696ec3a.
-  - (A2) Motor de maestrías: módulo nuevo ``rules/mastery.py``
-    (docstring español, desde __future__) con la tabla PHB
-    ``MAESTRIAS`` (34 armas EN + alias ES; ``maestria_de`` normaliza a
-    minúsculas y devuelve "" sin error), ``resolver_maestria`` (base
-    SIEMPRE ``Attack.mastery``, nunca la tabla → monstruos intactos;
-    consulta perezosa ``sustituir_maestria`` de los rasgos del
-    atacante — solo FighterFeatures la define, A4), ``al_acertar``
-    (Topple: pick «no/si», salvación CON CD 8+PB+mod con
-    registrar_resistencia, fallo → PRONE con EscapeCheck str/dex DC 10
-    no-consume-acción, mismo patrón Raíces Golpeadoras; Vex: daño>0 →
-    marca ``state.maestria_ventaja[nombre_obj]=ronda+2``; Sap: marca
-    ``state.maestria_desventaja[nombre_atacante]=ronda+1`` en el SUJETO
-    afectado) y ``al_fallar`` (Graze: daño = mod de la característica
-    con mínimo 0, apply_damage_modifiers + inflict_damage; 0 → sin
-    log). Push/Slow = ``EFECTOS_SIN_EFECTO`` con # TODO (sin
-    movimiento); Cleave/Nick pendientes en TODO. Caducidad: shortcut
-    por ronda de ctx (documentado en el código). Consumo en
-    roll_modifiers.attack_modifiers (bloque 5c,
-    consumir_marcas: consume al conceder, limpia caducadas; sin ctx o
-    sin marcas → nada). Llamada desde engine/combat/attack.py antes de
-    _trigger_after_attack_roll SOLO si ``atk.mastery`` no vacío (sin
-    clave → sin RNG). ``CombatState`` gana ``maestria_ventaja`` y
-    ``maestria_desventaja`` (core no importa rules) y
-    ``Combatant.reset`` las limpia. Fachada dnd_sim/__init__ reexporta
-    MAESTRIAS + al_acertar + al_fallar + consumir_marcas + maestria_de
-    + resolver_maestria (rules no tiene paquete fachada: sin entrada
-    nueva en test_arquitectura).
-    world_tree NO delega en el motor (Battering Roots exige
-    heavy/versatile + turno propio; cambiarlo alteraría resultados):
-    documentado, no tocado.
-    tests/test_mastery.py nuevo (13 tests): mapeo EN/ES, Topple
-    derriba/salva/decisión no, Vex marca/solo-con-daño/consume/caduca,
-    Sap marca y consume, Graze con mod y sin mod, Push/Slow inertes,
-    sin maestría sin RNG (rng que revienta), integración del motor
-    (roll_d20 parcheado → PRONE vía attack_roll).
-    tests/test_arquitectura.py: 3 passed. Suite completa: 1090
-    passed (0 fallos; World Tree y semillas intactas).
-    Commit 658ceaa.
-  - (A3) Asignación de maestrías a los PJ: ``apply_fighter`` marca con
-    mutación in-place ``atk.mastery = maestria_de(atk.name)`` solo en
-    los ataques elegidos (de ``pj.attacks`` y ``pj.weapons``); los no
-    elegidos NO se tocan (una clave preexistente se conserva) y un
-    nombre fuera de la tabla queda en "" sin error. Docstrings de
-    apply_fighter y del campo ``maestrias`` actualizados (ya no es
-    dato puro). Import nuevo ``from ...mastery import maestria_de`` en
-    fighter/features.py (sin ciclos: mastery no importa classes).
-    Bárbaro y monstruos intactos (el loader no rellena ``mastery``):
-    seguimiento «Weapon Mastery del bárbaro 2024» anotado en TODO.md.
-    tests/test_fighter.py +4 (total 71): clave asignada al elegido,
-    no elegida sin clave (y cuenta de las 3/8), 3/4/5/6 por nivel,
-    arma sin entrada en la tabla no explota. Barbario/World Tree en
-    verde. Suite completa: 1094 passed.
-    Commit 731fbcf.
-  - (A4) Tactical Master (9): ``FighterFeatures.sustituir_maestria``
-    devuelve ``pick(rng, (base, "push", "sap", "slow"))`` desde el
-    nivel 9 (bajo 9 o ``rng=None`` → la original sin RNG); lo consulta
-    ``mastery.resolver_maestria`` por duck-typing en cada ataque (NO es
-    hook del catálogo) y la sustitución no muta ``Attack.mastery`` (el
-    objeto queda igual: solo ese ataque). Docstring: como Push/Slow no
-    tienen efecto, solo Sap/original alteran el combate (en TODO.md).
-    tests/test_fighter.py +5 (total 76): nivel 8 sin sustitución (rng
-    que revienta), nivel 9 cubre las 4 opciones, sin rng devuelve la
-    original, resolver sin maestría no consulta al rasgo, sustitución
-    efímera. Suite completa: 1099 passed.
-    Commit 4e8d952.
-  - (A5) Protection e Interception: ``FIGHTER_STYLES`` pasa a 7
-    (se añaden "Protection" e "Interception"; Blind/Unarmed/TWF siguen
-    sin efecto). Campo nuevo ``tiene_escudo: bool = False`` en
-    FighterFeatures + kwarg ``tiene_escudo`` en ``apply_fighter`` (dato
-    que quien construye el PJ activa; el modelo no guarda equipo;
-    default False = cero cambio en tests existentes). Hooks nuevos en el
-    rasgo: ``grant_attack_modifiers`` (Protection: exige escudo, aliado
-    vivo vía ``is_hostile_to``, atacante/objetivo ≠ guardián, reacción
-    libre, cobertura abstracta ``_en_5_pies`` con p=1.0 sin RNG, decisión
-    ``pick(("no","si"))`` → desventaja "Protección" + gasta reacción) y
-    ``reduce_damage_to_allies`` (Interception: exige escudo O arma del
-    PJ, mismos guards, ``reducido = min(amount, 1d10 + PB)`` → devuelve
-    el restante mínimo 0 y gasta la reacción, patrón Spirit Shield).
-    Helpers de módulo ``_en_5_pies`` (patrón wild_heart) y ``_es_aliado``
-    (patrón zealot). Import nuevo ``proficiency_bonus``.
-    **Cambio de test existente (explicado antes de tocarlo)**:
-    ``test_estilo_de_combate_invalido_da_value_error`` usaba
-    "Protection" como estilo inválido → ya no lo es; se le pone
-    "Estilo inventado" (conserva el match). Ningún test mete plantillas
-    de main en combate → el pool de 7 estilos no cambia semillas de
-    combate existentes (verificado: sin aserciones de estilo por
-    defecto). tests/test_fighter.py +11 (total 87): desventaja con
-    aliado + gasta reacción, sin escudo sin RNG (rng que revienta),
-    reacción ya gastada, no-aliado y self sin RNG, sin rng, dos en una
-    ronda solo la primera, Interception reduce 20→7 (d10=10, PB=3),
-    mínimo 0, sin arma/escudo sin RNG, reacción gastada, no-aliado/self,
-    sin rng. Suite completa: 1111 passed.
-    Commit ec86641.
-  - (B) Decisiones de diseño sin efecto: campos de tabla
-    ``asi_levels = (4, 6, 8, 12, 14, 16)`` y ``epic_boon_level = 19``
-    en FighterFeatures (dato puro: el PJ se define en código con sus
-    características finales; nota para ARCHITECTURE). Docstring del
-    módulo: Blind Fighting/Unarmed Fighting = dato sin efecto (sin
-    visibilidad ni elección de arma del PJ), Two-Weapon Fighting hasta
-    que exista el ataque adicional. TODO.md reescrito: la sección
-    «datos sin efecto» pasa a «pendientes reales» y SOLO queda Cleave,
-    Nick, Two-Weapon Fighting, Push/Slow (sin posiciones), maestrías
-    del bárbaro (seguimiento) y subclases Fighter. tests/test_fighter.py
-    +1 (total 89): congela los dos campos. Suite completa pendiente de
-    la verificación final. Commit 4f56e55.
-  - Docs: ARCHITECTURE.md — tabla de carpetas recalculada con
-    [System.IO.File]::ReadAllLines (core 13/899, model 4/1038, rules
-    30/8738 incl. rules/mastery.py, traits 6/1268, spells 5/915,
-    engine 3/224, combat 3/919, data 16/3394, fachada 1/182; total
-    81/17577 + tests 50 ficheros/17848 líneas/1112 tests), fila de
-    traits con HOOK_NAMES (25 hooks, incl. after_failed_check), nota de
-    que el PJ se define en código (asi_levels/epic_boon_level) y
-    «Cómo comprobar» con 1112 tests. PASOS-ANTERIORES.txt: recuentos
-    del ESTADO ACTUAL (81/50/17848/1112, medido 2026-11-06) y bloque
-    Guerrero actualizado con el cierre A1-B. TODO.md: casillas A5 y B
-    [x], sección «datos sin efecto» → «pendientes reales» (solo
-    Cleave, Nick, TWF, Push/Slow, maestrías bárbaro, subclases).
-    Verificación: arquitectura + suite + capas (1 violación conocida
-    model.combatant → rules.conditions) + graphify.
+  - (A1) Tactical Mind: hook after_failed_check (checks.py gana
+    ctx + _avisar_fallo_prueba; callers con ctx: conditions, attach).
+    +1d10 y gasto de Tomar Aliento solo si la tirada final pasa.
+    Commit 696ec3a. Suite: 1077.
+  - (A2) Motor de maestrías: rules/mastery.py (MAESTRIAS de 34 armas
+    EN+ES, resolver_maestria, al_acertar Topple/Vex/Sap, al_fallar
+    Graze; Push/Slow en EFECTOS_SIN_EFECTO con # TODO). Consumo en
+    roll_modifiers bloque 5c (consumir_marcas). CombatState gana
+    maestria_ventaja/maestria_desventaja. Commit 658ceaa.
+    test_mastery.py (13). Suite: 1090.
+  - (A3) Asignación: apply_fighter marca atk.mastery in-place con
+    maestria_de. Bárbaro y monstruos intactos. Commit 731fbcf.
+    Suite: 1094.
+  - (A4) Tactical Master (9): sustituir_maestria pick
+    (base/push/sap/slow). Commit 4e8d952. Suite: 1099.
+  - (A5) Protection e Interception: FIGHTER_STYLES pasa a 7; campo
+    tiene_escudo. Cambio de test explicado (estilo inválido
+    "Protection" → "Estilo inventado"). Commit ec86641.
+    Suite: 1111.
+  - (B) Decisiones: asi_levels y epic_boon_level (dato); TODO.md
+    «datos sin efecto» → «pendientes reales» (solo Cleave, Nick, TWF,
+    Push/Slow, subclases). Commit 4f56e55.
+  - Docs: ARCHITECTURE recalculada (81 módulos/17577, tests
+    50/17848/1112), HOOK_NAMES 25 hooks.
 
 MAESTRÍA CON ARMAS DEL BÁRBARO (2026-11-06)
-  - Weapon Mastery (1) del bárbaro 2024 asigna ``atk.mastery`` igual
-    que el Fighter: ``apply_barbarian`` gana kwarg ``rng`` (default
-    ``_RNG_CREACION`` con semilla 0, reproducible), elige 3 armas con
-    ``sample`` de ``pj.weapons`` o, si no los usa, de ``pj.attacks``
-    (constante ``_MAESTRIAS_BARBARO = 3``: el bárbaro no escala el
-    recuento, a diferencia de ``weapon_mastery_count`` del Fighter) y
-    marca con mutación in-place ``atk.mastery = maestria_de(atk.name)``
-    solo en las elegidas (nombres fuera de la tabla → "" sin error).
-    Campo nuevo ``maestrias`` en BarbarianFeatures (dato, no se limpia
-    en ``reset``). El motor de maestrías (A2) ya existía → los PJ
-    bárbaro ahora usan Topple/Vex/Sap/Graze en combate.
-    Decisión anotada: el recuento 3 es la regla PHB 2024 del bárbaro
-    (fijo, sin tabla por nivel).
-    TODO.md: borrado el punto «Maestrías del bárbaro 2024» (de Fighter
-    quedan solo Cleave, Nick, Two-Weapon Fighting, Push/Slow y
-    subclases).
-    tests/test_barbarian.py +4 (total 43): 3 armas de 6, marca topple
-    de Hacha de batalla, pool de 2 → todas con sus claves (nick/sap),
-    sin armas → []. Suite completa: 1116 passed (0 fallos: ningún test
-    existente cambió resultado). capas: 1 violación conocida.
-    Commit 8fb088c.
+  - apply_barbarian gana rng; elige 3 armas con sample y marca
+    atk.mastery. Campo maestrias en BarbarianFeatures. Recuento fijo
+    3 (PHB 2024). TODO.md: borrado «Maestrías del bárbaro».
+    tests/test_barbarian.py +4 (total 43). Suite: 1116. Commit 8fb088c.
 
 ARCANE ARCHER (2026-11-06)
-  - (1) Estructura, registro y datos: tablas nuevas en
-    ``core/classes.py`` ``arcane_shot_options_known`` (0/2/3/4/5/6 en
-    <3/3/7/10/15/18) y ``arcane_shot_uses`` (0/2/3 en <3/3-14/15+).
-    Módulo nuevo ``rules/classes/fighter/subclasses/arcane_archer.py``
-    (docstring español con decisiones): constantes ``ARCANE_SHOTS`` (6
-    opciones implementables; Piercing/Seeking fuera del pool por ahora),
-    ``ARCANE_ARCHER_SKILLS`` (arcana/nature), ``ARCANE_ARCHER_CANTRIPS``
-    (dato), ``_RNG_CREACION`` (semilla 0) y ``_de`` (patrón
-    battlerager). ``ArcaneArcherFeatures(Trait)`` con level,
-    competencia, truco, ``opciones_conocidas`` y owner.
-    ``apply_arcane_archer(pj, level=None, arcane_shots=None, rng=None)``
-    : exige FighterFeatures (ValueError «Primero aplica la clase
-    guerrero», patrón battlerager), Lore con ``pick`` (competencia +
-    truco; añade la competencia a skill_proficiencies), opciones con
-    ``sample`` del pool o kwarg explícito validado (ValueError por
-    nombre inválido y por recuento ≠ tabla del nivel).
-    Registro: ``fighter/__init__.py`` gana ``SubclassDef(name="Arcane
-    Archer", class_name="fighter", min_level=3)`` en la clave
-    ``"arcane_archer"``; reexport en ``fighter/subclasses/__init__.py``
-    y fachada ``dnd_sim/__init__.py`` (ArcaneArcherFeatures,
-    apply_arcane_archer); entrada nueva en test_arquitectura para
-    ``dnd_sim.rules.classes.fighter.subclasses``.
-    **Tests existentes tocados (explicados antes)**:
-    ``test_clase_fighter_esta_registrada_sin_subclases`` →
-    ``..._con_arcane_archer`` exigiendo ``{"arcane_archer"}`` (la tabla
-    ya no está vacía); docstring de ``test_subclase_de_fighter_
-    inexistente_da_value_error`` actualizado (champion sigue fallando).
-    tests/test_arcane_archer.py nuevo (12): registro, equivalencia
-    apply_class/apply_arcane_archer (monkeypatch de ambos
-    _RNG_CREACION a Random(0), patrón 6.2), exige clase fighter,
-    nivel<3, tablas, opciones por nivel, kwarg válido/inválido/recuento,
-    Lore competencia y truco. Suite completa: 1128 passed (0 fallos).
-    Commit b222ed3.
-  - (2) Arcane Shot base: campos ``arcane_shot_usage`` (ActionUsage
-    PER_DAY creado en apply con ``arcane_shot_uses``: None si nivel<3)
-    y ``shot_used_this_turn``; ``on_turn_start`` reinicia el flag y
-    ``reset`` limpia flag + usos (patrón Oleada de Acción). Hook
-    ``extra_attack_damage``: guards (dueño, target, rango RANGED,
-    usage disponible, sin flag, rng) → ``pick(("no","si"))`` →
-    ``pick`` entre opciones conocidas → spend + flag → daño
-    ``roll_dice("2d6"|"4d6", rng)`` (4d6 desde nivel 18) con log;
-    sin usos/melee/sin rng → cero RNG. El daño extra se suma al del
-    ataque (tipo no separado: documentado). Grasping Arrow es solo
-    daño en este paso; resto de ramas en pasos siguientes.
-    tests/test_arcane_archer.py +11 (total 23): usos 2/3 por nivel,
-    gasto, una vez por turno, reinicio en on_turn_start, sin usos/melee/
-    sin rng → cero RNG (rng que revienta), decisión «no» no gasta,
-    2d6 antes del 18 y 4d6 desde el 18 (roll_dice parcheado en el
-    módulo que lo usa), reset restaura usos. Suite completa: 1139
-    passed (0 fallos).
-    Commit e5cb3cd.
-  - (3) Opciones con salvación y condiciones: imports nuevos en
-    ``arcane_archer.py`` (``proficiency_bonus``, ``Condition``,
-    ``apply_condition``, ``registrar_resistencia``, ``saving_throw``).
-    Campo ``beguiling`` (nombre de la víctima → aliado hechizador;
-    ``reset`` lo limpia) y CD ``_cd()`` = 8+PB+mod INT. Hook
-    ``_efecto_de_opcion`` tras el daño de ``extra_attack_damage``:
-    Banishing (CAR → Incapacitado 2 rondas; «hasta el final de tu
-    siguiente turno» ≈ duración del afectado, inatacabilidad sin
-    modelar), Beguiling (``_aliado_para_beguiling``: aliado vivo con
-    ``pick`` —sin posiciones, sin aliados solo daño y sin RNG—; SAB →
-    Hechizado 2 rondas con fuente=aliado y marca en ``beguiling``),
-    Enfeebling (CON → ``state.enfeeble_hasta_ronda[fuente] = ronda+1``)
-    y Shadow (SAB → solo daño + salvación + log de visión, sin
-    condición: la visión no depende de la distancia por ataque, TODO).
-    Grasping sigue solo daño; Bursting pendiente de paso 4.
-    Romper Beguiling: ``grant_attack_modifiers`` del rasgo (sin marcas
-    → return inmediato) quita la instancia CHARMED con fuente=aliado y
-    la marca cuando el aliado ataca a la víctima.
-    ``core/combat_state.py``: campo ``enfeeble_hasta_ronda`` +
-    ``enfeeble_mitiga(ronda)`` (caducidad por ronda). ``attack.py``:
-    bloque mínimo tras los bonus de ``raw_dmg`` — si la marca está
-    vigente y el ataque no es mágico (hechizos), ``raw_dmg //= 2``
-    (sin marca → cero cambio). ``Combatant.reset`` limpia la marca.
-    **Tests existentes tocados (explicados antes)**: el helper
-    ``_disparo`` de tests/test_arcane_archer.py pasa de
-    ``SimpleNamespace(name="Blanco")`` a ``Monster`` real (las
-    opciones ahora tiran salvaciones: ``saving_throw`` necesita
-    ``abilities`` y ``apply_condition`` necesita ``conditions``);
-    aserciones sin cambio. Añade kwarg ``ctx`` al helper.
-    tests/test_arcane_archer.py +11 (total 34): CD 8+PB+INT,
-    Banishing falla→Incapacitado / éxito→sin condición, Beguiling
-    hechiza y termina si el aliado ataca (y sin aliados no se tira
-    salvación, saving_throw parcheado para revienta), Enfeebling
-    marca ronda+1 / éxito→sin marca, Shadow sin condición, reset
-    borra marcas, ``enfeeble_mitiga`` por ronda y motor (d20=15,
-    roll_dice=10, marca activa → 13→6 de daño). Suite completa: 1150
-    passed (0 fallos).
-    Commit de50501.
-  - (4) Bursting Arrow: rama en ``_efecto_de_opcion`` (sin salvación).
-    Vecinos = ``valid_targets(owner, ctx)`` menos el objetivo (patrón
-    de área del sim: nunca aliados; «a 10 pies» abstracto = todos los
-    enemigos vivos del arquero salvo el objetivo; SIN RNG en la
-    selección — ``select_area_targets`` no sirve: sortea un subconjunto
-    con k aleatorio, no «cada criatura»). Una sola tirada ``2d6``
-    compartida → ``apply_damage_modifiers(magical=True)`` →
-    ``inflict_damage`` (fuerza) por vecino + log; sin vecinos → sin
-    tirada extra. Imports nuevos: ``parse_damage_type``,
-    ``valid_targets``, ``apply_damage_modifiers``, ``inflict_damage``.
-    El objetivo ya recibió el 2d6 base en el paso 2.
-    tests/test_arcane_archer.py +2 (total 36): vecino recibe 2 (RNG
-    del test = siempre 1s) con aliado intacto y sin condiciones, y sin
-    vecinos solo hay una tirada ``2d6`` (espía). Suite completa: 1152
-    passed (0 fallos).
-    Commit a13698f.
-  - (5) Magic Arrow y Curving Shot (7): constante ``_ARCOS`` (arco
-    corto/largo, shortbow/longbow; normalización a minúsculas estilo
-    ``rules/mastery.py``). En ``apply_arcane_archer``, si nivel >= 7:
-    los arcos de ``pj.attacks``/``pj.weapons`` ganan ``magical=True``
-    in-place (las acciones guardan el MISMO objeto Attack) y se añade
-    ``CurvingShotAction()`` a ``pj.actions``. Campos nuevos
-    ``curving_atk``/``curving_contra`` (limpia en ``reset``). Hook
-    ``after_attack_roll``: marca el fallo si nivel>=7, atacante=dueño,
-    ``range_type is AttackRange.RANGED`` y ``atk.magical`` (solo con
-    Magic Arrow; el hook no recibe rango → se usa el del arma).
-    ``CurvingShotAction`` (BONUS, sin usos): ``can_use`` = super
-    (bonus libre) + marca + ``_otros_enemigos`` no vacío (cero RNG si
-    sin otro objetivo) + ``pick(("no","si"))``; ``execute`` = elige
-    ``pick`` entre los otros enemigos vivos («60 pies» abstracto: sin
-    posiciones), gasta la marca y ``attack_roll`` local (patrón
-    berserker/beast: import perezoso de engine.combat; el re-tiro es un
-    ataque normal — puede aplicar Arcane Shot si aún no se usó en el
-    turno). Helper ``_otros_enemigos`` con ``valid_targets``.
-    tests/test_arcane_archer.py +14 (total 50): marca de arcos por
-    nivel/nombre (EN y ES) y sin tocar no-arcos; marca de Curving con
-    fallo y no-marca con acierto/melee/sin magia/nivel<7; acción dada
-    de alta solo desde el 7; can_use con bonus gastado / sin otro
-    enemigo / sin marca → cero RNG (rng que revienta), decisión «no»
-    y «sí»; re-tiro contra el OTRO enemigo con attack_roll parcheado
-    (módulo que lo define) y marca consumida; sin otro enemigo no se
-    llama nada y la marca se conserva; reset limpia la marca.
-    Suite completa: 1166 passed (0 fallos).
-    Commit 4dbc3b8.
-  - (6) Piercing/Seeking y Ever-Ready: SIN código. Decisión: Piercing
-    y Seeking quedan FUERA del pool (``ARCANE_SHOTS`` = 6; ya
-    decidido en el paso 1) y se documentan en TODO.md con el motivo
-    exacto: reemplazan la tirada de ataque («instead of making an
-    attack roll») y el motor no tiene gancho previo a ``attack_roll``
-    (el primero del flujo es ``extra_attack_damage``, que exige
-    impactar) + su geometría (línea 1 ft × 30 ft / punto visto) no
-    existe sin posiciones → más allá del «gancho mínimo». Ever-Ready
-    Shot (10): dato de tabla, ya documentado en el docstring del
-    módulo (cada combate empieza con usos completos).
-    Commit 444e707 (solo TODO.md; PASOS se commitea en el paso 8).
-  - (7) Tests de integración: ``run_combat`` con el arquero nivel 7 y
-    semilla fija dos veces → mismo log, mismos ``action_uses`` y mismo
-    PV final del enemigo (reproducibilidad; el arquero sí ataca). Y
-    ``run_combat`` de un Guerrero SIN subclase con los hooks de
-    ``ArcaneArcherFeatures`` parcheados a «revienta» → no se ejecuta
-    ningún código de la subclase (además: sin ``CurvingShotAction`` en
-    las acciones). tests/test_arcane_archer.py +2 (total 52). Suite
-    completa: 1168 passed (0 fallos).
-    Commit 9fdc2ad.
-  - (8) Docs: TODO.md (casilla 8, Piercing/Seeking + Ever-Ready en
-    «Fighter: pendientes reales», receta de subclase corregida — ya no
-    hay registro vacío — y fecha de revisión 2026-11-07);
-    ARCHITECTURE.md (fila rules/classes con fighter/subclasses/
-    {arcane_archer}, recuentos 82 módulos / 18141 líneas, tests 51
-    ficheros / 18589 líneas / 1168 tests, «1168 tests» en Cómo
-    comprobar); PASOS-ANTERIORES (recuentos y registro de clases del
-    ESTADO ACTUAL, bloque Guerrero con Arcane Archer, esta entrada).
-    Commit b546887.
-  - (9) Verificación final: ``pytest tests/test_arquitectura.py`` →
-    3 passed; suite completa → 1168 passed (0 fallos);
-    ``python tools/capas.py`` (PYTHONIOENCODING=utf-8) → 1 violación
-    conocida ``model.combatant → rules.conditions``; ``graphify update
-    .`` → 3475 nodos, 12639 aristas, 101 comunidades; backup
-    ``graphify-out/2026-11-07/``. Commit final con grafo.
+  - (1) arcane_archer.py: ARCANE_SHOTS (6), ARCANE_ARCHER_SKILLS,
+    apply_arcane_archer (exige FighterFeatures; Lore con pick;
+    opciones con sample o kwarg). Registro "arcane_archer" + entrada
+    test_arquitectura. Tests de freeze tocados (explicados).
+    test_arcane_archer.py (12). Commit b222ed3. Suite: 1128.
+  - (2) Arcane Shot base: arcane_shot_usage PER_DAY, pick «no/sí»,
+    2d6/4d6 desde 18. Commit e5cb3cd. Suite: 1139.
+  - (3) Opciones con salvación: CD 8+PB+INT; Banishing/Beguiling/
+    Enfeebling/Shadow; campo CombatState.enfeeble_hasta_ronda.
+    Commit de50501. Suite: 1150.
+  - (4) Bursting Arrow: vecinos con valid_targets, 2d6 compartidos.
+    Commit a13698f. Suite: 1152.
+  - (5) Magic Arrow (arcos magical=True) + Curving Shot (7):
+    CurvingShotAction. Commit 4dbc3b8. Suite: 1166.
+  - (6) Piercing/Seeking: SIN código; fuera del pool por reemplazar
+    la tirada de ataque (no hay gancho previo a attack_roll).
+    Commit 444e707.
+  - (7) Tests de integración run_combat semilla fija.
+    Commit 9fdc2ad. Suite: 1168.
+  - (8) Docs Commit b546887. (9) Verificación: grafo 3475 nodos.
 
 ARCANE ARCHER: PIERCING Y SEEKING (2026-11-08)
-  - (1) Helper de daño del arma: en ``engine/combat/attack.py``,
-    ``daño_base_arma(attacker, target, atk, rango, *, crit, ctx, rng,
-    log)`` extrae sin cambios el bloque de ``raw_dmg`` de
-    ``attack_roll`` (dados con piso GWF, ``dmg_bonus``, bonus de
-    tamaño, bonus de rasgos y mitigación Enfeebling; ``raw_dmg=0`` si
-    el arma sin daño). El camino normal de ataque la llama con el
-    mismo orden de ``roll_dice``/RNG → cero cambio de resultados.
-    Suite completa: 1168 passed (0 fallos). Commit ba5c843.
-  - (2) Punto de sustitución: ``AtaqueSustituido(motivo)`` en
-    ``rules/traits/base.py`` (dataclass, sin HOOK_NAMES ni reexport en
-    fachada) y helper ``_sustituir_ataque`` en ``engine/combat/attack.py``
-    (duck-typing patrón ``resolver_maestria``: itera los rasgos del
-    atacante y llama ``sustituir_ataque(attacker, target, atk, rango,
-    ctx=, rng=)`` si lo definen; primer resultado no-None). En
-    ``attack_roll``, paso 2b tras ``_actualizar_distancia`` y antes de
-    ``attack_modifiers``: si hay resultado se devuelve SIN d20, sin
-    ``after_attack_roll`` ni maestrías; sin rasgos o ``None`` → flujo
-    idéntico sin RNG. Firma de ``attack_roll`` → ``-> Any``. Tests
-    nuevos ``tests/test_sustituir_ataque.py`` (3): sin rasgo sin RNG,
-    ``None`` conserva PV/log con la misma semilla, resultado con RNG que
-    revienta. Suite completa: 1171 passed (0 fallos).
-    Commit d0524ac.
-  - (3) Decisión única ANTES de la tirada + pool de 8 opciones: en
-    ``arcane_archer.py``, ``ARCANE_SHOTS`` gana «Piercing Arrow» y
-    «Seeking Arrow» al final (8) y la constante
-    ``ARCANE_SHOTS_SIN_TIRADA``. Campo ``opcion_pendiente`` (se limpia en
-    ``on_turn_start`` y ``reset``). Método ``sustituir_ataque`` (punto
-    de decisión del paso 2b): guards primero (owner, rango RANGED, usos,
-    una vez por turno, pendiente sin resolver, rng → ``None`` SIN RNG);
-    pool = conocidas filtrando P/S solo con enemigos vivos
-    (``valid_targets``, cero RNG; pool vacío → ``None`` sin RNG); ``pick``
-    «no»/«sí» + ``pick`` de la opción; P/S → gastan el uso AHORA y
-    devuelven ``AtaqueSustituido`` (daño: pasos A4/A5); impacto → se
-    guarda en ``opcion_pendiente``. ``extra_attack_damage`` reescrito:
-    solo aplica la pendiente (gasto al impactar, 2d6/4d6, log, efecto);
-    sin pendiente → 0 SIN RNG. **Tests existentes tocados (cambios
-    previstos, solo en test_arcane_archer.py)**: (a)
-    ``test_kwarg_de_opciones_invalidas_da_value_error`` usaba
-    «Piercing Arrow» como inválido → ahora válido → «Flecha inventada»;
-    (b) ``test_daño_de_arcane_shot_es_4d6_desde_el_18``: pool completo
-    ahora 8 y RngSi elegiría P/S → fija las 6 opciones de impacto;
-    (c) helper ``_disparo`` llama ``sustituir_ataque`` antes de
-    ``extra_attack_damage`` (mismo consumo de RNG: 2 randrange en el
-    mismo orden que antes); (d) ``test_sin_subclase...`` añade el espía
-    ``sustituir_ataque`` (aditivo). Ningún test de otra clase cambia.
-    Tests nuevos (7): pool 8, equiprobabilidad de las 8 con RngSi,
-    impacto no gasta hasta impactar, P/S gastan al sustituir, sin
-    elegibles P/S sin RNG, un solo par de picks, sin usos/melee sin RNG.
-    Suite completa: 1178 passed (0 fallos). Commit c97ce88.
-  - (4) Piercing Arrow sin tirada de ataque: en ``arcane_archer.py``,
-    ``_ejecutar_piercing`` (objetivos = ``valid_targets``, mismo convenio
-    de fuego amigo que Bursting; ``k`` con ``pick`` 1-3 limitado por los
-    elegibles; sin elegibles → ``False`` SIN gastar), ``_danar_con_salvacion``
-    (daño del arma con ``daño_base_arma`` UNA vez + extra 1d6/2d6 UNA vez;
-    cada objetivo tira su salvación DES con ``apply_save_damage`` —misma
-    función que los hechizos, mitad antes de resistencias, sin cobertura—
-    y el extra se mitiga con la MISMA tirada en tipo aparte; arma =
-    ``atk.magical``, extra = mágico) y ``_ctx_con_rng``/``_CtxConRng``
-    (portador que aporta ``rng`` cuando el ctx de test no lo trae; el
-    motor ya lo lleva). P/S pasan a gastar el uso al ejecutarse (defensa
-    de elegibles delante del gasto). Docstring de módulo con el detalle.
-    **Test existente tocado (explicado ANTES en chat)**:
-    ``tests/test_fighter.py::test_apply_class_fighter_sin_subclase_equivalente_a_apply_fighter``
-    falló (CA 13 vs 12): dependía del estado global de
-    ``_RNG_CREACION`` (Random(0) avanza con cada PJ del suite) y los
-    tests nuevos A3/A4 de ``_arquero`` (``test_arcane_archer.py`` corre
-    antes) desplazaron la secuencia → los dos draws consecutivos daban
-    estilos distintos. Arreglo: reseed con ``monkeypatch`` antes de cada
-    apply (patrón del test equivalente de Arcane Archer); intención del
-    test intacta, producción sin cambios. Tests nuevos A4 (11):
-    Piercing fallo=arma+1d6 / éxito mitad (7 = (6+2)//2 + 6//2), extra
-    una sola vez con 2 objetivos, k uniforme 1 (``_RngK1``) y k limitado
-    por elegibles, atacante nunca objetivo, sin elegibles sin gasto,
-    salvación sin cobertura (bonus = mod DES, una tirada), resistencia
-    perforante; Seeking fallo/mitad/2d6 nivel 18/resistencia a fuerza.
-    Suite completa: 1190 passed (0 fallos). Commit b4c0aa3.
-  - (5) Seeking Arrow: el código (``_ejecutar_seeking`` + tests de
-    fallo/mitad/2d6/resistencia) entró en el commit b4c0aa3 junto con
-    Piercing (comparten ``_danar_con_salvacion``: misma salvación DES,
-    mismo extra en tipo aparte; «ubicación»/«sin camino» = dato sin
-    efecto, ya documentado en el docstring). Esta casilla solo añade el
-    test simétrico ``test_seeking_sin_elegibles_no_gasta_uso`` (defensa
-    interna: ``False`` con RNG que revienta y sin gastar). Suite
-    completa: 1191 passed (0 fallos). Commit bbf714e.
-  - (6) Ever-Ready Shot cerrado como decisión de diseño: test
-    ``test_ever_ready_shot_no_cambia_los_usos_al_empezar_un_combate``
-    (gasta los usos de nivel 10, ``reset`` = combate nuevo → usos
-    completos; reabrir solo si hay >1 combate por descanso), docstring
-    de ``arcane_archer.py`` con la condición de reapertura y TODO.md
-    reescrito: fuera Piercing/Seeking (ya implementados) y fuera
-    Ever-Ready de pendientes; quedan SOLO efectos parciales con motivo
-    (Grasping/Shadow/Banishing/ubicación de Seeking) más la
-    aproximación de Enfeebling. Fecha de revisión de TODO → 2026-11-08.
-    Suite completa: 1192 passed (0 fallos). Commit c614c41.
-  - (7) Docs y verificación final: ARCHITECTURE.md (fila engine/combat
-    con ``daño_base_arma`` y el punto de sustitución; recuentos 82
-    módulos / 18390 líneas / tests 52 ficheros / 19034 líneas / 1192
-    tests; sección «Arcane Archer (XGE)» con el punto de sustitución,
-    el helper y la decisión de Ever-Ready); PASOS ESTADO ACTUAL
-    actualizado (mismos recuentos, fecha 2026-11-08, nota de las 8
-    opciones) y casillas del plan. Commit 02ee052. Verificación:
-    ``pytest tests/test_arquitectura.py`` → 3 passed; suite completa →
-    1192 passed (0 fallos); ``python tools/capas.py``
-    (PYTHONIOENCODING=utf-8) → 1 violación conocida
-    ``model.combatant → rules.conditions``; ``graphify update .`` →
-    3563 nodos, 12939 aristas, 110 comunidades; backup
-    ``graphify-out/2026-11-09/``. Commit final con grafo.
+  - (1) daño_base_arma en engine/combat/attack.py (extrae raw_dmg
+    sin cambio de RNG). Commit ba5c843. Suite: 1168.
+  - (2) AtaqueSustituido + helper _sustituir_ataque (duck-typing,
+    paso 2b de attack_roll, SIN d20/after_attack_roll/maestrías).
+    tests/test_sustituir_ataque.py (3). Commit d0524ac. Suite: 1171.
+  - (3) Pool de 8 opciones + decisión única ANTES de la tirada:
+    sustituir_ataque en el rasgo; extra_attack_damage solo aplica la
+    pendiente. Tests tocados explicados. Commit c97ce88.
+    Suite: 1178.
+  - (4) Piercing Arrow: _ejecutar_piercing (k con pick 1-3) +
+    _danar_con_salvacion (salvación DES por objetivo). Fix de test
+    con reseed. Commit b4c0aa3. Suite: 1190.
+  - (5) Seeking Arrow: _ejecutar_seeking (código en b4c0aa3).
+    Commit bbf714e. Suite: 1191.
+  - (6) Ever-Ready Shot cerrado como decisión de diseño (test
+    freeze). Commit c614c41. Suite: 1192.
+  - (7) Docs y verificación: grafo 3563 nodos. Commit 02ee052.
 
 BATTLE MASTER (SESIÓN 1) (2026-11-09)
-  - (1) Tablas en ``core/classes.py``: ``superiority_dice_count`` (0/4/5/6
-    en <3/3-6/7-14/15+), ``superiority_die_sides`` (d8/d10/d12 en
-    <10/10-17/18+), ``maneuvers_known_count`` (0/3/5/7/9 en
-    <3/3-6/7-9/10-14/15+) y pool ``BATTLE_MASTER_MANEUVERS`` (11
-    maniobras de la sesión 1: 9 de impacto + Precision + Feinting; las
-    de la sesión 2 entran al ampliar el pool y cambiarán el ``sample``
-    de PJ con semilla fija). Tests nuevos ``tests/test_battle_master.py``
-    (4): las 3 tablas por nivel y el pool (11, sin Parry, sin
-    duplicados). Commit de A1 (suite entera al cerrar A2).
-  - (2) Esqueleto y registro: ``rules/classes/fighter/subclasses/battle_master.py``
-    con ``BattleMasterFeatures`` (dados restantes, tamaño del dado,
-    maniobras conocidas, flag Relentless por turno, datos de Know Your
-    Enemy y Student of War, pendientes de maniobra/Feinting) y
-    ``apply_battle_master`` (exige ``FighterFeatures`` y nivel >= 3;
-    ``rng`` por defecto con semilla 0; kwarg ``maneuvers`` explícito
-    validado con el patrón ``fighting_style``; Student of War con
-    ``pick`` de ``FIGHTER_SKILLS`` sin repetir —sin candidatas, sin
-    cambio y sin RNG—; herramientas de artesano y Know Your Enemy como
-    dato). ``reset`` rellena los dados (patrón Second Wind) y
-    ``on_turn_start`` limpia flags/pendientes. Registro
-    ``"battle_master"`` en ``fighter/__init__.py`` (``SubclassDef``
-    min_level 3) + reexport en ``fighter/subclasses/__init__.py``,
-    ``rules/classes/__init__.py`` y fachada ``dnd_sim/__init__.py``.
-    **Tests existentes tocados (explicados ANTES en chat)**:
-    ``tests/test_fighter.py`` y ``tests/test_arcane_archer.py``
-    congelan el registro de subclases del fighter → pasan de
-    ``{"arcane_archer"}`` a ``{"arcane_archer", "battle_master"}``
-    (mismo hecho congelado en dos ficheros; ningún otro resultado
-    cambia). ``tests/test_arquitectura.py`` añade
-    ``BattleMasterFeatures``/``apply_battle_master`` al paquete de
-    reexport. Tests nuevos A2 (16): registro, equivalencia
-    ``apply_class``/``apply_battle_master`` con reseed, errores de
-    clase/nivel, maniobras por nivel (3/5/7/9), kwarg válido/inválido/
-    recuento, Student of War (añade/no candidatas/herramientas), Know
-    Your Enemy, dados por nivel, ``reset`` y ``on_turn_start`` sin RNG.
-    Suite completa: 1212 passed (0 fallos). Commit de A2.
-  - (3) Punto de decisión único por ataque: en ``engine/combat/attack.py``,
-    helper ``_decidir_maniobra`` (duck-typing patrón
-    ``_sustituir_ataque``, sin HOOK_NAMES: primer rasgo que define
-    ``decidir_maniobra(attacker, target, atk, rango, *, roll, total, ca,
-    hit, ctx, rng, log)`` devuelve ``(hit, total)`` corregidos). En
-    ``attack_roll``, paso 6b justo tras calcular ``hit`` y ANTES del
-    crítico automático (la conversión de Precision no vuelve a consultar
-    Parry: simplificación documentada); sin rasgo → valores idénticos
-    SIN RNG. En ``battle_master.py``: constantes ``MANEUVERS_ON_HIT``
-    (9 de impacto) y ``MANEUVERS_MELEE_ONLY`` (Lunging/Sweeping);
-    ``decidir_maniobra`` con guards primero (sin datos, pendiente,
-    Feinting encolado, sin rng o fallo → SIN RNG), elegibles sin RNG
-    (cuerpo a cuerpo para Lunging/Sweeping; Sweeping exige otro enemigo)
-    y ``pick`` «no»/«sí» + ``pick`` uniforme; guarda
-    ``maniobra_pendiente`` + ``maniobra_total``. ``extra_attack_damage``
-    ejecuta: tira el dado de superioridad UNA vez con la regla de
-    críticos del motor (``crit`` lo duplica), gasta el dado y devuelve
-    el daño; Relentless (15) con ``pick`` «no»/«sí» → 1d8 sin gastar y
-    flag por turno (sin RNG con <15 o ya usado). Salvaciones (A4),
-    marcas (A5) y Sweeping (A6) quedan como ramas marcadas. Tests
-    nuevos A3 (12): un solo par de picks, equiprobabilidad con RNG
-    controlado, melee-only a distancia, gasto solo al ejecutar, una
-    maniobra por ataque, sin datos/fallo-sin-Precision/sin subclase sin
-    RNG, integración ``attack_roll`` (gasta el dado con pick parcheado),
-    Relentless (d8 sin gastar, una vez por turno, sin ``pick`` con <15,
-    siempre d8). Suite completa: 1224 passed (0 fallos). Commit de A3.
-  - (4) Maniobras con salvación: en ``battle_master.py``,
-    ``_cd`` (8 + PB + max(mod FUE, mod DES)) y ``_efecto_de_maniobra``
-    llamado tras tirar el dado en ``extra_attack_damage`` —el dado NO se
-    vuelve a tirar—. Ramas: Disarming (FUE; fallo = solo log, objeto sin
-    modelar ``# TODO``), Goading (SAB; fallo → marca
-    ``CombatState.goading[nombre_marcador] = ronda + 2`` en el SUJETO,
-    shortcut «hasta el final de tu siguiente turno»; el consumo entra en
-    A5), Menacing (SAB; fallo → ``FRIGHTENED`` 2 rondas con el patrón
-    de duración de Intimidating Presence/Banishing), Pushing (FUE;
-    fallo = solo log, empuje ``# TODO``), Trip (FUE SOLO si el objetivo
-    es Grande o menor con ``_orden_tamano`` local patrón utility; fallo
-    → ``PRONE`` con ``EscapeCheck`` de Topple; Enorme+ sin salvación).
-    Lunging/Maneuvering solo daño. Campo nuevo ``CombatState.goading``
-    (core; ``compare=False``) limpiado en ``Combatant.reset``. Módulo
-    docstring con la CD y el reparto. Tests nuevos A4 (10): Menacing
-    fallo/éxito, Goading marca/no marca (ronda+2), Trip derriba/no
-    derriba/no salva con objetivo enorme, Disarming solo daño, efectos
-    sin implementación no alteran el combate (daño devuelto 4 veces,
-    sin condiciones/marcas/movimiento), daño una sola vez. Suite
-    completa: 1234 passed (0 fallos). Commit de A4.
-  - (5) Marcas Distracting/Goading/Feinting: campo nuevo
-    ``CombatState.distracting`` (core, ``compare=False``, limpio en
-    ``Combatant.reset``); el de ``goading`` ya entró en A4.
-    ``rules/mastery.py::consumir_marcas`` (bloque 5c de
-    ``attack_modifiers``) ampliado: Distracting en el OBJETIVO →
-    ventaja al primer atacante distinto del marcador y SE CONSUME
-    (caduca a ronda+1, «antes del inicio de tu siguiente turno»; el
-    marcador no gana ventaja ni consume); Goading en el ATACANTE →
-    desventaja al atacar a cualquiera que NO sea el marcador, NO se
-    consume (solo caduca a ronda+2). En ``battle_master.py``: rama
-    Distracting en ``_efecto_de_maniobra`` (sin salvación), rama
-    Feinting en ``decidir_maniobra`` (consume la ranura SIN RNG y, si
-    impacta, deja ``maniobra_pendiente="Feinting Attack"``),
-    ``modify_attack_modifiers`` concede ventaja mientras la marca esté
-    encolada (la consume el punto de decisión tras la tirada) y
-    ``FeintingAttackAction`` (acción bonus «Ataque de Engaño»:
-    elegibilidad con ``pick`` «no»/«sí» patrón Disparo Curvo, cero RNG
-    sin bonus/datos/marca ya encolada; ``execute`` encola la marca;
-    añadida en ``apply_battle_master``). Tests nuevos A5 (9):
-    Distracting ventaja a terceros+consumo/no al marcador/caducidad;
-    Goading sin consumo/no aplica al marcador/caducidad; reset limpia
-    marcas; Feinting elegibilidad con decisión aleatoria/sin datos sin
-    RNG/ventaja+gasto del dado al impactar/pendiente en fallo. Suite
-    completa: 1244 passed (0 fallos). Commit de A5.
-  - (6) Precision y Sweeping: en ``battle_master.py``,
-    ``MANEUVERS_ON_MISS = ("Precision Attack",)``. Rama de fallo en
-    ``decidir_maniobra``: sin 1 natural y si ``total + dados_lados >=
-    ca`` (el dado MÁXIMO alcanza la CA); ``pick`` «no»/«sí» +
-    ``pick`` uniforme; ejecuta con el helper NUEVO ``_tirar_dado``
-    (Relentless compartido: pick «no»/«sí» → 1d8 sin gastar; si no,
-    gasta y tira el dado con la regla de críticos), suma el valor al
-    TOTAL (NO al daño), convierte el impacto y no deja pendiente.
-    Sweeping: rama en ``extra_attack_damage`` —el dado NO se suma al
-    golpe propio (return 0)— vía ``_ejecutar_sweeping``: segundo
-    enemigo con ``_otro_enemigo``/``valid_targets`` (sin él no se
-    decide: ya filtrado en A3) y ``self.maniobra_total >=
-    effective_ac(segundo)`` → daño con
-    ``apply_damage_modifiers``/``inflict_damage`` (tipo y mágico del
-    arma); si no cubre la CA, log y sin daño (el dado YA se gastó).
-    Refactor: ``extra_attack_damage`` usa ``_tirar_dado`` (mismo
-    comportamiento, tests de Relentless en verde). Imports nuevos:
-    ``parse_damage_type``, ``apply_damage_modifiers``/``inflict_damage``,
-    ``effective_ac`` (capa rules→rules, sin ciclo). Tests nuevos A6
-    (9): Precision convierte fallo/no alcanza con el dado máximo/1
-    natural sin RNG/Relentless sin gastar/integración motor
-    (9+3<CA 14 → +5 → impacta); Sweeping daña al segundo y gasta un
-    dado/no daña si la tirada no cubre la CA/no elegible sin segundo
-    enemigo ni a distancia (cero RNG). Suite completa: 1253 passed
-    (0 fallos). Commit de A6.
-  - (7) Cierre de pool: Bait and Switch FUERA — inspección previa
-    confirma que no hay CA temporal con caducidad (``CombatState``
-    solo tiene ``at_range``/``dodging`` y el hook
-    ``defensive_ac_bonus`` es instantáneo por tirada, sin expiración);
-    Evasive Footwork FUERA (exige modelo de movimiento). Relentless
-    (tests A3: d8 sin gastar, una vez por turno, <15 sin ``pick``)
-    y Know Your Enemy (test A2: dato bool desde el nivel 7) ya están
-    cerrados. Test nuevo: pool sin Bait and Switch ni Evasive
-    Footwork (62 tests en el fichero). Commit de A7.
-  - (B) Decisiones de diseño y cambios de test existente:
-    * Cambios de test explicados ANTES en el chat (A2): solo
-      ``tests/test_fighter.py`` y ``tests/test_arcane_archer.py``
-      congelan el registro de subclases del fighter → pasan de
-      ``{"arcane_archer"}`` a ``{"arcane_archer", "battle_master"}``;
-      ``tests/test_arquitectura.py`` suma
-      ``BattleMasterFeatures``/``apply_battle_master`` al paquete de
-      reexport. Verificado con ``git diff abdcc55^..HEAD --stat --
-      tests/``: NINGÚN otro fichero de test cambió (los demás 1192+
-      tests conservan su resultado; todo lo nuevo vive en
-      ``tests/test_battle_master.py``).
-    * Precision no vuelve a consultar el bonificador defensivo del
-      defensor (Parry ya resuelto antes): simplificación documentada
-      en el docstring de ``_decidir_maniobra``.
-    * Caducias de marcas (shortcut): Goading ``ronda+2`` («hasta el
-      final de tu siguiente turno»), Distracting ``ronda+1`` («antes
-      del inicio de tu siguiente turno»); Feinting es flag del rasgo
-      y caduca en ``on_turn_start``.
-    * Goading se parte A4/A5: la rama de salvación MARCA (A4) y el
-      consumo vive en ``consumir_marcas`` (A5).
-    * Relentless comparte ``_tirar_dado`` con Precision y Sweeping
-      (una sola implementación del gasto/d8).
-    * Una maniobra por ataque = ``maniobra_pendiente`` único; la rama
-      Feinting corta el resto SIN RNG.
-    * Dato sin efecto: Know Your Enemy, herramientas de artesano,
-      Disarming (objeto), Pushing (empuje), Maneuvering/Lunging
-      (alcance/movimiento) — log + ``# TODO``.
-    * Ampliar el pool con las maniobras de la sesión 2 (Parry,
-      Riposte, Commander's Strike, Ambush, Commanding Presence,
-      Rally, quizá Bait and Switch) cambiará el ``sample`` de PJ con
-      semilla fija: anotarlo aquí y reseedar los tests afectados.
-  - Verificación final: ``pytest tests/test_arquitectura.py`` → 3
-    passed; ``pytest`` → 1254 passed (0 fallos); ``python tools/capas.py``
-    → 1 violación, la conocida ``model.combatant → rules.conditions``;
-    ``graphify update .`` → 3720 nodos, 13481 aristas, 112 comunidades;
-    backup ``graphify-out/2026-11-09/``. Commit final con grafo.
+  - (1) Tablas superiority_dice_count/sides, maneuvers_known_count,
+    pool BATTLE_MASTER_MANEUVERS (11). test_battle_master.py (4).
+  - (2) battle_master.py: BattleMasterFeatures + apply_battle_master
+    (kwarg maneuvers). Registro "battle_master". Tests de freeze
+    tocados. Suite: 1212.
+  - (3) Punto de decisión único _decidir_maniobra (paso 6b de
+    attack_roll) + extra_attack_damage gasta el dado; Relentless (15).
+    12 tests. Suite: 1224.
+  - (4) Maniobras con salvación (CD 8+PB+max(FUE,DES)): Menacing,
+    Goading (marca CombatState.goading), Trip, Disarming/Pushing solo
+    log # TODO. Campo goading en CombatState. Suite: 1234.
+  - (5) Marcas Distracting/Goading/Feinting en consumir_marcas;
+    FeintingAttackAction. Suite: 1244.
+  - (6) Precision Attack (convierte fallo) y Sweeping (segundo
+    enemigo). Helper _tirar_dado compartido con Relentless.
+    Suite: 1253.
+  - (7) Cierre de pool: Bait and Switch y Evasive Footwork FUERA.
+  - (B) Decisiones: Precision no reconsulta Parry; caducias de
+    marcas; dato sin efecto (Know Your Enemy, Disarming, Pushing,
+    Maneuvering/Lunging). Ampliación del pool en sesión 2 cambiará
+    el sample → reseedar.
+  - Verificación: 1254 passed; grafo 3720 nodos.
 
 BATTLE MASTER (SESIÓN 2) (2026-11-09)
-  - (1) Pool y tablas: ``BATTLE_MASTER_MANEUVERS`` de 11 a 14 con
-    «Commander's Strike», «Parry» y «Riposte» (orden alfabético del
-    pool; Rally entra en B1). **Test existente tocado (explicado ANTES
-    en chat)**: ``test_el_pool_solo_contiene_las_maniobras_implementadas``
-    congelaba ``len == 11`` y ``"Parry" not in`` (hechos de la sesión 1
-    que A1 cambia a propósito) → ``len == 14`` y presencia de las 3
-    nuevas. NINGÚN otro test cambia: la equivalencia
-    ``apply_class``/``apply_battle_master`` sigue en verde porque el
-    monkeypatch reseedea ``_RNG_CREACION`` en los dos módulos y
-    ``test_maniobras_conocidas_segun_nivel`` ya comprobaba
-    recuento + pertenencia al pool. Test nuevo (1): kwarg explícito
-    con las 3 maniobras de reacción es válido. Suite completa:
-    1255 passed (0 fallos). Commit de A1.
-  - (2) Parry (A2): nuevo hook duck-typing sobre el OBJETIVO
-    ``reducir_dano_recibido(attacker, rango, dmg, *, ctx, rng,
-    log)`` (helper ``_reducir_dano_recibido`` en ``attack.py``,
-    patrón ``_sustituir_ataque``, sin entrada en HOOK_NAMES →
-    ``test_traits`` no cambia) llamado justo ANTES de
-    ``inflict_damage``: el dueño del rasgo es el atacado (el
-    ``reduce_damage_to_allies`` de Interception excluye al propio
-    guardián, por eso hizo falta un hook nuevo). Guards SIN RNG:
-    daño <= 0, sin atacante/rng, rango no cuerpo a cuerpo, maniobra
-    no conocida, dueño muerto/no capaz de actuar, reacción ya
-    usada o sin dados (y sin Relentless disponible). Decisión
-    ``pick`` «no»/«sí» («no» no gasta nada); el dado se tira UNA
-    vez (``_tirar_dado`` compartido, Relentless incluido) y resta
-    ``dado + max(mod FUE, mod DES)`` con mínimo 0. Gasta la
-    reacción siempre que se usa; Relentless solo evita gastar el
-    dado. Orden documentado: Parry reduce el daño YA modificado
-    (resistencias/vulnerabilidades primero, Parry después) y no se
-    duplica en crítico. Sin la subclase el helper devuelve el
-    daño sin consultar rasgos ni RNG. Tests nuevos (14): reducción
-    con valor controlado, mínimo 0, solo cuerpo a cuerpo (rng que
-    revienta a distancia), gasto de reacción y dado, sin
-    reacción/dados/maniobra → sin RNG, una sola vez por ronda,
-    mayor de FUE/DES, Relentless sin gastar dado, aplicación en el
-    motor antes del daño, no se consulta en un fallo, no actúa
-    cuando el Battle Master es el atacante y sin subclase. NINGÚN
-    test existente cambia. Suite completa: 1269 passed (0
-    fallos). Commit de A2.
-  - (3) Riposte (A3): en ``attack.py`` helper
-    ``_reaccionar_al_fallo(target, attacker, rango, *, ctx, rng, log)``
-    (duck-typing patrón ``_reducir_dano_recibido``, sin entrada en
-    HOOK_NAMES) llamado tras la rama de fallo de ``attack_roll`` SOLO
-    si ``not hit``: el dueño del rasgo es el atacado. En
-    ``battle_master.py``: helper ``_armas_melee_propias`` (pool vacío
-    → sin RNG, sin fallback a golpe sin armas a diferencia de
-    Retaliation) y ``reaccionar_al_fallo`` con guards SIN RNG (sin
-    ctx/rng, rango no cuerpo a cuerpo, maniobra no conocida, sin armas
-    cuerpo a cuerpo propias, dueño muerto/no capaz de actuar, atacante
-    muerto o ``at_range``, reacción ya usada, sin dados y sin
-    Relentless disponible); ``pick`` «no»/«sí» («no» no gasta nada);
-    arma con ``pick`` uniforme (sin RNG si solo hay una); gasta la
-    reacción y tira el dado UNA vez (``_tirar_dado`` compartido,
-    Relentless incluido). El valor viaja en ``ctx.dano_reaccion`` y
-    ``daño_base_arma`` lo suma PLANO (fuera de ``roll_dice``: no se
-    duplica en crítico y se consume aunque el arma no tire dados; el
-    ctx es copia, sin fugas). Contraataque con ``r_ctx.is_reaction``
-    = True reutilizando ``attack_roll`` completo (camino de
-    Retaliation: tirada, daño y crítico); guard de reentrada
-    ``is_reaction`` en ``decidir_maniobra`` → no activa maniobras de
-    la sesión 1. Tests nuevos (12): fallo cuerpo a cuerpo dispara con
-    daño exacto controlado (1+3+6), no dispara tras acierto (RNG que
-    revienta), no a distancia, el dado solo suma si la reacción
-    impacta, el crítico NO duplica el dado, sin armas cuerpo a cuerpo
-    sin RNG, una vez por ronda, sin dados sin RNG, sin reacción sin
-    RNG, atacante muerto no responde, reentrada (is_reaction → sin
-    maniobra) y sin subclase sin consulta del helper. Helper nuevo
-    ``_atacado_fijo`` (fighting_style Archery fijo): los tests que
-    afirman daño exacto no dependen del estilo aleatorio de
-    ``_RNG_CREACION`` compartido. NINGÚN test existente cambia.
-    Suite completa: 1281 passed (0 fallos). Commit de A3.
-  - (4) Commander's Strike (A4): método ``sustituir_ataque`` en
-    ``BattleMasterFeatures`` (duck-typing ya existente en el paso 2b
-    de ``attack_roll``, patrón Arcane Shot). Guards SIN RNG en orden:
-    sin ctx/rng/atacante/objetivo, ``ctx.is_reaction`` (no sustituye
-    ataques de reacción), maniobra no conocida, otra maniobra ya
-    encolada (una por ataque: si Feinting está encolado, CS cede),
-    sin dados y sin Relentless, o sin aliado elegible. Helper nuevo
-    ``_aliados_elegibles`` — vivo, no el dueño, no hostil
-    (``_es_aliado``), reacción libre, con arma (``_armas_propias``,
-    refactor mínimo sobre ``_armas_melee_propias``) y con enemigo
-    objetivo (``valid_targets``)— todo SIN RNG. Con elegibles: ``pick``
-    «no»/«sí» («no» no gasta nada), ``pick`` uniforme de aliado,
-    objetivo y arma (sin RNG con una sola opción), gasta UN dado del
-    DUEÑO (``_tirar_dado``, Relentless incluido) y la REACCIÓN del
-    ALIADO; el valor va en ``r_ctx.dano_reaccion`` y
-    ``daño_base_arma`` ya lo consumía (hecho en A3). El ataque aliado
-    reutiliza ``attack_roll`` completo con ``r_ctx.is_reaction``:
-    defensa contra recursión — el guard ``is_reaction`` del propio
-    ``sustituir_ataque`` y el de ``decidir_maniobra`` del aliado
-    (aunque conozca CS y maniobras de impacto) devuelven sin RNG.
-    Devuelve ``AtaqueSustituido``: el dueño NO tira d20 y NO gasta
-    reacción. SESGO documentado (docstring del método + docstring de
-    módulo + ARCHITECTURE + TODO): la decisión es PREVIA a la tirada
-    (paso 2b), no equiprobable con las maniobras de impacto, que ven
-    el resultado — decisión de diseño, NO deuda.
-    ``battle_master.py`` pasa de 650 a 752 líneas: el recetario del
-    TODO (~700 → paquete ``battle_master/``) se POSPONE porque 17
-    tests parchean ``bm_mod.pick``/``roll_dice`` apuntando al módulo
-    único; migrarlos obligaría a tocar tests existentes (pendiente
-    real, ver TODO). Tests nuevos (12): sustitución con daño exacto
-    (1+3+6) y UN solo d20 (el del aliado; el dueño, 0), sin
-    aliados/reacción/dados/maniobra/arma → sin RNG, Feinting encolado
-    cede (flag intacto), ``ctx.is_reaction`` no sustituye, el dueño
-    nunca aparece en los pools de ``pick``, sin subclase sin consulta
-    del hook, reentrada (aliado Battle Master con CS en su pool no
-    recursa, no gasta su dado y no aplica Menacing) y Relentless a
-    nivel 15 sin gastar dado. NINGÚN test existente cambia: los ctx
-    existentes no tienen aliado elegible (guard antes de todo RNG) y
-    el ataque de reacción del dueño cae en ``is_reaction``. Suite
-    completa: 1293 passed (0 fallos). Commit de A4.
-  - (5) Rally (B1): acción bonus ``BattleMasterRallyAction``
-    (``usage=None``, patrón ``FeintingAttackAction``) registrada en
-    ``apply_battle_master`` junto a Feinting. ``can_use``: guards SIN
-    RNG — bonus libre (super), maniobra «Rally» conocida (a diferencia
-    de Feinting, sesión 1, que no la exige), dados > 0 y algún aliado —
-    y después ``pick`` «no»/«sí». Helper nuevo ``_aliados`` (vivo, no
-    hostil, distinto del dueño, sin RNG; ``_aliados_elegibles`` de CS
-    pasa a reutilizarlo). ``execute`` revalida sin RNG, ``pick`` de
-    aliado (sin RNG con uno solo), ``_tirar_dado`` (Relentless
-    incluido) y PV temporales = max(1, dado + mod CAR del dueño) con
-    política ``max(actual, cantidad)`` (no se acumulan, patrón aura
-    tundra: storm_herald/world_tree/wild_magic). Rally no gasta la
-    reacción de nadie. Pool 14→15 con «Rally» (alfabético, entre
-    Pushing Attack y Riposte). RESEED: el ``sample`` del pool con
-    semilla fija cambia para los PJ creados sin ``maneuvers``
-    explícitos — UN test existente cambia:
-    ``test_el_pool_solo_contiene_las_maniobras_implementadas``
-    (``len == 14`` → 15 y membership «Rally»), explicado aquí ANTES de
-    tocarlo (regla de la tarea). El resto NO cambia: los tests de
-    comportamiento usan maniobras explícitas o no afirman el sample.
-    Suite pre-fix: 1 failed (solo el conteo), 1292 passed. Tests
-    nuevos (11): elegibilidad con pick «no»/«sí», sin maniobra/datos/
-    aliados → sin RNG (can_use y execute), fórmula dado+CAR (6+3=9)
-    gastando UN dado y sin reacción de nadie, mínimo 1 con CAR -1,
-    no acumular (20 se queda, 2 sube a 6), el ``pick`` de aliado
-    nunca incluye al dueño (spy con 2 aliados), Relentless a nivel 15
-    sin gastar dado y sin subclase sin la acción registrada.
-    ``battle_master.py`` pasa de 752 a 819 líneas (el paquete sigue
-    pospuesto por el motivo de A4). Suite final: 1304 passed (0
-    fallos; 3 de test_arquitectura). Commit de B1.
-  - (6) Bait and Switch FUERA del pool (B2): re-inspección de CA
-    temporal con caducidad pedida por la tarea. NO EXISTE: Defense
-    es ``pj.ac += 1`` permanente (fighter/features), Protection es
-    reacción que impone desventaja al atacante (no toca CA),
-    Shielding Storm concede resistencias (no CA), el hook
-    ``defensive_ac_bonus`` es un bonificador instantáneo por ataque
-    con reacción (Patrulla/Parry-like) y ``CombatState`` no tiene
-    ningún campo de CA con ronda de caducidad (los marcadores con
-    caducidad —Vex, Sap, Enfeeble, Goading, Distracting— afectan a
-    tiradas, ventajas o daño). Además, la maniobra exige intercambio
-    de posiciones con un aliado, fuera del alcance (sin movimiento).
-    Pool SIN CAMBIO (sigue en 15):
-    ``test_bait_and_switch_y_evasive_footwork_quedan_fuera_del_pool``
-    ya lo congela y no se toca. Solo documentación (PASOS + TODO).
-    Commit de B2.
-  - (7) Ambush (B3): método ``bonus_iniciativa(self, *, rng)`` en
-    ``BattleMasterFeatures``, consultado por ``roll_initiative``
-    (engine/combat/encounter.py) con duck-typing puro —el motor NO
-    importa rules: ``getattr(rasgo, "bonus_iniciativa")`` y si no es
-    callable se salta— después de la tirada base y ANTES de sumar el
-    mod DES. Guards SIN RNG: sin rng, maniobra no conocida o sin
-    dados (y sin Relentless); después ``pick`` «no»/«sí» («no» no
-    gasta nada) y ``_tirar_dado`` (Relentless incluido). La parte de
-    Sigilo de la maniobra es dato sin efecto: verificado que el
-    motor NO tira habilidades en combate (grep en engine/: ninguna
-    tirada de Sigilo/habilidad). Sin log: la iniciativa corre sin
-    ctx. La rama de ventaja de Feral Instinct
-    (``initiative_with_advantage``) queda intacta y el bucle de
-    traits no consume RNG en rasgos sin ``bonus_iniciativa`` (los
-    tests de encuentro existentes, sin Battle Master, no cambian).
-    Pool 15→16 con «Ambush» (primero alfabético). RESEED: mismo
-    mecanismo que B1 — UN test existente cambia:
-    ``test_el_pool_solo_contiene_las_maniobras_implementadas``
-    (15→16 + membership «Ambush»), explicado aquí ANTES de tocarlo.
-    El resto NO cambia (el fill de ``_completa`` añade «Ambush», pero
-    ningún test de comportamiento lo ve): suite pre-fix 1 failed
-    (solo el conteo), 1303 passed. Tests nuevos (6): el d20 del
-    motor parcheado a 10 —el rasgo suma6 → iniciativa 18 con DES +2
-    y gasta UN dado—, sin maniobra/sin datos → sin RNG (el d20
-    parcheado aísla el ``_ExplotaSiUsaRng``), decisión «no» no gasta
-    nada, sin subclase nadie consulta ``bonus_iniciativa`` y
-    Relentless a nivel 15 suma 8 sin gastar. Suite final: 1310
-    passed (0 fallos; 3 de test_arquitectura). Commit de B3.
-  - (8) Commanding Presence FUERA del pool (B4): el motor NO tira
-    Carisma en combate — grep Intimidation/Persuasion solo toca las
-    tablas de mapeo de core/classes.py y core/skills.py, y grep de
-    habilidades en engine/ solo encuentra un comentario. El
-    bonificador sería un dato sin efecto. Pool SIN CAMBIO (sigue en
-    16) con test freeze propio (no se toca el de Bait/Evasive):
-    ``test_commanding_presence_queda_fuera_del_pool``. Commit de B4.
+  - (1) Pool 11 → 14: + Commander's Strike, Parry, Riposte (test de
+    freeze tocado). Suite: 1255.
+  - (2) Parry (A2): hook duck-typing reducir_dano_recibido sobre el
+    OBJETIVO (antes de inflict_damage; sin HOOK_NAMES). 14 tests.
+    Suite: 1269.
+  - (3) Riposte (A3): helper _reaccionar_al_fallo tras el fallo de
+    attack_roll; daño extra vía ctx.dano_reaccion en daño_base_arma.
+    12 tests. Suite: 1281.
+  - (4) Commander's Strike (A4): sustituir_ataque del Battle Master;
+    gasta UN dado del dueño + reacción del aliado; ataque aliado con
+    is_reaction. SESGO documentado: decisión previa a la tirada.
+    battle_master.py → 752 líneas; paquete battle_master/ POSPUESTO
+    (17 tests parchean bm_mod). Suite: 1293.
+  - (5) Rally (B1): BattleMasterRallyAction; PV temporales = max(1,
+    dado + mod CAR). Pool 14 → 15. battle_master.py → 819 líneas.
+    Suite: 1304.
+  - (6) Bait and Switch FUERA (B2): no existe CA temporal con
+    caducidad. Pool sin cambio (15).
+  - (7) Ambush (B3): bonus_iniciativa() duck-typing en
+    roll_initiative (dado a la iniciativa; Sigilo = dato sin efecto).
+    Pool 15 → 16. Suite: 1310.
+  - (8) Commanding Presence FUERA (B4): el motor no tira Carisma.
+    Pool 16.
 
 CAVALIER (2026-11-10)
-  - (1) Tablas y constante (A1): ``cavalier_mark_uses`` (máx(1, mod
-    FUE)), ``warding_maneuver_uses`` (máx(1, mod CON)) y
-    ``cavalier_mark_extra_damage`` (nivel // 2) en ``core/classes.py``
-    con ``_clamp`` de nivel; pool ``CAVALIER_BONUS_SKILLS`` = Trato con
-    animales, Historia, Perspicacia, Interpretación y Persuasión —
-    «performance» EXISTE en ``SKILL_ABILITIES`` (core/skills.py:29),
-    así que no se quita del pool; el idioma del rasgo queda como dato
-    sin efecto (sin modelo). ``CHARGE_MOVE_PROBABILITY = 0.5`` en
-    ``core/classes.py`` (patrón ``RECKLESS_USE_PROBABILITY``: con 0 la
-    carga nunca ocurre y no se consume RNG) y flag ``--charge-p`` en
-    main.py cableado como ``--reckless-p``: ``_build_party`` acepta
-    ``charge_p`` y lo aplica por duck-typing (``hasattr(trait,
-    "charge_probability")``) para no importar la subclase antes de que
-    exista (A2). Tests nuevos (5) en ``tests/test_cavalier.py``: tablas
-    de usos, daño extra por nivel, pertenencia del pool a
-    ``SKILL_ABILITIES``, constante 0.5 y flag CLI (patrón
-    ``test_legendary`` con ``importlib`` sobre main.py). Suite final:
-    1316 passed (0 fallos). Commit de A1.
-  - (2) Esqueleto y registro (A2): módulo nuevo
-    ``rules/classes/fighter/subclasses/cavalier.py`` con
-    ``CavalierFeatures`` (usos ``marca_usos``/``warding_usos`` como
-    ``ActionUsage`` PER_DAY según ``cavalier_mark_uses``(mod FUE) y
-    ``warding_maneuver_uses``(mod CON) solo desde nivel 7,
-    ``competencia`` de Bonus Proficiency, ``born_to_the_saddle`` =
-    dato, ``charge_probability`` = ``CHARGE_MOVE_PROBABILITY`` para
-    ``--charge-p``, ``turno_cavalier``/``carga_evaluada`` y
-    ``on_turn_start``/``reset``) y ``apply_cavalier`` (valida
-    ``FighterFeatures`` y nivel >= 3 ANTES de todo RNG, luego
-    ``pick`` de Bonus Proficiency entre las no conocidas de
-    ``CAVALIER_BONUS_SKILLS`` sin candidatas no cambia nada). Registro
-    ``"cavalier"`` en ``fighter/__init__.py`` + reexportes en
-    ``fighter/subclasses/__init__.py``, ``rules/classes/__init__.py``
-    y fachada ``dnd_sim/__init__.py`` (``__all__`` de ambos).
-    ``tests/test_arquitectura.py`` NO se toca: su aserción de
-    fachadas es ``esperados - exportados`` (subconjunto) y solo se
-    AÑADEN exports. **Test existente tocado (explicado ANTES)**:
-    ``tests/test_fighter.py::test_clase_fighter_esta_registrada_con_arcane_archer``
-    congela el registro con igualdad exacta
-    ``{"arcane_archer", "battle_master"}`` → pasa a incluir
-    ``"cavalier"`` (es el cambio previsto en la sección 3 de la
-    tarea; NINGÚN otro test existente cambia). **Dos tests más con el
-    mismo freeze exacto (explicados ANTES de tocarlos, inevitable por
-    el registro global)**: ``tests/test_arcane_archer.py::test_registro_arcane_archer_bajo_fighter``
-    y ``tests/test_battle_master.py::test_registro_battle_master_bajo_fighter``
-    afirman ``set(subclases) == {"arcane_archer", "battle_master"}``
-    → pasan a incluir ``"cavalier"`` (mismo cambio que el de
-    ``test_fighter``; ninguna conducta cambia, solo la tabla de
-    registro). Tests nuevos (10) en
-    ``tests/test_cavalier.py``: registro por apply_class equivalente
-    a ``apply_cavalier`` (reseed de ``_RNG_CREACION`` en
-    ``fighter_mod`` y ``cav_mod``, patrón Battle Master), errores de
-    clase/nivel (directo y por registro), Bonus Proficiency añade una
-    no conocida / sin candidatas sin RNG (rng que revienta), usos de
-    marca y warding según tabla, Born to the Saddle sin efecto sobre
-    CA/salvaciones, sin subclase no hay rasgo ni ``charge_probability``
-    y ``--charge-p`` llega al rasgo (``_build_party`` con plantilla
-    parcheada a ``subclass_name="cavalier"``). Suite final: 1326
-    passed (0 fallos). Commit de A2.
-  - (3) Unwavering Mark: marca y desventaja (A3): campo propio
-    ``marca_cavalier`` en ``CombatState`` (``dict[str, Any]`` →
-    nombre del marcador → ``(ronda de caducidad, ref al marcador)``;
-    la ref permite anular la marca si el marcador muere o queda
-    incapacitado sin un lookup por nombre; separado de ``goading`` para
-    que dos fuentes no se pisen) con limpieza en ``Combatant.reset`` y
-    consumo en ``rules/mastery.py::consumir_marcas`` por el mismo
-    camino que Goading (desventaja al SUJETO marcado al atacar a quien
-    no sea su marcador; NO se consume, solo caduca; caducidad
-    ``ronda + 2`` = «hasta el final de tu siguiente turno», mismo
-    criterio documentado que Goading; si el marcador no está vivo o no
-    puede actuar, la marca se borra = fin anticipado). Marca tras
-    impactar: ``after_attack_roll`` en ``CavalierFeatures`` (patrón
-    Studied Attacks; guards ANTES de todo RNG: solo el propio dueño,
-    ``hit``, ``atk.range_type is AttackRange.MELEE`` (el hook no
-    recibe rango), ``can_act``, ``marca_usos.available``, objetivo
-    vivo con nombre y ``ctx.round`` presente; luego ``pick`` «no/sí» →
-    gasta un uso → ``clear()`` + set = la marca nueva sustituye a la
-    anterior). Sin la subclase ni el hook ni el consumo leen RNG.
-    Tests nuevos (11) en ``tests/test_cavalier.py``: marca por el
-    motor (``attack_roll`` con ``roll_d20`` y ``pick`` parcheados →
-    clave ``(3, pj)`` + un uso gastado), sin marca a distancia y sin
-    RNG (rng que revienta), sin marca tras fallo, desventaja solo
-    contra terceros y no contra el marcador sin consumirse, caduca en
-    la ronda indicada, muerto (``dead``) e incapacitado
-    (``apply_condition``) anulan y borran la marca, remarcar
-    sustituye, sin usos sin RNG, Goading de Battle Master convive en
-    su propio campo sin pisarse (ambas desventajas en la misma
-    tirada) y ``Combatant.reset`` la limpia. NINGÚN test existente
-    cambió (suite completa en verde). Suite final: 1337 passed (0
-    fallos). Commit de A3.
-  - (4) Unwavering Mark: ataque especial (A4): punto central con
-    fuente YA existente (``rules/damage.py::inflict_damage`` recibe
-    ``source`` y ``ctx``), así que el aviso vive ahí y cubre también
-    el daño de salvación y de área (todos pasan por ahí con
-    ``source``). Helper nuevo ``_avisar_ataque_especial_marca`` tras
-    ``_notify_damage_dealt`` (solo con ``original > 0 and amt > 0 and
-    source is not None``): lee ``source.state.marca_cavalier`` —
-    vacío (nadie tiene la subclase) → return sin consultar rasgos ni
-    RNG — y por cada marca exige caducidad viva (``caduca >
-    ctx.round``), ``target is not ref`` (dañar al propio Cavalier no
-    arma) y marcador vivo/can_act, luego llama por duck-typing al
-    ``marcar_ataque_especial`` del primer rasgo de ``ref`` que lo
-    tenga. En ``CavalierFeatures``: campos nuevos
-    ``ataque_marca_pendiente`` (turno propio en que vale; 0 = nada) y
-    ``ataque_marca_objetivo``, método ``marcar_ataque_especial`` SIN
-    RNG (``flag = turno_cavalier + 1``, patrón Studied Attacks: un
-    disparo durante el propio turno vale ya para el siguiente; el
-    último disparo gana si varias criaturas marcadas dañan a terceros)
-    y limpieza en ``reset`` (NO en ``on_turn_start``, que debe
-    sobrevivir hasta su turno válido). ``CavalierMarkAttackAction``
-    (acción bonus, ``usage=None``, registrada en ``apply_cavalier``):
-    ``can_use`` sin ``pick`` (el ``pick`` del encuentro decide entre
-    las acciones candidatas de forma uniforme, patrón SecondWind;
-    decisión documentada) con guards sin RNG: super (bonus libre),
-    flag == turno actual (flag pasado se limpia; flag futuro = no
-    elegible), marcado vivo y arma cuerpo a cuerpo propia
-    (``_armas_melee_de``, patrón ``_armas_melee_propias``);
-    ``execute`` revalida, gasta el flag, ``r_ctx = copy.copy`` con
-    ``is_reaction=True`` (reentrada: no activa maniobras) y
-    ``dano_reaccion = cavalier_mark_extra_damage(nivel)`` (suma plana
-    SOLO si impacta, camino ya existente), ventaja forzada con
-    ``attacks_with_advantage`` ALREDEDOR de ``attack_roll`` y
-    restauración en ``finally`` (lo leen ``resolve_roll_mode`` y
-    ``attack_modifiers``; Feinting no sirve porque su flag es de
-    Battle Master), arma con ``pick`` (sin RNG con una) y NO gasta uso
-    de marca ni reacción (es acción bonus). La velocidad 0 es dato sin
-    efecto (el modelo no tiene campo de velocidad; congelado). Tests
-    nuevos (11) en ``tests/test_cavalier.py``: se arma al dañar a un
-    tercero / no al dañar al Cavalier / no con marca caducada; solo
-    vale el siguiente turno (flag futuro → no, turno actual → sí,
-    turno siguiente → caducó y se limpia); no elegible sin flag, sin
-    bonus libre (``TurnResources(bonus_action_used=True)``), sin arma
-    cuerpo a cuerpo ni con marcado muerto (rng que revienta); tira con
-    ventaja (``roll_d20`` parcheado → ``[RollMode.ADVANTAGE]``) y
-    consume el flag; daño extra nivel//2 al impactar (1+3+2=6 con
-    estilo ``Archery`` fijo) y nada al fallar; no gasta uso de marca
-    ni la reacción; sin subclase ``inflict_damage`` no consulta
-    (espía que revienta) y velocidad 0 sin efecto. NINGÚN test
-    existente cambió. Suite final: 1348 passed + arquitectura 3
-    passed (0 fallos). Commit de A4.
-  - (5) Warding Maneuver (A5): hook nuevo ``defensa_ante_ataque`` en
-    ``Trait`` + ``HOOK_NAMES`` (default no-op; ``tests/test_traits.py``
-    lo cubre por catálogo) con resultado mínimo
-    ``SimpleNamespace(ac_extra, resistencia)``. Punto de consulta
-    ampliado en ``attack.py``: helper nuevo ``_defensa_del_bando``
-    enumera el bando del OBJETIVO (él mismo + aliados vivos no
-    hostiles de ``ctx.combatants``, misma enumeración que
-    ``_mitigacion_de_otros`` de ``reduce_damage_to_allies``) y agrega
-    las CA extra y las resistencias que los rasgos devuelvan; sin
-    rasgos que lo definan → ``None`` sin RNG. Se le pregunta en el
-    bloque del paso 6 cuando el golpe iba a entrar **o** cuando es
-    crítico (el 20 natural siempre impacta, pero la resistencia sigue
-    aplicando; un 1 natural no consulta); el ``ac_extra`` solo se suma
-    si no es crítico y ``hit`` se recalcula con la CA efectiva ya
-    aumentada (convierte impacto en fallo). Resistencia: el motor
-    concede el tipo del ataque en ``target.resistances`` SOLO durante
-    la llamada a ``apply_damage_modifiers`` y restaura el set previo
-    (camino existente de resistencias; si el objetivo ya resistía no
-    se concede y la mitad se aplica una sola vez = no se apila; solo
-    el daño principal, los ``extra_damage`` conservan sus tipos).
-    Guards del rasgo SIN RNG en orden: nivel < 7, sin
-    owner/objetivo/atacante/rng, objetivo que no sea el dueño ni un
-    aliado vivo (``_es_aliado``), dueño muerto/incapacitado, sin
-    escudo (dato ``tiene_escudo`` del Guerrero) ni arma cuerpo a
-    cuerpo (``_armas_melee_de``), sin ``warding_usos.available`` o
-    reacción ya gastada → luego ``pick`` «no/sí» («no» no gasta
-    nada); gasta reacción + un uso y tira ``1d8`` UNA vez. Decisión:
-    el gasto es incondicional tras el «sí» (los guards del enunciado
-    no piden «solo si convierte», a diferencia del Parry hobgoblin);
-    sin la subclase ni consulta ni RNG. Tests nuevos (14) en
-    ``tests/test_cavalier.py``: convierte impacto en fallo con 1d8
-    (motor, d20=10 → CA 15+8) y gasta reacción/uso con una sola
-    tirada del d8; protege al aliado (la reacción es del Cavalier);
-    crítico natural 20 sigue impactando con resistencia (6 → 3);
-    resistencia mitad con suelo (5 → 2); no se acumula con
-    resistencia previa (5 → 2, no 1, y el set queda intacto);
-    sin consulta si el ataque no iba a entrar (1 natural, espía que
-    revienta); guards sin RNG con ``_RngExplota`` (nivel 6, enemigo
-    como objetivo, reacción usada, usos a 0, sin escudo ni armas);
-    decisión «no» sin gasto; reacción compartida; sin subclase
-    ``_defensa_del_bando`` devuelve ``None`` sin tocar RNG. NINGÚN
-    test existente cambió. Suite final: 1362 passed + arquitectura 3
-    passed (0 fallos). Commit de A5.
-  - (6) Hold the Line (A6): reinterpretación documentada — en las
-    reglas la criatura provoca el ataque al moverse dentro del
-    alcance; el sim no tiene movimiento, así que el «ataque de
-    oportunidad abstracto» se dispara cuando un enemigo hace un
-    ataque con tirada (impacte o falle) contra un aliado vivo distinto
-    del dueño. Punto de consulta nuevo en ``attack.py``:
-    ``_oportunidad_contra_bando(target, attacker, ctx, rng, log)`` al
-    FINAL de ``attack_roll`` (tras ``_trigger_after_attack_roll``; lo
-    más barato: los hechizos de salvación y el área no pasan por
-    ``attack_roll``), duck-typing SIN entrada en ``HOOK_NAMES``
-    (patrón ``sustituir_ataque``: ``hooks()`` rechazaría el nombre)
-    que llama al ``ataque_de_oportunidad`` de los rasgos de
-    ``_bando_del(target, ctx)`` —enumeración extraída a helper
-    compartido con ``_defensa_del_bando`` (mismo comportamiento, los
-    tests A5 siguen verdes) y llamando a TODOS los rasgos del bando,
-    cada uno con sus guards—. Guard de reentrada en el motor
-    (``ctx.is_reaction`` → return antes de enumerar) y en el rasgo.
-    Método ``ataque_de_oportunidad`` en ``CavalierFeatures``: guards
-    SIN RNG en orden (nivel < 10, sin ctx/rng/atacante/objetivo,
-    reentrada, dueño muerto/incapacitado, atacante muerto o no enemigo
-    del dueño, objetivo que no sea aliado vivo distinto del dueño
-    (``_es_aliado``), reacción ya gastada, sin ``_armas_melee_de``)
-    → ``pick`` «no/sí» → arma con ``pick`` (sin RNG si una) → gasta
-    reacción → log → ``r_ctx = copy.copy`` con ``is_reaction=True`` →
-    ``attack_roll`` local (patrón Retaliation/Riposte). SIN daño extra
-    ni ventaja (reacción normal); velocidad 0 = ``# TODO`` dato sin
-    efecto. Tests nuevos (9) en ``tests/test_cavalier.py`` (helper
-    ``_bajo_ataque(level=…)`` ahora acepta nivel): contraataque al
-    que ataca a un aliado (motor con ``pick``/``roll_d20``/``roll_dice``
-    parcheados y usos de Warding a 0 para que la reacción de una por
-    ronda quede libre: aliado 66, enemigo 56, reacción gastada); no si
-    el objeto es el dueño; un hechizo de salvación no lo dispara
-    (espía que revienta en ``_oportunidad_contra_bando``); guards sin
-    RNG con ``_RngExplota`` (reacción usada, sin arma cuerpo a cuerpo,
-    ``ctx.is_reaction``, nivel 9, atacante muerto y atacante no
-    enemigo); decisión «no» sin gasto; sin subclase
-    ``_oportunidad_contra_bando`` no consulta ni toca RNG. NINGÚN test
-    existente cambió (los tests de Warding siguen verdes: la consulta
-    de CA gasta primero la reacción y Hold la ve gastada). Suite
-    final: 1371 passed + arquitectura 3 passed (0 fallos). Commit de
-    A6.
-  - (7) Vigilant Defender (A7): segundo recurso de reacción en
-    ``CavalierFeatures`` — campo ``especial_usada_en_ronda`` (ronda en
-    que se gastó; 0 = nunca) comparado con ``ctx.round``, así que se
-    «restablece» sola al empezar cada ronda sin hook de ronda (y
-    ``reset`` lo pone a 0). En ``ataque_de_oportunidad``: la
-    reacción especial (nivel >= 18, ``ctx.round`` presente, NO en el
-    turno propio — ``ctx.actor is not owner`` — y sin gastar aún esta
-    ronda) se consume ANTES que la normal (si está disponible se marca
-    ``especial_usada_en_ronda`` y ``reaction_used`` NO se toca; si no,
-    exige la reacción normal libre). Guards sin RNG: sin especial ni
-    normal → return ANTES del pick. Simplificación documentada en el
-    docstring: la restricción «no usar la especial en el mismo turno
-    en que gastaste otra reacción» no se aplica porque no hay
-    identificador de turno ajeno barato en ``ctx``. Warding/Parry/
-    Riposte NO consultan el recurso especial (siguen exigiendo solo
-    ``reaction_used``). Tests nuevos (6) en ``tests/test_cavalier.py``:
-    nivel 17 sin especial (rng que revienta); la especial se consume
-    antes que la normal (marcada y ``reaction_used`` intacto);
-    restablece cada ronda (ronda 1: especial → normal, ronda 2:
-    especial otra vez); solo vale para Hold the Line (Warding con
-    reacción gastada no usa la especial y no la gasta); dos
-    oportunidades en una ronda con ambas reacciones libres (motor:
-    primera → especial, segunda → normal, dos contraataques de 4);
-    sin especial en el turno propio. NINGÚN test existente cambió.
-    Suite final: 1377 passed + arquitectura 3 passed (0 fallos).
-    Commit de A7.
-  - (8) Ferocious Charger (A8): `_evaluar_carga` (método propio)
-    llamado desde `after_attack_roll` DESPUÉS del guard
-    `attacker is not owner or not hit` y ANTES del guard de melee —
-    así un ataque a distancia lo descarta sin pegar la bandera y un
-    fallo ni se entera. Guards SIN RNG en orden: nivel < 15 o bandera
-    `carga_evaluada` ya puesta; objetivo None o ataque no cuerpo a
-    cuerpo (bandera NO se pega); dueño sin `can_act`; `0.0 < p < 1.0`
-    y `rng is None` → se abstiene sin pegar bandera (patrón Reckless
-    exacto: features.py `_decidir_reckless`). Bandera puesta →
-    `p <= 0` sin carga / `p >= 1` sin RNG / `rng.random() < p`; con
-    carga → `pick` «no/sí» («no» no fuerza nada); «sí» →
-    `saving_throw(target, "str", cd, rng)` con
-    `cd = 8 + proficiency + mod FUE` + `registrar_resistencia` (mismo
-    camino que Topple) y, si falla, `apply_condition(PRONE, …,
-    escape=EscapeCheck(("str","dex"), dc=10, consumes_action=False))`
-    con `_log_line`. Imports nuevos en cavalier.py:
-    `Condition, EscapeCheck, apply_condition` (....conditions) y
-    `registrar_resistencia, saving_throw` (....saves). Docstring
-    módulo: roadmap cierra con A8 (las casillas B/Docs/Verificación
-    quedan en TODO). Tests nuevos (9) en `tests/test_cavalier.py`
-    (helpers `_carga(level=15)`, `_ataque_carga(rango)`,
-    `_salvacion(monkeypatch, exito)`): p=0 sin RNG (`saving_throw`
-    que revienta + `_RngExplota`, bandera puesta = evaluado sin
-    carga); p=1 fuerza siempre (CD registrado, salvación exitosa sin
-    PRONE); UNA sola evaluación por turno (dos impactos → una
-    llamada); fallada → PRONE y exitosa → nada (misma bandera
-    rearmada); solo cuerpo a cuerpo y solo tras impactar (bandera
-    intacta en distancia y fallo); CD = 8+PB+FUE (== 16 nivel 15);
-    nivel 14 ni flag ni RNG; flag reiniciado en `on_turn_start`
-    (segundo turno evalúa otra vez); p=0.5 tira UN `rng.random()`
-    (stub `_RngControl`: 0.0 carga, 0.9 no, un random por
-    evaluación). El cableado CLI `--charge-p` → `trait.
-    charge_probability` ya lo cubren los tests de A1/A2; estos tests
-    cubren trait → motor. NINGÚN test existente cambió. Suite final:
-    1386 passed + arquitectura 3 passed (0 fallos). Commit de A8.
-  - (9) B: decisiones de diseño. Registro: el cambio de los tests de
-    freeze de subclases ya estaba explicado ANTES en la entrada (2)
-    (A2), nada nuevo que tocar. Límites modelados con test freeze:
-    Born to the Saddle (test de A2), velocidad 0 de la marca (test de
-    A4) y 5 ft de Warding — test nuevo
-    ``test_warding_no_modela_los_5_pies_porque_el_sim_no_tiene_posiciones``
-    (el sim no guarda posiciones: el rasgo defiende a cualquier aliado
-    vivo del bando, sin datos de distancia) más una nota en el
-    docstring de ``defensa_ante_ataque``. Tests existentes tocados (2,
-    explicados ANTES de este commit):
-    ``test_hold_the_line_contraataca_al_que_ataca_a_un_aliado`` (A6) y
-    ``test_vigilant_defender_dos_oportunidades_en_una_ronda_con_ambas_reacciones_libres``
-    (A7) pasan a ``_bajo_ataque(..., fighting_style="Archery")``: el
-    estilo por defecto lo elige el ``pick`` global de estilos
-    (``_RNG_CREACION``) y NO es determinista — el test nuevo consumió
-    un pick, movió la secuencia y dejó al descubierto que esos dos
-    asserts de daño exacto (56 y 52) dependían de la suerte del
-    estilo (Dueling habría sumado +2 al contraataque). Ninguna
-    conducta del sim cambia, solo la plantilla de los tests. Los
-    pendientes reales de Cavalier (velocidad 0, monturas, 5 ft,
-    restricción «mismo turno» de Vigilant Defender) quedan listados
-    en la casilla B de ``TODO.md``, todos congelados o documentados.
-    Suite final: 1387 passed + arquitectura 3 passed (0 fallos).
-    Commit de B.
-  - (10) Verificación final de la sesión Cavalier.
-    ``.venv\Scripts\python.exe -m pytest tests/test_arquitectura.py`` →
-    3 passed. ``pytest`` completo → **1387 passed** (0 fallos) + 200
-    warnings de rutina. ``PYTHONIOENCODING=utf-8`` +
-    ``.venv\Scripts\python.exe tools/capas.py`` →
-    total: 1, solo la excepción conocida
-    ``dnd_sim.model.combatant -> dnd_sim.rules.conditions`` (el criterio
-    congelado sigue en pie; las flechas locales ``rules ->
-    engine.combat`` de las subclases salen en la lista permitida de
-    imports dentro de función, igual que ``traits.defense``).
-    ``graphify update .`` → rebuilt 3994 nodes, 14584 edges, 143
-    communities; ``graphify-out/`` actualizado (grafo + informe) con
-    copia de seguridad ``graphify-out/2026-11-11/``. Nada tocado en
-    otros módulos durante la sesión. Commit final con el grafo;
-    ``ARGUMENTOS-CLI.md`` sigue sin commitear (trabajo ajeno).
-    Casilla ``Verificación`` de ``TODO.md`` [x]. FIN sesión Cavalier.
+  - (A1) Tablas cavalier_mark_uses / warding_maneuver_uses /
+    cavalier_mark_extra_damage + CAVALIER_BONUS_SKILLS +
+    CHARGE_MOVE_PROBABILITY = 0.5 + CLI --charge-p (duck-typing en
+    _build_party). Suite: 1316.
+  - (A2) cavalier.py: CavalierFeatures + apply_cavalier. Registro
+    "cavalier". 3 tests de freeze tocados. Suite: 1326.
+  - (A3) Unwavering Mark: campo marca_cavalier (caducidad + ref);
+    desventaja vía consumir_marcas; marca tras impactar en
+    after_attack_roll. Suite: 1337.
+  - (A4) Ataque especial: _avisar_ataque_especial_marca en
+    inflict_damage + CavalierMarkAttackAction (bonus, ventaja
+    forzada, daño extra nivel//2). Suite: 1348.
+  - (A5) Warding Maneuver: hook defensa_ante_ataque en HOOK_NAMES;
+    _defensa_del_bando (CA extra + resistencia temporal, crítico
+    impacta pero resiste). Suite: 1362.
+  - (A6) Hold the Line: _oportunidad_contra_bando al final de
+    attack_roll (reinterpretación sin movimiento); reacción patrón
+    Retaliation. Suite: 1371.
+  - (A7) Vigilant Defender: reacción especial por ronda
+    (especial_usada_en_ronda) solo para Hold the Line. Suite: 1377.
+  - (A8) Ferocious Charger: _evaluar_carga en after_attack_roll;
+    CHARGE_MOVE_PROBABILITY + pick «no/sí» + salvación FUE CD
+    8+PB+FUE → PRONE. Suite: 1386.
+  - (B) Decisiones: test freeze de 5 ft de Warding; 2 tests existentes
+    pasan a fighting_style="Archery" (daño exacto no dependía del
+    estilo aleatorio). Pendientes reales en TODO.md. Suite: 1387.
+  - Verificación: 1387 passed; grafo 3994 nodos.
+    ARGUMENTOS-CLI.md sigue sin commitear (trabajo ajeno).
 
 CHAMPION (2026-11-11)
-  - (1) Tablas (A1): ``champion_crit_threshold(level)`` en
-    ``core/classes.py`` — 20 por debajo del nivel 3, 19 desde el 3
-    (Improved Critical) y 18 desde el 15 (Superior Critical), con el
-    ``_clamp`` de nivel — y ``heroic_rally_amount(con_mod)`` =
-    ``max(0, 5 + con_mod)`` (Heroic Rally, nivel 18). Ambas en
-    ``__all__``. Tests en ``tests/test_champion.py`` (fichero nuevo,
-    2 tests: umbral por nivel 1-20 y cura con CON alta/normal/baja).
-    Ningún test existente cambia (solo se añaden funciones
-    puras). Commit de A1.
-  - (2) Esqueleto y registro (A2): fichero nuevo
-    ``dnd_sim/rules/classes/fighter/subclasses/champion.py`` con
-    ``ChampionFeatures`` (nivel, dueño, sentinels ``heroic_warrior`` y
-    ``defy_death`` a True, datos sin efecto congelados) y
-    ``apply_champion`` (exige ``FighterFeatures``; nivel >= 3;
-    kwarg ``additional_fighting_style`` VALIDADO contra
-    ``FIGHTER_STYLES`` y contra el estilo que ya tiene el PJ — la
-    elección con ``pick`` y sus efectos llegan en A5, así que hasta
-    entonces el valor validado no se aplica; ``rng`` por defecto con
-    semilla 0 vía ``_RNG_CREACION``, sin consumo hasta A5). Sin
-    estado de combate propio: ``reset``/``on_turn_start`` los hereda
-    del Trait base (A6 añade el override de Heroic Rally). Registro
-    ``"champion"`` en ``fighter/__init__.py`` (``SubclassDef``) +
-    reexportes en ``fighter/subclasses/__init__.py``,
-    ``rules/classes/__init__.py`` y la fachada ``dnd_sim/__init__.py``.
-    ``tests/test_arquitectura.py`` NO cambia: su comprobación de
-    fachada es por subconjunto (``esperados - exportados``).
-    CAMBIOS DE TESTS EXISTENTES, explicados ANTES de tocarlos: 4 tests
-    existentes cambian — 3 congelan la tabla y pasan de ``{arcane_archer,
-    battle_master, cavalier}`` a ``+ champion`` porque A2 registra la
-    clave — ``test_fighter.py::test_clase_fighter_esta_registrada...``,
-    ``test_arcane_archer.py::test_registro_arcane_archer...``,
-    ``test_battle_master.py::test_registro_battle_master...`` — y
-    ``test_fighter.py::test_subclase_de_fighter_inexistente...``
-    usaba "champion" como clave inválida de ejemplo (ahora "paladin",
-    docstring actualizado). Ningún otro test cambia de resultado. 7
-    tests nuevos en ``test_champion.py`` (registro, equivalencia
-    apply_class con RNGs reseedados, error clase/nivel, Heroic Warrior
-    y Defy Death freeze, cero RNG sin subclase), suite 1396 passed.
-    Commit de A2.
-  - (3) Rango crítico ampliado (A3): refactor previo SIN cambio de
-    resultados — helpers nuevos ``umbral_critico(attacker, atk)``
-    (duck-typing ``fn(atk)`` sobre los rasgos del ATACANTE, sin
-    entrada en ``HOOK_NAMES``, min con 20, sin rasgo → 20 sin RNG) y
-    ``evaluar_d20(roll, attacker, atk) -> (¿crítico?, ¿1 natural?)``
-    en ``rules/roll_modifiers.py``; el motor sustituye
-    ``crit = roll == 20`` (mismo sitio, antes de Parry/Warding/hit) y
-    los tres ``roll != 1`` por ``fallo_natural``, y Precision Attack
-    de Battle Master pasa de ``roll == 1`` a
-    ``evaluar_d20(...)[1]``. Suite completa ANTES de seguir:
-    idéntica (1396). Umbral por atacante:
-    ``ChampionFeatures.umbral_critico`` devuelve
-    ``champion_crit_threshold(nivel)`` (19 desde el 3, 18 desde el
-    15) y 20 si ``atk.spell_attack``; como el helper solo mira los
-    rasgos del atacante, un ajeno siempre ve 20. DECISIÓN: el modelo
-    ``Attack`` no tenía dato que distinga hechizo de arma y
-    ``magical`` también lo usan armas mágicas, así que se añade el
-    campo nuevo ``spell_attack: bool = False`` en ``model/attack.py``
-    (false por defecto = cero efecto en fichas existentes) que pone a
-    True ``rules/spells/casting.py`` (los hechizos SÍ pasan por
-    ``attack_roll``). 9 tests nuevos (19 impacta vs CA 40 / no
-    Champion falla, 18 solo desde el 15, 1 natural, dados doblados
-    con spy de ``roll_dice``, hechizo sin umbral, Warding no
-    convierte en fallo un crítico por rango, umbral 20 sin subclase
-    sin RNG, umbral del rasgo 19/18/20), suite 1405 passed.
-    Commit de A3.
-  - (4) Remarkable Athlete (A4): ``roll_initiative`` pasa a contar
-    fuentes — flag ``initiative_with_advantage`` (Feral Instinct, sin
-    cambios) O duck-typing ``ventaja_iniciativa()`` frente a
-    ``desventaja_iniciativa()`` (ambos SIN entrada en ``HOOK_NAMES``):
-    solo ventaja → dos d20 y mayor, solo desventaja → dos d20 y
-    menor, ambas/ninguna → normal. RNG de los demás EXACTO (un
-    ``d20`` por combatiente; sin rasgos no se consulta nada).
-    ``ChampionFeatures.ventaja_iniciativa()`` = nivel >= 3 y
-    ``modify_check_modifiers`` añade «Atleta notable» SOLO en
-    ``skill == "athletics"`` y solo del dueño (patrón Furia; la
-    anulación con desventaja es automática vía
-    ``CheckModifiers.mode``); sin competencia añadida. Moverse tras
-    un crítico queda como ``# TODO`` dato sin efecto (sin campo
-    velocidad; test freeze ``test_moverse_tras_un_critico_es_dato_sin_efecto``).
-    10 tests nuevos (iniciativa ventaja solo Champion, RNG exacto
-    sin Champion, anulación ventaja+desventaja, desventaja → menor,
-    Atletismo ventaja, otras habilidades no, anulación con
-    veneno/POISONED, sin competencia, Atletismo normal sin subclase,
-    movimiento sin efecto), suite 1415 passed. Commit de A4.
-  - (5) Additional Fighting Style (A5): refactor previo en
-    ``fighter/features.py`` — campo ``estilos_extra: list[str]`` +
-    propiedad ``estilos`` que devuelve el principal y los adicionales;
-    los 6 hooks de estilos pasan de igualdad con ``self.estilo`` a
-    pertenencia al conjunto (GWF, Thrown, Dueling, Protection,
-    Interception, Archery). Suite completa ANTES de seguir: 1415
-    passed idéntica (sin cambio de resultados; el atributo ``estilo``
-    y la mutación Defense de ``apply_fighter`` quedan intactos).
-    ``apply_champion`` completa el kwarg: validación SIEMPRE (no en
-    ``FIGHTER_STYLES`` → ValueError; == primero → «repite… una dote no
-    se toma dos veces») y, solo con nivel >= 7, ``pick`` uniforme
-    entre ``FIGHTER_STYLES`` menos el primero (kwarg explícito o
-    semilla 0 vía ``_RNG_CREACION``), ``estilos_extra.append`` y
-    ``+1 CA`` si el segundo es Defense (una sola vez: el pool excluye
-    el primero). Documentado: ``apply_class`` no reenvía ``**kwargs``;
-    el kwarg se pasa llamando a ``apply_champion`` directamente
-    (mismo criterio que ``rng`` en Cavalier). 9 tests (segundo ≠
-    primero/en pool, kwarg válido, repetir primero, estilo inventado,
-    Defense+Dueling a la vez con CA y +2 daño, Defense primero sin
-    duplicar CA, nivel 6 sin estilo, determinismo con misma semilla —
-    fix del test: fijar ``fighting_style="Archery"`` porque
-    ``apply_fighter`` avanza el ``_RNG_CREACION`` global y cambiaba el
-    primero entre llamadas —, sin subclase sin ``estilos_extra``),
-    suite 1424 passed. Commit de A5.
-  - (6) Heroic Rally (A6): override ``on_turn_start`` en
-    ``ChampionFeatures`` — guards nivel >= 18, dueño, vivo,
-    ``pg >= 1`` y Bloodied (``pg * 2 <= pg_max``); cura
-    ``min(heroic_rally_amount(mod CON), pg_max - pg)`` con ``log_line``
-    (``core/log`` tolera ``ctx=None``); CON tan baja que la tabla da 0
-    → abstención sin cambio. Sin RNG, sin decisión. 8 tests (cura
-    Bloodied +1 PG, mitad exacta cuenta, por encima de la mitad no
-    cura, CON negativa → 0, recorte a PG máximos con max_hp 12,
-    nivel 17 no actúa, 0 PG no cura, un solo turno = una curación
-    exacta), suite 1432 passed. Commit de A6.
-  - (7) Decisiones de diseño (B): congelados ya cubiertos en A2 (Heroic
-    Warrior, Defy Death) y A4 (movimiento tras crítico); aquí se cierra
-    el lado de documentación: ``TODO.md`` listas de candidatas Fighter
-    → solo Eldritch Knight y Psi Warrior (Champion hecho), nota de
-    reabrir Heroic Warrior SOLO si el sim modela Inspiración Heroica y
-    Defy Death SOLO si modela salvaciones de muerte, y recuento de
-    claves registradas a 4. Ningún test nuevo (los 3 freeze de registro
-    y los de dato sin efecto ya estaban verdes desde A2/A4). Commit de
-    B.
-  - (8) Docs: ``ARCHITECTURE.md`` — tabla remediada con conteo por
-    carpetas (85 módulos/20584 líneas; tests 55/22585/1432; core
-    13/1090, model 4/1050, rules 34/11212, traits 6/1299, spells
-    5/917, engine 3/224, engine/combat 3/1206, data 16/3394, fachada
-    1/192 — suma cuadra), fila ``rules/classes/`` con
-    ``fighter/subclasses/{…,cavalier,champion}``, fila
-    ``engine/combat`` con «críticos por umbral ``evaluar_d20``»,
-    nota de ``ventaja_iniciativa``/``desventaja_iniciativa`` en el
-    bullet de Ambush, sección ``## Champion (PHB 2024)`` (6 puntos:
-    umbral crítico + ``spell_attack``, Remarkable Athlete,
-    Additional Fighting Style, Heroic Rally, datos sin efecto) y
-    ``pytest # 1432 tests``. PASOS ESTADO ACTUAL con los mismos
-    recuentos (medido 2026-11-12) + bullet Champion (commits
-    b98d67d..3c63d66). TODO: Champion ya no es candidata (solo
-    Eldritch Knight y Psi Warrior) con condiciones de reabrir (ya en
-    B). Commit de Docs.
-  - (9) Verificación: ``pytest tests/test_arquitectura.py`` → 3
-    passed; ``pytest`` → **1432 passed** (200 warnings);
-    ``tools/capas.py`` → total 1, solo la excepción conocida
-    ``model.combatant → rules.conditions``; ``graphify update .`` →
-    4087 nodos, 14882 aristas, 123 comunidades (aviso informativo de
-    etiquetas sin confirmar: ``graphify label``; backup
-    ``graphify-out/2026-11-12/``). Grafo + backup commiteados. Casilla
-    ``Verificación`` de ``TODO.md`` [x]. FIN sesión Champion.
+  - (A1) champion_crit_threshold (20/19/18) + heroic_rally_amount.
+    tests/test_champion.py.
+  - (A2) champion.py: ChampionFeatures + apply_champion (kwarg
+    additional_fighting_style). Registro "champion". 4 tests de
+    freeze tocados. Suite: 1396.
+  - (A3) Rango crítico: helpers umbral_critico/evaluar_d20 en
+    roll_modifiers (refactor sin cambio de RNG) + campo
+    Attack.spell_attack (casting.py lo pone a True). Suite: 1405.
+  - (A4) Remarkable Athlete: ventaja_iniciativa() duck-typing en
+    roll_initiative + ventaja en Atletismo; movimiento tras crítico =
+    dato (# TODO). Suite: 1415.
+  - (A5) Additional Fighting Style: refactor FighterFeatures.estilos
+    (6 hooks por membresía) + pick en apply_champion. Suite: 1424.
+  - (A6) Heroic Rally: on_turn_start Bloodied, cura recortada.
+    Suite: 1432.
+  - (B) Docs: candidatas → solo Eldritch Knight y Psi Warrior;
+    condiciones de reabrir. (8) Docs: ARCHITECTURE 85 módulos/
+    20584; sección Champion. (9) Verificación: 1432 passed;
+    grafo 4087 nodos.
 
 PSI WARRIOR (2026-11-12)
-  - (1) Tablas (A1): ``psionic_dice_count(level)`` = 0 por debajo del
-    nivel 3 y 2 × PB (``2 + (level - 1) // 4`` calculado localmente
-    en ``core``) → 4/6/8/10/12 en 3-4/5-8/9-12/13-16/17+;
-    ``psionic_die_sides(level)`` → 6/8/10/12 en <5/5-10/11-16/17+;
-    ``bulwark_targets(int_mod)`` = ``max(1, int_mod)``. Las tres en
-    ``core/classes.py`` con ``__all__``. Tests nuevos en
-    ``tests/test_psi_warrior.py`` (3 tests de tablas por nivel).
-    Ningún test existente cambia (funciones puras nuevas). Commit de
-    A1.
-  - (2) Esqueleto y registro (A2): fichero nuevo
-    ``rules/classes/fighter/subclasses/psi_warrior.py`` —
-    ``PsiWarriorFeatures`` (dados ``dados_restantes``/``dados_lados``,
-    usos gratuitos ``bulwark_uso_gratuito``/
-    ``telekinetic_master_uso_gratuito``, flag por turno
-    ``psionic_strike_used_this_turn``, estado ``bulwark_activo``/
-    ``bulwark_objetivos``/``telekinetic_master_activo``, sentinels
-    ``telekinetic_movement``/``psi_powered_leap`` = dato sin efecto),
-    ``reset`` (dados llenos + estados al día, patrón Battle Master),
-    ``on_turn_start`` (resetea el flag de Psionic Strike; la purga de
-    Guarded Mind llega en A6) y ``apply_psi_warrior`` (guards
-    ``FighterFeatures`` y nivel >= 3; reserva con las tablas de core).
-    DECISIÓN: el kwarg ``rng`` existe por paridad pero la subclase no
-    elige nada al crear (los ``pick`` de los rasgos usan el rng del
-    combate), así que no hay ``_RNG_CREACION``. Registro
-    ``"psi_warrior"`` en ``fighter/__init__.py``,
-    ``fighter/subclasses/__init__.py``, ``rules/classes/__init__.py``
-    y fachada ``dnd_sim/__init__.py`` (import + ``__all__`` ×2).
-    ``tests/test_arquitectura.py`` NO cambia (fachada por
-    subconjunto). 4 tests de freeze de registro tocados ANTES
-    explicados (``test_fighter`` ×2 — set + docstring «5 claves»,
-    ``test_arcane_archer``, ``test_battle_master``): pasan a
-    ``+ "psi_warrior"``. 8 tests nuevos (registro, equivalencia
-    ``apply_class`` con reseed de ``fighter_mod._RNG_CREACION``,
-    error sin clase, error nivel, dados/tamaño por nivel, ``reset``,
-    Telekinetic Movement + Psi-Powered Leap dato sin efecto sin
-    gastar dados, cero RNG sin subclase). Suite **1443 passed**.
-    Commit de A2.
-  - (3) Psionic Strike (A3): walker NUEVO ``_dano_extra_de_rasgo`` en
-    ``engine/combat/attack.py``, justo tras el ``inflict_damage``
-    principal y ANTES del bucle de ``extra_damage``, duck-typing por
-    ``getattr`` (patrón ``_decidir_maniobra``; NO ``hooks()``, que
-    exigiría entrada en ``HOOK_NAMES``). Guards del walker: ``dmg <= 0``
-    y ``rng is None`` (sin rasgo que lo defina, ni consulta ni RNG);
-    recibe ``atk``/``crit``/``ctx``/``rng``/``log``. Método
-    ``psionic_strike`` en el rasgo: guards (nivel, una vez por turno,
-    reserva de dados, ``rng``, ``spell_attack`` → solo ataques con
-    arma), decisión con ``pick`` «no»/«sí»; al gastarse: resta 1 dado,
-    marca el flag, UNA tirada ``roll_dice(f"1d{lados}", rng, crit=crit)``
-    (la regla de críticos existente del motor viaja en ``crit``), daño
-    de fuerza = dado + mod INT con ``apply_damage_modifiers`` +
-    ``inflict_damage`` y log. Decisiones: (a) el flag solo se pone al
-    gastar — si el ``pick`` dice «no», el mismo turno puede reintentar
-    en el siguiente golpe; (b) solo se excluyen los hechizos (campo
-    ``spell_attack``), los ataques naturales cuentan como con arma; (c)
-    inserción ANTES del daño extra del arma («tras impactar y causar
-    daño»). 9 tests nuevos (suma dado+mod INT como fuerza, un solo
-    gasto por turno, hechizo no, daño 0 no, sin dados sin ``pick``,
-    reinicio del flag al empezar turno, resistencia a fuerza mitiga,
-    ``crit=True`` llega al dado, sin subclase el walker no consulta).
-    Helper de test A3 fija ``fighting_style="Archery"``: el estilo se
-    elige con el RNG global de creación y Dueling añadiría +2 al daño
-    (mismo criterio que los tests de daño de Cavalier/Champion).
-    Suite **1452 passed**. Commit de A3.
-  - (4) Telekinetic Thrust (A4): método ``_telekinetic_thrust`` en el
-    rasgo, llamado al final de ``psionic_strike`` SOLO si se gastó el
-    dado y ``level >= 7``. Salvación de FUE CD ``8 + competencia +
-    mod INT`` (``saving_throw`` + ``registrar_resistencia`` con la
-    Resistencia legendaria despachada); fallo → ``Condition.PRONE`` con
-    el mismo ``EscapeCheck`` de la Maestría Topple (``str``/``dex``, DC
-    10, ``consumes_action=False``) y log. Sin pick propio: la decisión
-    ya la dio Psionic Strike. Imports nuevos: ``saves`` y
-    ``conditions`` desde el rasgo (rules → rules, capas OK). 4 tests
-    (CD y PRONE, salvación pasa → sin PRONE, nivel 7 gate con
-    ``saving_throw`` que revienta si se consulta, sin gasto de dado no
-    hay salvación). Suite **1456 passed**. Commit de A4.
-  - (5) Protective Field (A5, paso delicado): walker NUEVO
-    ``_proteccion_psionica`` en ``rules/damage.py`` — fase 1a del
-    pipeline de ``inflict_damage``, entre 1b (``reduce_damage_to_allies``)
-    y 1c (PV temporales), duck-typing SIN ``HOOK_NAMES`` que recorre
-    TODOS los ``ctx.combatants`` incluido el propio objetivo («tú u
-    otra criatura»; a diferencia de 1b, que salta al target). Método
-    ``proteccion_psionica(objetivo, cantidad, tipo_dano, fuente, *,
-    ctx, rng)`` en el rasgo: guards sin RNG (nivel >= 6, cantidad > 0,
-    ``rng``, reacción libre ``state.reaction_used`` compartida con
-    Warding/Retaliation…, reserva de dados), ``pick`` «no»/«sí», al
-    aceptar gasta reacción + dado, reducción ``max(1, dado + mod INT)``
-    sin bajar de 0, log. Sin cambios en Parry/Warding/Interception/
-    Protection (suite completa en verde ANTES de seguir: **1464
-    passed**). 8 tests (reducción dado+INT, reacción compartida, sin
-    dados sin pick, protege al propio objetivo, no baja de 0, pick «no»,
-    nivel < 6, sin subclase cero consulta). Commit de A5.
-  - (6) Guarded Mind (A6): resistencia permanente al daño psíquico en
-    ``apply_psi_warrior`` — ``if lvl >= 15 and DamageType.PSYCHIC not in
-    pj.resistances: pj.resistances = set(...) | {DamageType.PSYCHIC}``
-    (patrón Storm Soul, sin acumular; ``DamageType`` ya se importaba
-    desde A3). Purga en ``on_turn_start``: ``if self.level >= 15 and
-    actor is self.owner: self._guarded_mind(ctx)``; ``_guarded_mind``
-    recorre ``(CHARMED, FRIGHTENED)`` con ``tracker.has(cond)``,
-    ``rng = getattr(ctx, \"rng\", None)``, guards sin RNG (sin
-    condición / sin ``rng`` / sin dados → return antes del ``pick``),
-    ``pick`` «no»/«sí», al gastar: resta 1 dado, ``remove_condition``
-    de TODAS las que tenga y log «usa Guarded Mind». Import ampliado
-    con ``remove_condition``. 8 tests (resistencia mitiga 10→5, no
-    acumula, purga ambas con 1 dado, pick «no», sin condición sin
-    pick, sin dados, nivel 14, sin ctx/rng). Suite **1472 passed**.
-    Commit de A6.
-  - (7) Bulwark of Force (A7): campo ``cobertura_bulwark`` (ref al
-    dueño) en ``CombatState`` + ``Combatant.reset()`` lo limpia;
-    ``cobertura_bulwark_activa`` (dueño vivo y ``can_act``) y rama en
-    ``effective_ac``: ``at_range`` o Bulwark → +2, sin sumar (la mayor
-    gana); ``saving_throw`` +2 al ``bonus`` de DES si vigente;
-    ``PsiBulwarkAction`` (bonus, ``usage=None``) en la subclase:
-    elegibilidad sin RNG (nivel 15, no activo, uso gratuito o dado,
-    aliados vivos incluido el dueño), ``execute`` gasta gratuito→dado
-    y elige con ``pick`` sin repetición hasta ``max(1, mod INT)``
-    objetivos; registrada en ``apply`` si ``lvl >= 15``. 10 tests,
-    suite **1482 passed**. Commit de A7.
-  - (7-fix) Guarded Mind en nivel 10 (corrección de A6): el enunciado
-    fija Guarded Mind en el nivel 10 (tabla de rasgos), no 15; gates
-    ``lvl >= 10`` (resistencia en ``apply``) y ``self.level >= 10``
-    (purga en ``on_turn_start``) + docstrings (10); tests A6
-    adaptados: resistencia en nivel 10 / no en 9, purga con nivel 10
-    y ``psionic_dice_count(10)``, gate negativo en nivel 9. Bulwark
-    sigue en 15. Suite **1482 passed**. Commit de fix A6.
-  - (8) Telekinetic Master (A8): ``TelekineticMasterAction`` (acción,
-    ``usage=None``) con ``can_use`` sin RNG (nivel >= 18, no activo,
-    uso gratuito o dado, dueño con ``can_act``) y ``execute`` que gasta
-    gratuito→dado y activa ``telekinetic_master_activo``;
-    ``TelekineticMasterAttackAction`` (acción adicional) elegible solo
-    con efecto vigente (``_telekinetic_master_vigente``: activo y
-    dueño sin Incapacitado/muerto — concentración parcial, SIN
-    salvaciones de CON: no hay mecánica de ruptura reutilizable en el
-    motor, decisión anotada en TODO) y ``_armas_de`` no vacía; en
-    ``execute`` arma y enemigo con ``pick`` uniforme (``valid_targets``)
-    y ataque vía ``attack_roll`` del motor con ``copy.copy(context)``
-    (patrón Unwavering Mark, import local, sin ``is_reaction``: el
-    límite de Psionic Strike a uno por turno es su flag). Registradas
-    en ``apply`` si ``lvl >= 18``. Concentración revisada en
-    ``rules/spells/effects.py``: solo pone la condición, sin ruptura →
-    versión simple. 11 tests (gratis, dado, una sola activación, sin
-    recursos, bonus libre con ``TurnResources``, helper espiado,
-    strike único, incapacitado/muerto, nivel 17, sin subclase,
-    integración ``run_combat`` semilla 7). Suite **1493 passed**.
-    Commit de A8.
-  - (9) B — decisiones y limites (B): correccion de Protective Field
-    segun el enunciado (la entrada (5) historica dice nivel 6: se
-    corrige aqui, sin reescribir el historial). ``proteccion_psionica``
-    pasa el gate a ``level < 3`` (nivel >= 3) y gana el guard de
-    aliado ``if objetivo is not owner and not _es_aliado(owner,
-    objetivo): return None`` antes del ``pick`` («tu o una criatura que
-    ves»: nunca enemigos, cero RNG); docstring (6)→(3). Tests A5
-    reescritos: la victima pasa del ``enemigo`` a una aliada ``_pj()``
-    (reduce, reaccion compartida, sin dados, no baja de cero, pick
-    «no») y el gate de nivel pasa a nivel 2 sobre
-    ``_bajo_golpe(level=3)``. Anadidos 3 tests de deuda (no protege a
-    enemigo con pick que revienta, 0 de dano sin pick, sin reaccion
-    con rng que revienta) y 3 de limites del modelo (empuje 10 ft sin
-    efecto: PRONE + sin ``speed``; 30 ft: sin ``speed`` +
-    ``valid_targets`` sin geometria; Telekinesis: sin ``spells``, solo
-    el ataque adicional). 6 tests nuevos; suite **1499 passed**.
-    Commit de B.
-  - (10) Docs (Docs): ``ARCHITECTURE.md`` — recuentos (86 módulos /
-    21276 líneas; tests 56 ficheros / 23617 líneas / 1499), fila
-    ``rules/classes/`` con ``psi_warrior``, sección nueva
-    ``## Psi Warrior (PHB 2024)`` (tablas, walkers, Bulwark,
-    concentración simple y datos sin efecto) y recuento de la receta.
-    ``PASOS-ANTERIORES.txt`` — ESTADO ACTUAL con recuentos y registro
-    con Psi Warrior. ``TODO.md`` — receta con ``psi_warrior.py``.
-    Commit de Docs.
-  - (11) Verificacion (Verificacion): ``pytest
-    tests/test_arquitectura.py`` → 3 passed; ``pytest`` → 1499 passed
-    (200 warnings); ``python tools/capas.py`` → total 1, solo la
-    excepcion conocida ``model.combatant -> rules.conditions``;
-    ``graphify update .`` → 4262 nodos / 15557 aristas / 136
-    comunidades (grafo, reporte y etiquetas actualizados, copia de
-    seguridad ``graphify-out/2026-11-13/``). ``.tmp_*`` borrados.
-    Commit final con el grafo.
+  - (A1) psionic_dice_count (2 × PB), psionic_die_sides,
+    bulwark_targets. tests/test_psi_warrior.py.
+  - (A2) psi_warrior.py: PsiWarriorFeatures + apply_psi_warrior.
+    Registro "psi_warrior". 4 tests de freeze tocados. Sin
+    _RNG_CREACION (no elige nada al crear). Suite: 1443.
+  - (A3) Psionic Strike: walker _dano_extra_de_rasgo en attack.py
+    (tras inflict_damage principal); dado + mod INT una vez por
+    turno. Suite: 1452.
+  - (A4) Telekinetic Thrust: salvación FUE CD 8+PB+INT → PRONE.
+    Suite: 1456.
+  - (A5) Protective Field: walker _proteccion_psionica (fase 1a de
+    inflict_damage, TODOS los combatientes incluido el target);
+    reducción max(1, dado + mod INT), reacción compartida.
+    Suite: 1464.
+  - (A6) Guarded Mind: resistencia psíquica + purga Hechizado/
+    Asustado. Fix: nivel 10 (no 15). Suite: 1472 → 1482.
+  - (A7) Bulwark of Force: CombatState.cobertura_bulwark; +2 CA y
+    +2 salvaciones DES. Suite: 1482.
+  - (A8) Telekinetic Master: TelekineticMasterAction +
+    TelekineticMasterAttackAction; concentración SIMPLE (sin
+    salvaciones de CON: pendiente real). Suite: 1493.
+  - (B) Fix Protective Field (gate nivel 3 + guard de aliado);
+    3 tests de límites. Suite: 1499.
+  - Docs y Verificación: 1499 passed; grafo 4262 nodos.
 
 RUNE KNIGHT (2026-11-13)
-  - (1) Tablas (A1): en ``core/classes.py``, ``runes_known_count`` =
-    0/2/3/4/5 en <3/3-6/7-9/10-14/15+; ``giants_might_die_sides`` =
-    6/8/10 en <10/10-17/18+; ``rune_uses`` = 1/2 en <15/15+;
-    ``runic_shield_uses`` y ``giants_might_uses`` = PB local
-    (``2 + (level - 1) // 4``); pool ``RUNES`` con las 6 claves
-    (``cloud, fire, frost, hill, stone, storm``). Las seis en
-    ``__all__``. Tests nuevos en ``tests/test_rune_knight.py``
-    (6 tests de tablas por nivel; PB de nivel 15 = 5, rango 13-16).
-    Ningún test existente cambia (funciones puras nuevas). Suite
-    **1505 passed**. Commit de A1.
-  - (2) Esqueleto y registro (A2): módulo nuevo
-    ``rules/classes/fighter/subclasses/rune_knight.py`` — docstring
-    español con la tabla de rasgos; ``RuneKnightFeatures`` (``runas``,
-    ``usos_runa``, usos Giant's Might/Runic Shield, flag por turno,
-    estados Frost/Hill/Storm, datos sin efecto ``pasivos_runas`` y
-    ``bonus_proficiencies``), ``on_turn_start`` (flag) y ``reset``;
-    ``apply_rune_knight`` valida clase guerrero y nivel >= 3, kwarg
-    ``runes`` con ``sample`` del pool (o explícito validado por nombre
-    y recuento; patrón maniobras de Battle Master), ``rng`` por
-    defecto semilla 0 (``_RNG_CREACION``). Registro clave
-    ``"rune_knight"`` en ``fighter/__init__.py`` (``SubclassDef``),
-    ``fighter/subclasses/__init__.py``, ``rules/classes/__init__.py``
-    y fachada ``dnd_sim/__init__.py`` (imports + ``__all__``; docstrings
-    de paquete actualizados a seis subclases).
-
-    **Cambio de tests existentes (explicado ANTES de tocarlos,
-    sección 3 de la tarea):** los tests que congelan el set de claves
-    de subclases registradas del Guerrero pasan a incluir
-    ``"rune_knight"`` — ``tests/test_fighter.py``
-    ``test_clase_fighter_esta_registrada_con_arcane_archer``,
-    ``tests/test_arcane_archer.py::test_registro_arcane_archer_bajo_fighter``
-    y ``tests/test_battle_master.py::test_registro_battle_master_bajo_fighter``.
-    Son el ÚNICO tipo de test existente que cambia (añadir la clave al
-    registro lo exige); ningún otro resultado se toca.
-
-    Tests nuevos A2 en ``tests/test_rune_knight.py``: registro y
-    equivalencia ``apply_class``/``apply_rune_knight``; errores (clase
-    no Fighter, nivel <3); runas conocidas por nivel; kwarg inválido →
-    ``ValueError``; pasivos y Bonus Proficiencies congelados; sin la
-    subclase cero RNG. Suite **1513 passed**. Commit de A2.
-  - (3) Consulta perezosa de salvaciones y pruebas (A3): añade
-    ``fusionar_modo``, ``_modificar_tirada`` y las funciones
-    ``modificar_salvacion``/``modificar_prueba(habilidad, sujeto, ctx)
-    -> (ventaja, desventaja, bonus)`` en ``rules/roll_modifiers.py``
-    (duck-typing SIN entrada en ``HOOK_NAMES``, patrón
-    ``umbral_critico``; en ``__all__``). Se consultan los rasgos del
-    PROPIO sujeto y los de ``ctx.combatants`` vivos que puedan
-    reaccionar (``alive`` y ``can_react``; el sujeto no se repite); sin
-    ``ctx``/sujeto o sin rasgos que lo definan: ni consulta ni RNG.
-    Integración: en ``saving_throw`` tras resolver el modo (se fusiona
-    con ``fusionar_modo``) y el bonificador se suma al de ficha; en
-    ``ability_check`` igual y en ``skill_check`` con la característica
-    efectiva (decisión: la firma lleva UNA habilidad, no el nombre de
-    la habilidad). Decisiones documentadas: (a) la consulta COMPLEMENTA
-    a los hooks existentes (``modify_save_modifiers``/
-    ``grant_save_modifiers``/``modify_check_modifiers``) y no los
-    sustituye — la ventaja de Remarkable Athlete sigue por su hook, sin
-    duplicar; (b) el modo explícito de la llamada cuenta como una
-    fuente más y se anula con la estándar. Suite completa idéntica
-    **1513 passed** tras tocar el motor (antes de los tests); 9 tests
-    nuevos (mismo RNG y mismo ``SaveResult`` sin rasgos, sin ``ctx`` no
-    consulta, espías confirman llamada y argumentos, anulación
-    ventaja+desventaja, bonificador suma en salvación y prueba,
-    habilidad efectiva en pruebas de habilidad, otros vivos consultados
-    y muertos/incapacitados no). Suite **1522 passed**. Commit de A3.
-  - (4) Giant's Might (A4): campo `giants_might_activo` (+ en
-    `reset`), `_TAMANOS`/`_orden_tamano` local (patrón `giant.py`) y
-    acción `GiantsMightAction(CombatAction)` (`BONUS_ACTION`,
-    `usage=None`) registrada en `apply_rune_knight`
-    (`pj.actions.append`): `can_use` sin RNG (nivel>=3, sin activar,
-    `giants_might_usos>0`, más `super().can_use` para la acción
-    adicional libre) y `execute` sin RNG (gasta 1 uso, marca activo,
-    tamaño `large`/`huge` según nivel >=18 con log; la restauración la
-    hace `Combatant.reset` vía `size_base`). Ventaja FUE por la
-    consulta de A3: `modificar_salvacion`/`modificar_prueba` en el
-    rasgo → `(es FUE y activo y sujeto es el dueño, False, 0)`, sin
-    RNG. Daño extra vía hook existente `extra_attack_damage` (ya en
-    HOOK_NAMES; el motor lo suma al bruto del arma → mismo tipo que el
-    ataque automático): guards (activo, dueño, flag de turno, `atk`,
-    `rng`, `spell_attack`), flag solo al tirar, `roll_dice`
-    `1d6/1d8/1d10` (`giants_might_die_sides`) con la regla de
-    críticos del motor. 9 tests (activación única + uso, tamaño y
-    restauración en reset, ventaja solo FUE en salvaciones y pruebas,
-    extra una vez por turno con reinicio en `on_turn_start`, tipo del
-    arma vía resistencia a cortante (10→5), dado por nivel con
-    espía, Enorme a 18, no elegible sin usos ni con acción bonus
-    gastada (`TurnResources`), sin subclase cero RNG). Suite
-    **1531 passed**. Commit de A4.
-  - (5) Runic Shield (A5): walker NUEVO ``_repetir_d20_del_bando`` en
-    ``engine/combat/attack.py`` tras el bloque de Warding Maneuver y
-    ANTES de ``hit = crit or (...)`` (se reasignan ``roll/total/crit/
-    fallo_natural`` y la línea existente recalcula el impacto).
-    Duck-typing SIN ``HOOK_NAMES`` (patrón ``_sustituir_ataque``):
-    recorre ``_bando_del(target, ctx)`` y llama a ``repetir_d20`` del
-    primer rasgo que lo defina; la primera aceptación devuelve la
-    tupla y se detiene (una sola repetición por ataque, sin
-    reentrada). Condición de consulta: ``crit or (not fallo_natural
-    and total >= ca_efectiva)`` — solo tras impacto original, con la
-    CA ya modificada por Parry/Warding. Método ``repetir_d20`` en el
-    rasgo: guards sin RNG (nivel < 7, sin usos, dueño muerto o
-    incapacitado, reacción usada, sin ``rng``, ``target is owner`` —
-    «OTRA criatura»— y objetivo hostil al dueño), ``pick``
-    «no»/«sí»; al aceptar gasta uso + reacción y tira
-    ``roll_d20(rng, RollMode.NORMAL)`` (UN d20, sin conservar la
-    ventaja original), crítico/1 natural con ``evaluar_d20`` (umbral
-    de Champion), ``total = roll + bonus`` recibido del motor
-    (``bonus + modifiers.bonus``) y log. 10 tests (impacto → fallo,
-    fallo original sin consulta, 1 natural de la repetición falla
-    aunque entre, 20 natural crítico con daño 10+3, dueño y enemigos
-    excluidos, reacción compartida, sin usos sin RNG, nivel 6, dos
-    guardias → una sola repetición, sin subclase cero RNG). Suite
-    **1541 passed**. Commit de A5.
-  - (6) Ganchos de turno ajeno (A6): ``Trait.on_any_turn_start`` y
-    ``Trait.on_any_turn_end`` (métodos base no-op; el bucle del
-    encuentro avisa a TODOS los vivos con el actor como argumento, a
-    diferencia de ``on_turn_start``/``on_turn_end`` que son del propio
-    actor) + entrada en ``HOOK_NAMES`` (26 → **28 hooks**; el test del
-    catálogo los cubre). Helper ``_avisar_ganchos_de_turno(order,
-    actor, ctx, *, inicio)`` en ``engine/combat/encounter.py``: recorre
-    ``order`` saltando no vivos y sin traits, ``hooks()`` perezoso; la
-    llamada de INICIO va tras el corte de fin de combate y ANTES del
-    turno perdido por incapacitación, la de FIN tras ``end_turn`` con
-    guard ``actor.alive`` (un muerto a mitad de turno no la dispara).
-    Sin rasgos que sobrescriban: ``hooks`` devuelve ``[]`` y no se
-    consume RNG. Dispatch de turnos propios intacto (``usage.py`` /
-    ``conditions.py``). ``ARCHITECTURE.md``: 26 → 28. 4 tests en
-    ``tests/test_traits.py`` (catálogo + sin override sin RNG,
-    pares inicio/fin por turno en orden con ``run_combat``, recibe al
-    combatiente que actúa —el espía del PJ ve los turnos del
-    monstruo—, muerto no se avisa). Suite **1545 passed**. Commit de
-    A6.
-  - (7) Runas Hill y Frost (A7): ``RuneInvokeAction(runa)`` (acción
-    bonus, ``usage=None``, una instancia por runa conocida) en
-    ``rune_knight.py``: elegibilidad sin RNG (runa conocida, usos,
-    sin invocar, acción bonus libre vía ``super().can_use``) y
-    ``execute`` que gasta 1 uso y activa la runa; registrada en
-    ``apply_rune_knight`` SOLO para ``frost``/``hill`` conocidas
-    (Fire/Stone/Cloud son reacciones: A8/A9/A11). Frost: flag
-    ``frost_activo`` + bonus +2 en ``modificar_salvacion``/
-    ``modificar_prueba`` (solo FUE/CON del dueño, vía
-    ``_bonus_frost``). Hill: resistencias B/P/C con lista de fuente
-    propia ``_HILL_RESISTENCIAS`` (patrón Bear:
-    ``_otorgar_hill``/``_revocar_hill``, campo ``hill_concedidas``,
-    ``reset()`` revoca SOLO lo concedido); pasiva: resistencia
-    PERMANENTE a veneno en ``apply_rune_knight`` solo si se conoce
-    Hill (sin acumular). Ventaja en salvaciones de veneno = dato sin
-    efecto: el motor no distingue «salvación contra veneno»
-    (``save_modifiers`` solo mira ``magic_resistance``; POISONED en
-    ``check_modifiers`` da desventaja en TODA prueba) — documentado
-    en docstring y pendiente en TODO. Decisión de test: comparar
-    totales con dc=1 (con dc=20 el ``after_failed_check`` de Tactical
-    Mind altera el total); ``inflict_damage`` recibe daño YA
-    modificado (las resistencias las aplica ``apply_damage_modifiers``
-    en el caller), así que el test unitario usa ese helper. 7 tests
-    (registro solo frost/hill, Frost +2 FUE/CON pruebas y salvaciones
-    y 0 en DES, Hill mitiga 10→5 sin acumular y reset revoca solo lo
-    concedido, pasiva de veneno solo con Hill, una invocación por
-    runa aunque nivel 15 tenga 2 usos, sin acción/usos/runa, sin
-    subclase cero RNG). Suite **1552 passed**. Commit de A7.
-  - (8) Fire Rune (A8): todo en el punto ``extra_attack_damage`` ya
-    existente (método Arcane Shot de aplicación al impactar; se gasta
-    y aplica SOLO al impactar con arma): guard combinado de ``atk``/
-    ``rng``/``target``/``spell_attack`` compartido con Giant's Might
-    y ``bonus = 0`` si GM no toca. ``_fire_rune``: guards sin RNG
-    (runa ``fire`` desconocida, ``usos_runa[fire]<=0``, ``not
-    owner.can_act``, ``rng is None`` → return antes del ``pick``),
-    ``pick`` «no»/«sí» solo al gastar, gasta 1 uso,
-    ``roll_dice("2d6", rng, crit=crit)`` (regla de críticos) +
-    ``inflict_damage(..., DamageType.FIRE, ...)`` aparte (el return
-    del hook sería tipo arma: por eso NO suma al bruto) y
-    ``saving_throw(target, "str", 8+PB+mod CON, ctx=ctx)`` con
-    ``proficiency_bonus`` de ``core.proficiency`` (fix: no vive en
-    core.classes). Fallo → marca ``CombatState.fire_runa`` (ref al
-    dueño) + ``fire_runa_hasta`` (ronda+100 = ~1 minuto) +
-    ``Condition.RESTRAINED`` SIN ``escape`` (efecto de runa, no
-    agarre: ``begin_turn`` no intenta escaparla); una sola marca por
-    objetivo (la caducidad se refresca, la condición no se apila) y
-    ``Combatant.reset`` limpia los dos campos. Ganchos nuevos
-    ``on_any_turn_start``: barre en el turno del dueño las marcas a
-    muertos (los muertos no tienen turno propio) y, si el actor está
-    marcado y vivo/vigente, 2d6 de fuego SIN salvación;
-    ``on_any_turn_end``: si está marcado repite la salvación de FUE y
-    al superarla ``remove_condition`` + limpia la marca. Fix de tests
-    A4/A5: ``_giant_pj``/``_escudo_partida`` fijan
-    ``_runas_sin_fuego(nivel)`` (el ``_RNG_CREACION`` compartido
-    hacía que el pick de Fire ensuciara contadores ajenos) y el
-    helper de Fire devuelve DOS caras cuando el motor pide ADVANTAGE
-    (2.º ataque contra Restringido: ``_mode_tag`` lee ``rolls[1]``).
-    10 tests (fallo → Restringido + daño 6+5+3 y marca, éxito → solo
-    daño, 2d6 al inicio, salvaciones de fin de turno fallida/exitosa,
-    escape no la rompe, dos invocaciones con nivel 15 → una sola
-    marca, muerto limpia, reset limpia, guards + pick «no», sin
-    subclase cero RNG). Suite **1562 passed**. Commit de A8.
-  - (9) Stone Rune (A9): ``_cd_fuego`` → ``_cd_runa`` (misma CD para
-    Fire y Stone: 8 + PB + mod CON). Ganchos reestructurados en
-    dispatchers: ``on_any_turn_start`` barre en el turno del dueño las
-    marcas fire/stone de objetivos muertos y llama a
-    ``_fire_al_inicio`` (cuerpo de A8 sin el barrido) +
-    ``_stone_al_inicio``; ``on_any_turn_end`` = ``_fire_al_fin`` +
-    ``_stone_al_fin``. ``_stone_al_fin``: guards sin RNG (runa
-    desconocida — ``usos_runa`` solo tiene claves de runas conocidas,
-    turno propio, muerto, sin usos, dueño incapacitado, no hostil vía
-    ``owner.is_hostile_to(actor)`` — simétrico por
-    ``combatant_type`` —, ya Hechizado o sin ``rng``) → ``pick``
-    «no»/«sí» → gasta 1 uso → ``saving_throw(actor, "wis",
-    _cd_runa(), rng, ctx=ctx)`` → fallo: ``stone_de``/``stone_pg`` en
-    el ``CombatState`` del objetivo + ``apply_condition`` CHARMED e
-    INCAPACITADO con ``source=owner`` + log. Sin distancia (modelo sin
-    posiciones) y sin ``duration_rounds`` (solo retirada por daño).
-    ``_stone_al_inicio``: si ``hp < stone_pg`` o muerto →
-    ``_limpiar_stone`` (instancias CHARMED/INCAPACITADO con
-    ``source is self.owner`` vía ``tracker.instances`` +
-    ``remove_instance``, marca a cero) + log «recupera el control».
-    Campos ``stone_de``/``stone_pg`` en ``CombatState`` + reset en
-    ``Combatant.reset()``. 10 tests (fallo → ambas condiciones + marca
-    + usos 2→1→0… en lvl 5 de 1→0, salvación exitosa gasta uso sin
-    hechizar, pick «no», daño retira, sin daño no retira, aliado no
-    hostil sin pick, ya Hechizado sin pick, guards usos0/
-    incapacitado/sin runa con pick que revienta — ``usos_runa.get``
-    porque la clave ni existe —, reset limpia, sin subclase los
-    ``hooks`` de ganchos no consultan). Suite **1572 passed**.
-    Commit de A9.
-  - (10) Storm Rune (A10): SIN clase nueva — tercera invocación en
-    ``RuneInvokeAction``: gate ampliado a ``("frost", "hill",
-    "storm")`` (comentario: fire/stone se activan solos A8/A9, cloud
-    A11), rama nueva ``storm`` → ``storm_activo = True`` + log, y
-    registro en ``apply_rune_knight`` con la terna
-    (``_NOMBRES_RUNA`` ya traía la clave). Hook nuevo
-    ``grant_attack_modifiers(mods, attacker, target, rango, ctx, rng,
-    atk)`` en el trait (punto del motor: bloque 5b de
-    ``attack_modifiers`` — ``rules/roll_modifiers.py`` recorre
-    ``ctx.combatants`` saltando al atacante, ya en HOOK_NAMES):
-    guards sin RNG (runa desconocida / no invocada / ``owner`` None /
-    ``attacker`` None / ``reaction_used`` / ``can_react`` en False —
-    muerto o Incapacitado, donde la alianza queda sin efecto — / sin
-    ``rng``) → ``pick`` «no»/«sí» (decisión de gastar la reacción,
-    patrón Protección) → al gastar ``reaction_used = True``; la
-    DIRECCIÓN la fija la alianza con ``is_hostile_to(attacker)``
-    (simétrico): aliado o el propio dueño →
-    ``advantage_sources.append("Storm Rune")``, enemigo →
-    ``disadvantage_sources.append("Storm Rune")`` + log. Sin
-    posiciones: la distancia no modifica la alianza (dato sin efecto).
-    Invocación sin pick (patrón Frost/Hill): gasta 1 uso de
-    ``rune_uses``; una vez activa no se vuelve a invocar; la runa dura
-    todo el combate salvo incapacidad del dueño. 9 tests (registro de
-    la acción con y sin runa, activación gasta uso + estado + log +
-    can_use agotado, elegibilidad sin usos y con runa ajena, ventaja
-    para aliado + desventaja para enemigo + reacción única por ronda,
-    pick «no» sin gasto, guards sin RNG sin consultar pick, integración
-    vía ``attack_modifiers`` real con la fuente «Storm Rune», sin
-    subclase cero RNG). Suite **1581 passed**. Commit de A10.
-  - (11) Cloud Rune (A11): walker NUEVO ``_redirigir_del_bando`` en
-    ``engine/combat/attack.py`` (duck-typing SIN ``HOOK_NAMES``,
-    patrón ``_repetir_d20_del_bando``: recorre ``_bando_del(target,
-    ctx)`` llamando a ``redirigir_ataque``) insertado tras la
-    repetición de Runic Shield y ANTES de ``hit =``: si el golpe sigue
-    entrando y el rasgo devuelve un objetivo, ``target`` pasa a ser el
-    nuevo y ``ca_efectiva = effective_ac(target)`` (roll, total y
-    crítico intactos; el daño de abajo se aplica al nuevo; las CA
-    extra de Parry/Warding ya gastadas quedan para el objetivo
-    original, que es a quien reaccionaron). Método
-    ``redirigir_ataque(target, attacker, rango, *, ctx, rng, atk,
-    log)`` en el rasgo (tras ``repetir_d20``): guards sin RNG (runa
-    cloud conocida, ``usos_runa.get("cloud", 0)`` — ``usos_runa`` solo
-    tiene claves de runas conocidas, vivo, ``can_react``, reacción
-    libre, ctx/rng), pool = enemigos vivos del dueño distintos del
-    atacante y del objetivo (sin pool → return ANTES del pick),
-    ``pick`` «no»/«sí» + ``pick`` uniforme del pool, gasta 1 uso de
-    cloud y la reacción, log con el nuevo objetivo. 9 tests
-    (_nube_partida con refuerzo + _parchea_nube con dado de arma
-    fijo): redirección (aliado salvo, refuerzo dañado, usos/reacción),
-    crítico conservado (doble dado sobre el nuevo), recálculo de CA
-    (CA 25 del refuerzo > total → golpe falla contra el nuevo, usos y
-    reacción gastados), sin otro enemigo sin pick, pick «no» sin
-    gasto, reacción compartida (2.º golpe sin consulta), guards sin
-    RNG (usos 0 / cloud sin conocer / reacción gastada / dueño
-    Incapacitado / rng None), reset limpia usos y reacción, sin
-    subclase cero RNG (duck-typing negado; ``hooks()`` NO sirve aquí
-    porque exige ``HOOK_NAMES`` — walker, como ``repetir_d20``).
-    Fixes: CA del refuerzo a 25 (total real 15+FUE+prof ≥ 20 entraba
-    a 20) y ataque con d20 parcheado en el test sin subclase. Suite
-    **1590 passed**. Commit de A11.
-  - (12) Master of Runes (A12): los efectos de la característica ya
-    estaban en las tablas de A1 (``rune_uses`` da 2 usos por runa
-    desde el nivel 15 y ``runes_known_count`` la quinta runa en 15+)
-    y en el registro de ``apply_rune_knight``; la casilla se cierra
-    con 4 tests de cierre. (a) Frontera 14/15: ``_invocada`` a nivel
-    15 → 5 runas y todos los usos a 2; nivel 14 → 4 runas y usos a 1.
-    (b) A nivel 15 se registran las TRES ``RuneInvokeAction``
-    (frost/hill/storm) con runas explícitas (fire/cloud conocidas sin
-    acción, patrón A8/A9/A11). (c) Stone Rune con Master of Runes:
-    dos marcas en dos turnos (2→1→0 usos) con retirada por daño
-    entre medias, 2 consultas de ``pick``; contraste con nivel 5 (1
-    sola consulta: el 2.º turno se niega ANTES del pick por usos).
-    (d) Integración ``run_combat`` con semilla fija: PJ nivel 15 con
-    storm vs muñeco 400 PV, dos corridas con ``random.Random(7)``
-    repiten ``winner`` y ``rounds`` (``run_combat`` llama a
-    ``reset()`` al empezar) y hay usos de acción registrados.
-    Docstring de cabecera de ``tests/test_rune_knight.py``
-    actualizado hasta A12. Sin cambios de producción. Suite
-    **1594 passed**. Commit de A12.
-  - (13) Decisiones B (casilla B): el test de registro ya estaba
-    explicado ANTES en la entrada (2) de este bloque (A2 tocó
-    ``test_fighter``/``test_arcane_archer``/``test_battle_master``
-    al registrar la clave; nada nuevo que tocar). Sección nueva
-    ``# --- B: limites del modelo (dato sin efecto)`` al final de
-    ``tests/test_rune_knight.py`` con 5 tests freeze (sin tocar
-    ningún test existente): velocidad/alcance (ni ``speed`` ni
-    ``reach`` existen en el modelo; Giant's Might activo no los
-    crea), distancias (``valid_targets`` incluye al enemigo sin
-    geometría), pruebas características de Storm (solo ataques:
-    ``modificar_prueba`` devuelve ``(False, False, 0)`` con Storm
-    activo), runas despertadas (sin campos ``despert*``/``awaken*``
-    en el trait) y ventaja de Hill en salvaciones de veneno (solo
-    resistencia; el motor no distingue el tipo de salvación,
-    ``modificar_salvacion`` → ``(False, False, 0)``). ``TODO.md``:
-    casilla B ``[x]``, bullet «Rune Knight» en *pendientes reales*
-    (6 subclases listadas) y receta «5 claves» → «6 claves».
-    Suite **1599 passed**. Commit de B.
-  - (14) Docs (casilla Docs): ``ARCHITECTURE.md`` — recuentos
-    actualizados (``dnd_sim/`` 87 módulos/22372 líneas con las filas
-    core 13/1207, model 4/1058, rules 36/12711, traits 6/1322,
-    combat 3/1344, facade 1/195; ``tests/`` 57 ficheros/25462 líneas
-    y 1599 tests, suma verificada = total), fila ``rules/classes/``
-    con ``rune_knight`` (módulo único, no paquete) y «Rune Knight» en
-    la lista de subclases, y sección nueva «Rune Knight (TCE)» tras
-    Psi Warrior (Rune Carver, Giant's Might, consulta A3, Runic
-    Shield, las 6 runas, ganchos nuevos con HOOK_NAMES = 28, Master
-    of Runes y límites congelados). Hooks sin cambios: los walkers
-    ``repetir_d20``/``redirigir_ataque``/``modificar_salvacion``/
-    ``modificar_prueba`` no entraron en HOOK_NAMES. ``TODO.md``:
-    casilla Docs ``[x]`` y receta con ``rune_knight.py``.
-    PASOS: esta entrada + ESTADO ACTUAL con recuentos y subclases
-    (6 del fighter). Suite **1599 passed**. Commit de Docs.
-  - (15) Verificación (casilla Verificación): ``pytest
-    tests/test_arquitectura.py`` → 3 passed; suite completa →
-    **1599 passed** (200 warnings); ``python tools/capas.py`` →
-    ``total: 1`` con SOLO la excepción conocida
-    ``model.combatant -> rules.conditions``; ``graphify update .``
-    → 4538 nodos, 16593 aristas, 142 comunidades (backup de grafo
-    curado en ``graphify-out/2026-11-14/``). Commit final con el
-    grafo actualizado. Suite **1599 passed**. Commit de
-    Verificación.
+  - (A1) Tablas runes_known_count, giants_might_die_sides,
+    rune_uses, runic_shield_uses, giants_might_uses, pool RUNES (6).
+    tests/test_rune_knight.py. Suite: 1505.
+  - (A2) rune_knight.py: RuneKnightFeatures + apply_rune_knight
+    (kwarg runes). Registro "rune_knight". 3 tests de freeze tocados.
+    Suite: 1513.
+  - (A3) Consulta perezosa modificar_salvacion/modificar_prueba en
+    roll_modifiers (duck-typing; complementa a los hooks existentes;
+    fusionar_modo). Suite: 1522.
+  - (A4) GiantsMightAction: tamaño large/huge, ventaja FUE, daño
+    extra 1d6/8/10. Suite: 1531.
+  - (A5) Runic Shield: walker _repetir_d20_del_bando + repetir_d20
+    (re-tirada de UN d20 tras impactar). Suite: 1541.
+  - (A6) Ganchos on_any_turn_start/on_any_turn_end en Trait
+    (HOOK_NAMES 26 → 28). Suite: 1545.
+  - (A7) Runas Hill y Frost (RuneInvokeAction): Frost +2 FUE/CON;
+    Hill B/P/C con lista de fuente propia + pasiva de veneno;
+    ventaja Hill en salvaciones de veneno = dato sin efecto.
+    Suite: 1552.
+  - (A8) Fire Rune: extra_attack_damage 2d6 fuego + salvación FUE;
+    CombatState.fire_runa/fire_runa_hasta; RESTRAINED sin escape;
+    ganchos on_any_turn_start/end. Suite: 1562.
+  - (A9) Stone Rune: on_any_turn_end → Hechizado+Incapacitado
+    (stone_de/stone_pg); retirada por daño. Suite: 1572.
+  - (A10) Storm Rune: RuneInvokeAction + hook grant_attack_modifiers
+    (ventaja/desventaja por alianza vía is_hostile_to). Suite: 1581.
+  - (A11) Cloud Rune: walker _redirigir_del_bando + redirigir_ataque
+    (CA recalculada contra el nuevo objetivo). Suite: 1590.
+  - (A12) Master of Runes: efectos ya en tablas A1; 4 tests de
+    cierre (frontera 14/15, 3 invocaciones, integración run_combat).
+    Suite: 1594.
+  - (B) 5 tests freeze de límites (velocidad/alcance, distancias,
+    pruebas Storm, runas despertadas, ventaja Hill veneno).
+    Suite: 1599.
+  - (14)(15) Docs y Verificación: ARCHITECTURE 87 módulos/22372;
+    tests 57/25462/1599; sección «Rune Knight (TCE)»; grafo 4538
+    nodos.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y
      25462 líneas (1599 tests en verde, medido 2026-11-14).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro y Arcane Archer/Battle Master/Cavalier/Champion/
-     Psi Warrior/Rune Knight del fighter, con las 8 opciones de Arcane Shot:
-     Piercing/Seeking sin tirada vía sustituir_ataque).
+     Psi Warrior/Rune Knight del fighter, con las 8 opciones de Arcane
+     Shot: Piercing/Seeking sin tirada vía sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities
