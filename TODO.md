@@ -259,8 +259,10 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   salvación FUE 8+PB+CON); `fire_runa`/`fire_runa_hasta` en
   `CombatState`, RESTRAINED sin escape, ganchos de turno; 10 tests,
   suite 1562 passed.
-- [ ] A9 — Stone Rune (`on_any_turn_end`, Hechizado+Incapacitado) +
+- [x] A9 — Stone Rune (`on_any_turn_end`, Hechizado+Incapacitado) +
   tests.
+  **Hecho**: dispatchers fire/stone + `_cd_runa`; 10 tests, suite
+  1572 passed.
 - [ ] A10 — Storm Rune (acción + reacción ventaja/desventaja por
   alianza) + tests.
 - [ ] A11 — Cloud Rune (redirección en el punto de Warding) + tests.

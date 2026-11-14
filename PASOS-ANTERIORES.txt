@@ -2343,6 +2343,35 @@ RUNE KNIGHT (2026-11-13)
     escape no la rompe, dos invocaciones con nivel 15 → una sola
     marca, muerto limpia, reset limpia, guards + pick «no», sin
     subclase cero RNG). Suite **1562 passed**. Commit de A8.
+  - (9) Stone Rune (A9): ``_cd_fuego`` → ``_cd_runa`` (misma CD para
+    Fire y Stone: 8 + PB + mod CON). Ganchos reestructurados en
+    dispatchers: ``on_any_turn_start`` barre en el turno del dueño las
+    marcas fire/stone de objetivos muertos y llama a
+    ``_fire_al_inicio`` (cuerpo de A8 sin el barrido) +
+    ``_stone_al_inicio``; ``on_any_turn_end`` = ``_fire_al_fin`` +
+    ``_stone_al_fin``. ``_stone_al_fin``: guards sin RNG (runa
+    desconocida — ``usos_runa`` solo tiene claves de runas conocidas,
+    turno propio, muerto, sin usos, dueño incapacitado, no hostil vía
+    ``owner.is_hostile_to(actor)`` — simétrico por
+    ``combatant_type`` —, ya Hechizado o sin ``rng``) → ``pick``
+    «no»/«sí» → gasta 1 uso → ``saving_throw(actor, "wis",
+    _cd_runa(), rng, ctx=ctx)`` → fallo: ``stone_de``/``stone_pg`` en
+    el ``CombatState`` del objetivo + ``apply_condition`` CHARMED e
+    INCAPACITADO con ``source=owner`` + log. Sin distancia (modelo sin
+    posiciones) y sin ``duration_rounds`` (solo retirada por daño).
+    ``_stone_al_inicio``: si ``hp < stone_pg`` o muerto →
+    ``_limpiar_stone`` (instancias CHARMED/INCAPACITADO con
+    ``source is self.owner`` vía ``tracker.instances`` +
+    ``remove_instance``, marca a cero) + log «recupera el control».
+    Campos ``stone_de``/``stone_pg`` en ``CombatState`` + reset en
+    ``Combatant.reset()``. 10 tests (fallo → ambas condiciones + marca
+    + usos 2→1→0… en lvl 5 de 1→0, salvación exitosa gasta uso sin
+    hechizar, pick «no», daño retira, sin daño no retira, aliado no
+    hostil sin pick, ya Hechizado sin pick, guards usos0/
+    incapacitado/sin runa con pick que revienta — ``usos_runa.get``
+    porque la clave ni existe —, reset limpia, sin subclase los
+    ``hooks`` de ganchos no consultan). Suite **1572 passed**.
+    Commit de A9.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y

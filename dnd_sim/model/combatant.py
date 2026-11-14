@@ -288,6 +288,8 @@ class Combatant:
             # Fire Rune (Rune Knight): sin marca al empezar un combate.
             self.state.fire_runa = None
             self.state.fire_runa_hasta = 0
+            self.state.stone_de = None
+            self.state.stone_pg = 0
             # Bulwark of Force (Psi Warrior): sin cobertura heredada al
             # empezar un combate nuevo.
             self.state.cobertura_bulwark = None

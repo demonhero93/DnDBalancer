@@ -280,8 +280,8 @@ class RuneKnightFeatures(Trait):
         self.hill_concedidas.clear()
 
     # --- Fire Rune (A8) --------------------------------------------------------
-    def _cd_fuego(self) -> int:
-        """CD de la salvación de Fire Rune: 8 + PB + mod CON."""
+    def _cd_runa(self) -> int:
+        """CD de las salvaciones de Fire y Stone: 8 + PB + mod CON."""
         owner = self.owner
         mod_con = owner.abilities.mod("con") if owner is not None else 0
         return 8 + proficiency_bonus(self.level) + int(mod_con)
@@ -310,7 +310,7 @@ class RuneKnightFeatures(Trait):
                        ctx=ctx, rng=rng)
         _log_line(ctx, f"  {getattr(owner, 'name', owner)} invoca la "
                        f"Fire Rune: {extra} de daño de fuego")
-        sr = saving_throw(target, "str", self._cd_fuego(), rng, ctx=ctx)
+        sr = saving_throw(target, "str", self._cd_runa(), rng, ctx=ctx)
         if sr.success:
             return  # la salvación de la invocación no restringe
         estado = getattr(target, "state", None)
@@ -351,17 +351,31 @@ class RuneKnightFeatures(Trait):
         return marca
 
     def on_any_turn_start(self, actor: Any, ctx: Any = None) -> None:
-        """Marca de Fire: limpieza y daño de 2d6 al inicio del turno (A8)."""
-        # El objetivo muerto deja de ser válido: la marca se retira aquí
-        # (los muertos no tienen turno propio, así que se barre en el
-        # turno del dueño de la runa).
+        """Dispatch A8/A9: marcas de Fire y Stone al inicio del turno.
+
+        Los objetivos muertos no tienen turno propio, así que se barren
+        en el turno del dueño de la runa (ambas marcas).
+        """
         if actor is self.owner:
             for otro in getattr(ctx, "combatants", None) or []:
                 estado = getattr(otro, "state", None)
-                if (otro is not actor and estado is not None
-                        and getattr(estado, "fire_runa", None) is self.owner
-                        and not getattr(otro, "alive", True)):
+                if (otro is actor or estado is None
+                        or getattr(otro, "alive", True)):
+                    continue
+                if getattr(estado, "fire_runa", None) is self.owner:
                     self._limpiar_fire(otro)
+                if getattr(estado, "stone_de", None) is self.owner:
+                    self._limpiar_stone(otro)
+        self._fire_al_inicio(actor, ctx)
+        self._stone_al_inicio(actor, ctx)
+
+    def on_any_turn_end(self, actor: Any, ctx: Any = None) -> None:
+        """Dispatch A8/A9: Fire salva y Stone invoca al final del turno."""
+        self._fire_al_fin(actor, ctx)
+        self._stone_al_fin(actor, ctx)
+
+    def _fire_al_inicio(self, actor: Any, ctx: Any = None) -> None:
+        """Marca de Fire: limpieza y daño de 2d6 al inicio del turno (A8)."""
         estado = getattr(actor, "state", None)
         if (estado is None
                 or getattr(estado, "fire_runa", None) is not self.owner):
@@ -379,7 +393,7 @@ class RuneKnightFeatures(Trait):
         _log_line(ctx, f"  {getattr(actor, 'name', actor)} sufre "
                        f"{extra} de daño de fuego (Fire Rune)")
 
-    def on_any_turn_end(self, actor: Any, ctx: Any = None) -> None:
+    def _fire_al_fin(self, actor: Any, ctx: Any = None) -> None:
         """Fire Rune: salvación de FUE al final del turno (A8)."""
         estado = getattr(actor, "state", None)
         if (estado is None
@@ -392,11 +406,87 @@ class RuneKnightFeatures(Trait):
         rng = getattr(ctx, "rng", None) if ctx is not None else None
         if rng is None:
             return  # sin RNG no se tira: el efecto sigue vigente
-        sr = saving_throw(actor, "str", self._cd_fuego(), rng, ctx=ctx)
+        sr = saving_throw(actor, "str", self._cd_runa(), rng, ctx=ctx)
         if sr.success:
             self._limpiar_fire(actor)
             _log_line(ctx, f"  {getattr(actor, 'name', actor)} supera la "
                            f"Fire Rune")
+
+    # --- Stone Rune (A9) ---------------------------------------------------
+
+    def _limpiar_stone(self, target: Any) -> None:
+        """Retira la marca de Stone y SUS condiciones (fuente = dueño).
+
+        Filtra por ``source is self.owner``: no toca instancias de
+        Hechizado/Incapacitado puestas por otra fuente.
+        """
+        tracker = getattr(target, "conditions", None)
+        if tracker is not None:
+            for instancia in list(tracker.instances):
+                if (instancia.condition in (Condition.CHARMED,
+                                            Condition.INCAPACITATED)
+                        and instancia.source is self.owner):
+                    tracker.remove_instance(instancia)
+        estado = getattr(target, "state", None)
+        if estado is not None:
+            estado.stone_de = None
+            estado.stone_pg = 0
+
+    def _stone_al_fin(self, actor: Any, ctx: Any = None) -> None:
+        """Stone Rune: invocación al acabar el turno de un enemigo (A9).
+
+        Guards sin RNG (runa desconocida, propio turno, muerto, sin
+        usos, dueño incapacitado, no hostil, ya Hechizado o sin
+        ``rng``); el ``pick`` solo se consulta al gastar. La salvación
+        de SAB con CD de runa; al fallar: Hechizado + Incapacitado con
+        marca ``stone_de``/``stone_pg``. Sin distancia: el modelo no
+        guarda posiciones (decisión documentada en PASOS).
+        """
+        owner = self.owner
+        if ("stone" not in self.runas or actor is None or actor is owner
+                or not getattr(actor, "alive", True)
+                or int(self.usos_runa.get("stone", 0)) <= 0
+                or not getattr(owner, "can_act", True)):
+            return  # sin elegibilidad: ni consulta ni RNG
+        hostil = getattr(owner, "is_hostile_to", None)
+        if hostil is None or not hostil(actor):
+            return  # solo enemigos del dueño
+        tracker = getattr(actor, "conditions", None)
+        if tracker is not None and tracker.has(Condition.CHARMED):
+            return  # una sola vez: no repite mientras esté Hechizado
+        rng = getattr(ctx, "rng", None) if ctx is not None else None
+        if rng is None:
+            return
+        if pick(rng, ("no", "si")) == "no":
+            return
+        self.usos_runa["stone"] = int(self.usos_runa["stone"]) - 1
+        sr = saving_throw(actor, "wis", self._cd_runa(), rng, ctx=ctx)
+        if sr.success:
+            return  # la salvación de la invocación no hechiza
+        estado = getattr(actor, "state", None)
+        if estado is None:
+            return
+        estado.stone_de = owner
+        estado.stone_pg = int(getattr(actor, "hp", 0) or 0)
+        apply_condition(actor, Condition.CHARMED, ctx, source=owner)
+        apply_condition(actor, Condition.INCAPACITATED, ctx, source=owner)
+        _log_line(ctx, f"  {getattr(actor, 'name', actor)} queda Hechizado "
+                       f"e Incapacitado (Stone Rune)")
+
+    def _stone_al_inicio(self, actor: Any, ctx: Any = None) -> None:
+        """Stone: retirada por daño al empezar el turno del marcado (A9)."""
+        estado = getattr(actor, "state", None)
+        if (estado is None
+                or getattr(estado, "stone_de", None) is not self.owner):
+            return
+        if not getattr(actor, "alive", True):
+            self._limpiar_stone(actor)
+            return
+        if (int(getattr(actor, "hp", 0) or 0)
+                < int(getattr(estado, "stone_pg", 0) or 0)):
+            self._limpiar_stone(actor)
+            _log_line(ctx, f"  {getattr(actor, 'name', actor)} recupera el "
+                           f"control (Stone Rune: ha recibido daño)")
 
 
 class GiantsMightAction(CombatAction):

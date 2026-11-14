@@ -105,6 +105,12 @@ class CombatState:
     # de la subclase y ``Combatant.reset()``).
     fire_runa: Any = None
     fire_runa_hasta: int = 0
+    # Stone Rune (Rune Knight): dueño que hechizó y PG al marcar en ESTE
+    # combatiente; queda Hechizado + Incapacitado hasta que reciba daño
+    # (``hp < stone_pg`` al empezar su turno) o muera; lo ponen y limpian
+    # los rasgos de la subclase y ``Combatant.reset()``.
+    stone_de: Any = None
+    stone_pg: int = 0
 
     def enfeeble_mitiga(self, ronda: int | None) -> bool:
         """¿Vigente la marca de Enfeebling en ``ronda``?

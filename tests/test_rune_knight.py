@@ -1067,3 +1067,162 @@ def test_sin_subclase_la_fire_rune_no_consulta_rng(monkeypatch):
     attack_roll(pj, enemigo, pj.attacks[0], ctx.rng,
                 log=ctx.log, ctx=ctx)
     assert enemigo.max_hp - enemigo.hp == 5 + 3
+
+
+# --- A9: Stone Rune ----------------------------------------------------------
+
+def _piedra(level: int = 5) -> tuple:
+    """PJ con Stone Rune, enemigo y contexto de combate."""
+    pj, trait = _invocada("stone", level=level)
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    return pj, trait, enemigo, ctx
+
+
+def test_stone_rune_al_fallar_hechiza_e_incapacita(monkeypatch):
+    pj, trait, enemigo, ctx = _piedra()
+    llamadas = _parchea_fuego(monkeypatch, salva=1)
+    assert trait.usos_runa["stone"] == 1
+    trait.on_any_turn_end(enemigo, ctx)
+    assert len(llamadas) == 1
+    assert trait.usos_runa["stone"] == 0
+    assert enemigo.conditions.has(Condition.CHARMED)
+    assert enemigo.conditions.has(Condition.INCAPACITATED)
+    assert enemigo.state.stone_de is pj
+    assert enemigo.state.stone_pg == 60
+    assert any("Stone Rune" in line for line in ctx.log)
+
+
+def test_stone_rune_con_salvacion_exitosa_no_hechiza(monkeypatch):
+    pj, trait, enemigo, ctx = _piedra()
+    _parchea_fuego(monkeypatch, salva=20)
+    trait.on_any_turn_end(enemigo, ctx)
+    assert trait.usos_runa["stone"] == 0  # el uso se gasta igual
+    assert not enemigo.conditions.has(Condition.CHARMED)
+    assert not enemigo.conditions.has(Condition.INCAPACITATED)
+    assert enemigo.state.stone_de is None
+
+
+def test_stone_rune_con_pick_no_no_gasta(monkeypatch):
+    pj, trait, enemigo, ctx = _piedra()
+    llamadas = _parchea_fuego(monkeypatch, decide="no")
+    trait.on_any_turn_end(enemigo, ctx)
+    assert len(llamadas) == 1
+    assert trait.usos_runa["stone"] == 1
+    assert not enemigo.conditions.has(Condition.CHARMED)
+    assert enemigo.state.stone_de is None
+
+
+def test_stone_rune_el_dano_retira_la_marca_al_empezar_el_turno():
+    pj, trait, enemigo, ctx = _piedra()
+    enemigo.state.stone_de = pj
+    enemigo.state.stone_pg = 60
+    apply_condition(enemigo, Condition.CHARMED, ctx, source=pj)
+    apply_condition(enemigo, Condition.INCAPACITATED, ctx, source=pj)
+    enemigo.hp = 55  # ha recibido daño desde la marca
+    trait.on_any_turn_start(enemigo, ctx)
+    assert enemigo.state.stone_de is None
+    assert enemigo.state.stone_pg == 0
+    assert not enemigo.conditions.has(Condition.CHARMED)
+    assert not enemigo.conditions.has(Condition.INCAPACITATED)
+    assert any("recupera el control" in line for line in ctx.log)
+
+
+def test_stone_rune_sin_dano_no_retira_la_marca():
+    pj, trait, enemigo, ctx = _piedra()
+    enemigo.state.stone_de = pj
+    enemigo.state.stone_pg = 60
+    apply_condition(enemigo, Condition.CHARMED, ctx, source=pj)
+    apply_condition(enemigo, Condition.INCAPACITATED, ctx, source=pj)
+    trait.on_any_turn_start(enemigo, ctx)
+    assert enemigo.state.stone_de is pj
+    assert enemigo.conditions.has(Condition.CHARMED)
+
+
+def test_stone_rune_no_invoca_sobre_un_aliado(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin hostilidad no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    pj, trait, enemigo, ctx = _piedra()
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    aliado = _pj()
+    trait.on_any_turn_end(aliado, ctx)
+    assert trait.usos_runa["stone"] == 1
+    assert not aliado.conditions.has(Condition.CHARMED)
+
+
+def test_stone_rune_ya_hechizado_no_repite_la_invocacion(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("ya Hechizado no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    pj, trait, enemigo, ctx = _piedra()
+    apply_condition(enemigo, Condition.CHARMED, ctx, source="otra")
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    trait.on_any_turn_end(enemigo, ctx)
+    assert trait.usos_runa["stone"] == 1
+
+
+def test_stone_rune_guards_sin_rng(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin elegibilidad no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    # Sin la runa Stone.
+    pj, trait, enemigo, ctx = _fuego()
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    trait.on_any_turn_end(enemigo, ctx)
+    assert trait.usos_runa.get("stone", 0) == 0  # ni siquiera existe
+    # Sin usos.
+    pj, trait, enemigo, ctx = _piedra()
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    trait.usos_runa["stone"] = 0
+    trait.on_any_turn_end(enemigo, ctx)
+    assert not enemigo.conditions.has(Condition.CHARMED)
+    # Dueño incapacitado.
+    trait.usos_runa["stone"] = 1
+    apply_condition(pj, Condition.INCAPACITATED, ctx)
+    trait.on_any_turn_end(enemigo, ctx)
+    assert not enemigo.conditions.has(Condition.CHARMED)
+
+
+def test_stone_rune_reset_limpia_la_marca():
+    pj, trait, enemigo, ctx = _piedra()
+    enemigo.state.stone_de = pj
+    enemigo.state.stone_pg = 60
+    apply_condition(enemigo, Condition.CHARMED, ctx, source=pj)
+    apply_condition(enemigo, Condition.INCAPACITATED, ctx, source=pj)
+    enemigo.reset()
+    assert enemigo.state.stone_de is None
+    assert enemigo.state.stone_pg == 0
+    assert not enemigo.conditions.has(Condition.CHARMED)
+    assert not enemigo.conditions.has(Condition.INCAPACITATED)
+
+
+def test_sin_subclase_la_stone_rune_no_consulta_rng(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin la subclase no hay decisiones")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    monkeypatch.setattr(rk_mod, "roll_dice", _revienta)
+    pj = _pj(level=5)
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    from dnd_sim.rules.traits import hooks
+
+    assert all(
+        rasgo.__class__.__name__ != "RuneKnightFeatures"
+        for rasgo in pj.traits)
+    for rasgo in hooks(pj.traits, "on_any_turn_end"):
+        rasgo.on_any_turn_end(enemigo, ctx)
+    for rasgo in hooks(pj.traits, "on_any_turn_start"):
+        rasgo.on_any_turn_start(enemigo, ctx)
