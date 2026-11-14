@@ -1386,3 +1386,230 @@ def test_sin_subclase_la_storm_rune_no_consulta_pick(monkeypatch):
         rasgo.grant_attack_modifiers(AttackModifiers(), enemigo, pj,
                                      AttackRange.MELEE, ctx=ctx,
                                      rng=ctx.rng)
+
+
+# --- A11: Cloud Rune ---------------------------------------------------------
+
+
+def _nube_partida(*, level: int = 5, ac_refuerzo: int = 10) -> tuple:
+    """Monstruo ataca a un aliado; hay OTRO enemigo para redirigir."""
+    atacante = Monster("Orco", max_hp=60, ac=10, abilities=_abilities(),
+                       attacks=[Attack("Hacha", "1d8", ability="str")])
+    refuerzo = Monster("Goblin", max_hp=30, ac=ac_refuerzo,
+                       abilities=_abilities())
+    guardia = _pj(level=level, name="Guardia")
+    apply_fighter(guardia, level=level, fighting_style="Archery")
+    # Runas sin Fire (cloud primero): el pick de Fire ensuciaría contadores.
+    trait = apply_rune_knight(guardia, level=level,
+                              runes=_runas_sin_fuego(level))
+    aliado = _pj(name="Alicia", ac=15)
+    ctx = _ctx(atacante, guardia, aliado, refuerzo)
+    return atacante, guardia, aliado, refuerzo, trait, ctx
+
+
+def _parchea_nube(monkeypatch, *, roll_atacante: int = 15,
+                  decide: str = "si", dado_arma: int = 5) -> list:
+    """d20 del atacante, dado de arma y pick fijos (Cloud, A11)."""
+    import dnd_sim.engine.combat.attack as attack_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    llamadas = []
+    monkeypatch.setattr(
+        attack_mod, "roll_d20",
+        lambda rng, mode=None: D20Result(value=roll_atacante,
+                                         rolls=[roll_atacante],
+                                         mode=mode or RollMode.NORMAL))
+    monkeypatch.setattr(
+        attack_mod, "roll_dice",
+        lambda expr, rng, crit=False, **kw: (2 * dado_arma) if crit
+        else dado_arma)
+
+    def _pick(rng, seq):
+        llamadas.append(tuple(seq))
+        if tuple(seq) == ("no", "si"):
+            return decide
+        return seq[0]  # pool de un solo elemento: uniformidad irrelevante
+
+    monkeypatch.setattr(rk_mod, "pick", _pick)
+    return llamadas
+
+
+def test_cloud_rune_redirige_el_golpe_a_otro_enemigo(monkeypatch):
+    atacante, guardia, aliado, refuerzo, trait, ctx = _nube_partida()
+    _parchea_nube(monkeypatch, roll_atacante=15, decide="si")
+    usos = trait.usos_runa["cloud"]
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    # El aliado no recibe nada; el refuerzo sí (15 + 3 >= 10).
+    assert aliado.hp == 70
+    assert refuerzo.hp == 30 - (5 + 3)
+    assert trait.usos_runa["cloud"] == usos - 1
+    assert guardia.state.reaction_used is True
+    assert any("Cloud Rune" in line for line in ctx.log)
+
+
+def test_cloud_rune_conserva_el_critico_sobre_el_nuevo_objetivo(monkeypatch):
+    atacante, guardia, aliado, refuerzo, trait, ctx = _nube_partida()
+    _parchea_nube(monkeypatch, roll_atacante=20, decide="si")
+    usos = trait.usos_runa["cloud"]
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    # Doble dado (5 -> 10) + 3: el crítico viaja al nuevo objetivo.
+    assert aliado.hp == 70
+    assert refuerzo.hp == 30 - (10 + 3)
+    assert trait.usos_runa["cloud"] == usos - 1
+
+
+def test_cloud_rune_recalcula_la_ca_contra_el_nuevo_objetivo(monkeypatch):
+    # CA 25 del refuerzo > total del ataque (15 + FUE + prof): se salva
+    # el aliado y el golpe falla contra el nuevo objetivo (usos y
+    # reacción sí gastados).
+    atacante, guardia, aliado, refuerzo, trait, ctx = _nube_partida(
+        ac_refuerzo=25)
+    _parchea_nube(monkeypatch, roll_atacante=15, decide="si")
+    usos = trait.usos_runa["cloud"]
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp == 70
+    assert refuerzo.hp == 30
+    assert trait.usos_runa["cloud"] == usos - 1
+    assert guardia.state.reaction_used is True
+
+
+def test_cloud_rune_sin_otro_enemigo_no_consulta_pick(monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("sin elegibles no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    # Solo hay un enemigo y es el atacante: pool vacío.
+    atacante, guardia, aliado, trait, ctx = _escudo_partida(level=5)
+    llamadas = _parchea_escudo(monkeypatch, roll_atacante=15, decide="si")
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    usos = trait.usos_runa["cloud"]
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp < 70
+    assert trait.usos_runa["cloud"] == usos
+    assert llamadas == []
+
+
+def test_cloud_rune_con_pick_no_no_redirige(monkeypatch):
+    atacante, guardia, aliado, refuerzo, trait, ctx = _nube_partida()
+    llamadas = _parchea_nube(monkeypatch, roll_atacante=15, decide="no")
+    usos = trait.usos_runa["cloud"]
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert [s for s in llamadas if s == ("no", "si")] == [("no", "si")]
+    assert aliado.hp < 70
+    assert refuerzo.hp == 30
+    assert trait.usos_runa["cloud"] == usos
+    assert guardia.state.reaction_used is False
+
+
+def test_cloud_rune_gasta_la_reaccion_en_el_primer_golpe(monkeypatch):
+    atacante, guardia, aliado, refuerzo, trait, ctx = _nube_partida()
+    llamadas = _parchea_nube(monkeypatch, roll_atacante=15, decide="si")
+    usos = trait.usos_runa["cloud"]
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    aliado.hp = 70  # el segundo golpe vuelve a apuntar al aliado
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    # Reacción gastada: el segundo golpe no se consulta y entra.
+    assert aliado.hp < 70
+    assert trait.usos_runa["cloud"] == usos - 1
+    assert len([s for s in llamadas if s == ("no", "si")]) == 1
+
+
+def test_cloud_rune_guards_sin_rng(monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("el guard debe volver sin consultar el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    # (a) usos agotados
+    atacante, guardia, aliado, refuerzo, trait, ctx = _nube_partida()
+    _parchea_nube(monkeypatch, decide="si")
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    trait.usos_runa["cloud"] = 0
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp < 70
+    assert refuerzo.hp == 30
+
+    # (b) cloud sin conocer
+    guardia2 = _pj(level=5, name="Guardia2")
+    apply_fighter(guardia2, level=5, fighting_style="Archery")
+    apply_rune_knight(guardia2, level=5, runes=("frost", "hill"))
+    atacante2 = Monster("Orco", max_hp=60, ac=10, abilities=_abilities(),
+                        attacks=[Attack("Hacha", "1d8", ability="str")])
+    refuerzo2 = Monster("Goblin", max_hp=30, ac=10, abilities=_abilities())
+    aliado2 = _pj(name="Berta")
+    ctx2 = _ctx(atacante2, guardia2, aliado2, refuerzo2)
+    attack_roll(atacante2, aliado2, atacante2.attacks[0], ctx2.rng,
+                log=ctx2.log, ctx=ctx2)
+    assert aliado2.hp < 70
+
+    # (c) reacción ya gastada
+    trait.usos_runa["cloud"] = rune_uses(5)
+    guardia.state.reaction_used = True
+    aliado.hp = 70
+    refuerzo.hp = 30
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp < 70
+    assert trait.usos_runa["cloud"] == rune_uses(5)
+
+    # (d) dueño Incapacitado (sin reacción)
+    guardia.state.reaction_used = False
+    apply_condition(guardia, Condition.INCAPACITATED, ctx)
+    aliado.hp = 70
+    refuerzo.hp = 30
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp < 70
+    assert trait.usos_runa["cloud"] == rune_uses(5)
+
+    # (e) sin rng: el método se abstiene antes del pick
+    assert trait.redirigir_ataque(aliado, atacante, AttackRange.MELEE,
+                                  ctx=ctx, rng=None) is None
+
+
+def test_cloud_rune_el_reset_de_combate_deja_todo_limpio(monkeypatch):
+    atacante, guardia, aliado, refuerzo, trait, ctx = _nube_partida()
+    _parchea_nube(monkeypatch, decide="si")
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert guardia.state.reaction_used is True
+    assert trait.usos_runa["cloud"] == rune_uses(5) - 1
+    guardia.reset()
+    refuerzo.reset()
+    assert guardia.state.reaction_used is False
+    assert trait.usos_runa["cloud"] == rune_uses(5)
+
+
+def test_sin_subclase_la_cloud_rune_no_consulta_rng(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin la subclase no hay decisiones")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    _parchea_nube(monkeypatch, roll_atacante=15)
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    pj = _pj(level=5)
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    atacante = Monster("Orco", max_hp=60, ac=10, abilities=_abilities(),
+                       attacks=[Attack("Hacha", "1d8", ability="str")])
+    refuerzo = Monster("Goblin", max_hp=30, ac=10, abilities=_abilities())
+    aliado = _pj(name="Socio")
+    ctx = _ctx(atacante, pj, aliado, refuerzo)
+    assert all(rasgo.__class__.__name__ != "RuneKnightFeatures"
+               for rasgo in pj.traits)
+    # ``redirigir_ataque`` es walker (SIN entrada en HOOK_NAMES): se
+    # comprueba por duck-typing y el motor no lo despacha sin rasgos.
+    assert all(not callable(getattr(rasgo, "redirigir_ataque", None))
+               for rasgo in pj.traits)
+    attack_roll(atacante, aliado, atacante.attacks[0], ctx.rng,
+                log=ctx.log, ctx=ctx)
+    assert aliado.hp < 70

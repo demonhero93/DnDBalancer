@@ -268,7 +268,9 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   **Hecho**: `RuneInvokeAction` ampliada a storm + hook
   `grant_attack_modifiers` (dirección por `is_hostile_to`, pick de
   reacción patrón Protección); 9 tests, suite 1581 passed.
-- [ ] A11 — Cloud Rune (redirección en el punto de Warding) + tests.
+- [x] A11 — Cloud Rune (redirección en el punto de Warding) + tests.
+  **Hecho**: walker `_redirigir_del_bando` + `redirigir_ataque` (CA
+  recalculada contra el nuevo objetivo); 9 tests, suite 1590 passed.
 - [ ] A12 — Master of Runes (2 usos) + tests de cierre.
 - [ ] B — Decisiones: test de registro explicado ANTES; límites con
   test freeze; TODO con Rune Knight hecha y pendientes reales.

@@ -262,6 +262,32 @@ def _repetir_d20_del_bando(target: Any, attacker: Any, rango: Any, *,
     return None
 
 
+def _redirigir_del_bando(target: Any, attacker: Any, rango: Any, *,
+                         ctx: Any, rng: Any, atk: Any = None,
+                         log: Any = None) -> Any:
+    """Redirección Cloud Rune: el bando del defensor cambia el objetivo.
+
+    Duck-typing SIN entrada en ``HOOK_NAMES`` (patrón
+    ``_repetir_d20_del_bando``): llama al ``redirigir_ataque`` de los
+    rasgos de ``_bando_del(target, ctx)`` y devuelve el primer objetivo
+    nuevo. Roll, total y crítico NO cambian: la CA se recalcula en el
+    llamador contra el nuevo objetivo. Sin ``target`` ni ``rng``: ni
+    consulta ni RNG.
+    """
+    if target is None or rng is None:
+        return None
+    for criatura in _bando_del(target, ctx):
+        for rasgo in getattr(criatura, "traits", None) or []:
+            fn = getattr(rasgo, "redirigir_ataque", None)
+            if not callable(fn):
+                continue
+            nuevo = fn(target, attacker, rango, ctx=ctx, rng=rng,
+                       atk=atk, log=log)
+            if nuevo is not None:
+                return nuevo
+    return None
+
+
 def _oportunidad_contra_bando(target: Any, attacker: Any, *,
                               ctx: Any = None, rng: Any = None,
                               log: Any = None) -> None:
@@ -566,6 +592,17 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
             ctx=ctx, rng=rng, atk=atk, log=log)
         if repetido is not None:
             roll, total, crit, fallo_natural = repetido
+    # Cloud Rune (Rune Knight): si el golpe sigue entrando, el bando
+    # del defensor puede redirigirlo a otro enemigo del dueño. Roll,
+    # total y crítico se conservan; solo se recalcula la CA contra el
+    # nuevo objetivo (el ``hit`` de la línea siguiente ya lo contempla
+    # y el daño de abajo se aplica a ``target``, que pasa a ser él).
+    if crit or (not fallo_natural and total >= ca_efectiva):
+        redirigido = _redirigir_del_bando(
+            target, attacker, rango, ctx=ctx, rng=rng, atk=atk, log=log)
+        if redirigido is not None:
+            target = redirigido
+            ca_efectiva = effective_ac(target)
     hit = crit or (not fallo_natural and total >= ca_efectiva)
     # (6b) Punto ÚNICO de decisión de maniobras (Battle Master): tras
     # conocer la tirada y ANTES de aplicar efectos. Puede corregir el

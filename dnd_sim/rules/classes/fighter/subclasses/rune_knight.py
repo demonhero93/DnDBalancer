@@ -232,6 +232,59 @@ class RuneKnightFeatures(Trait):
             )
         return roll, total, crit, fallo_natural
 
+    def redirigir_ataque(self, target: Any, attacker: Any, rango: Any, *,
+                         ctx: Any = None, rng: Any = None,
+                         atk: Any = None, log: Any = None) -> Any:
+        """Cloud Rune: redirige el golpe a otro enemigo del dueño (A11).
+
+        Se decide tras impactar y antes del daño (mismo punto que
+        Warding Maneuver, mismo walker que Runic Shield pero devolviendo
+        el NUEVO objetivo: roll, total y crítico los conserva el motor).
+        Candidatos: enemigos vivos del dueño distintos del atacante y
+        del propio objetivo; sin candidatos el rasgo se abstiene SIN
+        RNG. La decisión es un ``pick`` «no»/«sí» y el objetivo se
+        elige con otro ``pick`` uniforme del pool. Gasta 1 uso de cloud
+        y la reacción.
+        """
+        owner = self.owner
+        if (
+            "cloud" not in self.runas
+            or owner is None
+            or target is None
+            or attacker is None
+            or int(self.usos_runa.get("cloud", 0)) <= 0
+            or not getattr(owner, "alive", True)
+            or not getattr(owner, "can_react", True)
+            or getattr(getattr(owner, "state", None), "reaction_used", True)
+            or ctx is None
+            or rng is None
+        ):
+            return None
+        pool = []
+        hostil = getattr(owner, "is_hostile_to", None)
+        for otro in getattr(ctx, "combatants", None) or []:
+            if otro is None or otro is attacker or otro is target:
+                continue
+            if not getattr(otro, "alive", True):
+                continue
+            if hostil is None or not hostil(otro):
+                continue
+            pool.append(otro)
+        if not pool:
+            return None  # sin elegibles: cero RNG
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        nuevo = pick(rng, tuple(pool))
+        self.usos_runa["cloud"] = int(self.usos_runa["cloud"]) - 1
+        owner.state.reaction_used = True
+        if log is not None:
+            log.append(
+                f"  {owner.name} redirige el ataque de "
+                f"{getattr(attacker, 'name', attacker)} a "
+                f"{getattr(nuevo, 'name', nuevo)} (Cloud Rune)"
+            )
+        return nuevo
+
     def grant_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
                                rango: Any, ctx: Any = None,
                                rng: Any = None, atk: Any = None) -> None:

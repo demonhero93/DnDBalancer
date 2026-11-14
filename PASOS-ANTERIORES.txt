@@ -2401,6 +2401,37 @@ RUNE KNIGHT (2026-11-13)
     pick «no» sin gasto, guards sin RNG sin consultar pick, integración
     vía ``attack_modifiers`` real con la fuente «Storm Rune», sin
     subclase cero RNG). Suite **1581 passed**. Commit de A10.
+  - (11) Cloud Rune (A11): walker NUEVO ``_redirigir_del_bando`` en
+    ``engine/combat/attack.py`` (duck-typing SIN ``HOOK_NAMES``,
+    patrón ``_repetir_d20_del_bando``: recorre ``_bando_del(target,
+    ctx)`` llamando a ``redirigir_ataque``) insertado tras la
+    repetición de Runic Shield y ANTES de ``hit =``: si el golpe sigue
+    entrando y el rasgo devuelve un objetivo, ``target`` pasa a ser el
+    nuevo y ``ca_efectiva = effective_ac(target)`` (roll, total y
+    crítico intactos; el daño de abajo se aplica al nuevo; las CA
+    extra de Parry/Warding ya gastadas quedan para el objetivo
+    original, que es a quien reaccionaron). Método
+    ``redirigir_ataque(target, attacker, rango, *, ctx, rng, atk,
+    log)`` en el rasgo (tras ``repetir_d20``): guards sin RNG (runa
+    cloud conocida, ``usos_runa.get("cloud", 0)`` — ``usos_runa`` solo
+    tiene claves de runas conocidas, vivo, ``can_react``, reacción
+    libre, ctx/rng), pool = enemigos vivos del dueño distintos del
+    atacante y del objetivo (sin pool → return ANTES del pick),
+    ``pick`` «no»/«sí» + ``pick`` uniforme del pool, gasta 1 uso de
+    cloud y la reacción, log con el nuevo objetivo. 9 tests
+    (_nube_partida con refuerzo + _parchea_nube con dado de arma
+    fijo): redirección (aliado salvo, refuerzo dañado, usos/reacción),
+    crítico conservado (doble dado sobre el nuevo), recálculo de CA
+    (CA 25 del refuerzo > total → golpe falla contra el nuevo, usos y
+    reacción gastados), sin otro enemigo sin pick, pick «no» sin
+    gasto, reacción compartida (2.º golpe sin consulta), guards sin
+    RNG (usos 0 / cloud sin conocer / reacción gastada / dueño
+    Incapacitado / rng None), reset limpia usos y reacción, sin
+    subclase cero RNG (duck-typing negado; ``hooks()`` NO sirve aquí
+    porque exige ``HOOK_NAMES`` — walker, como ``repetir_d20``).
+    Fixes: CA del refuerzo a 25 (total real 15+FUE+prof ≥ 20 entraba
+    a 20) y ataque con d20 parcheado en el test sin subclase. Suite
+    **1590 passed**. Commit de A11.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y
