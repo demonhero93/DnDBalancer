@@ -263,8 +263,11 @@ Pasos (una casilla = un commit; tras cada uno, entrada en
   tests.
   **Hecho**: dispatchers fire/stone + `_cd_runa`; 10 tests, suite
   1572 passed.
-- [ ] A10 — Storm Rune (acción + reacción ventaja/desventaja por
+- [x] A10 — Storm Rune (acción + reacción ventaja/desventaja por
   alianza) + tests.
+  **Hecho**: `RuneInvokeAction` ampliada a storm + hook
+  `grant_attack_modifiers` (dirección por `is_hostile_to`, pick de
+  reacción patrón Protección); 9 tests, suite 1581 passed.
 - [ ] A11 — Cloud Rune (redirección en el punto de Warding) + tests.
 - [ ] A12 — Master of Runes (2 usos) + tests de cierre.
 - [ ] B — Decisiones: test de registro explicado ANTES; límites con

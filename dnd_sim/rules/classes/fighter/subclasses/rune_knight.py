@@ -232,6 +232,48 @@ class RuneKnightFeatures(Trait):
             )
         return roll, total, crit, fallo_natural
 
+    def grant_attack_modifiers(self, mods: Any, attacker: Any, target: Any,
+                               rango: Any, ctx: Any = None,
+                               rng: Any = None, atk: Any = None) -> None:
+        """Storm Rune (10, reacción): ventaja/desventaja por alianza.
+
+        Mientras la runa esté invocada, el espíritu de la tormenta
+        inclina el ataque según QUIÉN ataca: aliado del dueño (o el
+        propio dueño) → ventaja; enemigo → desventaja
+        (``is_hostile_to``, simétrico). Decidir gastar la reacción es
+        un ``pick`` uniforme (patrón Protección) y al gastarse se marca
+        ``reaction_used`` (una por ronda, como el resto de reacciones).
+        Sin runa invocada, reacción ya usada, dueño muerto o
+        Incapacitado (``can_react``: ahí la alianza queda sin efecto)
+        o sin ``rng`` → el rasgo se abstiene sin consultar azar. Sin
+        posiciones, la alianza no mira distancia (dato sin efecto).
+        """
+        owner = self.owner
+        if ("storm" not in self.runas or not self.storm_activo
+                or owner is None or attacker is None):
+            return None
+        estado = getattr(owner, "state", None)
+        if estado is not None and getattr(estado, "reaction_used", False):
+            return None
+        if not getattr(owner, "can_react", True):
+            return None
+        if rng is None:
+            return None
+        if pick(rng, ("no", "si")) == "no":
+            return None
+        if estado is not None:
+            estado.reaction_used = True
+        nombre = getattr(attacker, "name", attacker)
+        if owner.is_hostile_to(attacker):
+            mods.disadvantage_sources.append("Storm Rune")
+            _log_line(ctx, f"{owner.name} invoca Storm Rune: desventaja "
+                           f"para {nombre}")
+        else:
+            mods.advantage_sources.append("Storm Rune")
+            _log_line(ctx, f"{owner.name} invoca Storm Rune: ventaja "
+                           f"para {nombre}")
+        return None
+
     def extra_attack_damage(self, attacker: Any, target: Any, rango: Any,
                             *, crit: bool = False, ctx: Any = None,
                             rng: Any = None, atk: Any = None) -> int:
@@ -546,7 +588,7 @@ _NOMBRES_RUNA = {
 
 
 class RuneInvokeAction(CombatAction):
-    """Invocación de una runa (acción bonus; A7: Frost y Hill).
+    """Invocación de una runa (acción bonus; A7: Frost y Hill, A10: Storm).
 
     Una instancia por runa conocida: la elegibilidad no consume RNG
     (runa conocida, usos restantes, sin invocar y acción bonus libre;
@@ -583,13 +625,17 @@ class RuneInvokeAction(CombatAction):
                 or int(trait.usos_runa.get(self.runa, 0)) <= 0
                 or getattr(trait, f"{self.runa}_activo", False)):
             return
-        if self.runa not in ("frost", "hill"):
-            return  # runas de reacción: A8-A11 las añaden
+        if self.runa not in ("frost", "hill", "storm"):
+            return  # fire/stone se activan solos (A8/A9); cloud (A11) no
         trait.usos_runa[self.runa] = int(trait.usos_runa[self.runa]) - 1
         if self.runa == "frost":
             trait.frost_activo = True
             _log_line(context, f"{actor.name} invoca Frost Rune: +2 a "
                                f"pruebas y salvaciones de FUE y CON")
+        elif self.runa == "storm":
+            trait.storm_activo = True
+            _log_line(context, f"{actor.name} invoca Storm Rune: ventaja "
+                               f"a sus aliados, desventaja a sus enemigos")
         else:
             trait.hill_activo = True
             trait._otorgar_hill(actor, context)
@@ -661,7 +707,7 @@ def apply_rune_knight(pj: Any, level: int | None = None,
     pj.actions.append(GiantsMightAction())
     # Invocaciones de runa (A7): una acción bonus por runa de efecto
     # continuo conocida (Fire/Stone/Cloud son reacciones, A8/A9/A11).
-    for runa in ("frost", "hill"):
+    for runa in ("frost", "hill", "storm"):
         if runa in elegidas:
             pj.actions.append(RuneInvokeAction(runa))
     return trait

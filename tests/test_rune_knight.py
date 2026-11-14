@@ -40,6 +40,7 @@ from dnd_sim.rules.classes.fighter.subclasses.rune_knight import (
 )
 from dnd_sim.rules.conditions import Condition, apply_condition
 from dnd_sim.rules.damage import apply_damage_modifiers
+from dnd_sim.rules.roll_modifiers import AttackModifiers, attack_modifiers
 from dnd_sim.rules.saves import saving_throw
 from dnd_sim.rules.usage import begin_turn
 
@@ -1226,3 +1227,162 @@ def test_sin_subclase_la_stone_rune_no_consulta_rng(monkeypatch):
         rasgo.on_any_turn_end(enemigo, ctx)
     for rasgo in hooks(pj.traits, "on_any_turn_start"):
         rasgo.on_any_turn_start(enemigo, ctx)
+
+
+# --- A10: Storm Rune ---------------------------------------------------------
+
+
+def _tormenta(level: int = 5) -> tuple:
+    """PJ con Storm Rune, aliado propio, enemigo y contexto."""
+    pj, trait = _invocada("storm", level=level)
+    aliado = _pj()
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, aliado, enemigo], log=[])
+    return pj, trait, aliado, enemigo, ctx
+
+
+def _accion_storm(pj) -> RuneInvokeAction:
+    return next(a for a in pj.actions
+                if isinstance(a, RuneInvokeAction) and a.runa == "storm")
+
+
+def test_la_storm_rune_registra_su_accion_de_invocacion():
+    pj, _ = _invocada("storm")
+    assert isinstance(_accion_storm(pj), RuneInvokeAction)
+    otro, _ = _invocada("frost")
+    assert not any(isinstance(a, RuneInvokeAction) and a.runa == "storm"
+                   for a in otro.actions)
+
+
+def test_activar_storm_gasta_un_uso_y_levanta_el_estado():
+    pj, trait, aliado, enemigo, ctx = _tormenta()
+    accion = _accion_storm(pj)
+    assert accion.can_use(ctx)
+    usos = trait.usos_runa["storm"]
+    accion.execute(ctx)
+    assert trait.storm_activo is True
+    assert trait.usos_runa["storm"] == usos - 1
+    assert any("Storm Rune" in line for line in ctx.log)
+    assert not accion.can_use(ctx)  # ya invocada: no se vuelve a invocar
+
+
+def test_storm_no_es_elegible_sin_usos_o_sin_runa_conocida():
+    pj, trait, aliado, enemigo, ctx = _tormenta()
+    trait.usos_runa["storm"] = 0
+    assert not _accion_storm(pj).can_use(ctx)
+    trait.usos_runa["storm"] = rune_uses(pj.level)
+    assert not RuneInvokeAction("fire").can_use(ctx)  # fire no es conocida
+
+
+def test_storm_concede_ventaja_a_aliados_y_desventaja_a_enemigos(
+        monkeypatch):
+    llamadas = _parchea_fuego(monkeypatch, decide="si")
+    pj, trait, aliado, enemigo, ctx = _tormenta()
+    trait.storm_activo = True
+
+    mods = AttackModifiers()
+    trait.grant_attack_modifiers(mods, aliado, enemigo, AttackRange.MELEE,
+                                 ctx=ctx, rng=ctx.rng)
+    assert mods.advantage_sources == ["Storm Rune"]
+    assert mods.disadvantage_sources == []
+    assert pj.state.reaction_used is True
+
+    # Con la reacción ya gastada no se consulta azar.
+    mods = AttackModifiers()
+    trait.grant_attack_modifiers(mods, enemigo, pj, AttackRange.MELEE,
+                                 ctx=ctx, rng=ctx.rng)
+    assert mods.disadvantage_sources == []
+    assert len(llamadas) == 1
+
+    pj.state.reaction_used = False
+    mods = AttackModifiers()
+    trait.grant_attack_modifiers(mods, enemigo, pj, AttackRange.MELEE,
+                                 ctx=ctx, rng=ctx.rng)
+    assert mods.disadvantage_sources == ["Storm Rune"]
+    assert pj.state.reaction_used is True
+    assert len(llamadas) == 2
+
+
+def test_storm_con_pick_no_no_gasta_la_reaccion(monkeypatch):
+    llamadas = _parchea_fuego(monkeypatch, decide="no")
+    pj, trait, aliado, enemigo, ctx = _tormenta()
+    trait.storm_activo = True
+    mods = AttackModifiers()
+    trait.grant_attack_modifiers(mods, aliado, enemigo, AttackRange.MELEE,
+                                 ctx=ctx, rng=ctx.rng)
+    assert len(llamadas) == 1
+    assert mods.advantage_sources == []
+    assert mods.disadvantage_sources == []
+    assert pj.state.reaction_used is False
+
+
+def test_storm_sin_invocar_o_sin_runa_no_consulta_pick(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin runa activa no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    pj, trait, aliado, enemigo, ctx = _tormenta()
+    trait.grant_attack_modifiers(AttackModifiers(), aliado, enemigo,
+                                 AttackRange.MELEE, ctx=ctx, rng=ctx.rng)
+    trait.storm_activo = True
+    trait.runas = tuple(r for r in trait.runas if r != "storm")
+    trait.grant_attack_modifiers(AttackModifiers(), aliado, enemigo,
+                                 AttackRange.MELEE, ctx=ctx, rng=ctx.rng)
+
+
+def test_storm_guards_sin_rng_no_consultan_pick(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("guard sin RNG no debe llegar al pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    pj, trait, aliado, enemigo, ctx = _tormenta()
+    trait.storm_activo = True
+    # Sin rng.
+    trait.grant_attack_modifiers(AttackModifiers(), aliado, enemigo,
+                                 AttackRange.MELEE, ctx=ctx, rng=None)
+    # Reacción ya gastada.
+    pj.state.reaction_used = True
+    trait.grant_attack_modifiers(AttackModifiers(), aliado, enemigo,
+                                 AttackRange.MELEE, ctx=ctx, rng=ctx.rng)
+    # Dueño Incapacitado: la alianza queda sin efecto (can_react).
+    pj.state.reaction_used = False
+    apply_condition(pj, Condition.INCAPACITATED, ctx)
+    trait.grant_attack_modifiers(AttackModifiers(), aliado, enemigo,
+                                 AttackRange.MELEE, ctx=ctx, rng=ctx.rng)
+
+
+def test_storm_integra_con_attack_modifiers_del_motor(monkeypatch):
+    llamadas = _parchea_fuego(monkeypatch, decide="si")
+    pj, trait, aliado, enemigo, ctx = _tormenta()
+    trait.storm_activo = True
+    mods = attack_modifiers(aliado, enemigo, aliado.attacks[0],
+                            AttackRange.MELEE, ctx=ctx, rng=ctx.rng)
+    assert "Storm Rune" in mods.advantage_sources
+    assert len(llamadas) == 1
+
+
+def test_sin_subclase_la_storm_rune_no_consulta_pick(monkeypatch):
+    def _revienta(*args, **kwargs):
+        raise AssertionError("sin la subclase no hay decisiones")
+
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+
+    monkeypatch.setattr(rk_mod, "pick", _revienta)
+    pj = _pj(level=5)
+    apply_fighter(pj, level=5, fighting_style="Archery")
+    enemigo = Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+    ctx = SimpleNamespace(round=1, actor=pj, rng=random.Random(1),
+                           combatants=[pj, enemigo], log=[])
+    from dnd_sim.rules.traits import hooks
+
+    assert all(rasgo.__class__.__name__ != "RuneKnightFeatures"
+               for rasgo in pj.traits)
+    for rasgo in hooks(pj.traits, "grant_attack_modifiers"):
+        rasgo.grant_attack_modifiers(AttackModifiers(), enemigo, pj,
+                                     AttackRange.MELEE, ctx=ctx,
+                                     rng=ctx.rng)

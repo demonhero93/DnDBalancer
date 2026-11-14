@@ -2372,6 +2372,35 @@ RUNE KNIGHT (2026-11-13)
     porque la clave ni existe —, reset limpia, sin subclase los
     ``hooks`` de ganchos no consultan). Suite **1572 passed**.
     Commit de A9.
+  - (10) Storm Rune (A10): SIN clase nueva — tercera invocación en
+    ``RuneInvokeAction``: gate ampliado a ``("frost", "hill",
+    "storm")`` (comentario: fire/stone se activan solos A8/A9, cloud
+    A11), rama nueva ``storm`` → ``storm_activo = True`` + log, y
+    registro en ``apply_rune_knight`` con la terna
+    (``_NOMBRES_RUNA`` ya traía la clave). Hook nuevo
+    ``grant_attack_modifiers(mods, attacker, target, rango, ctx, rng,
+    atk)`` en el trait (punto del motor: bloque 5b de
+    ``attack_modifiers`` — ``rules/roll_modifiers.py`` recorre
+    ``ctx.combatants`` saltando al atacante, ya en HOOK_NAMES):
+    guards sin RNG (runa desconocida / no invocada / ``owner`` None /
+    ``attacker`` None / ``reaction_used`` / ``can_react`` en False —
+    muerto o Incapacitado, donde la alianza queda sin efecto — / sin
+    ``rng``) → ``pick`` «no»/«sí» (decisión de gastar la reacción,
+    patrón Protección) → al gastar ``reaction_used = True``; la
+    DIRECCIÓN la fija la alianza con ``is_hostile_to(attacker)``
+    (simétrico): aliado o el propio dueño →
+    ``advantage_sources.append("Storm Rune")``, enemigo →
+    ``disadvantage_sources.append("Storm Rune")`` + log. Sin
+    posiciones: la distancia no modifica la alianza (dato sin efecto).
+    Invocación sin pick (patrón Frost/Hill): gasta 1 uso de
+    ``rune_uses``; una vez activa no se vuelve a invocar; la runa dura
+    todo el combate salvo incapacidad del dueño. 9 tests (registro de
+    la acción con y sin runa, activación gasta uso + estado + log +
+    can_use agotado, elegibilidad sin usos y con runa ajena, ventaja
+    para aliado + desventaja para enemigo + reacción única por ronda,
+    pick «no» sin gasto, guards sin RNG sin consultar pick, integración
+    vía ``attack_modifiers`` real con la fuente «Storm Rune», sin
+    subclase cero RNG). Suite **1581 passed**. Commit de A10.
 
 ESTADO ACTUAL
    - 86 módulos en dnd_sim/ (21276 líneas); tests/ con 56 ficheros y
