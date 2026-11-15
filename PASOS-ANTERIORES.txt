@@ -388,6 +388,13 @@ RUNE KNIGHT (2026-11-13)
     tests 57/25462/1599; sección «Rune Knight (TCE)»; grafo 4538
     nodos.
 
+SAMURAI (2026-11-15)
+  - (A1) Tablas fighting_spirit_uses (3 desde nivel 3),
+    fighting_spirit_temp_hp (0/5/10/15) y SAMURAI_BONUS_SKILLS
+    (history, insight, performance, persuasion: las 4 existen en
+    SKILL_ABILITIES, Interpretación = performance).
+    tests/test_samurai.py (3). Suite: 1602.
+
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y
      25462 líneas (1599 tests en verde, medido 2026-11-14).

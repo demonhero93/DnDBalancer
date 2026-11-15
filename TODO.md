@@ -5,6 +5,39 @@ Solo tareas SIN implementar. Lo ya hecho: PASOS-ANTERIORES.txt
 (bloque 15 «Clase Fighter», bloque «CIERRE DE PENDIENTES DEL FIGHTER»)
 y ARCHITECTURE.md.
 
+## Samurai: plan de sesión
+
+Una casilla = un commit. Registro en `PASOS-ANTERIORES.txt` tras cada
+casilla. Enunciado completo en el mensaje de tarea de la sesión.
+
+- [x] A1 — Tablas en `core/classes.py`: `fighting_spirit_uses`,
+  `fighting_spirit_temp_hp`, `SAMURAI_BONUS_SKILLS` + tests por nivel.
+  **Hecho**: 3 tests, suite 1602 passed.
+- [ ] A2 — Esqueleto `samurai.py` (`SamuraiFeatures` + `apply_samurai`),
+  registro `"samurai"` en `fighter/__init__.py` + reexports + fachada;
+  cambio explicado del test freeze de subclases de `test_fighter.py`.
+- [ ] A3 — Fighting Spirit: activación previa en `on_turn_start`
+  (decisión con `pick`; el motor no tiene punto previo a la acción),
+  gasto de la acción adicional en `ctx.resources`, PV temporales sin
+  acumulación y ventaja en `modify_attack_modifiers` solo con arma.
+- [ ] A4 — Rapid Strike: consulta duck-typing `renunciar_ventaja` en
+  `engine/combat/attack.py` tras el modo de ventaja y antes del d20;
+  ataque adicional al final de `attack_roll`.
+- [ ] A5 — Función de turno reutilizable en `encounter.py` (extraída
+  del bucle de rondas; cero cambio de RNG; suite idéntica).
+- [ ] A6 — Strength Before Death: campos `en_pie_pendiente` y cola de
+  turnos extra, predicado «en pie» (`alive`), dispara en `inflict_damage`
+  y cola procesada al final de cada turno con la función de A5.
+- [ ] B — Decisiones: freeze de datos sin efecto (idioma, bonificador
+  social, Tireless Spirit, salvaciones de muerte), reinterpretación del
+  turno extra diferido en docstrings, lista de candidatas en TODO.
+- [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, función de turno,
+  estado en pie pendiente, recuentos), bloque SAMURAI en
+  `PASOS-ANTERIORES.txt`, receta y pendientes de `TODO.md`.
+- [ ] Verificación final — `pytest tests/test_arquitectura.py` +
+  `pytest` + `python tools/capas.py` + `graphify update .` + commit
+  con el grafo.
+
 ## Pendientes generales
 
 - Push a `origin`: hay commits locales sin push (ver

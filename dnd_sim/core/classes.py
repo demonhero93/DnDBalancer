@@ -286,6 +286,32 @@ def giants_might_uses(level: int) -> int:
     return 2 + (lvl - 1) // 4  # bonificador de competencia (tabla PHB)
 
 
+def fighting_spirit_uses(level: int) -> int:
+    """Usos de Fighting Spirit (Samurai, XGE): 3 desde el nivel 3.
+
+    En el simulador cada combate empieza con los usos completos (mismo
+    criterio que Action Surge: sin descansos dentro del combate).
+    """
+    lvl = _clamp(level)
+    return 3 if lvl >= 3 else 0
+
+
+def fighting_spirit_temp_hp(level: int) -> int:
+    """PV temporales de Fighting Spirit (Samurai, XGE) según nivel.
+
+    0 por debajo del nivel 3; 5 en 3-9, 10 en 10-14 (Tireless Spirit) y
+    15 en 15+ (Rapid Strike da más margen de nivel, tabla XGE).
+    """
+    lvl = _clamp(level)
+    if lvl < 3:
+        return 0
+    if lvl >= 15:
+        return 15
+    if lvl >= 10:
+        return 10
+    return 5
+
+
 #: Pool de runas de Rune Knight (TCE). El orden fija la muestra.
 RUNES: tuple[str, ...] = ("cloud", "fire", "frost", "hill", "stone",
                            "storm")
@@ -424,6 +450,17 @@ CAVALIER_BONUS_SKILLS: tuple[str, ...] = (
     "persuasion",
 )
 
+#: Habilidades candidatas a Bonus Proficiency (Samurai, XGE): Historia,
+#: Perspicacia, Interpretación y Persuasión. Todas existen en
+#: :data:`dnd_sim.core.skills.SKILL_ABILITIES` (claves en inglés); el
+#: idioma alternativo del rasgo es dato sin efecto (sin modelo).
+SAMURAI_BONUS_SKILLS: tuple[str, ...] = (
+    "history",
+    "insight",
+    "performance",
+    "persuasion",
+)
+
 #: Probabilidad de simular un movimiento de carga de al menos 10 pies
 #: hacia la criatura en Ferocious Charger (Cavalier). Se evalúa una vez
 #: por turno en el primer impacto cuerpo a cuerpo (patrón
@@ -443,6 +480,7 @@ __all__ = [
     "FIGHTER_STYLES",
     "MAX_LEVEL",
     "MIN_LEVEL",
+    "SAMURAI_BONUS_SKILLS",
     "action_surge_uses",
     "arcane_shot_options_known",
     "arcane_shot_uses",
@@ -452,6 +490,8 @@ __all__ = [
     "champion_crit_threshold",
     "extra_attacks_for",
     "fighter_extra_attacks_for",
+    "fighting_spirit_temp_hp",
+    "fighting_spirit_uses",
     "giants_might_die_sides",
     "giants_might_uses",
     "heroic_rally_amount",
