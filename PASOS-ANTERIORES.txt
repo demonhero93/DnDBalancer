@@ -430,6 +430,20 @@ SAMURAI (2026-11-15)
     {Camila: 70, Orco: 0}, Multiattack 7, Oleada 1, daño 61) fijado
     en tests/test_samurai.py ANTES del refactor y verificado tras.
     Suite: 1630.
+  - (A6) Strength Before Death: cola CombatState.turnos_extra_pendientes
+    (no serializada) + flag Combatant.en_pie_pendiente (init=False,
+    alive lo cuenta en pie hasta que juega su turno extra o muere;
+    reset lo limpia). Trait on_reduced_to_zero_hp con guards sin RNG
+    (nivel 18, usos, sin reacción usada, sin incapacitado, ctx/rng) y
+    pick "no/sí": gasta usos y reacción, encola al propietario. En
+    rules/damage.py, _liberar_turno_extra retira de la cola al que
+    recibe daño con PV positivos o ya pendiente (entonces
+    _mark_dead_if_down remata). encounter._procesar_turnos_extra se
+    llama al final de _turno (tras hooks de fin, antes de guarida):
+    pendiente vivo con PV 0 juega _turno extra; si acaba a 0 muere y
+    se libera la cola; sin curación muere sin turno extra. Integración
+    run_combat con semilla 2 (drop ronda 4, muere en el turno extra).
+    Suite: 1636.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y

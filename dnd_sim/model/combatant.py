@@ -132,6 +132,12 @@ class Combatant:
     # limpia ``reset()``: así quien queda a 0 PV no «revive» a mitad de un
     # combate reutilizado y el combate se da por terminado al instante.
     dead: bool = field(init=False, default=False)
+    # Strength Before Death (Samurai, A6): quien esperando su turno extra
+    # con 0 PV sigue «en pie» (``alive`` lo consulta antes de
+    # ``_sobrevive_a_cero``). Lo pone el walker de daño al reducirlo a 0
+    # con el rasgo, lo limpia el procesado de la cola al final de cada
+    # turno (cura o muerte) y ``reset()``.
+    en_pie_pendiente: bool = field(init=False, default=False)
 
     def __post_init__(self):
         if isinstance(self.combatant_type, str):
@@ -234,6 +240,10 @@ class Combatant:
             return False
         if self.hp > 0:
             return True
+        # Strength Before Death (Samurai): pendiente de su turno extra
+        # con 0 PV sigue en pie; sin flag, manda la salvación a cero.
+        if self.en_pie_pendiente:
+            return True
         # A 0 PV la criatura muere, salvo que un rasgo pueda salvarla hasta
         # su próximo turno de inicio (Regeneration): entonces sigue viva y
         # ese turno decide entre morir (a 0 PV no se regenera) o seguir.
@@ -266,6 +276,8 @@ class Combatant:
         self.hp = self.max_hp
         # Un combate nuevo revive a todos: el estado de muerte se limpia aquí.
         self.dead = False
+        # Strength Before Death: nadie empieza un combate pendiente.
+        self.en_pie_pendiente = False
         # Los PV temporales tampoco sobreviven a un combate nuevo.
         self.temp_hp = 0
         # El tamaño vuelve al de la ficha (efectos como Giant Stature).
@@ -304,6 +316,9 @@ class Combatant:
             self.state.marca_cavalier.clear()
             # Marca de Distracting (Battle Master): un combate nuevo sin ella.
             self.state.distracting.clear()
+            # Turnos extra pendientes de Strength Before Death: la cola
+            # vive en el SUJETO y un combate nuevo empieza vacía.
+            self.state.turnos_extra_pendientes.clear()
         except Exception:
             pass
         # Los usos limitados (usos por día, recargas) viven en las acciones,

@@ -111,6 +111,12 @@ class CombatState:
     # los rasgos de la subclase y ``Combatant.reset()``.
     stone_de: Any = None
     stone_pg: int = 0
+    # Strength Before Death (Samurai): cola de turnos extra pendientes
+    # de ESTE combatiente (el flag ``en_pie_pendiente`` del propio
+    # combatiente es el predicado «en pie»; la cola da la lista a
+    # procesar al final de cada turno). La vacía ``Combatant.reset()``.
+    turnos_extra_pendientes: list = field(
+        default_factory=list, repr=False, compare=False)
 
     def enfeeble_mitiga(self, ronda: int | None) -> bool:
         """¿Vigente la marca de Enfeebling en ``ronda``?

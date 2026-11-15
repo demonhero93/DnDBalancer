@@ -604,3 +604,181 @@ def test_el_cuerpo_de_turno_extraido_no_cambia_run_combat():
                                      "Oleada de Acción": 1}
     assert res.damage_dealt == {"Camila": 61}
     assert res.damage_received == {"Orco": 61}
+
+
+# --- A6: Strength Before Death ------------------------------------------------
+
+
+def test_strength_before_death_encola_un_turno_extra(monkeypatch):
+    pj, trait = _samurai(18)
+    orco = _enemigo()
+    ctx = _ctx(pj, orco)
+    pj.hp = 0  # el drop ya ocurrió (como en _salvar_a_cero)
+    _si(monkeypatch)
+    res = trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=ctx.rng)
+    assert res is None  # queda a 0 PV (versión diferida)
+    assert pj.en_pie_pendiente
+    assert pj.state.turnos_extra_pendientes == [pj]
+    assert pj.alive  # 0 PV pero «en pie»: lo cubre alive
+    assert trait.sbd_uses.uses_left == 0
+    assert pj.state.reaction_used  # el rasgo gasta la reacción
+
+
+def test_con_el_pick_no_la_muerte_sigue_normal(monkeypatch):
+    pj, trait = _samurai(18)
+    orco = _enemigo()
+    ctx = _ctx(pj, orco)
+
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+    monkeypatch.setattr(sm_mod, "pick", lambda rng, seq: "no")
+    pj.hp = 0  # el drop ya ocurrió
+    trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=ctx.rng)
+    assert not pj.en_pie_pendiente
+    assert pj.state.turnos_extra_pendientes == []
+    assert trait.sbd_uses.uses_left == 1
+    assert not pj.alive and not pj.dead  # 0 PV sin flag: no está en pie
+    assert not pj.state.reaction_used  # sin elección no gasta reacción
+
+
+def test_no_es_elegible_sin_nivel_sin_uso_sin_reaccion_sin_contexto(
+        monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+
+    def _revienta(rng, seq):
+        raise AssertionError("elegibilidad sin RNG: no hay pick")
+
+    def _crear(nivel):
+        # Crear siempre con pick «sí» (Bonus Proficiency lo usa al
+        # aplicar); el pick que revienta se pone DESPUÉS, en cada sonda.
+        monkeypatch.setattr(sm_mod, "pick", lambda rng, seq: "sí")
+        return _samurai(nivel)
+
+    # Nivel 17: ni se consulta.
+    pj, trait = _crear(17)
+    orco = _enemigo()
+    ctx = _ctx(pj, orco)
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=ctx.rng)
+    assert not pj.en_pie_pendiente and trait.sbd_uses.uses_left == 1
+
+    # Nivel 18 sin usos: gastado el único con una activación previa.
+    pj, trait = _crear(18)
+    orco = _enemigo()
+    ctx = _ctx(pj, orco)
+    trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=ctx.rng)
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    pj.en_pie_pendiente = False
+    pj.state.turnos_extra_pendientes.clear()
+    trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=ctx.rng)
+    assert not pj.en_pie_pendiente and trait.sbd_uses.uses_left == 0
+
+    # Reacción ya usada / incapacitado: cortan antes del pick.
+    for prepara in (
+            lambda p, c: setattr(p.state, "reaction_used", True),
+            lambda p, c: apply_condition(p, Condition.INCAPACITATED, c),
+    ):
+        pj, trait = _crear(18)
+        orco = _enemigo()
+        ctx = _ctx(pj, orco)
+        prepara(pj, ctx)
+        monkeypatch.setattr(sm_mod, "pick", _revienta)
+        trait.on_reduced_to_zero_hp(
+            pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=ctx.rng)
+        assert not pj.en_pie_pendiente
+        assert trait.sbd_uses.uses_left == 1
+
+    # Sin ctx o sin rng: sin contexto no se aplica (y sin RNG).
+    pj, trait = _crear(18)
+    orco = _enemigo()
+    ctx = _ctx(pj, orco)
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=None, rng=ctx.rng)
+    trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=None)
+    assert not pj.en_pie_pendiente
+    assert trait.sbd_uses.uses_left == 1
+
+
+def test_el_dano_adicional_remata_a_un_pendiente(monkeypatch):
+    from dnd_sim.rules.damage import inflict_damage
+
+    pj, trait = _samurai(18)
+    orco = _enemigo()
+    ctx = _ctx(pj, orco)
+    pj.hp = 0  # el drop ya ocurrió
+    _si(monkeypatch)
+    trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=ctx.rng)
+    assert pj.en_pie_pendiente
+    # Otro golpe con los PV ya a 0: cancela el turno extra y muere.
+    inflict_damage(pj, 5, damage_type="bludgeoning", source=orco,
+                   ctx=ctx, rng=ctx.rng)
+    assert not pj.en_pie_pendiente
+    assert pj.state.turnos_extra_pendientes == []
+    assert pj.dead and not pj.alive
+
+
+def test_el_dano_desde_pv_positivos_libera_el_flag_obsoleto(monkeypatch):
+    from dnd_sim.rules.damage import inflict_damage
+
+    pj, trait = _samurai(18)
+    orco = _enemigo()
+    ctx = _ctx(pj, orco)
+    pj.hp = 0  # el drop ya ocurrió
+    _si(monkeypatch)
+    trait.on_reduced_to_zero_hp(
+        pj, 10, "slashing", orco, crit=False, ctx=ctx, rng=ctx.rng)
+    # Cura entre medias (resolución perezosa): el flag queda obsoleto
+    # y el siguiente daño lo limpia sin matar.
+    pj.hp = 20
+    inflict_damage(pj, 3, damage_type="bludgeoning", source=orco,
+                   ctx=ctx, rng=ctx.rng)
+    assert not pj.en_pie_pendiente
+    assert pj.state.turnos_extra_pendientes == []
+    assert not pj.dead and pj.alive and pj.hp == 17
+
+
+def test_en_run_combat_strength_before_death_da_un_turno_extra(monkeypatch):
+    import dnd_sim.engine.combat.encounter as enc
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+
+    habilidades = Abilities(str=16, dex=14, con=16, int=14, wis=12,
+                            cha=10)
+    camila = PlayerCharacter(
+        name="Camila", max_hp=1, ac=10, level=18, abilities=habilidades,
+        attacks=[Attack("Espada larga", "1d8", ability="str")])
+    apply_fighter(camila, level=18, fighting_style="Archery")
+    trait = apply_samurai(camila, level=18)
+    for a in camila.attacks:
+        a.mastery = ""
+    # Nota: run_combat llama a reset() al empezar, que restaura los usos
+    # (los `uses_left` manuales no sobreviven); el orco va a 200 PV para
+    # que NO muera antes: las 3 cargas de Fighting Spirit cubren las
+    # rondas 1-3 con PV temporales y el drop llegue en la 4.
+    orco = Monster("Orco", max_hp=200, ac=10, abilities=habilidades,
+                   attacks=[Attack("Hacha", "1d8", ability="str")])
+    monkeypatch.setattr(sm_mod, "pick", lambda rng, seq: "sí")
+
+    def _orden_fijo(cs, rng):
+        for i, c in enumerate(cs):
+            c.initiative = 20 - i  # Camila primero; sin fase de guarida
+        return list(cs)
+
+    monkeypatch.setattr(enc, "roll_initiative", _orden_fijo)
+    # verbose=True: solo así el motor llena el log (sin RNG de más).
+    res = run_combat([camila, orco], random.Random(2), verbose=True)
+    texto = "\n".join(res.log)
+    assert "Strength Before Death" in texto
+    # La marca está en el turno del ORCO y, tras ella, el turno extra
+    # de Camila ataca antes de morir: los ataques de Camila posteriores
+    # a la marca prueban que el turno extra se ejecutó.
+    marca = texto.index("Strength Before Death")
+    assert "Camila ->" in texto[marca:]
+    assert res.survivors.get("Camila", 0) == 0
+    assert res.survivors.get("Orco", 0) > 0

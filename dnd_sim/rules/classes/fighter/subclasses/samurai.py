@@ -71,6 +71,7 @@ from .....core.classes import (
 from .....core.log import log_line as _log_line
 from .....core.randomness import pick
 from .....model.actions import ActionType
+from ....conditions import Condition
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
 from ..features import FighterFeatures
@@ -204,6 +205,66 @@ class SamuraiFeatures(Trait):
             return False
         self.rapid_strike_used = True
         return True
+
+    def on_reduced_to_zero_hp(self, owner: Any, amount: Any,
+                              damage_type: Any, source: Any, *,
+                              crit: bool = False, ctx: Any = None,
+                              rng: Any = None) -> None:
+        """Strength Before Death (18): versión DIFERIDA del mantainer.
+
+        Quien bajaría a 0 PV puede elegir (``pick`` «no»/«sí») seguir
+        «en pie»: se pone ``en_pie_pendiente`` (lo consulta
+        ``Combatant.alive``) y se apunta a la cola de turnos extra del
+        propio ``state``. El turno extra se ejecuta AL FINAL de un
+        turno de actor (procesado de cola en ``encounter``, decisión:
+        de CADA turno para no bloquearse con reacciones o guarida) y
+        tras él: con PV > 0 sigue, sin PV muere. No se encadena (1 uso
+        por combate).
+
+        Elegibilidad SIN RNG: nivel >= 18, uso disponible, sin flag
+        previo, sin muerte ya marcada, reacción libre (el rasgo la
+        gasta: es su coste), sin condición Incapacitado (NO ``can_act``:
+        exige ``alive`` y los PV ya son 0) y contexto con RNG; con
+        ``ctx``/``rng`` vacíos no se aplica (regla base). Devuelve
+        ``None`` SIEMPRE (queda a 0 PV): si otro rasgo responde
+        después con PV, la cola se resuelve sola al procesarse (cura =
+        sin turno extra).
+        """
+        if owner is not self.owner or self.level < 18:
+            return None
+        if self.sbd_uses is None or not self.sbd_uses.available:
+            return None
+        if getattr(owner, "en_pie_pendiente", False):
+            return None
+        if getattr(owner, "dead", False):
+            return None
+        estado = getattr(owner, "state", None)
+        if estado is None or getattr(estado, "reaction_used", True):
+            return None
+        if ctx is None or rng is None:
+            return None
+        # Incapacitado no puede usar su reacción. NO se mira ``can_act``:
+        # en este punto los PV ya son 0 y ``can_act`` (que exige ``alive``)
+        # daría False antes de poner el flag. La condición manda.
+        try:
+            if owner.conditions.has(Condition.INCAPACITATED):
+                return None
+        except Exception:
+            pass
+        if pick(rng, ("no", "sí")) != "sí":
+            return None
+        self.sbd_uses.spend()
+        estado.reaction_used = True
+        owner.en_pie_pendiente = True
+        cola = getattr(estado, "turnos_extra_pendientes", None)
+        if cola is not None and owner not in cola:
+            cola.append(owner)
+        _log_line(
+            ctx,
+            f"{owner.name} se resiste a caer (Strength Before Death): "
+            "turno extra pendiente.",
+        )
+        return None
 
     def reset(self) -> None:
         """Un combate nuevo: usos completos y flags apagados."""

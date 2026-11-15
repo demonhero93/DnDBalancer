@@ -242,6 +242,29 @@ def _mark_dead_if_down(target: "Combatant") -> None:
         pass
 
 
+def _liberar_turno_extra(target: Any) -> None:
+    """Suelta el «en pie» pendiente de Strength Before Death (flag + cola).
+
+    Duck-typing: sin flag o sin cola no hace nada (fichas de prueba).
+    Lo usan los dos casos de :func:`inflict_damage`: daño adicional a
+    un pendiente (lo remata ``_mark_dead_if_down`` del final) y daño
+    desde PV positivos con flag obsoleto (había curado).
+    """
+    try:
+        target.en_pie_pendiente = False
+    except Exception:
+        pass
+    cola = getattr(getattr(target, "state", None),
+                   "turnos_extra_pendientes", None)
+    if cola is None:
+        return
+    try:
+        while target in cola:
+            cola.remove(target)
+    except Exception:
+        pass
+
+
 def _mitigacion_de_otros(target: "Combatant", amount: int,
                          damage_type: Any, source: Any, ctx: Any) -> int:
     """Fase 1b: consulta a los rasgos del resto que reducen daño ajeno.
@@ -433,6 +456,15 @@ def inflict_damage(target: "Combatant", amount: int,
             setattr(target, "hp", hp_despues)
         except Exception:
             pass
+    # Strength Before Death (Samurai, A6): resolución perezosa del
+    # «en pie» pendiente. Daño adicional a un pendiente (hp ya a 0)
+    # cancela su turno extra y, sin flag, el ``_mark_dead_if_down``
+    # del final lo marca muerto. Daño desde PV positivos con flag
+    # obsoleto = había curado entre medias: se limpia y la resolución
+    # normal manda. Sin daño que llegue a PV no se toca nada.
+    if original > 0 and getattr(target, "en_pie_pendiente", False):
+        if hp_antes > 0 or amt > 0:
+            _liberar_turno_extra(target)
     dt = damage_type
     try:
         if dt is not None:

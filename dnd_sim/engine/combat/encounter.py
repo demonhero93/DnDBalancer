@@ -319,12 +319,57 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
         # corta más arriba si se decidió aquí).
         if actor.alive:
             _avisar_ganchos_de_turno(order, actor, ctx, inicio=False)
+        # Strength Before Death (A6): aquí se resuelven los turnos
+        # extra pendientes (al final de CADA turno, decisión
+        # documentada) antes de la fase legendaria.
+        _procesar_turnos_extra()
         # Fase legendaria: los demás monstruos legítimos pueden usar una
         # acción legendaria tras el turno de este combatiente.
         legendary_phase(actor, ctx)
         if combat_finished(order):
             return False
         return True
+
+    def _procesar_turnos_extra() -> None:
+        """Strength Before Death (A6): resuelve los turnos extra.
+
+        Se llama AL FINAL de cada turno (tras los ganchos de fin y
+        antes de la fase legendaria) y procesa TODAS las entradas
+        pendientes: el «procesar todo en cada fin de turno» evita
+        bloqueos con reacciones y fase de guarida (decisión del
+        mantainer, documentada). Cada entrada, una sola vez (se saca
+        de la cola ANTES de actuar):
+
+        - ya curado (PV > 0) o muerto: sale sin turno extra;
+        - sigue a 0 PV: turno extra completo con ``_turno`` y, tras
+          él, PV > 0 → se suelta el flag, 0 PV → muere.
+        """
+        for combatiente in order:
+            cola = getattr(getattr(combatiente, "state", None),
+                           "turnos_extra_pendientes", None)
+            if not cola:
+                continue
+            while cola:
+                pendiente = cola.pop(0)
+                if not getattr(pendiente, "en_pie_pendiente", False):
+                    continue  # ya resuelto (curado o rematado)
+                if getattr(pendiente, "dead", False):
+                    pendiente.en_pie_pendiente = False
+                    continue
+                if int(getattr(pendiente, "hp", 0) or 0) > 0:
+                    # Curado mientras esperaba: sale sin turno extra.
+                    pendiente.en_pie_pendiente = False
+                    continue
+                _turno(pendiente)
+                if combat_finished(order):
+                    return
+                if int(getattr(pendiente, "hp", 0) or 0) > 0:
+                    pendiente.en_pie_pendiente = False
+                elif not getattr(pendiente, "dead", False):
+                    pendiente.en_pie_pendiente = False
+                    marca = getattr(pendiente, "mark_dead", None)
+                    if callable(marca):
+                        marca()
 
     while rnd < max_rounds:
         rnd += 1

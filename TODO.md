@@ -32,9 +32,11 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
   del bucle de rondas; cero cambio de RNG; suite idéntica).
   **Hecho**: `_turno(actor) -> bool`; snapshot de equivalencia semilla
   42 en `tests/test_samurai.py`. Suite: 1630 passed.
-- [ ] A6 — Strength Before Death: campos `en_pie_pendiente` y cola de
+- [x] A6 — Strength Before Death: campos `en_pie_pendiente` y cola de
   turnos extra, predicado «en pie» (`alive`), dispara en `inflict_damage`
   y cola procesada al final de cada turno con la función de A5.
+  **Hecho**: 6 tests; `_procesar_turnos_extra` al final de `_turno`
+  antes de guarida. Suite: 1636 passed.
 - [ ] B — Decisiones: freeze de datos sin efecto (idioma, bonificador
   social, Tireless Spirit, salvaciones de muerte), reinterpretación del
   turno extra diferido en docstrings, lista de candidatas en TODO.
