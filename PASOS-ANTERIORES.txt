@@ -444,6 +444,15 @@ SAMURAI (2026-11-15)
     se libera la cola; sin curación muere sin turno extra. Integración
     run_combat con semilla 2 (drop ronda 4, muere en el turno extra).
     Suite: 1636.
+  - (B) Decisiones congeladas: 2 tests nuevos de datos sin efecto
+    (idioma alternativo de Bonus Proficiency — el lado habilidad sí
+    se modela, sin atributo languages; salvaciones de muerte — SBD
+    es la aproximación, sin death_saves, criterio Defy Death) más los
+    2 que ya existían (bonificador social Elegant Courtier, Tireless
+    Spirit). Docstring de samurai.py ya documenta la versión DIFERIDA
+    de SBD (hecho en A6). TODO.md: subclase pendiente pasa a 7/8 con
+    Samurai y nuevo bloque «Samurai — datos sin efecto congelados»
+    con las 4 reaperturas condicionadas. Suite: 1638.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y

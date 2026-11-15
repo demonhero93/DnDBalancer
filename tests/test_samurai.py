@@ -195,6 +195,17 @@ def test_el_bonificador_social_de_elegant_courtier_es_dato_sin_efecto():
     assert "modify_check_modifiers" not in SamuraiFeatures.__dict__
 
 
+def test_el_idioma_alternativo_del_bonus_proficiency_es_dato_sin_efecto():
+    """El enunciado ofrece idioma en vez de habilidad: sin modelo de
+    idiomas solo se congela la elección de habilidad."""
+    pj = _pj(level=3)
+    apply_fighter(pj, level=3, fighting_style="Archery")
+    aplicadas = set(pj.skill_proficiencies or set())
+    apply_samurai(pj, level=3)
+    assert not hasattr(pj, "languages")
+    assert set(pj.skill_proficiencies) > aplicadas  # el lado sí modelado
+
+
 def test_sin_la_subclase_no_hay_ni_rasgo_ni_rng(monkeypatch):
     def _revienta(rng, seq):
         raise AssertionError("sin la subclase no hay decisiones")
@@ -782,3 +793,12 @@ def test_en_run_combat_strength_before_death_da_un_turno_extra(monkeypatch):
     assert "Camila ->" in texto[marca:]
     assert res.survivors.get("Camila", 0) == 0
     assert res.survivors.get("Orco", 0) > 0
+
+
+def test_sin_salvaciones_de_muerte_sbd_es_la_aproximacion():
+    """Sin salvaciones de muerte en el modelo (mismo criterio que
+    Defy Death del Champion): SBD difiere el turno y el que acaba a
+    0 PV en él muere; no hay tiradas de salvación que perder."""
+    pj, trait = _samurai(18)
+    assert trait.sbd_uses.uses_left == 1
+    assert not hasattr(pj, "death_saves")

@@ -37,9 +37,12 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
   y cola procesada al final de cada turno con la función de A5.
   **Hecho**: 6 tests; `_procesar_turnos_extra` al final de `_turno`
   antes de guarida. Suite: 1636 passed.
-- [ ] B — Decisiones: freeze de datos sin efecto (idioma, bonificador
+- [x] B — Decisiones: freeze de datos sin efecto (idioma, bonificador
   social, Tireless Spirit, salvaciones de muerte), reinterpretación del
   turno extra diferido en docstrings, lista de candidatas en TODO.
+  **Hecho**: 2 tests nuevos (idioma, salvaciones de muerte) + 2
+  existentes; docstring SBD diferido en A6; TODO 7/8 + bloque de
+  congelación. Suite: 1638 passed.
 - [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, función de turno,
   estado en pie pendiente, recuentos), bloque SAMURAI en
   `PASOS-ANTERIORES.txt`, receta y pendientes de `TODO.md`.
@@ -76,9 +79,19 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
 ## Fighter: pendientes reales
 
 - **Subclase pendiente**: Eldritch Knight (candidata PHB 2024). Las
-  otras 6 YA están implementadas: Arcane Archer, Battle Master,
-  Cavalier, Champion, Psi Warrior y Rune Knight
-  (`CLASSES["fighter"].subclasses` tiene sus 6 claves).
+  otras 7 YA están implementadas: Arcane Archer, Battle Master,
+  Cavalier, Champion, Psi Warrior, Rune Knight y Samurai
+  (`CLASSES["fighter"].subclasses` tiene sus 7 claves).
+- **Samurai — datos sin efecto congelados** (reabrir SOLO si el sim
+  modela la mecánica; tests en `tests/test_samurai.py`):
+  - Bonus Proficiency: el idioma alternativo (sin modelo de idiomas).
+  - Elegant Courtier: bonificador igual al mod SAB en
+    Perspicacia/Persuasión (sin pruebas sociales en combate).
+  - Tireless Spirit: recuperar 1 uso de Fighting Spirit al tirar
+    iniciativa (cada combate empieza con usos completos, criterio
+    Ever-Ready Shot).
+  - Strength Before Death: salvaciones de muerte (SBD difiere el
+    turno extra; reabrir SOLO si existan salvaciones de muerte).
 - **Paquete `battle_master/`**: `battle_master.py` tiene 845 líneas
   (la receta pide paquete por encima de ~700); pospuesto porque 17
   tests parchean `bm_mod.pick`/`roll_dice` apuntando al módulo único.
