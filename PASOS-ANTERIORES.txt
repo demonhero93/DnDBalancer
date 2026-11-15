@@ -394,6 +394,16 @@ SAMURAI (2026-11-15)
     (history, insight, performance, persuasion: las 4 existen en
     SKILL_ABILITIES, Interpretación = performance).
     tests/test_samurai.py (3). Suite: 1602.
+  - (A2) samurai.py: SamuraiFeatures (competencia, courtier_save,
+    level, spirit_uses/activo, rapid_strike_used, sbd_uses) +
+    apply_samurai (Bonus Proficiency con pick sin candidatas = sin
+    RNG, Elegant Courtier >=7 con pick int/cha si ya tiene SAB);
+    registro "samurai" y reexports (fighter/__init__, subclasses,
+    rules/classes, fachada). Tests de registro/equivalencia/errores/
+    datos sin efecto. 3 tests freeze de registro tocados (test_fighter,
+    test_arcane_archer, test_battle_master: congelan el MISMO dict
+    subclases con el patrón «Cambio esperado» de Cavalier/Champion/
+    Psi/Rune; el enunciado solo preveía test_fighter). Suite: 1613.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y

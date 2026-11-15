@@ -13,9 +13,12 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
 - [x] A1 — Tablas en `core/classes.py`: `fighting_spirit_uses`,
   `fighting_spirit_temp_hp`, `SAMURAI_BONUS_SKILLS` + tests por nivel.
   **Hecho**: 3 tests, suite 1602 passed.
-- [ ] A2 — Esqueleto `samurai.py` (`SamuraiFeatures` + `apply_samurai`),
+- [x] A2 — Esqueleto `samurai.py` (`SamuraiFeatures` + `apply_samurai`),
   registro `"samurai"` en `fighter/__init__.py` + reexports + fachada;
   cambio explicado del test freeze de subclases de `test_fighter.py`.
+  **Hecho**: 11 tests; en realidad el registro lo congelan 3 tests
+  (`test_fighter`, `test_arcane_archer`, `test_battle_master`), los
+  tres tocados con el patrón «Cambio esperado». Suite: 1613 passed.
 - [ ] A3 — Fighting Spirit: activación previa en `on_turn_start`
   (decisión con `pick`; el motor no tiene punto previo a la acción),
   gasto de la acción adicional en `ctx.resources`, PV temporales sin

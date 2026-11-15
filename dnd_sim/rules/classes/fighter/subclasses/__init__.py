@@ -1,5 +1,5 @@
 """Subclases del Fighter: Arcane Archer, Battle Master, Cavalier,
-Champion, Psi Warrior y Rune Knight.
+Champion, Psi Warrior, Rune Knight y Samurai.
 
 La receta para añadir otra está en ``TODO.md`` (sección «Fighter: cómo
 añadir una subclase»): un módulo por subclase con su ``SubclassDef``,
@@ -13,9 +13,11 @@ from .cavalier import CavalierFeatures, apply_cavalier
 from .champion import ChampionFeatures, apply_champion
 from .psi_warrior import PsiWarriorFeatures, apply_psi_warrior
 from .rune_knight import RuneKnightFeatures, apply_rune_knight
+from .samurai import SamuraiFeatures, apply_samurai
 
 __all__ = ["ARCANE_SHOTS", "ArcaneArcherFeatures", "BattleMasterFeatures",
            "CavalierFeatures", "ChampionFeatures", "PsiWarriorFeatures",
-           "RuneKnightFeatures", "apply_arcane_archer", "apply_battle_master",
+           "RuneKnightFeatures", "SamuraiFeatures", "apply_arcane_archer",
+           "apply_battle_master",
            "apply_cavalier", "apply_champion", "apply_psi_warrior",
-           "apply_rune_knight"]
+           "apply_rune_knight", "apply_samurai"]
