@@ -12,16 +12,23 @@ import random
 
 import pytest
 
-from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
+from dnd_sim import Abilities, Attack, Monster, PlayerCharacter, apply_class
 from dnd_sim.core.classes import (
     SAMURAI_BONUS_SKILLS,
     fighting_spirit_temp_hp,
     fighting_spirit_uses,
 )
+from dnd_sim.core.dice import RollMode
+from dnd_sim.core.enums import AttackRange
 from dnd_sim.core.skills import SKILL_ABILITIES
-from dnd_sim.engine.combat.encounter import roll_initiative
+from dnd_sim.engine.combat import attack as attack_mod
+from dnd_sim.engine.combat.attack import attack_roll
+from dnd_sim.engine.combat.encounter import roll_initiative, run_combat
+from dnd_sim.model.actions import ActionType, TurnResources
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import SamuraiFeatures, apply_samurai
+from dnd_sim.rules.conditions import Condition, apply_condition
+from dnd_sim.rules.roll_modifiers import AttackModifiers, attack_modifiers
 
 
 # --- A1: tablas --------------------------------------------------------------
@@ -193,4 +200,203 @@ def test_sin_la_subclase_no_hay_ni_rasgo_ni_rng(monkeypatch):
     monkeypatch.setattr(sm_mod, "pick", _revienta)
     pj = _pj(level=3)
     apply_class(pj, "fighter", level=3, fighting_style="Archery")
+    assert not any(isinstance(x, SamuraiFeatures) for x in pj.traits)
+
+
+# --- A3: Fighting Spirit -----------------------------------------------------
+
+
+def _samurai(level: int = 3) -> tuple[PlayerCharacter, SamuraiFeatures]:
+    pj = _pj(level=level)
+    apply_fighter(pj, level=level, fighting_style="Archery")
+    return pj, apply_samurai(pj, level=level)
+
+
+def _ctx(pj: PlayerCharacter, *otros: PlayerCharacter):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        round=1, actor=pj, rng=random.Random(1),
+        combatants=[pj, *otros], log=[], verbose=False,
+        resources=TurnResources(), is_reaction=False, skip_turn=False,
+    )
+
+
+def _si(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+
+    monkeypatch.setattr(sm_mod, "pick", lambda rng, seq: "sí")
+
+
+def _enemigo() -> Monster:
+    return Monster("Orco", max_hp=60, ac=10, abilities=_abilities())
+
+
+def test_la_ventaja_de_fighting_spirit_se_aplica_a_los_ataques_del_mismo_turno(
+        monkeypatch):
+    pj, trait = _samurai(3)
+    otro = _enemigo()
+    ctx = _ctx(pj, otro)
+    _si(monkeypatch)
+    trait.on_turn_start(pj, ctx)
+    assert trait.spirit_activo
+    assert pj.temp_hp == 5
+
+    capturados = []
+    real_roll_d20 = attack_mod.roll_d20
+
+    def _cap(rng, mode=RollMode.NORMAL, **kw):
+        capturados.append(mode)
+        return real_roll_d20(rng, mode)
+
+    monkeypatch.setattr(attack_mod, "roll_d20", _cap)
+    attack_roll(pj, otro, pj.attacks[0], random.Random(2), ctx=ctx)
+    assert capturados == [RollMode.ADVANTAGE]
+
+
+def test_fighting_spirit_no_da_ventaja_en_ataques_de_hechizo():
+    pj, trait = _samurai(3)
+    otro = _pj(name="Otra")
+    trait.spirit_activo = True
+    mods = AttackModifiers()
+    hechizo = Attack("Destello", "1d8", ability="int")
+    hechizo.spell_attack = True
+    trait.modify_attack_modifiers(
+        mods, pj, otro, AttackRange.MELEE, atk=hechizo)
+    trait.modify_attack_modifiers(
+        mods, pj, otro, AttackRange.MELEE, atk=None)
+    assert mods.advantage_sources == []
+
+
+def test_fighting_spirit_con_ventaja_se_anula_con_desventaja(monkeypatch):
+    pj, trait = _samurai(3)
+    otro = _pj(name="Otra")
+    ctx = _ctx(pj, otro)
+    _si(monkeypatch)
+    trait.on_turn_start(pj, ctx)
+    apply_condition(pj, Condition.BLINDED, ctx)
+    mods = attack_modifiers(pj, otro, pj.attacks[0], rng=random.Random(1))
+    assert "Fighting Spirit" in mods.advantage_sources
+    assert "atacante cegado" in mods.disadvantage_sources
+    assert mods.mode is RollMode.NORMAL
+
+
+def test_los_pv_temporales_son_5_10_15_segun_nivel_sin_acumulacion(monkeypatch):
+    for nivel, esperado in ((3, 5), (10, 10), (15, 15)):
+        pj, trait = _samurai(nivel)
+        _si(monkeypatch)
+        trait.on_turn_start(pj, _ctx(pj))
+        assert pj.temp_hp == esperado
+        assert trait.spirit_activo
+    # Sin acumulación: se queda el mayor (patrón Vitality Surge).
+    pj, trait = _samurai(3)
+    pj.temp_hp = 12
+    _si(monkeypatch)
+    trait.on_turn_start(pj, _ctx(pj))
+    assert pj.temp_hp == 12
+    pj2, trait2 = _samurai(15)
+    pj2.temp_hp = 20
+    trait2.on_turn_start(pj2, _ctx(pj2))
+    assert pj2.temp_hp == 20
+
+
+def test_fighting_spirit_tiene_tres_usos_y_gasta_la_accion_adicional(
+        monkeypatch):
+    pj, trait = _samurai(3)
+    _si(monkeypatch)
+    ctx = _ctx(pj)
+    trait.on_turn_start(pj, ctx)
+    assert trait.spirit_uses.uses_left == 2
+    assert ctx.resources.bonus_action_used  # es el coste: acción bonus
+    trait.on_any_turn_end(pj, ctx)
+    trait.on_turn_start(pj, _ctx(pj))
+    trait.on_any_turn_end(pj, _ctx(pj))
+    trait.on_turn_start(pj, _ctx(pj))
+    assert trait.spirit_uses.uses_left == 0
+    trait.on_any_turn_end(pj, _ctx(pj))
+
+    def _revienta(rng, seq):
+        raise AssertionError("sin usos no se consulta el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    trait.on_turn_start(pj, _ctx(pj))
+    assert not trait.spirit_activo
+
+
+def test_no_se_activa_si_la_accion_adicional_ya_gasto(monkeypatch):
+    pj, trait = _samurai(3)
+
+    def _revienta(rng, seq):
+        raise AssertionError("con la acción gastada no hay pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    ctx = _ctx(pj)
+    ctx.resources.use(ActionType.BONUS_ACTION)
+    trait.on_turn_start(pj, ctx)
+    assert trait.spirit_uses.uses_left == 3
+    assert not trait.spirit_activo
+
+
+def test_no_se_reactiva_en_el_mismo_turno(monkeypatch):
+    pj, trait = _samurai(3)
+    _si(monkeypatch)
+    trait.on_turn_start(pj, _ctx(pj))
+    assert trait.spirit_uses.uses_left == 2
+
+    def _revienta(rng, seq):
+        raise AssertionError("ya activo en este turno no hay pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    trait.on_turn_start(pj, _ctx(pj))
+    assert trait.spirit_uses.uses_left == 2
+    assert trait.spirit_activo
+
+
+def test_el_flag_se_apaga_al_final_del_turno_y_puede_volver(monkeypatch):
+    pj, trait = _samurai(3)
+    _si(monkeypatch)
+    ctx = _ctx(pj)
+    trait.on_turn_start(pj, ctx)
+    assert trait.spirit_activo
+    trait.on_any_turn_end(pj, ctx)
+    assert not trait.spirit_activo
+    trait.on_turn_start(pj, _ctx(pj))
+    assert trait.spirit_activo
+    assert trait.spirit_uses.uses_left == 1
+
+
+def test_en_run_combat_fighting_spirit_se_activa_y_da_ventaja(monkeypatch):
+    pj, trait = _samurai(3)
+    otro = _enemigo()
+    _si(monkeypatch)
+    capturados = []
+    real_roll_d20 = attack_mod.roll_d20
+
+    def _cap(rng, mode=RollMode.NORMAL, **kw):
+        capturados.append(mode)
+        return real_roll_d20(rng, mode)
+
+    monkeypatch.setattr(attack_mod, "roll_d20", _cap)
+    run_combat([pj, otro], random.Random(7), max_rounds=6)
+    # Se activó en los tres primeros turnos del dueño (pick siempre
+    # «sí») y sus ataques rindieron con ventaja en el mismo turno.
+    assert trait.spirit_uses.uses_left == 0
+    assert RollMode.ADVANTAGE in capturados
+
+
+def test_sin_la_subclase_los_ataques_no_consumen_rng_de_samurai(
+        monkeypatch):
+    def _revienta(rng, seq):
+        raise AssertionError("sin la subclase no hay decisiones")
+
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    pj = _pj(level=3)
+    apply_class(pj, "fighter", level=3, fighting_style="Archery")
+    otro = _enemigo()
+    attack_roll(pj, otro, pj.attacks[0], random.Random(2),
+                ctx=_ctx(pj, otro))
     assert not any(isinstance(x, SamuraiFeatures) for x in pj.traits)

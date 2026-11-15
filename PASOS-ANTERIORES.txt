@@ -404,6 +404,13 @@ SAMURAI (2026-11-15)
     test_arcane_archer, test_battle_master: congelan el MISMO dict
     subclases con el patrón «Cambio esperado» de Cavalier/Champion/
     Psi/Rune; el enunciado solo preveía test_fighter). Suite: 1613.
+  - (A3) Fighting Spirit: activación previa en on_turn_start (pick
+    «no/sí»; elegibilidad sin RNG: usos/libre/no activo/ctx con rng;
+    el motor no tiene punto previo: ACTION antes que BONUS → se gasta
+    la acción adicional marcando ctx.resources y la ventaja cubre el
+    MISMO turno vía modify_attack_modifiers, solo con arma y no
+    hechizo; PV temp max() sin acumulación; on_any_turn_end apaga el
+    flag). tests/test_samurai.py (10 nuevos). Suite: 1623.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y

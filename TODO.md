@@ -23,6 +23,7 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
   (decisión con `pick`; el motor no tiene punto previo a la acción),
   gasto de la acción adicional en `ctx.resources`, PV temporales sin
   acumulación y ventaja en `modify_attack_modifiers` solo con arma.
+  **Hecho**: 10 tests, suite 1623 passed.
 - [ ] A4 — Rapid Strike: consulta duck-typing `renunciar_ventaja` en
   `engine/combat/attack.py` tras el modo de ventaja y antes del d20;
   ataque adicional al final de `attack_roll`.

@@ -65,9 +65,12 @@ from .....core.classes import (
     MAX_LEVEL,
     MIN_LEVEL,
     SAMURAI_BONUS_SKILLS,
+    fighting_spirit_temp_hp,
     fighting_spirit_uses,
 )
+from .....core.log import log_line as _log_line
 from .....core.randomness import pick
+from .....model.actions import ActionType
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
 from ..features import FighterFeatures
@@ -105,17 +108,74 @@ class SamuraiFeatures(Trait):
     sbd_uses: ActionUsage | None = None  # Strength Before Death (1 por combate)
 
     def on_turn_start(self, actor: Any, ctx: Any = None) -> None:
-        """Limpia los flags por turno del dueño.
+        """Limpia los flags por turno y decide Fighting Spirit (A3).
 
-        La activación de Fighting Spirit (A3) se decide aquí, ANTES de
-        las pasadas de acción, para que la ventaja cubra los ataques
-        del mismo turno. El flag ``spirit_activo`` se limpia en
-        ``on_any_turn_end`` (fin del turno del dueño), para que los
-        ataques de oportunidad posteriores ya no cuenten.
+        La activación se decide AQUÍ, antes de las pasadas ACTION/BONUS
+        (el motor no tiene punto previo: la ACTION va primero y no se
+        toca el orden), con ``pick`` «no»/«sí» y solo si es elegible
+        sin RNG. Al activarse gasta el uso, marca la acción adicional
+        como gastada en ``ctx.resources`` (es su coste), otorga los PV
+        temporales sin acumulación y enciende ``spirit_activo``: la
+        ventaja la concede ``modify_attack_modifiers`` a los ataques
+        del MISMO turno. El flag se apaga en ``on_any_turn_end``.
+
+        ``rapid_strike_used`` se limpia aquí (una renuncia por turno).
         """
         if actor is not self.owner:
             return None
         self.rapid_strike_used = False
+        # Elegibilidad sin RNG: usos, no activo ya este turno, acción
+        # adicional libre y contexto con RNG. Sin candidato, sin pick.
+        if self.spirit_activo:
+            return None
+        if self.spirit_uses is None or not self.spirit_uses.available:
+            return None
+        if ctx is None:
+            return None
+        recursos = getattr(ctx, "resources", None)
+        if recursos is not None and getattr(
+                recursos, "bonus_action_used", False):
+            return None
+        rng = getattr(ctx, "rng", None)
+        if rng is None:
+            return None
+        if pick(rng, ("no", "sí")) != "sí":
+            return None
+        self.spirit_uses.spend()
+        cantidad = fighting_spirit_temp_hp(self.level)
+        actual = int(getattr(actor, "temp_hp", 0) or 0)
+        actor.temp_hp = max(actual, cantidad)  # sin acumulación
+        self.spirit_activo = True
+        if recursos is not None:
+            recursos.use(ActionType.BONUS_ACTION)
+        _log_line(
+            ctx,
+            f"{actor.name} invoca Fighting Spirit: ventaja en ataques "
+            f"y {cantidad} PV temporales.",
+        )
+        return None
+
+    def on_any_turn_end(self, actor: Any, ctx: Any = None) -> None:
+        """Fin del turno del dueño: se apaga la ventaja de Fighting
+        Spirit (hasta el final de ese turno; los ataques de
+        oportunidad posteriores ya no cuentan)."""
+        if actor is self.owner:
+            self.spirit_activo = False
+        return None
+
+    def modify_attack_modifiers(self, mods: Any, attacker: Any,
+                                target: Any, rango: Any, ctx: Any = None,
+                                rng: Any = None, atk: Any = None) -> None:
+        """Fighting Spirit: ventaja en ataques con arma del dueño.
+
+        Solo con ``atk`` presente y no mágico (``spell_attack``); con
+        desventaja se anula por la regla estándar (``AttackModifiers``).
+        """
+        if attacker is not self.owner or not self.spirit_activo:
+            return None
+        if atk is None or getattr(atk, "spell_attack", False):
+            return None
+        mods.advantage_sources.append("Fighting Spirit")
         return None
 
     def reset(self) -> None:
