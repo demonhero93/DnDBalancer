@@ -28,8 +28,10 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
   `engine/combat/attack.py` tras el modo de ventaja y antes del d20;
   ataque adicional al final de `attack_roll`.
   **Hecho**: 6 tests, suite 1629 passed.
-- [ ] A5 — Función de turno reutilizable en `encounter.py` (extraída
+- [x] A5 — Función de turno reutilizable en `encounter.py` (extraída
   del bucle de rondas; cero cambio de RNG; suite idéntica).
+  **Hecho**: `_turno(actor) -> bool`; snapshot de equivalencia semilla
+  42 en `tests/test_samurai.py`. Suite: 1630 passed.
 - [ ] A6 — Strength Before Death: campos `en_pie_pendiente` y cola de
   turnos extra, predicado «en pie» (`alive`), dispara en `inflict_damage`
   y cola procesada al final de cada turno con la función de A5.

@@ -203,6 +203,129 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
             legendary_stats=legendary_stats,
         )
 
+    def _turno(actor: Combatant) -> bool:
+        """Ejecuta el turno completo de ``actor``.
+
+        Es el cuerpo de antes, extraído del bucle de rondas en A5 para
+        reutilizarlo (turno extra de Strength Before Death) con CERO
+        cambio de orden, llamadas o RNG: inicio de turno y recargas,
+        ganchos «cualquier turno», pasadas ACTION/BONUS/Oleada, cierre
+        (salvaciones de repetición) y fase legendaria.
+
+        Devuelve ``True`` si el bucle puede seguir con el siguiente
+        combatiente y ``False`` si debe cortarse (combate terminado o
+        sin objetivos vivos).
+        """
+        if not actor.alive:
+            return True
+        enemies = valid_targets(actor, combatants=order)
+        if not enemies:
+            return False
+        ctx = _nuevo_ctx(actor)
+        # Inicio de turno: recursos nuevos y tiradas de recarga de las
+        # acciones descargadas del actor. Si está incapacitado, pierde
+        # el turno (sin política y sin consumir RNG).
+        resources = begin_turn(actor, ctx)
+        # El actor puede morir en su propio inicio de turno (p. ej.
+        # Regeneration sin curación posible): si eso deja a un bando
+        # sin nadie en pie, el combate termina aquí mismo.
+        if combat_finished(order):
+            return False
+        # Ganchos «cualquier turno» (p. ej. runas de Rune Knight): a
+        # los rasgos de TODOS los vivos, con el actor como argumento.
+        # Si nadie los sobrescribe, `hooks` no devuelve nada y no se
+        # consume RNG.
+        _avisar_ganchos_de_turno(order, actor, ctx, inicio=True)
+        if not ctx.skip_turn:
+            accion_ejecutada = False
+
+            def _pasada(action_type: ActionType) -> bool:
+                """Ejecuta como mucho una acción de ``action_type``.
+
+                Devuelve ``False`` si el turno debe parar (combate
+                terminado o actor caído) y ``True`` si puede seguir.
+                """
+                nonlocal accion_ejecutada
+                # Fin ya decidido (último de un bando caído): no se
+                # lanza ninguna habilidad más, ni siquiera la bonus.
+                if combat_finished(order):
+                    return False
+                # Un actor que ha caído en mitad de su turno (p. ej.
+                # represalias) no lanza nada más.
+                if not actor.alive:
+                    return False
+                candidates = [
+                    a for a in getattr(actor, "actions", [])
+                    if getattr(a, "action_type", None) == action_type
+                    and a.can_use(resources, ctx)
+                    and getattr(actor, "can_act", True)
+                ]
+                if not candidates:
+                    return True
+                chosen = None
+                # Utilitaria: Esquivar sustituye la ACTION si toca.
+                # Disponibilidad primero (hay acción, vivo, puede actuar
+                # y no esquiva ya), probabilidad después.
+                if (action_type is ActionType.ACTION
+                        and hay_utilitaria_accion(actor)
+                        and debe_usar_utilitaria(rng)):
+                    chosen = DodgeAction()
+                if chosen is None:
+                    chosen = _invoke_policy(policy, ctx, candidates)
+                    if chosen is None:
+                        chosen = pick(rng, candidates)
+                chosen.execute(ctx)
+                accion_ejecutada = True
+                resources.use(action_type)
+                # El uso limitado se gasta aquí (una vez, aunque el área
+                # afecte a pocos objetivos).
+                usage = getattr(chosen, "usage", None)
+                if usage is not None:
+                    usage.spend()
+                action_name = getattr(chosen, "name", "") or type(chosen).__name__
+                action_uses[action_name] = action_uses.get(action_name, 0) + 1
+                enemies = valid_targets(actor, combatants=order)
+                # Con este golpe puede haber caído el último enemigo
+                # (o el último aliado, vía represalias): fin del combate.
+                if not enemies or combat_finished(order):
+                    return False
+                return True
+
+            # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
+            if _pasada(ActionType.ACTION) and _pasada(ActionType.BONUS_ACTION):
+                # Oleada de Acción: la acción bonus restauró el recurso
+                # de acción, así que toca UNA pasada de acción extra.
+                # Sin Oleada la acción queda gastada y no se entra aquí
+                # (cero cambio de comportamiento ni de RNG).
+                if accion_ejecutada and not resources.action_used:
+                    _pasada(ActionType.ACTION)
+        else:
+            # Turno perdido. Solo cuenta como incapacitación si la
+            # criatura sigue viva: quien muere al empezar su turno
+            # (Regeneration) no «pierde» el turno, ya no está.
+            if actor.alive:
+                turns_lost_incapacitated[actor.name] = (
+                    turns_lost_incapacitated.get(actor.name, 0) + 1)
+        # El combate terminado no cierra turnos ni dispara la fase
+        # legendaria: el bucle se corta en el momento en que cae el
+        # último de un bando.
+        if combat_finished(order):
+            return False
+        # Final del turno: salvaciones de repetición y duración de las
+        # condiciones del propio combatiente.
+        end_turn(actor, ctx)
+        # Ganchos «cualquier turno» de fin: solo si el actor sigue
+        # vivo (un muerto no «termina» su turno; el combate ya se
+        # corta más arriba si se decidió aquí).
+        if actor.alive:
+            _avisar_ganchos_de_turno(order, actor, ctx, inicio=False)
+        # Fase legendaria: los demás monstruos legítimos pueden usar una
+        # acción legendaria tras el turno de este combatiente.
+        legendary_phase(actor, ctx)
+        if combat_finished(order):
+            return False
+        return True
+
     while rnd < max_rounds:
         rnd += 1
         if verbose:
@@ -219,113 +342,7 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                 lair_phase(_nuevo_ctx(actor))
                 if combat_finished(order):
                     break
-            if not actor.alive:
-                continue
-            enemies = valid_targets(actor, combatants=order)
-            if not enemies:
-                break
-            ctx = _nuevo_ctx(actor)
-            # Inicio de turno: recursos nuevos y tiradas de recarga de las
-            # acciones descargadas del actor. Si está incapacitado, pierde
-            # el turno (sin política y sin consumir RNG).
-            resources = begin_turn(actor, ctx)
-            # El actor puede morir en su propio inicio de turno (p. ej.
-            # Regeneration sin curación posible): si eso deja a un bando
-            # sin nadie en pie, el combate termina aquí mismo.
-            if combat_finished(order):
-                break
-            # Ganchos «cualquier turno» (p. ej. runas de Rune Knight): a
-            # los rasgos de TODOS los vivos, con el actor como argumento.
-            # Si nadie los sobrescribe, `hooks` no devuelve nada y no se
-            # consume RNG.
-            _avisar_ganchos_de_turno(order, actor, ctx, inicio=True)
-            if not ctx.skip_turn:
-                accion_ejecutada = False
-
-                def _pasada(action_type: ActionType) -> bool:
-                    """Ejecuta como mucho una acción de ``action_type``.
-
-                    Devuelve ``False`` si el turno debe parar (combate
-                    terminado o actor caído) y ``True`` si puede seguir.
-                    """
-                    nonlocal accion_ejecutada
-                    # Fin ya decidido (último de un bando caído): no se
-                    # lanza ninguna habilidad más, ni siquiera la bonus.
-                    if combat_finished(order):
-                        return False
-                    # Un actor que ha caído en mitad de su turno (p. ej.
-                    # represalias) no lanza nada más.
-                    if not actor.alive:
-                        return False
-                    candidates = [
-                        a for a in getattr(actor, "actions", [])
-                        if getattr(a, "action_type", None) == action_type
-                        and a.can_use(resources, ctx)
-                        and getattr(actor, "can_act", True)
-                    ]
-                    if not candidates:
-                        return True
-                    chosen = None
-                    # Utilitaria: Esquivar sustituye la ACTION si toca.
-                    # Disponibilidad primero (hay acción, vivo, puede actuar
-                    # y no esquiva ya), probabilidad después.
-                    if (action_type is ActionType.ACTION
-                            and hay_utilitaria_accion(actor)
-                            and debe_usar_utilitaria(rng)):
-                        chosen = DodgeAction()
-                    if chosen is None:
-                        chosen = _invoke_policy(policy, ctx, candidates)
-                        if chosen is None:
-                            chosen = pick(rng, candidates)
-                    chosen.execute(ctx)
-                    accion_ejecutada = True
-                    resources.use(action_type)
-                    # El uso limitado se gasta aquí (una vez, aunque el área
-                    # afecte a pocos objetivos).
-                    usage = getattr(chosen, "usage", None)
-                    if usage is not None:
-                        usage.spend()
-                    action_name = getattr(chosen, "name", "") or type(chosen).__name__
-                    action_uses[action_name] = action_uses.get(action_name, 0) + 1
-                    enemies = valid_targets(actor, combatants=order)
-                    # Con este golpe puede haber caído el último enemigo
-                    # (o el último aliado, vía represalias): fin del combate.
-                    if not enemies or combat_finished(order):
-                        return False
-                    return True
-
-                # Ejecuta como mucho una ACTION y una BONUS_ACTION por turno.
-                if _pasada(ActionType.ACTION) and _pasada(ActionType.BONUS_ACTION):
-                    # Oleada de Acción: la acción bonus restauró el recurso
-                    # de acción, así que toca UNA pasada de acción extra.
-                    # Sin Oleada la acción queda gastada y no se entra aquí
-                    # (cero cambio de comportamiento ni de RNG).
-                    if accion_ejecutada and not resources.action_used:
-                        _pasada(ActionType.ACTION)
-            else:
-                # Turno perdido. Solo cuenta como incapacitación si la
-                # criatura sigue viva: quien muere al empezar su turno
-                # (Regeneration) no «pierde» el turno, ya no está.
-                if actor.alive:
-                    turns_lost_incapacitated[actor.name] = (
-                        turns_lost_incapacitated.get(actor.name, 0) + 1)
-            # El combate terminado no cierra turnos ni dispara la fase
-            # legendaria: el bucle se corta en el momento en que cae el
-            # último de un bando.
-            if combat_finished(order):
-                break
-            # Final del turno: salvaciones de repetición y duración de las
-            # condiciones del propio combatiente.
-            end_turn(actor, ctx)
-            # Ganchos «cualquier turno» de fin: solo si el actor sigue
-            # vivo (un muerto no «termina» su turno; el combate ya se
-            # corta más arriba si se decidió aquí).
-            if actor.alive:
-                _avisar_ganchos_de_turno(order, actor, ctx, inicio=False)
-            # Fase legendaria: los demás monstruos legítimos pueden usar una
-            # acción legendaria tras el turno de este combatiente.
-            legendary_phase(actor, ctx)
-            if combat_finished(order):
+            if not _turno(actor):
                 break
         # Fase de guarida al final de la ronda: todos los combatientes
         # tenían iniciativa >= 20.

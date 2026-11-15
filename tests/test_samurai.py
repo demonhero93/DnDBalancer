@@ -575,3 +575,32 @@ def test_en_nivel_catorce_no_actua(monkeypatch):
                 ctx=_ctx_ataque(pj, orco))
     assert capturados == [RollMode.ADVANTAGE]
     assert not trait.rapid_strike_used
+
+
+# --- A5: cuerpo de turno extraíble ------------------------------------------
+
+
+def test_el_cuerpo_de_turno_extraido_no_cambia_run_combat():
+    """Equivalencia A5: misma semilla → mismo combate, byte a byte.
+
+    El cuerpo del turno pasó de estar inline en el bucle de rondas a
+    ``_turno()`` (mismo orden, mismas llamadas, cero RNG nuevo). El
+    snapshot de abajo es el que daba el código ANTES del refactor; si
+    este test falla, el orden de RNG cambió.
+    """
+    habilidades = Abilities(str=16, dex=14, con=16, int=14, wis=12,
+                            cha=10)
+    camila = PlayerCharacter(name="Camila", max_hp=70, ac=15, level=5,
+                             abilities=habilidades,
+                             attacks=[Attack("Espada larga", "1d8",
+                                             ability="str")])
+    apply_fighter(camila, level=5, fighting_style="Archery")
+    orco = Monster("Orco", max_hp=60, ac=10, abilities=habilidades)
+    res = run_combat([camila, orco], random.Random(42))
+    assert res.winner == "PJ"
+    assert res.rounds == 6
+    assert res.survivors == {"Camila": 70, "Orco": 0}
+    assert dict(res.action_uses) == {"Multiattack": 7,
+                                     "Oleada de Acción": 1}
+    assert res.damage_dealt == {"Camila": 61}
+    assert res.damage_received == {"Orco": 61}

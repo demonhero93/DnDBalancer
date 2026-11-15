@@ -422,6 +422,14 @@ SAMURAI (2026-11-15)
     «no/sí» único. Nota: en tests se limpia la maestría del arma (Sap
     marcaría desventaja tras impactar y contaminaría el adicional).
     tests/test_samurai.py (6 nuevos). Suite: 1629.
+  - (A5) Cuerpo de turno extraído a _turno(actor) en encounter.py
+    (cierre sobre order/log/stats/policy/rng; break → return False,
+    continue → return True; el bucle de rondas solo decide la fase de
+    guarida y llama a _turno). CERO cambio de orden o RNG: snapshot
+    de equivalencia con semilla 42 (winner PJ, 6 rondas, survivors
+    {Camila: 70, Orco: 0}, Multiattack 7, Oleada 1, daño 61) fijado
+    en tests/test_samurai.py ANTES del refactor y verificado tras.
+    Suite: 1630.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y
