@@ -24,7 +24,11 @@ from dnd_sim.core.skills import SKILL_ABILITIES
 from dnd_sim.engine.combat import attack as attack_mod
 from dnd_sim.engine.combat.attack import attack_roll
 from dnd_sim.engine.combat.encounter import roll_initiative, run_combat
-from dnd_sim.model.actions import ActionType, TurnResources
+from dnd_sim.model.actions import (
+    ActionType,
+    MultiattackAction,
+    TurnResources,
+)
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import SamuraiFeatures, apply_samurai
 from dnd_sim.rules.conditions import Condition, apply_condition
@@ -209,7 +213,12 @@ def test_sin_la_subclase_no_hay_ni_rasgo_ni_rng(monkeypatch):
 def _samurai(level: int = 3) -> tuple[PlayerCharacter, SamuraiFeatures]:
     pj = _pj(level=level)
     apply_fighter(pj, level=level, fighting_style="Archery")
-    return pj, apply_samurai(pj, level=level)
+    trait = apply_samurai(pj, level=level)
+    # Sin maestría en el arma de test: Sap marcaría desventaja tras un
+    # impacto y contaminaría el estado de ventaja del ataque adicional.
+    for ataque in pj.attacks:
+        ataque.mastery = ""
+    return pj, trait
 
 
 def _ctx(pj: PlayerCharacter, *otros: PlayerCharacter):
@@ -400,3 +409,169 @@ def test_sin_la_subclase_los_ataques_no_consumen_rng_de_samurai(
     attack_roll(pj, otro, pj.attacks[0], random.Random(2),
                 ctx=_ctx(pj, otro))
     assert not any(isinstance(x, SamuraiFeatures) for x in pj.traits)
+
+
+# --- A4: Rapid Strike --------------------------------------------------------
+
+
+def _ctx_ataque(pj, *otros):
+    ctx = _ctx(pj, *otros)
+    ctx.in_attack_action = True
+    return ctx
+
+
+def _capturador(monkeypatch):
+    capturados = []
+    real_roll_d20 = attack_mod.roll_d20
+
+    def _cap(rng, mode=RollMode.NORMAL, **kw):
+        capturados.append(mode)
+        return real_roll_d20(rng, mode)
+
+    monkeypatch.setattr(attack_mod, "roll_d20", _cap)
+    return capturados
+
+
+def _contador_pick(monkeypatch):
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+
+    llamadas = []
+
+    def _cuenta(rng, seq):
+        llamadas.append(tuple(seq))
+        return "sí"
+
+    monkeypatch.setattr(sm_mod, "pick", _cuenta)
+    return llamadas
+
+
+def test_con_ventaja_puede_renunciar_y_hace_un_ataque_adicional(
+        monkeypatch):
+    pj, trait = _samurai(15)
+    orco = _enemigo()
+    ctx = _ctx_ataque(pj, orco)
+    _si(monkeypatch)
+    trait.on_turn_start(pj, ctx)  # Fighting Spirit da la ventaja
+    assert trait.spirit_activo
+    capturados = _capturador(monkeypatch)
+    llamadas = _contador_pick(monkeypatch)  # solo cuenta las de ataque
+    objetivos = []
+    real_am = attack_mod.attack_modifiers
+
+    def _cap_am(attacker, target, attack, rango=None, **kw):
+        objetivos.append(target)
+        return real_am(attacker, target, attack, rango, **kw)
+
+    monkeypatch.setattr(attack_mod, "attack_modifiers", _cap_am)
+    attack_roll(pj, orco, pj.attacks[0], random.Random(2), ctx=ctx)
+    # La principal renunció (modo normal); el adicional corre su propio
+    # estado de ventaja (Fighting Spirit sigue activo) contra el mismo
+    # objetivo. Un solo pick: el de la renuncia.
+    assert capturados == [RollMode.NORMAL, RollMode.ADVANTAGE]
+    assert objetivos == [orco, orco]
+    assert llamadas == [("no", "sí")]
+    assert trait.rapid_strike_used
+
+
+def test_sin_ventaja_neta_no_es_elegible_y_no_consume_rng(monkeypatch):
+    pj, trait = _samurai(15)  # sin Fighting Spirit activo
+
+    def _revienta(rng, seq):
+        raise AssertionError("sin ventaja neta no hay consulta al pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    orco = _enemigo()
+    capturados = _capturador(monkeypatch)
+    attack_roll(pj, orco, pj.attacks[0], random.Random(2),
+                ctx=_ctx_ataque(pj, orco))
+    assert capturados == [RollMode.NORMAL]
+    assert not trait.rapid_strike_used
+
+
+def test_rapid_strike_se_usa_una_vez_por_turno_y_el_flag_se_reinicia(
+        monkeypatch):
+    pj, trait = _samurai(15)
+    orco = _enemigo()
+    ctx = _ctx_ataque(pj, orco)
+    _si(monkeypatch)
+    trait.on_turn_start(pj, ctx)
+    capturados = _capturador(monkeypatch)
+    llamadas = _contador_pick(monkeypatch)
+    attack_roll(pj, orco, pj.attacks[0], random.Random(2), ctx=ctx)
+    # Mismo turno, segundo ataque: el flag bloquea otra renuncia.
+    attack_roll(pj, orco, pj.attacks[0], random.Random(3), ctx=ctx)
+    assert llamadas == [("no", "sí")]
+    assert capturados == [RollMode.NORMAL, RollMode.ADVANTAGE,
+                          RollMode.ADVANTAGE]
+    # Nuevo turno: on_turn_start limpia el flag y vuelve a poder.
+    trait.on_turn_start(pj, _ctx_ataque(pj, orco))
+    attack_roll(pj, orco, pj.attacks[0], random.Random(4), ctx=ctx)
+    assert llamadas == [("no", "sí"), ("no", "sí")]
+
+
+def test_no_vale_para_ataques_de_reaccion_ni_con_hechizos(monkeypatch):
+    pj, trait = _samurai(15)
+    orco = _enemigo()
+    _si(monkeypatch)
+    ctx_r = _ctx_ataque(pj, orco)
+    ctx_r.is_reaction = True
+    trait.on_turn_start(pj, ctx_r)  # Fighting Spirit activo
+
+    def _revienta(rng, seq):
+        raise AssertionError("reacciones y hechizos no consultan el pick")
+
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    capturados = _capturador(monkeypatch)
+    # Reacción: ctx.is_reaction corta antes del pick (tira con la
+    # ventaja que ya tiene, sin renunciar).
+    attack_roll(pj, orco, pj.attacks[0], random.Random(2), ctx=ctx_r)
+    # Hechizo: con ventaja (attacks_with_advantage) el rasgo rechaza el
+    # ataque mágico antes del pick: una sola tirada, sin renuncia.
+    pj.attacks_with_advantage = True
+    hechizo = Attack("Destello", "1d8", ability="int")
+    hechizo.spell_attack = True
+    attack_roll(pj, orco, hechizo, random.Random(3), ctx=ctx_r)
+    assert capturados == [RollMode.ADVANTAGE, RollMode.ADVANTAGE]
+    assert not trait.rapid_strike_used
+
+
+def test_el_ataque_adicional_no_gasta_los_ataques_de_la_accion(
+        monkeypatch):
+    pj, trait = _samurai(15)
+    orco = _enemigo()
+    ctx = _ctx(pj, orco)
+    _si(monkeypatch)
+    trait.on_turn_start(pj, ctx)  # ventaja de Fighting Spirit
+
+    import dnd_sim.rules.utility as util_mod
+    monkeypatch.setattr(
+        util_mod, "ataque_utilitario", lambda *a, **k: False)
+    llamadas = _contador_pick(monkeypatch)
+    capturados = _capturador(monkeypatch)
+    multi = [a for a in pj.actions
+             if isinstance(a, MultiattackAction)][0]
+    multi.execute(ctx)
+    # Nivel 15: 3 golpes de la acción + 1 adicional = 4 tiradas, y una
+    # sola renuncia (flag por turno): la acción no pierde golpes.
+    assert len(capturados) == 4
+    assert llamadas == [("no", "sí")]
+
+
+def test_en_nivel_catorce_no_actua(monkeypatch):
+    pj, trait = _samurai(14)
+    orco = _enemigo()
+    _si(monkeypatch)  # Fighting Spirit sí (nivel 14)
+    trait.on_turn_start(pj, _ctx_ataque(pj, orco))
+
+    def _revienta(rng, seq):
+        raise AssertionError("el nivel 14 no tiene Rapid Strike")
+
+    import dnd_sim.rules.classes.fighter.subclasses.samurai as sm_mod
+    monkeypatch.setattr(sm_mod, "pick", _revienta)
+    capturados = _capturador(monkeypatch)
+    attack_roll(pj, orco, pj.attacks[0], random.Random(2),
+                ctx=_ctx_ataque(pj, orco))
+    assert capturados == [RollMode.ADVANTAGE]
+    assert not trait.rapid_strike_used

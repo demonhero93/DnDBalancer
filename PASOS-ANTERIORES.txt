@@ -411,6 +411,17 @@ SAMURAI (2026-11-15)
     MISMO turno vía modify_attack_modifiers, solo con arma y no
     hechizo; PV temp max() sin acumulación; on_any_turn_end apaga el
     flag). tests/test_samurai.py (10 nuevos). Suite: 1623.
+  - (A4) Rapid Strike: walker _renunciar_ventaja en attack.py (SIN
+    HOOK_NAMES; solo con ventaja neta, patrón _reaccionar_al_fallo)
+    tras modifiers.mode y antes del d20; renuncia → modo normal (sin
+    desventaja añadida) + ataque adicional al FINAL de attack_roll
+    (flujo completo, mismo objetivo efectivo, flag por turno bloquea
+    la reactivación y no gasta Extra Attack). Trait
+    renunciar_ventaja(atk, ctx, rng): guards sin RNG (nivel 15,
+    arma, acción Atacar vía in_attack_action, no reacción) y pick
+    «no/sí» único. Nota: en tests se limpia la maestría del arma (Sap
+    marcaría desventaja tras impactar y contaminaría el adicional).
+    tests/test_samurai.py (6 nuevos). Suite: 1629.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y

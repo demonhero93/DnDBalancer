@@ -27,6 +27,7 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
 - [ ] A4 — Rapid Strike: consulta duck-typing `renunciar_ventaja` en
   `engine/combat/attack.py` tras el modo de ventaja y antes del d20;
   ataque adicional al final de `attack_roll`.
+  **Hecho**: 6 tests, suite 1629 passed.
 - [ ] A5 — Función de turno reutilizable en `encounter.py` (extraída
   del bucle de rondas; cero cambio de RNG; suite idéntica).
 - [ ] A6 — Strength Before Death: campos `en_pie_pendiente` y cola de

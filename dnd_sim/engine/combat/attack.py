@@ -472,6 +472,32 @@ def _reaccionar_al_fallo(target: Any, attacker: Any, rango: Any, *,
         break
 
 
+def _renunciar_ventaja(attacker: Any, atk: Any, mode: RollMode,
+                       ctx: Any, rng: Any) -> bool:
+    """Rapid Strike (Samurai): ¿renuncia a la ventaja neta de esta tirada?
+
+    Duck-typing (patrón ``_reaccionar_al_fallo``, SIN entrada en
+    ``HOOK_NAMES``): cada rasgo del ATACANTE puede definir
+    ``renunciar_ventaja(atk, *, ctx, rng) -> bool``. Se consulta tras
+    calcular el modo final de ventaja y ANTES de tirar el d20; si
+    responde que sí, :func:`attack_roll` tira en modo normal y, al
+    final, ejecuta el ataque adicional contra el mismo objetivo.
+
+    Solo se consulta con ventaja neta (sin ella no hay ventaja que
+    renunciar) y **sin rasgos que lo definan no se consume RNG**.
+    """
+    if mode is not RollMode.ADVANTAGE:
+        return False
+    for rasgo in (getattr(attacker, "traits", None) or []):
+        metodo = getattr(rasgo, "renunciar_ventaja", None)
+        if metodo is None:
+            continue
+        if metodo(atk, ctx=ctx, rng=rng):
+            return True
+        break
+    return False
+
+
 def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
                 rng: random.Random, log: list[str] | None = None,
                 verbose: bool = False, ctx: Any = None,
@@ -537,6 +563,14 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     modifiers = attack_modifiers(attacker, target, atk, rango, ctx=ctx,
                                  rng=rng)
     mode = modifiers.mode
+    # (4b) Rapid Strike (Samurai, A4): con ventaja neta el rasgo puede
+    # renunciar a la ventaja antes del d20 a cambio de un ataque
+    # adicional al final de este ataque (consulta duck-typing
+    # ``renunciar_ventaja``; sin rasgo que la defina, ni consulta ni
+    # RNG). La renuncia quita la ventaja, NO añade desventaja.
+    renuncia = _renunciar_ventaja(attacker, atk, mode, ctx, rng)
+    if renuncia:
+        mode = RollMode.NORMAL
     # (4) Tirada.
     result = roll_d20(rng, mode)
     roll = result.value
@@ -774,6 +808,14 @@ def attack_roll(attacker: Combatant, target: Combatant, atk: Attack,
     # (acerte o falle) el bando del OBJETIVO puede contraatacar. Los
     # hechizos de salvación y el área no pasan por aquí.
     _oportunidad_contra_bando(target, attacker, ctx=ctx, rng=rng, log=log)
+    # Rapid Strike: tras resolver el ataque principal (impacte o
+    # falle), el ataque adicional corre el MISMO flujo completo contra
+    # el mismo objetivo (el efectivo, por si Cloud Rune redirigió). No
+    # gasta Extra Attack (está dentro de attack_roll, no en el bucle
+    # de la acción) ni puede reactivarse: el flag por turno ya está
+    # gastado en la renuncia.
+    if renuncia:
+        attack_roll(attacker, target, atk, rng, log, ctx=ctx)
 
 
 def _tag_modificadores(raw: int, final: int, dt: Any, target: Any, *,

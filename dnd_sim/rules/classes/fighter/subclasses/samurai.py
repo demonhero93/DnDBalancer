@@ -178,6 +178,33 @@ class SamuraiFeatures(Trait):
         mods.advantage_sources.append("Fighting Spirit")
         return None
 
+    def renunciar_ventaja(self, atk: Any, *, ctx: Any = None,
+                          rng: Any = None) -> bool:
+        """Rapid Strike (15): ¿renunciar a la ventaja de esta tirada?
+
+        Elegibilidad SIN RNG: nivel >= 15, no ejercida aún este turno,
+        ataque con arma (no hechizo), dentro de la acción Atacar
+        (``ctx.in_attack_action``; no reacciones, ni bonus, ni
+        ataques especiales de otra acción) y con ``rng`` disponible.
+        Si es elegible, ``pick`` «no»/«sí» UNA vez por ataque; al
+        decir que sí se gasta el flag por turno (limpiado en
+        ``on_turn_start``): el ataque adicional no puede reactivarlo.
+        """
+        if self.level < 15 or self.rapid_strike_used:
+            return False
+        if atk is None or getattr(atk, "spell_attack", False):
+            return False
+        if ctx is None or rng is None:
+            return False
+        if getattr(ctx, "is_reaction", False):
+            return False
+        if not getattr(ctx, "in_attack_action", False):
+            return False
+        if pick(rng, ("no", "sí")) != "sí":
+            return False
+        self.rapid_strike_used = True
+        return True
+
     def reset(self) -> None:
         """Un combate nuevo: usos completos y flags apagados."""
         if self.spirit_uses is not None:
