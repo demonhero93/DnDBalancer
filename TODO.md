@@ -69,10 +69,11 @@ siguiente); la clase de tests es falsa.
   `niveles_disponibles`, `spend`, `reset`) + campo opcional en
   `Combatant` (None por defecto) restaurado en `reset` + tests.
   **Hecho**: 6 tests, suite 1651 passed.
-- [ ] A3 — Cargador de listas de clase en `data/` (`/classes/<index>/spells`
+- [x] A3 — Cargador de listas de clase en `data/` (`/classes/<index>/spells`
   con caché en disco y fixture JSON) devolviendo `ClassSpellList`
   (tipo definido en `rules/spells`, recibido como argumento) + tests
   sin red.
+  **Hecho**: 3 tests, suite 1654 passed.
 - [ ] A4 — `rules/spells`: `hechizo_soportado`, `PCSpellcasting`
   (CD/bonificador = PB + mod) y acción de hechizo de PJ con gasto de
   espacio y `pick` de sobrecarga; suite completa idéntica antes de

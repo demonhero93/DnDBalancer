@@ -1,0 +1,16 @@
+{
+  "count": 11,
+  "results": [
+    {"index": "fireball", "level": 3, "name": "Fireball", "url": "/api/2024/spells/fireball"},
+    {"index": "magic-missile", "level": 1, "name": "Magic Missile", "url": "/api/2024/spells/magic-missile"},
+    {"index": "ray-of-frost", "level": 0, "name": "Ray of Frost", "url": "/api/2024/spells/ray-of-frost"},
+    {"index": "fire-bolt", "level": 0, "name": "Fire Bolt", "url": "/api/2024/spells/fire-bolt"},
+    {"index": "burning-hands", "level": 1, "name": "Burning Hands", "url": "/api/2024/spells/burning-hands"},
+    {"index": "hold-person", "level": 2, "name": "Hold Person", "url": "/api/2024/spells/hold-person"},
+    {"index": "shield", "level": 1, "name": "Shield", "url": "/api/2024/spells/shield"},
+    {"index": "mage-hand", "level": 0, "name": "Mage Hand", "url": "/api/2024/spells/mage-hand"},
+    {"index": "jump", "level": 1, "name": "Jump", "url": "/api/2024/spells/jump"},
+    {"index": "false-life", "level": 1, "name": "False Life", "url": "/api/2024/spells/false-life"},
+    {"index": "nonexistent-spell", "level": 1, "name": "No Existe", "url": "/api/2024/spells/nonexistent-spell"}
+  ]
+}

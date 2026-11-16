@@ -482,6 +482,17 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     en Combatant.reset (un combate = un día descansado). 6 tests
     nuevos (gasto, agotamiento, sobrecarga, reset, defaults
     inofensivos). Suite: 1651.
+  - (A3) data/class_spells.py nuevo: _fetch_class_spells
+    (/classes/<index>/spells con caché en cache/classes/<index>.json,
+    mismos errores que el resto del cliente) y load_class_spell_list
+    que parsea cada entrada con el parse_spell existente (nivel y
+    escuela salen de la ficha del hechizo; inexistente o no modelado:
+    se omite). ClassSpellList = list[Spell] definido en
+    rules/spells/casting.py (rules no importa de data) y reexportado.
+    Fixture tests/fixtures/classes/wizard.json (11 entradas con el
+    formato real de la API: index/level/name/url; el nivel de la lista
+    manda sobre el del JSON y la escuela sale de la ficha). 3 tests (parseo/nivel/escuela, omisión de inexistentes, caché sin
+    red). Suite: 1654.
 
 ESTADO ACTUAL
    - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y

@@ -142,3 +142,85 @@ def test_combatant_reset_restaura_los_espacios_del_pj_lanzador():
     c.reset()
     assert c.spell_slots.actuales == [4, 2]
     assert c.hp == 10
+
+
+# --- A3: lista de hechizos de clase (capa data) ----------------------------- #
+
+def _get_spell_fixture(index: str) -> dict:
+    """Cargador de hechizos sin red: lee la fixture JSON del índice."""
+    ruta = SPELLS / f"{index}.json"
+    if not ruta.exists():
+        raise FileNotFoundError(index)
+    return json.loads(ruta.read_text(encoding="utf-8"))
+
+
+def test_la_lista_de_clase_se_parsea_con_nivel_y_escuela():
+    from dnd_sim.data.class_spells import load_class_spell_list
+    lista = load_class_spell_list("wizard", cache_dir=FIXTURES / "classes",
+                                  get_spell=_get_spell_fixture)
+    por_indice = {s.index: s for s in lista}
+    fireball = por_indice["fireball"]
+    assert (fireball.level, fireball.school) == (3, "evocation")
+    assert por_indice["ray-of-frost"].level == 0
+    assert por_indice["hold-person"].level == 2
+    # No modelados (utilidad, PV temporales) y el inexistente: fuera.
+    for fuera in ("shield", "mage-hand", "jump", "false-life",
+                  "nonexistent-spell"):
+        assert fuera not in por_indice
+
+
+def test_un_hechizo_que_no_existe_se_omite_sin_romper_la_lista():
+    from dnd_sim.data.class_spells import load_class_spell_list
+
+    def _get(index: str) -> dict:
+        if index == "fireball":
+            raise FileNotFoundError(index)
+        return _get_spell_fixture(index)
+
+    lista = load_class_spell_list("wizard", cache_dir=FIXTURES / "classes",
+                                  get_spell=_get)
+    indices = {s.index for s in lista}
+    assert "fireball" not in indices
+    assert "magic-missile" in indices
+
+
+def test_la_lista_se_guarda_en_cache_y_la_segunda_vez_no_toca_la_red(
+        tmp_path, monkeypatch):
+    import urllib.request
+    from dnd_sim.data.class_spells import load_class_spell_list
+
+    fixture = json.loads(
+        (FIXTURES / "classes" / "wizard.json").read_text(
+            encoding="utf-8"))
+
+    class _Respuesta:
+        def __init__(self, data):
+            self._d = data
+
+        def read(self):
+            return json.dumps(self._d).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    llamadas: list[str] = []
+
+    def _falsa_red(url, timeout=None):
+        llamadas.append(str(url))
+        return _Respuesta(fixture)
+
+    monkeypatch.setattr(urllib.request, "urlopen", _falsa_red)
+    lista1 = load_class_spell_list("wizard", cache_dir=tmp_path,
+                                   get_spell=_get_spell_fixture)
+    assert llamadas and (tmp_path / "wizard.json").exists()
+
+    def _sin_red(*args, **kwargs):
+        raise AssertionError("no debe tocar la red")
+
+    monkeypatch.setattr(urllib.request, "urlopen", _sin_red)
+    lista2 = load_class_spell_list("wizard", cache_dir=tmp_path,
+                                   get_spell=_get_spell_fixture)
+    assert [s.index for s in lista1] == [s.index for s in lista2]

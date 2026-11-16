@@ -184,6 +184,14 @@ def duracion_en_rondas(duracion: str) -> int | None:
     return None
 
 
+#: Lista de hechizos de una clase jugable, ya parseados a :class:`Spell`.
+#: La produce la capa ``data`` (:func:`dnd_sim.data.class_spells.
+#: load_class_spell_list`) y la recibe ``rules`` como argumento (``rules``
+#: nunca importa de ``data``). Cada ``Spell`` conserva su ``index``,
+#: ``level`` y ``school`` del índice de la lista de clase.
+ClassSpellList = list[Spell]
+
+
 def spell_action(spell: Spell, spellcasting: Spellcasting | None = None,
                  slot_level: int | None = None) -> CombatAction | None:
     """Construye la acción de combate de un hechizo.

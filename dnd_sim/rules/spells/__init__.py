@@ -64,12 +64,14 @@ from .effects import HealEffect, StateEffect, apply_concentration
 from .reactions import trigger_reaction
 from .actions import (HealAction, SpellAction, SpellAttackAction,
                       SpellFixedDamageAction, SpellStateAction)
-from .casting import (FULL_CASTER_SLOTS, Spell, Spellcasting,
-                      dado_por_nivel, duracion_en_rondas, spell_action)
+from .casting import (ClassSpellList, FULL_CASTER_SLOTS, Spell,
+                      Spellcasting, dado_por_nivel, duracion_en_rondas,
+                      spell_action)
 
 __all__ = [
     "Spell",
     "Spellcasting",
+    "ClassSpellList",
     "HealEffect",
     "StateEffect",
     "FULL_CASTER_SLOTS",
