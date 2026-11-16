@@ -104,9 +104,12 @@ siguiente); la clase de tests es falsa.
   «Cómo añadir una clase lanzadora» en `TODO.md`.
   **Hecho**: sección «Hechizos de PJ (PHB 2024)» en ARCHITECTURE
   (módulos, borde, límites) + los dos bloques en TODO.md.
-- [ ] Docs — `ARCHITECTURE.md` (módulos nuevos, borde
+- [x] Docs — `ARCHITECTURE.md` (módulos nuevos, borde
   `rules/classes → rules/spells`, recuentos), bloque
   «HECHIZOS DE PJ (sesión 1)» en `PASOS-ANTERIORES.txt`.
+  **Hecho**: sección nueva + tabla de recuentos actualizada (92
+  módulos / 23683 líneas / 1683 tests); el bloque de PASOS se fue
+  escribiendo paso a paso (A1-A8) y ESTADO ACTUAL queda actualizado.
 - [ ] Verificación final — `pytest tests/test_arquitectura.py` +
   `pytest` + `python tools/capas.py` + `graphify update .` + commit
   con el grafo.

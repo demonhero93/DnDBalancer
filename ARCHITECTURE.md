@@ -16,16 +16,16 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 
 | Carpeta | Mód. | Líneas | Contenido |
 |---|---:|---:|---|
-| `dnd_sim/core/` | 13 | 1253 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
-| `dnd_sim/model/` | 4 | 1073 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 37 | 13095 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
+| `dnd_sim/core/` | 14 | 1442 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado, tablas de espacios de conjuro. **Cero imports internos.** |
+| `dnd_sim/model/` | 4 | 1087 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
+| `dnd_sim/rules/` | 37 | 13119 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
 | `dnd_sim/rules/traits/` | 6 | 1322 | Los rasgos de monstruo (paquete, ver abajo). |
-| `dnd_sim/rules/spells/` | 5 | 917 | Hechizos (paquete). |
+| `dnd_sim/rules/spells/` | 7 | 1295 | Hechizos (paquete): casting, acciones, efectos, reacciones, preparación y lanzamiento de PJ. |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
-| `dnd_sim/engine/combat/` | 3 | 1448 | El motor: tirada de ataque y bucle de rondas (paquete). |
-| `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
+| `dnd_sim/engine/combat/` | 3 | 1464 | El motor: tirada de ataque y bucle de rondas (paquete). |
+| `dnd_sim/data/` | 17 | 3532 | Carga de fichas de la API: parsers por tipo de dato y listas de hechizos de clase. |
 | `dnd_sim/__init__.py` | 1 | 198 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **88** | **22924** | + `tests/` con 58 ficheros y 26273 líneas (1638 tests). |
+| **Total** | **92** | **23683** | + `tests/` con 59 ficheros y 27012 líneas (1683 tests). |
 
 ## Reglas de dependencia
 

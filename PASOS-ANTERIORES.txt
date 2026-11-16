@@ -561,8 +561,13 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     hechizos, gastados == {PJ: 2}, espacios a 0). Suite: 1683.
 
 ESTADO ACTUAL
-   - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y
-     26273 líneas (1638 tests en verde, medido 2026-11-16).
+   - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y
+     27012 líneas (1683 tests en verde, medido 2026-11-16).
+   - Lanzamiento de PJ (bloque «HECHIZOS DE PJ (sesión 1)» arriba):
+     tablas de espacios 2024 y SpellSlots en core, listas de clase con
+     caché en data, pool/preparación y PCSpellcasting/PJSpellAction en
+     rules/spells, concentración completa, Oleada sin conjuros y
+     spell_slots_spent en CombatResult.
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro y Arcane Archer/Battle Master/Cavalier/Champion/
      Psi Warrior/Rune Knight/Samurai del fighter, con las 8 opciones de
