@@ -21,7 +21,7 @@ from dnd_sim.model.actions import CombatContext, TurnResources
 from dnd_sim.rules.conditions import Condition, apply_condition
 from dnd_sim.rules.spells import (
     PCSpellcasting, Spellcasting, construir_acciones, estadisticas_lanzador,
-    hechizo_soportado,
+    hechizo_soportado, preparar_hechizos,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -448,3 +448,106 @@ def test_un_monstruo_con_hechizos_conserva_sus_resultados_con_semilla_fija():
     assert r.rounds == 2
     assert r.survivors == {"Victima": 0, "Lich": 135}
     assert r.action_uses == {"Paralyzing Touch": 2}
+
+
+# --- A5: preparación de hechizos -------------------------------------------- #
+
+def _def_a5(**kwargs) -> SpellcastingDef:
+    base = dict(progresion="third", caracteristica="int", lista_clase="wizard",
+                trucos_conocidos={3: 2, 5: 3, 7: 3},
+                preparados={3: 2, 5: 2, 7: 2}, min_level=3)
+    base.update(kwargs)
+    return SpellcastingDef(**base)
+
+
+def _lista(*indices: str):
+    return [_hechizo(i) for i in indices]
+
+
+def test_la_preparacion_alcanza_los_conteos_de_la_tabla():
+    lista = _lista("fire-bolt", "ray-of-frost", "guidance",
+                   "magic-missile", "burning-hands", "thunderwave")
+    trucos, hech = preparar_hechizos(lista, 5, _def_a5())
+    assert len(trucos) == 3          # trucos_conocidos[5] = 3
+    assert len(hech) == 2            # preparados[5] = 2
+    assert all(s.level == 0 for s in trucos)
+    assert all(s.level == 1 for s in hech)   # mayor espacio en nivel 5 = 1
+
+
+def test_un_hechizo_sobre_el_mayor_espacio_no_es_preparable():
+    lista = _lista("fireball", "hold-person", "magic-missile")
+    _, hech5 = preparar_hechizos(lista, 5, _def_a5())   # espacios (3,): máx 1
+    assert [s.index for s in hech5] == ["magic-missile"]
+    _, hech7 = preparar_hechizos(lista, 7, _def_a5())   # espacios (4,2): máx 2
+    assert {s.index for s in hech7} == {"hold-person", "magic-missile"}
+
+
+def test_la_preparacion_es_determinista_con_la_semilla_por_defecto():
+    lista = _lista("fire-bolt", "ray-of-frost", "guidance",
+                   "magic-missile", "burning-hands", "thunderwave")
+    a = preparar_hechizos(lista, 5, _def_a5())
+    b = preparar_hechizos(lista, 5, _def_a5())
+    assert [s.index for s in a[0]] == [s.index for s in b[0]]
+    assert [s.index for s in a[1]] == [s.index for s in b[1]]
+
+
+def test_un_hechizo_fuera_de_la_lista_es_un_value_error():
+    lista = _lista("magic-missile")
+    fuera = _hechizo("lightning-bolt")
+    with pytest.raises(ValueError):
+        preparar_hechizos(lista, 5, _def_a5(), hechizos=[fuera])
+
+
+def test_un_hechizo_repetido_es_un_value_error():
+    mm = _hechizo("magic-missile")
+    with pytest.raises(ValueError):
+        preparar_hechizos([mm], 5, _def_a5(), hechizos=[mm, mm])
+
+
+def test_exceder_el_conteo_de_la_tabla_es_un_value_error():
+    sel = [_hechizo("magic-missile"), _hechizo("burning-hands"),
+           _hechizo("thunderwave")]          # preparados[5] = 2
+    with pytest.raises(ValueError):
+        preparar_hechizos(sel, 5, _def_a5(), hechizos=sel)
+
+
+def test_un_truco_no_puede_prepararse_como_hechizo():
+    fb = _hechizo("fire-bolt")
+    with pytest.raises(ValueError):
+        preparar_hechizos([fb], 5, _def_a5(), hechizos=[fb])
+
+
+def test_un_hechizo_de_nivel_inalcanzable_es_un_value_error():
+    fb = _hechizo("fireball")               # nivel 3 > mayor espacio (1)
+    with pytest.raises(ValueError):
+        preparar_hechizos([fb], 5, _def_a5(), hechizos=[fb])
+
+
+def test_los_kwargs_explicitos_se_usan_tal_cual_sin_tocar_el_rng():
+    fb, rf, mm = _hechizo("fire-bolt"), _hechizo("ray-of-frost"), \
+        _hechizo("magic-missile")
+
+    class _RngExplota:
+        def randrange(self, *args, **kwargs):
+            raise AssertionError("no debe tocar el rng")
+
+    trucos, hech = preparar_hechizos([fb, rf, mm], 5, _def_a5(),
+                                     trucos=[fb, rf], hechizos=[mm],
+                                     rng=_RngExplota())
+    assert trucos == [fb, rf] and hech == [mm]
+
+
+def test_las_escuelas_restringidas_filtran_el_pool():
+    defa = _def_a5(escuelas=("enchantment",), trucos_conocidos={7: 1},
+                   preparados={7: 1})
+    lista = _lista("fire-bolt", "ray-of-frost", "magic-missile",
+                   "hold-person")
+    trucos, hech = preparar_hechizos(lista, 7, defa)
+    assert trucos == []                     # los trucos son evocation
+    assert [s.index for s in hech] == ["hold-person"]
+
+
+def test_sin_espacios_no_se_prepara_nada():
+    trucos, hech = preparar_hechizos(
+        _lista("fire-bolt", "magic-missile"), 1, _def_a5())  # min_level 3
+    assert trucos == [] and hech == []

@@ -81,9 +81,10 @@ siguiente); la clase de tests es falsa.
   **Hecho**: `preparation.py` + `caster.py`, concentración completada
   (no existía: salvación de CON al daño, Incapacitado, muerte), 12
   tests, suite 1666 passed.
-- [ ] A5 — `preparar_hechizos(...)` con `sample` uniforme del pool
+- [x] A5 — `preparar_hechizos(...)` con `sample` uniforme del pool
   soportado y legal, kwargs explícitos validados (`ValueError`), rng
   semilla 0 por defecto + tests.
+  **Hecho**: 11 tests, suite 1677 passed.
 - [ ] A6 — `ClassDef`/`SubclassDef` con `spellcasting: SpellcastingDef |
   None`, helper `aplicar_lanzamiento`, clase falsa SOLO de test (no
   registrada en producción) e integración en `run_combat`.

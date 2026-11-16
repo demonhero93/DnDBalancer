@@ -515,6 +515,18 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     una sola instancia, daño 60→CD30 rompe, Aturdido rompe, muerte
     rompe, exclusiones del pool, semilla fija del lich vs víctima).
     Suite: 1666.
+  - (A5) preparar_hechizos(lista_clase, nivel, def, *, trucos, hechizos,
+    rng) en rules/spells/preparation.py: pool legal = soportado +
+    escuelas de la definición + nivel <= mayor espacio disponible
+    (truco siempre legal); sin kwargs, sample uniforme con min(conteo,
+    pool) y rng semilla 0 por defecto (determinista); kwargs explícitos
+    validados sin RNG (ValueError: repiten, excede el conteo, fuera
+    del pool con mensaje concreto para «truco como preparado» y
+    «nivel inalcanzable»); devuelve (trucos, hechizos). 11 tests
+    (conteos, límite de nivel por encima del mayor espacio, semilla,
+    las 5 validaciones, kwargs con rng que revienta, escuelas,
+    sin espacios); la exclusión de utilidad/reacción ya la cubre A4.
+    Suite: 1677.
 
 ESTADO ACTUAL
    - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y
