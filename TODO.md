@@ -74,10 +74,13 @@ siguiente); la clase de tests es falsa.
   (tipo definido en `rules/spells`, recibido como argumento) + tests
   sin red.
   **Hecho**: 3 tests, suite 1654 passed.
-- [ ] A4 — `rules/spells`: `hechizo_soportado`, `PCSpellcasting`
+- [x] A4 — `rules/spells`: `hechizo_soportado`, `PCSpellcasting`
   (CD/bonificador = PB + mod) y acción de hechizo de PJ con gasto de
   espacio y `pick` de sobrecarga; suite completa idéntica antes de
   seguir (monstruos intactos).
+  **Hecho**: `preparation.py` + `caster.py`, concentración completada
+  (no existía: salvación de CON al daño, Incapacitado, muerte), 12
+  tests, suite 1666 passed.
 - [ ] A5 — `preparar_hechizos(...)` con `sample` uniforme del pool
   soportado y legal, kwargs explícitos validados (`ValueError`), rng
   semilla 0 por defecto + tests.

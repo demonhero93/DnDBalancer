@@ -265,6 +265,11 @@ class Combatant:
         último de un bando (PJ o NPC).
         """
         self.dead = True
+        # Concentración (5e): se pierde al morir (sin contexto no hay
+        # log; la condición no sobrevive a un muerto de todas formas).
+        for inst in list(getattr(self.conditions, "instances", []) or []):
+            if inst.condition is Condition.CONCENTRATION:
+                self.conditions.remove_instance(inst)
 
     def _sobrevive_a_cero(self) -> bool:
         """¿Un rasgo mantiene a esta criatura viva con 0 PV?"""

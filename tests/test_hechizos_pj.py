@@ -11,9 +11,17 @@ from pathlib import Path
 
 import pytest
 
+from dnd_sim import Abilities, Monster, PlayerCharacter
 from dnd_sim.core.spellcasting import (
     FULL_SLOTS, HALF_SLOTS, THIRD_SLOTS, SpellSlots, SpellcastingDef,
     spell_slots_for,
+)
+from dnd_sim.data.spell_parser import parse_spell
+from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.rules.conditions import Condition, apply_condition
+from dnd_sim.rules.spells import (
+    PCSpellcasting, Spellcasting, construir_acciones, estadisticas_lanzador,
+    hechizo_soportado,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -224,3 +232,219 @@ def test_la_lista_se_guarda_en_cache_y_la_segunda_vez_no_toca_la_red(
     lista2 = load_class_spell_list("wizard", cache_dir=tmp_path,
                                    get_spell=_get_spell_fixture)
     assert [s.index for s in lista1] == [s.index for s in lista2]
+
+
+# --- A4: componente de lanzamiento de PJ ------------------------------------ #
+
+def _pj_lanzador(hp: int = 200) -> PlayerCharacter:
+    """INT 16 (+3) y PB 2 fijos (``level`` None: no se rederiva la PB)."""
+    return PlayerCharacter(
+        name="Mago", max_hp=hp, ac=12,
+        abilities=Abilities(int=16, dex=14, con=12, wis=10, cha=8),
+        proficiency=2, attacks=[])
+
+
+def _enemigo(hp: int = 60) -> Monster:
+    return Monster(name="Orco", max_hp=hp, ac=12, abilities=Abilities(),
+                   attacks=[])
+
+
+def _ctx(actor, otros=(), rng=None) -> CombatContext:
+    return CombatContext(
+        rng=rng if rng is not None else random.Random(1), actor=actor,
+        combatants=[actor, *otros], round=1, log=[], verbose=False,
+        resources=TurnResources())
+
+
+def _hechizo(index: str, nivel_lanzador: int = 5):
+    """Hechizo de fixture parseado como lo haría la lista de clase."""
+    return parse_spell(_get_spell_fixture(index), "Test",
+                       Spellcasting(level=nivel_lanzador))
+
+
+def _caster(pj, slots, trucos=(), preparados=(), nivel: int = 5):
+    return PCSpellcasting(
+        ability="int", level=nivel,
+        sc=estadisticas_lanzador(pj, "int", nivel), slots=slots,
+        trucos=list(trucos), preparados=list(preparados))
+
+
+def test_un_hechizo_de_nivel_1_gasta_un_espacio_y_el_truco_no():
+    pj = _pj_lanzador()
+    orco = _enemigo()
+    slots = SpellSlots((2, 1))
+    caster = _caster(pj, slots, trucos=[_hechizo("fire-bolt")],
+                     preparados=[_hechizo("magic-missile")], nivel=3)
+    truco, nivel1 = construir_acciones(caster)
+    ctx = _ctx(pj, [orco])
+    assert truco.can_use(ctx.resources, ctx)
+    assert nivel1.can_use(ctx.resources, ctx)
+    truco.execute(ctx)
+    assert slots.actuales == [2, 1]          # el truco no gasta nada
+    nivel1.execute(ctx)
+    assert slots.actuales == [1, 1]          # el de nivel 1 sí
+
+
+def test_la_sobrecarga_elige_entre_los_espacios_disponibles_con_pick():
+    pj = _pj_lanzador()
+    orco = _enemigo()
+    slots = SpellSlots((1, 1))
+    caster = _caster(pj, slots, preparados=[_hechizo("magic-missile")],
+                     nivel=3)
+    accion = construir_acciones(caster)[0]
+    rng = random.Random(0)
+    gastados: set[int] = set()
+    for _ in range(40):
+        slots.reset()
+        antes = list(slots.actuales)
+        accion.execute(_ctx(pj, [orco], rng=rng))
+        for nivel, (b, a) in enumerate(zip(antes, slots.actuales), start=1):
+            if a < b:
+                gastados.add(nivel)
+    # Con la semilla 0 los 40 repartos usan los DOS niveles disponibles.
+    assert gastados == {1, 2}
+
+
+def test_la_sobrecarga_con_un_espacio_superior_escalada_el_dano():
+    pj = _pj_lanzador()
+    slots = SpellSlots((2, 1))
+    caster = _caster(pj, slots, preparados=[_hechizo("burning-hands")],
+                     nivel=3)
+    accion = construir_acciones(caster)[0]
+    assert accion.construir().effect.effect.damage == "3d6"
+    assert accion.construir(2).effect.effect.damage == "4d6"
+
+
+def test_sin_espacios_no_es_elegible_y_no_toca_el_rng():
+    class _RngExplota:
+        def randrange(self, *args, **kwargs):
+            raise AssertionError("no debe consumir RNG")
+
+    pj = _pj_lanzador()
+    orco = _enemigo()
+    slots = SpellSlots((1,))
+    slots.spend(1)
+    caster = _caster(pj, slots, preparados=[_hechizo("magic-missile")],
+                     nivel=3)
+    accion = construir_acciones(caster)[0]
+    ctx = _ctx(pj, [orco], rng=_RngExplota())
+    assert accion.can_use(ctx.resources, ctx) is False
+    accion.execute(ctx)                       # vuelve sin tocar el rng
+    assert slots.actuales == [0]
+
+
+def test_la_cd_del_pj_es_8_mas_pb_mas_mod_y_el_ataque_pb_mas_mod():
+    pj = _pj_lanzador()                       # INT 16 (+3), PB 2
+    sc = estadisticas_lanzador(pj, "int", 5)
+    assert sc.save_dc == 13                   # 8 + 2 + 3
+    assert sc.attack_bonus == 5               # 2 + 3
+    assert sc.ability_mod == 3
+    # La acción interna usa la CD/bonificador del PJ, no los del monstruo.
+    slots = SpellSlots((2,))
+    caster = _caster(pj, slots,
+                     preparados=[_hechizo("burning-hands"),
+                                 _hechizo("fire-bolt")], nivel=3)
+    a_save, a_atk = construir_acciones(caster)
+    assert a_save.construir().effect.effect.dc == 13
+    assert a_atk.construir().effect.attack.attack_bonus == 5
+
+
+def test_los_trucos_escalan_por_el_nivel_del_personaje():
+    fire_bolt = _hechizo("fire-bolt", nivel_lanzador=5)
+    assert fire_bolt.damage == "2d10"          # umbral 5 del nivel 1/5/11/17
+    pj = _pj_lanzador()
+    orco = _enemigo()
+    slots = SpellSlots((2,))
+    caster = _caster(pj, slots, trucos=[fire_bolt], nivel=5)
+    accion = construir_acciones(caster)[0]
+    ctx = _ctx(pj, [orco])
+    assert accion.can_use(ctx.resources, ctx)
+    accion.execute(ctx)
+    assert slots.actuales == [2]              # el truco no gasta espacio
+    assert accion.construir().effect.attack.damage == "2d10"
+
+
+def test_un_hechizo_concentrado_solo_deja_una_concentracion_y_otro_la_termina():
+    pj = _pj_lanzador()
+    orco = _enemigo()
+    slots = SpellSlots((4, 2))
+    caster = _caster(pj, slots,
+                     preparados=[_hechizo("faerie-fire"),
+                                 _hechizo("hold-person")], nivel=3)
+    primero, segundo = construir_acciones(caster)
+    ctx = _ctx(pj, [orco])
+    primero.execute(ctx)
+    assert pj.conditions.has(Condition.CONCENTRATION)
+    segundo.execute(ctx)                       # lanzar otro la termina
+    conc = [i for i in pj.conditions.instances
+            if i.condition is Condition.CONCENTRATION]
+    assert len(conc) == 1
+
+
+def test_la_salvacion_de_constitucion_al_recibir_dano_rompe_la_concentracion():
+    pj = _pj_lanzador(hp=200)
+    orco = _enemigo()
+    slots = SpellSlots((4, 2))
+    caster = _caster(pj, slots, preparados=[_hechizo("faerie-fire")],
+                     nivel=3)
+    accion = construir_acciones(caster)[0]
+    ctx = _ctx(pj, [orco])
+    accion.execute(ctx)
+    assert pj.conditions.has(Condition.CONCENTRATION)
+    # 60 de daño → CD 30: inalcanzable con CON +1, falla SIEMPRE.
+    from dnd_sim.rules.damage import inflict_damage
+    inflict_damage(pj, 60, "fire", source=orco, ctx=ctx, rng=ctx.rng,
+                   magical=True)
+    assert pj.hp == 140
+    assert not pj.conditions.has(Condition.CONCENTRATION)
+
+
+def test_la_concentracion_se_pierde_al_quedar_incapacitado():
+    pj = _pj_lanzador()
+    orco = _enemigo()
+    slots = SpellSlots((4, 2))
+    caster = _caster(pj, slots, preparados=[_hechizo("faerie-fire")],
+                     nivel=3)
+    accion = construir_acciones(caster)[0]
+    ctx = _ctx(pj, [orco])
+    accion.execute(ctx)
+    assert pj.conditions.has(Condition.CONCENTRATION)
+    apply_condition(pj, Condition.STUNNED, ctx, duration_rounds=10)
+    assert not pj.conditions.has(Condition.CONCENTRATION)
+
+
+def test_la_concentracion_se_pierde_al_morir():
+    pj = _pj_lanzador()
+    orco = _enemigo()
+    slots = SpellSlots((4, 2))
+    caster = _caster(pj, slots, preparados=[_hechizo("faerie-fire")],
+                     nivel=3)
+    accion = construir_acciones(caster)[0]
+    accion.execute(_ctx(pj, [orco]))
+    assert pj.conditions.has(Condition.CONCENTRATION)
+    pj.mark_dead()
+    assert not pj.conditions.has(Condition.CONCENTRATION)
+
+
+def test_los_hechizos_de_bonus_action_y_reaccion_no_entran_en_el_pool():
+    assert hechizo_soportado(_hechizo("fireball")) is True
+    assert hechizo_soportado(_hechizo("hellish-rebuke")) is False  # reacción
+    assert hechizo_soportado(_hechizo("healing-word")) is False    # bonus
+    assert hechizo_soportado(_hechizo("shield")) is False          # sin efecto
+    assert hechizo_soportado(_hechizo("jump")) is False            # movimiento
+    assert hechizo_soportado(_hechizo("detect-magic")) is False    # ritual
+    assert hechizo_soportado(None) is False
+
+
+def test_un_monstruo_con_hechizos_conserva_sus_resultados_con_semilla_fija():
+    """El camino de monstruo (CD/bonificador de ficha) queda intacto."""
+    from dnd_sim.data.loader import load_monster
+    from dnd_sim.engine.combat import run_combat
+    lich = load_monster("lich")
+    victima = PlayerCharacter(name="Victima", max_hp=60, ac=12,
+                              abilities=Abilities(dex=10), attacks=[])
+    r = run_combat([lich, victima], random.Random(3))
+    assert r.winner == "NPC"
+    assert r.rounds == 2
+    assert r.survivors == {"Victima": 0, "Lich": 135}
+    assert r.action_uses == {"Paralyzing Touch": 2}

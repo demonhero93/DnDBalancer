@@ -493,6 +493,28 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     formato real de la API: index/level/name/url; el nivel de la lista
     manda sobre el del JSON y la escuela sale de la ficha). 3 tests (parseo/nivel/escuela, omisión de inexistentes, caché sin
     red). Suite: 1654.
+  - (A4) rules/spells: preparation.py (hechizo_soportado: None/ignored/
+    sin kind o sin acción Magia → fuera; bonus y reacción excluidos)
+    y caster.py (PCSpellcasting ability/level/sc/slots/trucos/
+    preparados; estadisticas_lanzador CD=8+PB+mod y ataque=PB+mod;
+    PJSpellAction con marca es_accion_magia, can_use sin RNG =
+    recursos + espacio + restricciones del efecto interno, execute con
+    pick de sobrecarga (1 opción = sin RNG) y gasto vía SpellSlots,
+    interna construida con spell_action(spell, sc, slot) → CD y
+    bonificador del PJ sin tocar el camino de los monstruos;
+    construir_acciones). Concentración COMPLETADA (el enunciado la daba
+    por existente y no lo estaba: stealth.py:29 lo apuntaba como
+    pendiente): effects.chequeo_concentracion_al_danio (salvación de CON
+    CD max(10, daño//2), solo con instancias y rng — cero RNG si no),
+    llamado desde inflict_damage si original>0 y hp>0 (import diferido),
+    apply_condition rompe la concentración al quedar Incapacitado (has
+    incluye las implícitas) y mark_dead la quita en silencio. 12 tests
+    nuevos (truco sin gasto / nivel 1 gasta, pick de sobrecarga con
+    semilla 0 sobre (1,1), escalado 3d6→4d6, sin espacios con rng que
+    revienta, CD 13 / ataque 5, truco 2d10 a nivel 5, concentración:
+    una sola instancia, daño 60→CD30 rompe, Aturdido rompe, muerte
+    rompe, exclusiones del pool, semilla fija del lich vs víctima).
+    Suite: 1666.
 
 ESTADO ACTUAL
    - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y

@@ -8,6 +8,7 @@ from typing import Any
 
 from ..conditions import Condition, apply_condition
 from ...core.dice import roll_dice
+from ...core.log import log_line as _log_line
 
 
 @dataclass
@@ -71,3 +72,43 @@ def apply_concentration(caster: Any, ctx: Any,
                         duration_rounds=duration_rounds)
     except Exception:
         pass
+
+
+def chequeo_concentracion_al_danio(target: Any, amount: int, ctx: Any,
+                                   rng: Any, *, magical: bool = False) -> bool:
+    """Salvación de Constitución al recibir daño (5e): ¿sigue concentrado?
+
+    CD ``max(10, daño // 2)`` con la salvación de CON del objetivo. Si
+    falla, termina su concentración (todas las instancias). Devuelve
+    ``True`` si sigue concentrado o si no lo estaba.
+
+    Cero RNG si no hay concentración activa o si no llega generador (el
+    motor no inventa tiradas); aplica a PJ y monstruos por igual (la
+    vía de daño es única).
+    """
+    tracker = getattr(target, "conditions", None)
+    if tracker is None:
+        return True
+    activas = [i for i in list(getattr(tracker, "instances", []) or [])
+               if i.condition is Condition.CONCENTRATION]
+    if not activas or rng is None:
+        return True
+    dc = max(10, int(amount or 0) // 2)
+    from ..saves import saving_throw
+    sr = saving_throw(target, "con", dc, rng, magical=magical, ctx=ctx)
+    if ctx is not None:
+        try:
+            from ..saves import registrar_resistencia
+            sr = registrar_resistencia(ctx, target, sr)
+        except Exception:
+            pass
+    nombre = getattr(target, "name", target)
+    if sr.success:
+        _log_line(ctx, f"{nombre} mantiene la concentración "
+                       f"(CON {sr.total} vs CD {dc})")
+        return True
+    for instancia in activas:
+        tracker.remove_instance(instancia)
+    _log_line(ctx, f"{nombre} pierde la concentración "
+                   f"(CON {sr.total} vs CD {dc})")
+    return False

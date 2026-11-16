@@ -487,6 +487,13 @@ def inflict_damage(target: "Combatant", amount: int,
     # en pie, queda marcado ya (muerte al instante, no al acabar el turno).
     if int(getattr(target, "hp", 0) or 0) <= 0:
         _mark_dead_if_down(target)
+    # Concentración (5e): salvación de CON al recibir daño (CD 10 o la
+    # mitad del daño). Import diferido: solo quien concentra consume RNG
+    # (y muerto a 0 PV no tira, arriba ya se resolvió).
+    if original > 0 and int(getattr(target, "hp", 0) or 0) > 0:
+        from .spells.effects import chequeo_concentracion_al_danio
+        chequeo_concentracion_al_danio(target, original, ctx, rng,
+                                       magical=magical)
     return amt
 
 

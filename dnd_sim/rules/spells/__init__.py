@@ -60,18 +60,27 @@ Reglas implementadas:
 
 from __future__ import annotations
 
-from .effects import HealEffect, StateEffect, apply_concentration
+from .effects import (HealEffect, StateEffect, apply_concentration,
+                      chequeo_concentracion_al_danio)
 from .reactions import trigger_reaction
 from .actions import (HealAction, SpellAction, SpellAttackAction,
                       SpellFixedDamageAction, SpellStateAction)
 from .casting import (ClassSpellList, FULL_CASTER_SLOTS, Spell,
                       Spellcasting, dado_por_nivel, duracion_en_rondas,
                       spell_action)
+from .preparation import hechizo_soportado
+from .caster import (PCSpellcasting, PJSpellAction, construir_acciones,
+                     estadisticas_lanzador)
 
 __all__ = [
     "Spell",
     "Spellcasting",
     "ClassSpellList",
+    "PCSpellcasting",
+    "PJSpellAction",
+    "construir_acciones",
+    "estadisticas_lanzador",
+    "hechizo_soportado",
     "HealEffect",
     "StateEffect",
     "FULL_CASTER_SLOTS",
@@ -84,5 +93,6 @@ __all__ = [
     "SpellStateAction",
     "HealAction",
     "apply_concentration",
+    "chequeo_concentracion_al_danio",
     "trigger_reaction",
 ]

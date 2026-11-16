@@ -306,6 +306,16 @@ def apply_condition(target: Any, condition: Any, ctx: Any, *,
     tracker.add(instance)
 
     nombre = getattr(target, "name", target)
+    # Concentración (5e): se pierde al quedar Incapacitado. ``has``
+    # incluye las implícitas (Aturdido, Paralizado, Petrificado,
+    # Inconsciente); sin concentración activa el bucle no hace nada y
+    # no se consume RNG.
+    if tracker.has(Condition.INCAPACITATED):
+        for extra in list(tracker.instances):
+            if extra.condition is Condition.CONCENTRATION:
+                tracker.remove_instance(extra)
+                _log_line(ctx, f"{nombre} deja de estar concentrado "
+                               f"(incapacitado)")
     if duration_rounds is None:
         duracion = ""
     elif duration_rounds == 1:
