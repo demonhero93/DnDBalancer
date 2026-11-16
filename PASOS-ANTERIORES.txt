@@ -460,14 +460,19 @@ SAMURAI (2026-11-15)
     Elegant Courtier, Rapid Strike, SBD diferido, datos congelados) y
     pytest 1638. TODO.md: receta con samurai.py como ejemplo. Suite:
     1638.
+  - (Verificación) tests/test_arquitectura.py (3 passed), pytest
+    completo (1638 passed, 200 warnings conocidos), tools/capas.py
+    (solo la excepción única model.combatant -> rules.conditions) y
+    graphify update . (4639 nodos, 16949 aristas, 175 comunidades;
+    backup 2026-11-16). Suite: 1638.
 
 ESTADO ACTUAL
-   - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y
-     25462 líneas (1599 tests en verde, medido 2026-11-14).
+   - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y
+     26273 líneas (1638 tests en verde, medido 2026-11-16).
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro y Arcane Archer/Battle Master/Cavalier/Champion/
-     Psi Warrior/Rune Knight del fighter, con las 8 opciones de Arcane
-     Shot: Piercing/Seeking sin tirada vía sustituir_ataque).
+     Psi Warrior/Rune Knight/Samurai del fighter, con las 8 opciones de
+     Arcane Shot: Piercing/Seeking sin tirada vía sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities

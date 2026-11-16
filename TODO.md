@@ -48,9 +48,11 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
   `PASOS-ANTERIORES.txt`, receta y pendientes de `TODO.md`.
   **Hecho**: sección Samurai (XGE) + recuentos 88/22924 y 1638 tests;
   entradas (A1)-(B) y (Docs) en PASOS. Suite: 1638 passed.
-- [ ] Verificación final — `pytest tests/test_arquitectura.py` +
+- [x] Verificación final — `pytest tests/test_arquitectura.py` +
   `pytest` + `python tools/capas.py` + `graphify update .` + commit
   con el grafo.
+  **Hecho**: 3 + 1638 passed; capas solo la excepción única; grafo
+  4639 nodos / 16949 aristas / 175 comunidades.
 
 ## Pendientes generales
 
