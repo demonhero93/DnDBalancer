@@ -54,6 +54,50 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
   **Hecho**: 3 + 1638 passed; capas solo la excepción única; grafo
   4639 nodos / 16949 aristas / 175 comunidades.
 
+## Hechizos de PJ: plan de sesión 1
+
+Una casilla = un commit. Registro en `PASOS-ANTERIORES.txt` tras cada
+casilla. Enunciado completo en el mensaje de tarea de la sesión. NO se
+añade ninguna clase lanzadora real (el Eldritch Knight va en la sesión
+siguiente); la clase de tests es falsa.
+
+- [x] A1 — Tablas de espacios (full/half/third 2024),
+  `spell_slots_for(progresion, nivel)` y `SpellcastingDef` en módulo
+  nuevo `core/spellcasting.py` + tests por nivel y límites.
+  **Hecho**: 7 tests, suite 1645 passed.
+- [ ] A2 — `SpellSlots` (dataclass core: max/actuales, `can_cast`,
+  `niveles_disponibles`, `spend`, `reset`) + campo opcional en
+  `Combatant` (None por defecto) restaurado en `reset` + tests.
+- [ ] A3 — Cargador de listas de clase en `data/` (`/classes/<index>/spells`
+  con caché en disco y fixture JSON) devolviendo `ClassSpellList`
+  (tipo definido en `rules/spells`, recibido como argumento) + tests
+  sin red.
+- [ ] A4 — `rules/spells`: `hechizo_soportado`, `PCSpellcasting`
+  (CD/bonificador = PB + mod) y acción de hechizo de PJ con gasto de
+  espacio y `pick` de sobrecarga; suite completa idéntica antes de
+  seguir (monstruos intactos).
+- [ ] A5 — `preparar_hechizos(...)` con `sample` uniforme del pool
+  soportado y legal, kwargs explícitos validados (`ValueError`), rng
+  semilla 0 por defecto + tests.
+- [ ] A6 — `ClassDef`/`SubclassDef` con `spellcasting: SpellcastingDef |
+  None`, helper `aplicar_lanzamiento`, clase falsa SOLO de test (no
+  registrada en producción) e integración en `run_combat`.
+- [ ] A7 — La acción extra de Oleada de Acción no puede lanzar hechizo
+  (marca `es_accion_magia`; mínima cambio en la tercera pasada) +
+  anular la nota «la acción Magia no existe».
+- [ ] A8 — Estadísticas: hechizos de PJ en `action_uses` sin cambiar
+  formato; «espacios gastados» si es barato, si no a pendientes.
+- [ ] B — Límites del modelo documentados (rituales, utilidad, buffs,
+  reacciones de hechizo, Pact Magic, componentes, distancias...) en
+  `ARCHITECTURE.md` + «Hechizos de PJ: pendientes reales» y receta
+  «Cómo añadir una clase lanzadora» en `TODO.md`.
+- [ ] Docs — `ARCHITECTURE.md` (módulos nuevos, borde
+  `rules/classes → rules/spells`, recuentos), bloque
+  «HECHIZOS DE PJ (sesión 1)» en `PASOS-ANTERIORES.txt`.
+- [ ] Verificación final — `pytest tests/test_arquitectura.py` +
+  `pytest` + `python tools/capas.py` + `graphify update .` + commit
+  con el grafo.
+
 ## Pendientes generales
 
 - Push a `origin`: hay commits locales sin push (ver

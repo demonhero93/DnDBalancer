@@ -466,6 +466,16 @@ SAMURAI (2026-11-15)
     graphify update . (4639 nodos, 16949 aristas, 175 comunidades;
     backup 2026-11-16). Suite: 1638.
 
+HECHIZOS DE PJ (sesión 1) (2026-11-16)
+  - (A1) core/spellcasting.py nuevo: tablas FULL_SLOTS/HALF_SLOTS/
+    THIRD_SLOTS (PHB 2024, ver enunciado; sin ceros finales; tercio
+    empieza en 3), spell_slots_for(progresion, nivel) → tupla o ()
+    (ValueError con progresión desconocida; Brujo pact fuera de
+    alcance) y SpellcastingDef (progresión/característica/lista_clase/
+    trucos_conocidos/preparados/escuelas/min_level; valida progresión,
+    método espacios(nivel) que respeta min_level). core sin imports
+    internos. tests/test_hechizos_pj.py (7). Suite: 1645.
+
 ESTADO ACTUAL
    - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y
      26273 líneas (1638 tests en verde, medido 2026-11-16).
