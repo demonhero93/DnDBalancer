@@ -363,6 +363,44 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   Courtier, Tireless Spirit y salvaciones de muerte; reaperturas
   condicionadas en `TODO.md`.
 
+## Hechizos de PJ (PHB 2024)
+
+Mecánica común de lanzamiento para PJ (sin clases lanzadoras reales
+todavía; Eldritch Knight es la sesión siguiente):
+
+- `core/spellcasting.py`: tablas de espacios full/half/third (2024),
+  `spell_slots_for`, `SpellcastingDef` (definición de clase) y
+  `SpellSlots` (máximos/actuales). Campo opcional
+  `Combatant.spell_slots` restaurado en `reset()`: un combate = un día
+  descansado.
+- `data/class_spells.py`: `load_class_spell_list` — lista de hechizos
+  de clase con caché (`cache/classes/<index>.json`). El tipo
+  `ClassSpellList` vive en `rules/spells/casting.py`: `rules` no
+  importa `data`, recibe la lista como argumento.
+- `rules/spells/preparation.py`: `hechizo_soportado` (pool: solo lo
+  que el motor ejecuta con la acción Magia) y `preparar_hechizos`
+  (muestreo uniforme con rng semilla 0, o kwargs explícitos
+  validados; las listas son fijas al crear el PJ).
+- `rules/spells/caster.py`: `PCSpellcasting`, `PJSpellAction` (gasto
+  de espacio + `pick` de sobrecarga, marca `es_accion_magia`),
+  `estadisticas_lanzador` (CD = 8 + PB + mod, ataque = PB + mod) y
+  `aplicar_lanzamiento` (rutina común de las clases).
+- Concentración generalizada (antes solo monstruos):
+  `chequeo_concentracion_al_danio` desde `inflict_damage` (salvación
+  de CON CD `max(10, daño//2)`), ruptura al quedar Incapacitado y al
+  morir.
+- La Oleada de Acción no puede lanzar conjuros: la pasada extra de
+  `engine/combat/encounter.py` excluye las acciones `es_accion_magia`.
+- Borde nuevo de capas: `rules/classes → rules/spells` (una clase
+  llama a `aplicar_lanzamiento`); `rules/spells` no importa
+  `rules/classes`.
+
+**Límites del modelo** (cerrados en «Hechizos de PJ: pendientes
+reales» de `TODO.md`): rituales, utilidad, buffs sin efecto,
+reacciones de hechizo, acción bonus, Pact Magic, preparar/cambiar
+entre combates, componentes, recuperación de espacios en combate y
+distancias.
+
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
