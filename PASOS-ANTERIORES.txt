@@ -453,6 +453,13 @@ SAMURAI (2026-11-15)
     de SBD (hecho en A6). TODO.md: subclase pendiente pasa a 7/8 con
     Samurai y nuevo bloque «Samurai — datos sin efecto congelados»
     con las 4 reaperturas condicionadas. Suite: 1638.
+  - (Docs) ARCHITECTURE.md: recuentos (88 módulos / 22924 líneas,
+    tests 58 ficheros / 26273 líneas / 1638 tests), fila
+    rules/classes/ con samurai, fila engine/combat con _turno y cola
+    de turnos extra, sección «Samurai (XGE)» (Fighting Spirit,
+    Elegant Courtier, Rapid Strike, SBD diferido, datos congelados) y
+    pytest 1638. TODO.md: receta con samurai.py como ejemplo. Suite:
+    1638.
 
 ESTADO ACTUAL
    - 87 módulos en dnd_sim/ (22372 líneas); tests/ con 57 ficheros y

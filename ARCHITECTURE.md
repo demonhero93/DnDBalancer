@@ -16,16 +16,16 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 
 | Carpeta | Mód. | Líneas | Contenido |
 |---|---:|---:|---|
-| `dnd_sim/core/` | 13 | 1207 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
-| `dnd_sim/model/` | 4 | 1058 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 36 | 12711 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
+| `dnd_sim/core/` | 13 | 1253 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado. **Cero imports internos.** |
+| `dnd_sim/model/` | 4 | 1073 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
+| `dnd_sim/rules/` | 37 | 13095 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
 | `dnd_sim/rules/traits/` | 6 | 1322 | Los rasgos de monstruo (paquete, ver abajo). |
 | `dnd_sim/rules/spells/` | 5 | 917 | Hechizos (paquete). |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
-| `dnd_sim/engine/combat/` | 3 | 1344 | El motor: tirada de ataque y bucle de rondas (paquete). |
+| `dnd_sim/engine/combat/` | 3 | 1448 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 16 | 3394 | Carga de fichas de la API: parsers por tipo de dato. |
-| `dnd_sim/__init__.py` | 1 | 195 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **87** | **22372** | + `tests/` con 57 ficheros y 25462 líneas (1599 tests). |
+| `dnd_sim/__init__.py` | 1 | 198 | Fachada: reexporta la API pública ordenada por capa. |
+| **Total** | **88** | **22924** | + `tests/` con 58 ficheros y 26273 líneas (1638 tests). |
 
 ## Reglas de dependencia
 
@@ -60,8 +60,8 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (28 hooks, incl. `on_any_turn_start`, `on_any_turn_end`, `after_failed_check` y `defensa_ante_ataque`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion,psi_warrior,rune_knight}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier, Champion, Psi Warrior y Rune Knight). |
-| `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos por umbral `evaluar_d20`, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas y `CombatResult`. |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion,psi_warrior,rune_knight,samurai}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier, Champion, Psi Warrior, Rune Knight y Samurai). |
+| `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos por umbral `evaluar_d20`, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas (`_turno(actor)` reutilizable: la pasada completa de un actor, sin cambio de RNG; al final procesa la cola de turnos extra antes de la guarida) y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
 
@@ -328,11 +328,46 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   velocidad 0 de Stone, runas despertadas, pruebas características de
   Storm y ventaja de Hill en salvaciones de veneno.
 
+## Samurai (XGE)
+
+- **Tablas A1**: `fighting_spirit_uses` (3), `fighting_spirit_temp_hp`
+  (0/5/10/15) y pool `SAMURAI_BONUS_SKILLS` en `core/classes.py`.
+- **Fighting Spirit (3)**: activación en `on_turn_start` con `pick`
+  «no»/«sí» (decisión documentada: la ACTION va antes que la BONUS y
+  no existe punto previo); gasta la acción adicional en
+  `ctx.resources`, PV temporales sin acumulación (política `max`,
+  patrón Vitality Surge), ventaja en `modify_attack_modifiers` solo
+  con arma del MISMO turno; el flag se apaga en `on_any_turn_end`.
+- **Elegant Courtier (7)**: salvación de SAB o INT/CAR con `pick` en
+  `apply_samurai` (semilla 0 de creación); el bonificador igual al
+  mod SAB en Perspicacia/Persuasión es dato sin efecto.
+- **Rapid Strike (15)**: consulta duck-typing `renunciar_ventaja` en
+  `engine/combat/attack.py` tras el modo de ventaja y antes del d20
+  (sin entrada en `HOOK_NAMES`); al renunciar → modo normal sin
+  desventaja añadida + ataque adicional al FINAL de `attack_roll`,
+  flag por turno limpiado en `on_turn_start`.
+- **Strength Before Death (18) — versión DIFERIDA (decisión del
+  mantainer)**: `on_reduced_to_zero_hp` con guards SIN RNG (nivel 18,
+  1 uso, reacción libre, sin Incapacitado, `ctx`/`rng`) y `pick`
+  «no»/«sí» pone `Combatant.en_pie_pendiente` (lo cuenta
+  `Combatant.alive`) y encola en `CombatState.turnos_extra_pendientes`
+  (campo no serializado). `encounter._procesar_turnos_extra` corre al
+  final de `_turno` (antes de la guarida) y juega el turno extra con
+  la MISMA función `_turno`; sin curación acaba a 0 → `mark_dead`.
+  Daño adicional durante el pendiente lo retira de la cola y lo mata
+  (`_liberar_turno_extra` en `rules/damage.py`); curación por encima
+  de 0 lo libera. Sin salvaciones de muerte (aproximación); no se
+  encadena (1 uso por combate).
+- **Datos sin efecto (freeze en `tests/test_samurai.py`)**: idioma
+  alternativo de Bonus Proficiency, bonificador social de Elegant
+  Courtier, Tireless Spirit y salvaciones de muerte; reaperturas
+  condicionadas en `TODO.md`.
+
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1499 tests
+pytest                              # 1638 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

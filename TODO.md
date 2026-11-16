@@ -43,9 +43,11 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
   **Hecho**: 2 tests nuevos (idioma, salvaciones de muerte) + 2
   existentes; docstring SBD diferido en A6; TODO 7/8 + bloque de
   congelación. Suite: 1638 passed.
-- [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, función de turno,
+- [x] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, función de turno,
   estado en pie pendiente, recuentos), bloque SAMURAI en
   `PASOS-ANTERIORES.txt`, receta y pendientes de `TODO.md`.
+  **Hecho**: sección Samurai (XGE) + recuentos 88/22924 y 1638 tests;
+  entradas (A1)-(B) y (Docs) en PASOS. Suite: 1638 passed.
 - [ ] Verificación final — `pytest tests/test_arquitectura.py` +
   `pytest` + `python tools/capas.py` + `graphify update .` + commit
   con el grafo.
@@ -137,7 +139,7 @@ casilla. Enunciado completo en el mensaje de tarea de la sesión.
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de
 fighter: `arcane_archer.py`, `battle_master.py`, `cavalier.py`,
-`champion.py`, `psi_warrior.py` y `rune_knight.py`):
+`champion.py`, `psi_warrior.py`, `rune_knight.py` y `samurai.py`):
 
 1. Crear `rules/classes/fighter/subclasses/<clave>.py` con un
    `SubclassDef(name="<nombre visible>", class_name="fighter",
