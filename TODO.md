@@ -89,9 +89,11 @@ siguiente); la clase de tests es falsa.
   None`, helper `aplicar_lanzamiento`, clase falsa SOLO de test (no
   registrada en producción) e integración en `run_combat`.
   **Hecho**: 3 tests, suite 1680 passed.
-- [ ] A7 — La acción extra de Oleada de Acción no puede lanzar hechizo
+- [x] A7 — La acción extra de Oleada de Acción no puede lanzar hechizo
   (marca `es_accion_magia`; mínima cambio en la tercera pasada) +
   anular la nota «la acción Magia no existe».
+  **Hecho**: filtro `permitir_magia=False` en la pasada extra, nota
+  revocada, 2 tests, suite 1682 passed.
 - [ ] A8 — Estadísticas: hechizos de PJ en `action_uses` sin cambiar
   formato; «espacios gastados» si es barato, si no a pendientes.
 - [ ] B — Límites del modelo documentados (rituales, utilidad, buffs,

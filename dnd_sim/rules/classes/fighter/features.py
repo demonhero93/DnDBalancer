@@ -534,8 +534,9 @@ class ActionSurgeAction(CombatAction):
     un uso en vano) y no se ha usado Oleada antes en el mismo turno. Al
     ejecutarse pone ``resources.action_used = False``: el encuentro ve
     la acción libre y ejecuta UNA pasada de acción extra (ver
-    ``engine/combat/encounter.py``). La acción Magia no existe en el
-    motor, así que la prohibición de PHB no es aplicable aquí.
+    ``engine/combat/encounter.py``) que EXCLUYE las acciones de hechizo
+    de PJ (``es_accion_magia``): la Oleada no puede lanzar conjuros
+    (PHB).
     """
 
     def __init__(self) -> None:

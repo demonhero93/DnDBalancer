@@ -539,6 +539,17 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     3 tests (espacios+acciones al nivel 3, clase sin spellcasting
     intacta, run_combat con semilla 5 gasta espacios sin exceder y
     termina). Suite: 1680.
+  - (A7) encounter.py: `_pasada(action_type, *, permitir_magia=True)`;
+    la pasada extra de Oleada llama `_pasada(ACTION,
+    permitir_magia=False)` y filtra las acciones con `es_accion_magia`
+    (hechizo de PJ), con lo que la Oleada cumple el PHB. Filtro sin
+    efecto para quien no tenga la marca (cero RNG nuevo: los monstruos
+    y los PJs sin hechizos pasan el mismo filtro). Docstring de
+    `ActionSurgeAction` actualizado: la nota «la acción Magia no existe
+    en el motor» queda revocada. 2 tests con policy guionizado (1ª
+    pasada lanza hechizo, bonus lanza Oleada, extra no ve el hechizo y
+    gasta 1 espacio; sin hechizos la pasada extra ve los mismos
+    candidatos y el ataque sale 2 veces). Suite: 1682.
 
 ESTADO ACTUAL
    - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y

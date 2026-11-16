@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from dnd_sim import Abilities, Monster, PlayerCharacter
+from dnd_sim import Abilities, Attack, Monster, PlayerCharacter
 from dnd_sim.core.spellcasting import (
     FULL_SLOTS, HALF_SLOTS, THIRD_SLOTS, SpellSlots, SpellcastingDef,
     spell_slots_for,
@@ -633,3 +633,80 @@ def test_en_run_combat_el_pj_lanzador_gasta_espacios_sin_excederlos():
     assert r.winner in ("PJ", "NPC") and r.rounds >= 1   # combate termina
     assert all(a >= 0 for a in slots.actuales)           # no excede
     assert sum(slots.actuales) < sum(slots.maximos)      # gastó espacios
+
+
+# --- A7: la Oleada de Acción no puede lanzar conjuros ---------------------- #
+
+def _guerrero(hp: int = 80) -> PlayerCharacter:
+    from dnd_sim.rules.classes.fighter.features import apply_fighter
+    pj = PlayerCharacter(
+        name="Thor", max_hp=hp, ac=16, level=3,
+        abilities=Abilities(str=16, dex=14, con=14, wis=10, cha=8),
+        attacks=[Attack("Hacha de batalla", "1d12", ability="str")])
+    apply_fighter(pj, level=3, rng=random.Random(0))
+    return pj
+
+
+def _oleada(pj) -> object:
+    return next(a for a in pj.actions if a.name == "Oleada de Acción")
+
+
+def test_la_accion_extra_de_oleada_no_puede_lanzar_un_hechizo_del_pj():
+    from dnd_sim.engine.combat import run_combat
+    pj = _guerrero()
+    aplicar_lanzamiento(pj, 3, _def_mago_falso(), _lista_a6(),
+                        rng=random.Random(0))
+    hechizo = next(a for a in pj.actions
+                   if isinstance(a, PJSpellAction) and a.spell.level > 0)
+    oleada = _oleada(pj)
+    enemigo = _enemigo(hp=100)
+    vistas: list[list[str]] = []
+
+    def policy(ctx):
+        if ctx.actor is not pj:
+            return ctx.available_actions[0] if ctx.available_actions else None
+        vistas.append([a.name for a in ctx.available_actions])
+        n = len(vistas)
+        if n == 1:      # 1ª pasada (acción): lanzo el hechizo
+            return hechizo
+        if n == 2:      # bonus: la Oleada restaura la acción
+            return oleada
+        if n == 3:      # pasada extra: SIN hechizos de PJ
+            assert hechizo not in ctx.available_actions
+            assert all(not getattr(a, "es_accion_magia", False)
+                       for a in ctx.available_actions)
+        return ctx.available_actions[0]
+
+    r = run_combat([pj, enemigo], random.Random(4), policy=policy)
+    assert hechizo.name in vistas[0]        # la primera pasada sí lo ve
+    assert "Oleada de Acción" in vistas[1]
+    assert hechizo.name not in vistas[2]    # la extra no lo ve
+    assert hechizo.name in vistas[3]        # la de la ronda 2 vuelve a verlo
+    slots = pj.spell_slots
+    assert sum(slots.maximos) - sum(slots.actuales) == 1  # 1 espacio: 1 gasto
+    assert r.winner == "PJ"
+
+
+def test_sin_hechizos_la_pasada_extra_de_oleada_no_cambia_nada():
+    from dnd_sim.engine.combat import run_combat
+    pj = _guerrero()
+    ataque = next(a for a in pj.actions if a.name == "Hacha de batalla")
+    oleada = _oleada(pj)
+    enemigo = _enemigo(hp=100)
+    vistas: list[list[str]] = []
+
+    def policy(ctx):
+        if ctx.actor is not pj:
+            return ctx.available_actions[0] if ctx.available_actions else None
+        vistas.append([a.name for a in ctx.available_actions])
+        n = len(vistas)
+        if n == 1:
+            return ataque
+        if n == 2:
+            return oleada
+        return ctx.available_actions[0]
+
+    r = run_combat([pj, enemigo], random.Random(4), policy=policy)
+    assert vistas[2] == vistas[0]           # pasada extra: mismos candidatos
+    assert r.action_uses["Hacha de batalla"] >= 2  # la extra atacó
+    assert pj.spell_slots is None

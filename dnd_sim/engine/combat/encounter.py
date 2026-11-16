@@ -239,11 +239,16 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
         if not ctx.skip_turn:
             accion_ejecutada = False
 
-            def _pasada(action_type: ActionType) -> bool:
+            def _pasada(action_type: ActionType, *,
+                        permitir_magia: bool = True) -> bool:
                 """Ejecuta como mucho una acción de ``action_type``.
 
                 Devuelve ``False`` si el turno debe parar (combate
                 terminado o actor caído) y ``True`` si puede seguir.
+                Con ``permitir_magia=False`` (pasada extra de Oleada) se
+                excluyen las acciones de hechizo de PJ
+                (``es_accion_magia``): la Oleada no puede lanzar
+                conjuros (PHB).
                 """
                 nonlocal accion_ejecutada
                 # Fin ya decidido (último de un bando caído): no se
@@ -257,6 +262,8 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                 candidates = [
                     a for a in getattr(actor, "actions", [])
                     if getattr(a, "action_type", None) == action_type
+                    and (permitir_magia
+                         or not getattr(a, "es_accion_magia", False))
                     and a.can_use(resources, ctx)
                     and getattr(actor, "can_act", True)
                 ]
@@ -298,7 +305,8 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                 # Sin Oleada la acción queda gastada y no se entra aquí
                 # (cero cambio de comportamiento ni de RNG).
                 if accion_ejecutada and not resources.action_used:
-                    _pasada(ActionType.ACTION)
+                    # Pasada extra de Oleada: SIN hechizos de PJ (PHB).
+                    _pasada(ActionType.ACTION, permitir_magia=False)
         else:
             # Turno perdido. Solo cuenta como incapacitación si la
             # criatura sigue viva: quien muere al empezar su turno
