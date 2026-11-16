@@ -312,6 +312,46 @@ def fighting_spirit_temp_hp(level: int) -> int:
     return 5
 
 
+def eldritch_knight_prepared(level: int) -> int:
+    """Hechizos preparados del Eldritch Knight (PHB 2024).
+
+    0 por debajo del nivel 3; la tabla 3-20 es un dato del maintainer
+    (ver enunciado): si se corrige, se corrige aquí.
+    """
+    lvl = _clamp(level)
+    if lvl < 3:
+        return 0
+    if lvl >= 20:
+        return 13
+    if lvl >= 19:
+        return 12
+    if lvl >= 16:
+        return 11
+    if lvl >= 14:
+        return 10
+    if lvl >= 13:
+        return 9
+    if lvl >= 11:
+        return 8
+    if lvl >= 10:
+        return 7
+    if lvl >= 8:
+        return 6
+    if lvl >= 7:
+        return 5
+    if lvl >= 4:
+        return 4
+    return 3
+
+
+def eldritch_knight_cantrips(level: int) -> int:
+    """Trucos conocidos del Eldritch Knight (0 / 2 / 3)."""
+    lvl = _clamp(level)
+    if lvl < 3:
+        return 0
+    return 3 if lvl >= 10 else 2
+
+
 #: Pool de runas de Rune Knight (TCE). El orden fija la muestra.
 RUNES: tuple[str, ...] = ("cloud", "fire", "frost", "hill", "stone",
                            "storm")
@@ -489,6 +529,8 @@ __all__ = [
     "cavalier_mark_uses",
     "champion_crit_threshold",
     "extra_attacks_for",
+    "eldritch_knight_cantrips",
+    "eldritch_knight_prepared",
     "fighter_extra_attacks_for",
     "fighting_spirit_temp_hp",
     "fighting_spirit_uses",

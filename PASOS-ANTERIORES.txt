@@ -560,6 +560,16 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     (policy fuerza hechizos de nivel > 0: action_uses ⊆ nombres de
     hechizos, gastados == {PJ: 2}, espacios a 0). Suite: 1683.
 
+ELDRITCH KNIGHT (2026-11-16)
+
+  - (A1) Tablas en core/classes.py: eldritch_knight_prepared(level) y
+    eldritch_knight_cantrips(level) con el _clamp existente. La tabla
+    de preparados (3:3 4:4 5:4 6:4 7:5 8:6 9:6 10:7 11:8 12:8 13:9
+    14:10 15:10 16:11 17:11 18:11 19:12 20:13) es dato del maintainer
+    (enunciado): si se corrige, se corrige en la función. Trucos 0/2/3
+    en <3 / 3-9 / 10+. tests/test_eldritch_knight.py nuevo (3 tests:
+    tabla completa por nivel, 0 en <3, trucos por tramos). Suite: 1686.
+
 ESTADO ACTUAL
    - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y
      27012 líneas (1683 tests en verde, medido 2026-11-16).

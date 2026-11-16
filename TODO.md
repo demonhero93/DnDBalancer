@@ -127,10 +127,11 @@ marca de desventaja en salvación del siguiente hechizo); 15 Arcane
 Charge (dato sin efecto); 18 Improved War Magic (sustituir DOS
 ataques por un hechizo nivel 1-2).
 
-- [ ] A1 — Tablas en `core/classes.py`: `eldritch_knight_prepared(level)`
+- [x] A1 — Tablas en `core/classes.py`: `eldritch_knight_prepared(level)`
   (0 en <3; 3:3 4:4 5:4 6:4 7:5 8:6 9:6 10:7 11:8 12:8 13:9 14:10
   15:10 16:11 17:11 18:11 19:12 20:13) y `eldritch_knight_cantrips(level)`
   (0 / 2 / 3 en <3 / 3-9 / 10+) + tests por nivel y límites.
+  **Hecho**: 3 tests, suite 1686 passed.
 - [ ] A2 — Esqueleto y registro: `fighter/subclasses/eldritch_knight.py`
   (`EldritchKnightFeatures`, `apply_eldritch_knight` valida fighter y
   nivel >= 3, kwargs `cantrips`/`spells` validados, rng semilla 0,
