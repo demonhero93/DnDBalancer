@@ -94,8 +94,10 @@ siguiente); la clase de tests es falsa.
   anular la nota «la acción Magia no existe».
   **Hecho**: filtro `permitir_magia=False` en la pasada extra, nota
   revocada, 2 tests, suite 1682 passed.
-- [ ] A8 — Estadísticas: hechizos de PJ en `action_uses` sin cambiar
+- [x] A8 — Estadísticas: hechizos de PJ en `action_uses` sin cambiar
   formato; «espacios gastados» si es barato, si no a pendientes.
+  **Hecho**: solo test para `action_uses` (ya funcionaba); campo
+  `spell_slots_spent` en `CombatResult`, suite 1683 passed.
 - [ ] B — Límites del modelo documentados (rituales, utilidad, buffs,
   reacciones de hechizo, Pact Magic, componentes, distancias...) en
   `ARCHITECTURE.md` + «Hechizos de PJ: pendientes reales» y receta

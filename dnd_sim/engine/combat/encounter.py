@@ -45,6 +45,9 @@ class CombatResult:
     legendary_actions_used: dict[str, int] = field(default_factory=dict)
     legendary_points_spent: int = 0
     legendary_resistances_used: int = 0
+    # Espacios de conjuro gastados por combatiente (nombre -> max - actual);
+    # solo aparece quien lleve ``spell_slots`` (PJ lanzador).
+    spell_slots_spent: dict[str, int] = field(default_factory=dict)
 
 
 def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
@@ -411,6 +414,10 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
         winner = "NPC"
     else:
         winner = "Empate"
+    espacios_gastados = {
+        c.name: sum(c.spell_slots.maximos) - sum(c.spell_slots.actuales)
+        for c in order if getattr(c, "spell_slots", None) is not None
+    }
     return CombatResult(winner, rnd, {c.name: max(c.hp, 0) for c in order}, log,
                         action_uses=action_uses, area_targets_hit=area_targets_hit,
                         conditions_applied=conditions_applied,
@@ -420,4 +427,5 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                         attacks_vs_at_range=len(attacks_at_range),
                         legendary_actions_used=legendary_stats["actions"],
                         legendary_points_spent=int(legendary_stats["points"]),
-                        legendary_resistances_used=int(legendary_stats["resistances"]))
+                        legendary_resistances_used=int(legendary_stats["resistances"]),
+                        spell_slots_spent=espacios_gastados)

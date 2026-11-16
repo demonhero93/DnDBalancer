@@ -710,3 +710,30 @@ def test_sin_hechizos_la_pasada_extra_de_oleada_no_cambia_nada():
     assert vistas[2] == vistas[0]           # pasada extra: mismos candidatos
     assert r.action_uses["Hacha de batalla"] >= 2  # la extra atacó
     assert pj.spell_slots is None
+
+
+# --- A8: estadísticas ------------------------------------------------------ #
+
+def test_los_hechizos_del_pj_entran_en_action_uses_y_se_cuentan_los_espacios():
+    from dnd_sim.engine.combat import run_combat
+    pj = _pj_lanzador(hp=60)
+    aplicar_lanzamiento(pj, 3, _def_mago_falso(), _lista_a6(),
+                        rng=random.Random(0))
+    enemigo = _enemigo(hp=100)
+
+    def policy(ctx):
+        if ctx.actor is not pj:
+            return ctx.available_actions[0] if ctx.available_actions else None
+        for a in ctx.available_actions:     # fuerza hechizo con nivel > 0
+            if isinstance(a, PJSpellAction) and a.spell.level > 0:
+                return a
+        return ctx.available_actions[0]
+
+    r = run_combat([pj, enemigo], random.Random(4), policy=policy)
+    nombres = {a.name for a in pj.actions if isinstance(a, PJSpellAction)}
+    # Mismo formato que el resto: nombre de la acción, sin claves nuevas.
+    assert nombres & set(r.action_uses)
+    assert set(r.action_uses) <= nombres
+    # Espacios gastados: 2 de nivel 1 (los 2 del nivel 3 de tercio).
+    assert r.spell_slots_spent == {pj.name: 2}
+    assert sum(pj.spell_slots.actuales) == 0

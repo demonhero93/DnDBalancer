@@ -550,6 +550,15 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     pasada lanza hechizo, bonus lanza Oleada, extra no ve el hechizo y
     gasta 1 espacio; sin hechizos la pasada extra ve los mismos
     candidatos y el ataque sale 2 veces). Suite: 1682.
+  - (A8) Estadísticas: los hechizos de PJ ya entraban en `action_uses`
+    por su nombre (el registro es por `chosen.name`, sin cambio de
+    formato — solo test) y `CombatResult` gana `spell_slots_spent:
+    dict[str, int]` (nombre -> max - actual; un solo punto de
+    construcción, comprehension al volver; solo quien lleve
+    `spell_slots`). No se tocó la agregación de `stats.py` (si hace
+    falta para run_many, es el mismo patrón de `action_uses`). 1 test
+    (policy fuerza hechizos de nivel > 0: action_uses ⊆ nombres de
+    hechizos, gastados == {PJ: 2}, espacios a 0). Suite: 1683.
 
 ESTADO ACTUAL
    - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y
