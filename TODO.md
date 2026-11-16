@@ -116,6 +116,82 @@ siguiente); la clase de tests es falsa.
   **Hecho**: 3 + 1683 en verde, capas total 1 (solo la excepción
   conocida), grafo regenerado (4782 nodos / 17478 aristas).
 
+## Eldritch Knight: plan de sesión
+
+Añadir SOLO la subclase Eldritch Knight (Caballero Sobrenatural, PHB
+2024) al Guerrero sobre la mecánica común de hechizos ya existente.
+Una casilla = un commit. Rasgos: 3 Spellcasting (INT, lista wizard,
+tercio) + War Bond (dato sin efecto); 7 War Magic (sustituir UN ataque
+de la acción Atacar por un truco); 10 Eldritch Strike (+1 truco,
+marca de desventaja en salvación del siguiente hechizo); 15 Arcane
+Charge (dato sin efecto); 18 Improved War Magic (sustituir DOS
+ataques por un hechizo nivel 1-2).
+
+- [ ] A1 — Tablas en `core/classes.py`: `eldritch_knight_prepared(level)`
+  (0 en <3; 3:3 4:4 5:4 6:4 7:5 8:6 9:6 10:7 11:8 12:8 13:9 14:10
+  15:10 16:11 17:11 18:11 19:12 20:13) y `eldritch_knight_cantrips(level)`
+  (0 / 2 / 3 en <3 / 3-9 / 10+) + tests por nivel y límites.
+- [ ] A2 — Esqueleto y registro: `fighter/subclasses/eldritch_knight.py`
+  (`EldritchKnightFeatures`, `apply_eldritch_knight` valida fighter y
+  nivel >= 3, kwargs `cantrips`/`spells` validados, rng semilla 0,
+  recibe `ClassSpellList` y llama `aplicar_lanzamiento`), `SpellcastingDef`
+  (tercio, INT, wizard, tablas A1, escuelas None, min 3), clave
+  `"eldritch_knight"` en `fighter/__init__.py` + reexports (subclasses,
+  rules/classes, fachada) + `test_arquitectura` si congela. Registro,
+  equivalencia `apply_class`, errores (clase distinta, nivel <3),
+  espacios/conteos (3: 2 espacios/3 preparados; 7: 4+2; 19: 4/3/3/1),
+  kwargs inválidos → ValueError, War Bond y Arcane Charge congelados
+  como dato sin efecto, cero RNG sin la subclase.
+- [ ] A3 — Lanzamiento extremo a extremo: EK nivel 3 y 10 con
+  `run_combat` + fixtures (truco de ataque, truco de salvación, hechizo
+  nivel 1 con `damage_at_slot_level`, hechizo de concentración);
+  sobrecarga, concentración, CD/ataque INT; Oleada NO lanza hechizos
+  con un EK real.
+- [ ] A4 — War Magic (PASO DELICADO): inspeccionar cadena de ataques
+  (extra_attacks/MultiattackAction), punto de consulta perezoso
+  duck-typing p. ej. `sustituir_ataque_por_hechizo(restantes, ctx)`
+  antes de cada ataque de la acción Atacar (sin entrada en HOOK_NAMES),
+  distinguido de reacciones/adicionales con `ctx.in_attack_action` /
+  `ctx.is_reaction` (patrón Rapid Strike); `pick` no/sí solo si
+  elegible (nivel >=7, trucos soportados, en acción Atacar); si sí,
+  `pick` uniforme entre trucos y lanza en vez de ese ataque (consume
+  ese ataque, sin RNG con una sola opción). Suite completa idéntica
+  ANTES de seguir. Tests: sustituye y no hace el ataque con arma, sin
+  trucos → sin RNG (rng que revienta), nivel 6 no actúa, no en
+  reacciones ni adicionales, consume un solo ataque, truco usa CD y
+  escalado del PJ, sin subclase cero RNG.
+- [ ] A5 — Improved War Magic: opción «hechizo nivel 1-2 por DOS
+  ataques» en el mismo punto de consulta; decisión conjunta con War
+  Magic en un solo `pick` sobre las opciones elegibles (no / truco por
+  un ataque / hechizo por dos) para equiprobabilidad; espacio con
+  sobrecarga común. Tests: elegible con >=2 ataques restantes, consume
+  dos, nivel 3+ no se ofrece, pick único espía cuando coexisten, sin
+  espacios no elegible, nivel 17 no actúa.
+- [ ] A6 — Eldritch Strike: marca por objetivo con caducidad (patrón
+  Vex, `after_attack_roll`) solo con ataque con arma (no fallo, no
+  ataque de hechizo), desventaja en la siguiente salvación del marcado
+  contra hechizo del dueño vía `modificar_salvacion` (Rune Knight,
+  sin duplicar mecanismo), se consume al concederla, caduca al final
+  del siguiente turno del dueño, por objetivo, nivel 9 no actúa, truco
+  de ataque de hechizo no la consume, sin subclase cero RNG.
+- [ ] A7 — Plantilla/CLI «Caballero Sobrenatural» en `main.py` si es
+  barato (class_name="fighter", subclass="eldritch_knight", cargador
+  con caché); si exige red → TODO.
+- [ ] B — Tests de registro congelado (`test_fighter.py`,
+  `test_arcane_archer.py`, `test_battle_master.py`, patrón «Cambio
+  esperado»): añadir `"eldritch_knight"` — EXPLICAR ANTES de tocar.
+  Ningún otro test existente cambia. Límites: War Bond, Arcane Charge,
+  distancias, reacciones de hechizo, rituales/utilidad. Decisiones del
+  maintainer a anotar: tabla de preparados, ausencia de restricción de
+  escuelas (dónde reactivar evocación/abjuración), versión 2024 de
+  War Magic. TODO.md: marcar EK como hecha en la lista de candidatas.
+- [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, punto de
+  consulta de sustitución, recuentos), bloque «ELDRITCH KNIGHT» en
+  `PASOS-ANTERIORES.txt`, receta y pendientes en `TODO.md`.
+- [ ] Verificación final — `pytest tests/test_arquitectura.py` +
+  `pytest` + `python tools/capas.py` (solo excepción conocida) +
+  `graphify update .` + commit final con el grafo.
+
 ## Pendientes generales
 
 - Push a `origin`: hay commits locales sin push (ver
