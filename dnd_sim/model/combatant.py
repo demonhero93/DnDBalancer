@@ -13,6 +13,7 @@ from ..core.enums import DamageType, parse_damage_type
 from ..core.targeting import valid_targets  # noqa: F401  (reexport)
 
 from ..core.combat_state import CombatState
+from ..core.spellcasting import SpellSlots
 from ..rules.conditions import Condition, ConditionTracker
 
 if TYPE_CHECKING:  # pragma: no cover - solo para tipado
@@ -138,6 +139,11 @@ class Combatant:
     # con el rasgo, lo limpia el procesado de la cola al final de cada
     # turno (cura o muerte) y ``reset()``.
     en_pie_pendiente: bool = field(init=False, default=False)
+    # Espacios de conjuro de un PJ lanzador (None = sin lanzamiento:
+    # cero cambio para todo lo existente). Lo rellena
+    # ``rules.spells.aplicar_lanzamiento``; ``reset()`` los restaura
+    # (un combate = un día descansado, criterio ActionUsage).
+    spell_slots: SpellSlots | None = None
 
     def __post_init__(self):
         if isinstance(self.combatant_type, str):
@@ -280,6 +286,9 @@ class Combatant:
         self.en_pie_pendiente = False
         # Los PV temporales tampoco sobreviven a un combate nuevo.
         self.temp_hp = 0
+        # Espacios de conjuro: un combate = un día descansado.
+        if self.spell_slots is not None:
+            self.spell_slots.reset()
         # El tamaño vuelve al de la ficha (efectos como Giant Stature).
         self.size = self.size_base
         # Las condiciones duran hasta el fin del combate: se limpian aquí.

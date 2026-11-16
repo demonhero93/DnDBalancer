@@ -475,6 +475,13 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     trucos_conocidos/preparados/escuelas/min_level; valida progresión,
     método espacios(nivel) que respeta min_level). core sin imports
     internos. tests/test_hechizos_pj.py (7). Suite: 1645.
+  - (A2) SpellSlots en core/spellcasting.py (maximos/actuales,
+    from_def, can_cast con truco siempre gratis, niveles_disponibles
+    desde, spend con ValueError si agotado, reset); campo opcional
+    Combatant.spell_slots (None por defecto = cero cambio) restaurado
+    en Combatant.reset (un combate = un día descansado). 6 tests
+    nuevos (gasto, agotamiento, sobrecarga, reset, defaults
+    inofensivos). Suite: 1651.
 
 ESTADO ACTUAL
    - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y

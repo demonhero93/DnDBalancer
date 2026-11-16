@@ -123,11 +123,67 @@ class SpellcastingDef:
         return spell_slots_for(self.progresion, lvl)
 
 
+@dataclass
+class SpellSlots:
+    """Espacios de conjuro de un lanzador: máximo y actuales por nivel.
+
+    ``maximos`` es la tupla de la tabla (índice 0 = nivel de hechizo 1);
+    ``actuales`` empieza igual y se vacía al gastar. Un truco (nivel 0)
+    no gasta espacio: ``can_cast(0)`` es siempre True. Un combate = un
+    día descansado: ``reset()`` rellena todos (lo llama
+    ``Combatant.reset``).
+    """
+
+    maximos: tuple[int, ...] = ()
+    actuales: list[int] = field(default_factory=list, repr=False)
+
+    def __post_init__(self) -> None:
+        self.maximos = tuple(int(x) for x in (self.maximos or ()))
+        self.actuales = [int(x) for x in (self.actuales or self.maximos)]
+
+    @classmethod
+    def from_def(cls, def_: SpellcastingDef, nivel: int) -> SpellSlots:
+        """Espacios de ``nivel`` de PJ según la definición de la clase."""
+        return cls(def_.espacios(nivel))
+
+    def can_cast(self, nivel: int) -> bool:
+        """¿Queda algún espacio de nivel >= ``nivel``? (sin RNG).
+
+        ``nivel <= 0`` (truco) → siempre True.
+        """
+        n = int(nivel)
+        if n <= 0:
+            return True
+        return bool(self.niveles_disponibles(n))
+
+    def niveles_disponibles(self, desde: int) -> list[int]:
+        """Niveles de espacio con uso libre, todos >= ``desde``."""
+        d = max(1, int(desde or 1))
+        return [s for s in range(d, len(self.actuales) + 1)
+                if self.actuales[s - 1] > 0]
+
+    def spend(self, nivel: int) -> None:
+        """Gasta un espacio de nivel exacto ``nivel``.
+
+        Lanza ``ValueError`` si no queda ninguno (la elegibilidad lo
+        comprueba antes; el error destapa bugs de gasto doble).
+        """
+        n = int(nivel)
+        if n < 1 or n > len(self.actuales) or self.actuales[n - 1] <= 0:
+            raise ValueError(f"sin espacios de conjuro de nivel {n}")
+        self.actuales[n - 1] -= 1
+
+    def reset(self) -> None:
+        """Restaura todos los espacios (nuevo combate / día descansado)."""
+        self.actuales = list(self.maximos)
+
+
 __all__ = [
     "FULL_SLOTS",
     "HALF_SLOTS",
     "THIRD_SLOTS",
     "PROGRESIONES",
     "SpellcastingDef",
+    "SpellSlots",
     "spell_slots_for",
 ]

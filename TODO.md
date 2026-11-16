@@ -65,9 +65,10 @@ siguiente); la clase de tests es falsa.
   `spell_slots_for(progresion, nivel)` y `SpellcastingDef` en módulo
   nuevo `core/spellcasting.py` + tests por nivel y límites.
   **Hecho**: 7 tests, suite 1645 passed.
-- [ ] A2 — `SpellSlots` (dataclass core: max/actuales, `can_cast`,
+- [x] A2 — `SpellSlots` (dataclass core: max/actuales, `can_cast`,
   `niveles_disponibles`, `spend`, `reset`) + campo opcional en
   `Combatant` (None por defecto) restaurado en `reset` + tests.
+  **Hecho**: 6 tests, suite 1651 passed.
 - [ ] A3 — Cargador de listas de clase en `data/` (`/classes/<index>/spells`
   con caché en disco y fixture JSON) devolviendo `ClassSpellList`
   (tipo definido en `rules/spells`, recibido como argumento) + tests

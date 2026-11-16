@@ -12,7 +12,8 @@ from pathlib import Path
 import pytest
 
 from dnd_sim.core.spellcasting import (
-    FULL_SLOTS, HALF_SLOTS, THIRD_SLOTS, SpellcastingDef, spell_slots_for,
+    FULL_SLOTS, HALF_SLOTS, THIRD_SLOTS, SpellSlots, SpellcastingDef,
+    spell_slots_for,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -77,3 +78,67 @@ def test_spellcastingdef_valida_la_progresión_y_expone_espacios():
     with pytest.raises(ValueError):
         SpellcastingDef(progresion="pact", caracteristica="cha",
                         lista_clase="warlock")
+
+
+# --- A2: SpellSlots en el combatiente --------------------------------------- #
+
+def test_un_truco_no_gasta_espacio_y_un_hechizo_de_nivel_1_si():
+    slots = SpellSlots((4, 2))
+    assert slots.can_cast(0)             # truco: siempre
+    slots.spend(1)
+    assert slots.actuales == [3, 2]
+    assert slots.can_cast(0)             # seguir lanzando trucos: sin gasto
+    assert slots.can_cast(1)
+
+
+def test_al_agotar_un_nivel_las_ofertas_superiores_siguen_disponibles():
+    slots = SpellSlots((4, 3, 2))
+    for _ in range(4):
+        slots.spend(1)
+    assert slots.actuales == [0, 3, 2]
+    # Sobrecarga: un hechizo de nivel 1 sigue siendo lanzable con un
+    # espacio de nivel >= 1, y la oferta son los niveles superiores.
+    assert slots.can_cast(1)
+    assert slots.niveles_disponibles(1) == [2, 3]
+    for _ in range(3):
+        slots.spend(2)
+    for _ in range(2):
+        slots.spend(3)
+    assert not slots.can_cast(1)
+    assert slots.niveles_disponibles(1) == []
+
+
+def test_gastar_un_espacio_agotado_es_un_value_error():
+    slots = SpellSlots((1,))
+    slots.spend(1)
+    with pytest.raises(ValueError):
+        slots.spend(1)
+
+
+def test_reset_rellena_los_espacios_igual_que_al_crearlos():
+    slots = SpellSlots((4, 2))
+    slots.spend(1)
+    slots.spend(1)
+    slots.spend(2)
+    slots.reset()
+    assert slots.actuales == [4, 2]
+
+
+def test_un_combatiente_sin_lanzamiento_no_tiene_espacios_y_reset_es_inofensivo():
+    from dnd_sim import Abilities, Combatant
+    c = Combatant(name="Pij", max_hp=10, ac=10, abilities=Abilities(),
+                  attacks=[])
+    assert c.spell_slots is None
+    c.reset()                            # no debe fallar ni tocar nada
+
+
+def test_combatant_reset_restaura_los_espacios_del_pj_lanzador():
+    from dnd_sim import Abilities, Combatant
+    c = Combatant(name="Mago", max_hp=10, ac=10, abilities=Abilities(),
+                  attacks=[])
+    c.spell_slots = SpellSlots((4, 2))
+    c.spell_slots.spend(1)
+    c.hp = 3
+    c.reset()
+    assert c.spell_slots.actuales == [4, 2]
+    assert c.hp == 10
