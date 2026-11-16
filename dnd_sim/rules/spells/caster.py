@@ -20,10 +20,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ...core.randomness import pick
-from ...core.spellcasting import SpellSlots
+from ...core.spellcasting import SpellSlots, SpellcastingDef
 from ...model.actions import ActionType, CombatAction
 from ..usage import ActionUsage
 from .casting import Spell, Spellcasting, spell_action
+from .preparation import preparar_hechizos
 
 
 @dataclass
@@ -127,5 +128,45 @@ def construir_acciones(caster: PCSpellcasting) -> list[PJSpellAction]:
             for s in [*caster.trucos, *caster.preparados]]
 
 
+def aplicar_lanzamiento(
+    pj: Any,
+    nivel: int,
+    def_: SpellcastingDef,
+    lista_clase: Any,
+    *,
+    rng: Any = None,
+    trucos: Any = None,
+    hechizos: Any = None,
+) -> PCSpellcasting:
+    """Crea el lanzamiento de un PJ: espacios, preparación y acciones.
+
+    Rutina común de todas las clases lanzadoras (la llama su
+    ``apply_class``): CD y bonificador del propio PJ (``8 + PB + mod``,
+    ``PB + mod``), ``SpellSlots`` en ``pj.spell_slots`` (``reset()`` los
+    restaura), trucos y hechizos preparados fijos con
+    :func:`preparar_hechizos` y una :class:`PJSpellAction`
+    (``ActionType.ACTION``, marca ``es_accion_magia``) por cada uno,
+    añadida a ``pj.actions``. Devuelve el componente
+    :class:`PCSpellcasting` (también en ``pj.spellcasting_pc``).
+    """
+    sc = estadisticas_lanzador(pj, def_.caracteristica, nivel)
+    slots = SpellSlots.from_def(def_, nivel)
+    sel_trucos, sel_hechizos = preparar_hechizos(
+        lista_clase, nivel, def_, trucos=trucos, hechizos=hechizos,
+        rng=rng)
+    caster = PCSpellcasting(
+        ability=str(def_.caracteristica),
+        level=int(nivel),
+        sc=sc,
+        slots=slots,
+        trucos=list(sel_trucos),
+        preparados=list(sel_hechizos),
+    )
+    pj.spell_slots = slots
+    pj.spellcasting_pc = caster
+    pj.actions.extend(construir_acciones(caster))
+    return caster
+
+
 __all__ = ["PCSpellcasting", "PJSpellAction", "construir_acciones",
-           "estadisticas_lanzador"]
+           "estadisticas_lanzador", "aplicar_lanzamiento"]

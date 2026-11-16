@@ -17,11 +17,12 @@ from dnd_sim.core.spellcasting import (
     spell_slots_for,
 )
 from dnd_sim.data.spell_parser import parse_spell
-from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.actions import ActionType, CombatContext, TurnResources
 from dnd_sim.rules.conditions import Condition, apply_condition
 from dnd_sim.rules.spells import (
-    PCSpellcasting, Spellcasting, construir_acciones, estadisticas_lanzador,
-    hechizo_soportado, preparar_hechizos,
+    PCSpellcasting, PJSpellAction, Spellcasting, aplicar_lanzamiento,
+    construir_acciones, estadisticas_lanzador, hechizo_soportado,
+    preparar_hechizos,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -551,3 +552,84 @@ def test_sin_espacios_no_se_prepara_nada():
     trucos, hech = preparar_hechizos(
         _lista("fire-bolt", "magic-missile"), 1, _def_a5())  # min_level 3
     assert trucos == [] and hech == []
+
+
+# --- A6: integración con el registro de clases ------------------------------ #
+
+def _def_mago_falso() -> SpellcastingDef:
+    return SpellcastingDef(
+        progresion="third", caracteristica="int", lista_clase="wizard",
+        trucos_conocidos={1: 2, 3: 2, 7: 3},
+        preparados={1: 2, 3: 3, 7: 4}, min_level=1)
+
+
+def _lista_a6():
+    return _lista("fire-bolt", "ray-of-frost", "magic-missile",
+                  "burning-hands", "thunderwave")
+
+
+def _registrar_mago_falso():
+    """Alta temporal de la clase falsa SOLO de test (como test_clases)."""
+    from dnd_sim.rules.classes.base import CLASSES, ClassDef, register_class
+
+    def _apply(pj, *, level=1, lista=None, rng=None, **kwargs):
+        return aplicar_lanzamiento(
+            pj, level, _def_mago_falso(),
+            _lista_a6() if lista is None else lista, rng=rng)
+
+    register_class(ClassDef(name="mago_falso", apply=_apply,
+                            spellcasting=_def_mago_falso()))
+    return CLASSES
+
+
+def test_apply_class_con_la_clase_falsa_crea_espacios_y_acciones():
+    from dnd_sim.rules.classes.base import apply_class
+    registro = _registrar_mago_falso()
+    try:
+        pj = _pj_lanzador()
+        caster = apply_class(pj, "mago_falso", level=3)
+    finally:
+        registro.pop("mago_falso", None)
+    assert isinstance(caster, PCSpellcasting)
+    assert pj.spell_slots is not None
+    assert pj.spell_slots.maximos == THIRD_SLOTS[3]      # (2,)
+    assert pj.spell_slots.actuales == [2]
+    acciones = [a for a in pj.actions if isinstance(a, PJSpellAction)]
+    assert len(acciones) == 5        # 2 trucos + 3 hechizos de nivel 1
+    assert all(a.es_accion_magia for a in acciones)
+    assert all(a.action_type is ActionType.ACTION for a in acciones)
+    assert pj.spellcasting_pc is caster
+
+
+def test_una_clase_sin_lanzamiento_no_cambia_al_combatiente():
+    from dnd_sim.rules.classes.base import (
+        CLASSES, ClassDef, apply_class, register_class,
+    )
+    register_class(ClassDef(name="clase_seca", apply=lambda pj, **kw: None))
+    try:
+        pj = _pj_lanzador()
+        antes = list(pj.actions)
+        apply_class(pj, "clase_seca", level=3)
+    finally:
+        CLASSES.pop("clase_seca", None)
+    assert ClassDef(name="x", apply=lambda **kw: None).spellcasting is None
+    assert pj.spell_slots is None
+    assert getattr(pj, "spellcasting_pc", None) is None
+    assert pj.actions == antes
+
+
+def test_en_run_combat_el_pj_lanzador_gasta_espacios_sin_excederlos():
+    from dnd_sim.engine.combat import run_combat
+    from dnd_sim.rules.classes.base import apply_class
+    registro = _registrar_mago_falso()
+    try:
+        pj = _pj_lanzador(hp=60)
+        apply_class(pj, "mago_falso", level=7)
+        enemigo = _enemigo(hp=80)
+        r = run_combat([pj, enemigo], random.Random(5))
+    finally:
+        registro.pop("mago_falso", None)
+    slots = pj.spell_slots
+    assert r.winner in ("PJ", "NPC") and r.rounds >= 1   # combate termina
+    assert all(a >= 0 for a in slots.actuales)           # no excede
+    assert sum(slots.actuales) < sum(slots.maximos)      # gastó espacios

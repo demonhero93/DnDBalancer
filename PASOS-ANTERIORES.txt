@@ -527,6 +527,18 @@ HECHIZOS DE PJ (sesión 1) (2026-11-16)
     las 5 validaciones, kwargs con rng que revienta, escuelas,
     sin espacios); la exclusión de utilidad/reacción ya la cubre A4.
     Suite: 1677.
+  - (A6) ClassDef/SubclassDef ganan campo opcional `spellcasting:
+    SpellcastingDef | None` (default None, cero cambio para las
+    existentes) en rules/classes/base.py; aplicar_lanzamiento(pj,
+    nivel, def, lista_clase, *, rng, trucos, hechizos) en
+    rules/spells/caster.py (CD/ataque del PJ, SpellSlots.from_def en
+    pj.spell_slots, preparación fija, PJSpellAction en pj.actions con
+    ActionType.ACTION y marca es_accion_magia; devuelve el componente
+    y lo guarda en pj.spellcasting_pc). Clase falsa SOLO de test
+    registrada y retirada con try/finally (patrón test_clases).
+    3 tests (espacios+acciones al nivel 3, clase sin spellcasting
+    intacta, run_combat con semilla 5 gasta espacios sin exceder y
+    termina). Suite: 1680.
 
 ESTADO ACTUAL
    - 88 módulos en dnd_sim/ (22924 líneas); tests/ con 58 ficheros y

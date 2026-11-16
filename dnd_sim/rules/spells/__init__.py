@@ -69,8 +69,8 @@ from .casting import (ClassSpellList, FULL_CASTER_SLOTS, Spell,
                       Spellcasting, dado_por_nivel, duracion_en_rondas,
                       spell_action)
 from .preparation import hechizo_soportado, preparar_hechizos
-from .caster import (PCSpellcasting, PJSpellAction, construir_acciones,
-                     estadisticas_lanzador)
+from .caster import (PCSpellcasting, PJSpellAction, aplicar_lanzamiento,
+                     construir_acciones, estadisticas_lanzador)
 
 __all__ = [
     "Spell",
@@ -78,6 +78,7 @@ __all__ = [
     "ClassSpellList",
     "PCSpellcasting",
     "PJSpellAction",
+    "aplicar_lanzamiento",
     "construir_acciones",
     "estadisticas_lanzador",
     "hechizo_soportado",

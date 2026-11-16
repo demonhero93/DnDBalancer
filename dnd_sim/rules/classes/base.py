@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from ...core.classes import MIN_LEVEL
+from ...core.spellcasting import SpellcastingDef
 
 
 @dataclass
@@ -32,6 +33,9 @@ class SubclassDef:
     class_name: str
     min_level: int
     apply: Callable[..., Any]
+    #: Lanzamiento de conjuros de la subclase (Eldritch Knight...);
+    #: ``None`` = sin lanzamiento (cambio cero para las existentes).
+    spellcasting: SpellcastingDef | None = None
 
 
 @dataclass
@@ -41,6 +45,8 @@ class ClassDef:
     name: str
     apply: Callable[..., Any]
     subclasses: dict[str, SubclassDef] = field(default_factory=dict)
+    #: Lanzamiento de conjuros de la clase; ``None`` = sin él.
+    spellcasting: SpellcastingDef | None = None
 
 
 #: Registro global de clases (clave normalizada → ClassDef).

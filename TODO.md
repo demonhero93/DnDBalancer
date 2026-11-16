@@ -85,9 +85,10 @@ siguiente); la clase de tests es falsa.
   soportado y legal, kwargs explícitos validados (`ValueError`), rng
   semilla 0 por defecto + tests.
   **Hecho**: 11 tests, suite 1677 passed.
-- [ ] A6 — `ClassDef`/`SubclassDef` con `spellcasting: SpellcastingDef |
+- [x] A6 — `ClassDef`/`SubclassDef` con `spellcasting: SpellcastingDef |
   None`, helper `aplicar_lanzamiento`, clase falsa SOLO de test (no
   registrada en producción) e integración en `run_combat`.
+  **Hecho**: 3 tests, suite 1680 passed.
 - [ ] A7 — La acción extra de Oleada de Acción no puede lanzar hechizo
   (marca `es_accion_magia`; mínima cambio en la tercera pasada) +
   anular la nota «la acción Magia no existe».
