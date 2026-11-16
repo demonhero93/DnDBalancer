@@ -110,9 +110,11 @@ siguiente); la clase de tests es falsa.
   **Hecho**: sección nueva + tabla de recuentos actualizada (92
   módulos / 23683 líneas / 1683 tests); el bloque de PASOS se fue
   escribiendo paso a paso (A1-A8) y ESTADO ACTUAL queda actualizado.
-- [ ] Verificación final — `pytest tests/test_arquitectura.py` +
+- [x] Verificación final — `pytest tests/test_arquitectura.py` +
   `pytest` + `python tools/capas.py` + `graphify update .` + commit
   con el grafo.
+  **Hecho**: 3 + 1683 en verde, capas total 1 (solo la excepción
+  conocida), grafo regenerado (4782 nodos / 17478 aristas).
 
 ## Pendientes generales
 
