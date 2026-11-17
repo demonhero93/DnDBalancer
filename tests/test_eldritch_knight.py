@@ -500,3 +500,145 @@ def test_en_nivel_17_improved_war_magic_no_actua():
     ctx.in_attack_action = True
     assert _trait(ek).sustituir_ataque_por_hechizo(3, ctx) is None
     assert rng.ns == [2]   # sin opción «hechizo» a nivel 17
+
+
+# --- A6: Eldritch Strike ------------------------------------------------------
+
+
+def test_eldritch_strike_marca_al_objetivo_al_impactar_con_arma():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco()
+    ctx = _ctx(ek, [victima])
+    _trait(ek).after_attack_roll(ek, victima, ek.attacks[0], True, ctx=ctx)
+    assert _trait(ek).strike_marks == {"Orco": 3}   # ronda 1 + 2
+    assert any("Eldritch Strike" in str(l) for l in ctx.log)
+
+
+def test_eldritch_strike_no_marca_si_la_tirada_falla():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco()
+    ctx = _ctx(ek, [victima])
+    _trait(ek).after_attack_roll(ek, victima, ek.attacks[0], False, ctx=ctx)
+    assert _trait(ek).strike_marks == {}
+
+
+def test_eldritch_strike_no_marca_con_ataques_de_hechizo():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco()
+    ctx = _ctx(ek, [victima])
+    magico = Attack("Bola", "1d10", ability="int", spell_attack=True)
+    _trait(ek).after_attack_roll(ek, victima, magico, True, ctx=ctx)
+    assert _trait(ek).strike_marks == {}
+
+
+def test_eldritch_strike_no_marca_si_no_ataca_el_dueno():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco()
+    otro = Monster(name="Goblin", max_hp=10, ac=12,
+                   abilities=Abilities(), attacks=[])
+    ctx = _ctx(otro, [ek, victima])
+    _trait(ek).after_attack_roll(otro, victima, ek.attacks[0], True, ctx=ctx)
+    assert _trait(ek).strike_marks == {}
+
+
+def test_eldritch_strike_en_nivel_9_no_actua():
+    ek = _ek(9, cantrips=[], spells=[])
+    victima = _orco()
+    ctx = _ctx(ek, [victima])
+    _trait(ek).after_attack_roll(ek, victima, ek.attacks[0], True, ctx=ctx)
+    assert _trait(ek).strike_marks == {}
+
+
+def test_la_desventaja_solo_se_aplica_con_el_dueno_de_turno_y_se_consume():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco()
+    otro = Monster(name="Goblin", max_hp=10, ac=12,
+                   abilities=Abilities(), attacks=[])
+    marca = _trait(ek)
+    marca.after_attack_roll(ek, victima, ek.attacks[0], True, ctx=_ctx(ek))
+    # Otro lanzador en su turno: ni desventaja ni consumo de la marca.
+    ajeno = _ctx(otro, [ek, victima])
+    assert marca.modificar_salvacion("dex", victima, ajeno) == (False, False, 0)
+    assert marca.strike_marks == {"Orco": 3}
+    # El dueño de turno sí: desventaja y la marca se consume a la primera.
+    propio = _ctx(ek, [victima])
+    assert marca.modificar_salvacion("dex", victima, propio) == (False, True, 0)
+    assert marca.strike_marks == {}
+    assert marca.modificar_salvacion("dex", victima, propio) == (False, False, 0)
+
+
+def test_la_marca_de_eldritch_strike_caduca_por_ronda():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco()
+    marca = _trait(ek)
+    marca.after_attack_roll(ek, victima, ek.attacks[0], True, ctx=_ctx(ek))
+    vigente = _ctx(ek, [victima])
+    vigente.round = 2
+    assert marca.modificar_salvacion("dex", victima, vigente) == (False, True, 0)
+    # Ronda 3: la caducidad (1 + 2) ya venció; se borra sin desventaja.
+    marca.after_attack_roll(ek, victima, ek.attacks[0], True, ctx=_ctx(ek))
+    caducada = _ctx(ek, [victima])
+    caducada.round = 3
+    assert marca.modificar_salvacion("dex", victima, caducada) == (False, False, 0)
+    assert marca.strike_marks == {}
+
+
+def test_las_marcas_son_independientes_por_objetivo():
+    ek = _ek(10, cantrips=[], spells=[])
+    uno, dos = _orco(), Monster(name="Gnoll", max_hp=10, ac=12,
+                                abilities=Abilities(), attacks=[])
+    marca = _trait(ek)
+    marca.after_attack_roll(ek, uno, ek.attacks[0], True, ctx=_ctx(ek))
+    marca.after_attack_roll(ek, dos, ek.attacks[0], True, ctx=_ctx(ek))
+    assert set(marca.strike_marks) == {"Orco", "Gnoll"}
+    ctx = _ctx(ek, [uno, dos])
+    assert marca.modificar_salvacion("dex", uno, ctx) == (False, True, 0)
+    assert set(marca.strike_marks) == {"Gnoll"}
+
+
+def test_un_ataque_de_hechizo_no_consume_la_marca():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco()
+    marca = _trait(ek)
+    marca.after_attack_roll(ek, victima, ek.attacks[0], True, ctx=_ctx(ek))
+    magico = Attack("Bola", "1d10", ability="int", spell_attack=True)
+    marca.after_attack_roll(ek, victima, magico, True, ctx=_ctx(ek))
+    assert marca.strike_marks == {"Orco": 3}
+
+
+def test_sin_la_subclase_no_hay_eldritch_strike():
+    from dnd_sim.rules.roll_modifiers import (
+        modificar_salvacion as consulta_salvacion,
+    )
+    from dnd_sim.rules.traits import hooks
+
+    pj = _pj(level=10)
+    apply_fighter(pj, level=10)
+    victima = _orco()
+    ctx = _ctx(pj, [victima])
+    assert not any(isinstance(t, EldritchKnightFeatures)
+                   for t in hooks(pj.traits, "after_attack_roll"))
+    assert consulta_salvacion("dex", victima, ctx) == (False, False, 0)
+
+
+def test_reset_borra_las_marcas_de_eldritch_strike():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco()
+    marca = _trait(ek)
+    marca.after_attack_roll(ek, victima, ek.attacks[0], True, ctx=_ctx(ek))
+    marca.reset()
+    assert marca.strike_marks == {}
+
+
+def test_eldritch_strike_aparece_en_el_log_del_combate():
+    ek = _ek(10, cantrips=[], spells=[])
+    victima = _orco(hp=100)
+    multi = next(a for a in ek.actions if isinstance(a, MultiattackAction))
+
+    def policy(ctx):
+        if ctx.actor is ek and multi in ctx.available_actions:
+            return multi
+        return ctx.available_actions[0] if ctx.available_actions else None
+
+    r = run_combat([ek, victima], random.Random(4), verbose=True, policy=policy)
+    assert any("Eldritch Strike" in linea for linea in r.log)

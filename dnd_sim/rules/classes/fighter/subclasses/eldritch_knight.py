@@ -142,6 +142,64 @@ class EldritchKnightFeatures(Trait):
         _, candidatos, coste = next(g for g in grupos if g[0] == eleccion)
         return pick(ctx.rng, candidatos), coste
 
+    # --- Eldritch Strike (10) ------------------------------------------------
+    def after_attack_roll(self, attacker: Any, target: Any, atk: Any,
+                          hit: bool, ctx: Any = None,
+                          rng: Any = None) -> None:
+        """Eldritch Strike (10): marca al objetivo con un arma.
+
+        Solo con impacto de ``attacker`` (el dueño) y ataque NO mágico
+        (``spell_attack``): el objetivo queda marcado hasta la caducidad
+        ``ronda + 2`` (shortcut: cubre «hasta el final de tu siguiente
+        turno», patrón Vex). Sin ``ctx``/ronda o sin nombre no hay
+        caducidad que guardar (cero efecto).
+        """
+        if not hit or target is None or attacker is not self.owner:
+            return
+        if self.level < 10:
+            return
+        if getattr(atk, "spell_attack", False):
+            return
+        ronda = getattr(ctx, "round", None) if ctx is not None else None
+        nombre = getattr(target, "name", None)
+        if ronda is None or not nombre:
+            return
+        self.strike_marks[nombre] = int(ronda) + 2
+        log = getattr(ctx, "log", None)
+        if log is not None:
+            log.append(
+                f"  {getattr(attacker, 'name', attacker)} marca a "
+                f"{nombre} (Eldritch Strike)"
+            )
+
+    def modificar_salvacion(self, habilidad: Any, sujeto: Any,
+                            ctx: Any = None) -> tuple[bool, bool, int]:
+        """Eldritch Strike (10): desventaja en la salvación marcada.
+
+        La marca se consume en la primera consulta elegible (con o sin
+        desventaja) y se borra también si ya caducó. Shortcut: «contra
+        un hechizo del dueño» ≈ ``ctx.actor is self.owner`` (falsos
+        positivos: salvaciones ajenas a hechizos durante el turno del
+        dueño, p. ej. concentración por daño de arma). Upgrade: marker
+        en ``PJSpellAction.execute``. Sin ``ctx``/sujeto o con otro
+        lanzador no se consume la marca.
+        """
+        if ctx is None or sujeto is None:
+            return False, False, 0
+        if getattr(ctx, "actor", None) is not self.owner:
+            return False, False, 0
+        nombre = getattr(sujeto, "name", None)
+        if not nombre or nombre not in self.strike_marks:
+            return False, False, 0
+        caduca = self.strike_marks.pop(nombre)
+        if caduca <= int(getattr(ctx, "round", 0) or 0):
+            return False, False, 0
+        return False, True, 0
+
+    def reset(self) -> None:
+        """Un combate nuevo: la marca de Eldritch Strike se borra."""
+        self.strike_marks.clear()
+
 
 def apply_eldritch_knight(
     pj: Any,

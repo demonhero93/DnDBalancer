@@ -185,13 +185,16 @@ ataques por un hechizo nivel 1-2).
   **Hecho**: `grupos` en el método + recuento global `restantes` en
   ambos bucles (la multi del fighter tiene entradas count=1 → antes
   restantes era siempre 1); 6 tests, suite 1711 passed.
-- [ ] A6 — Eldritch Strike: marca por objetivo con caducidad (patrón
+- [x] A6 — Eldritch Strike: marca por objetivo con caducidad (patrón
   Vex, `after_attack_roll`) solo con ataque con arma (no fallo, no
   ataque de hechizo), desventaja en la siguiente salvación del marcado
   contra hechizo del dueño vía `modificar_salvacion` (Rune Knight,
   sin duplicar mecanismo), se consume al concederla, caduca al final
   del siguiente turno del dueño, por objetivo, nivel 9 no actúa, truco
   de ataque de hechizo no la consume, sin subclase cero RNG.
+  **Hecho**: `strike_marks[nombre] = ronda + 2`; gate `ctx.actor is
+  owner` antes del lookup (otro lanzador no consume); caducada se
+  borra sin desventaja; `reset()` limpia; 12 tests, suite 1723.
 - [ ] A7 — Plantilla/CLI «Caballero Sobrenatural» en `main.py` si es
   barato (class_name="fighter", subclass="eldritch_knight", cargador
   con caché); si exige red → TODO.

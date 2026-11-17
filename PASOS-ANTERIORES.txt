@@ -664,6 +664,34 @@ ELDRITCH KNIGHT (2026-11-16)
     pick único espía randrange(3) con coste 2 (Magic Missile), sin
     espacios → coste 1 (ns == [2]), nivel 17 no actúa (ns == [2]).
     Suite: 1711.
+  - (A6) Eldritch Strike (10): `after_attack_roll` en
+    `EldritchKnightFeatures` (hook ya en HOOK_NAMES; el despacho solo
+    mira los rasgos del ATACANTE): gates hit / target / attacker is
+    owner / nivel >= 10 / `atk.spell_attack` →
+    `strike_marks[nombre] = ronda + 2` (shortcut: cubre «hasta el
+    final de tu siguiente turno», patrón Vex) + línea de log
+    «(Eldritch Strike)». `modificar_salvacion` (duck-typing vía
+    `roll_modifiers._modificar_tirada`, patrón Rune Knight): gate
+    `ctx.actor is self.owner` PRIMERO (otro lanzador no consume la
+    marca), lookup por `sujeto.name`, `caduca <= ctx.round` → borra sin
+    desventaja, si no → borra (consume a la primera) y devuelve
+    desventaja `(False, True, 0)`. Shortcut documentado: «contra
+    hechizo del dueño» ≈ `ctx.actor is self.owner` (falsos positivos:
+    salvaciones ajenas a hechizos en el turno del dueño, p. ej.
+    concentración por daño de arma); upgrade: marker en
+    `PJSpellAction.execute`. `reset()` borra `strike_marks` (patrón
+    Samurai). 12 tests: marca al impactar con arma (caducidad 3 con
+    ronda 1 + log), no con fallo, no con spell_attack, no si no ataca
+    el dueño, nivel 9 no actúa, desventaja solo con el dueño de turno
+    y NO consume con otro lanzador + consume a la primera, caducidad
+    por ronda (2 vigente / 3 caducada), marcas independientes por
+    objetivo, ataque de hechizo no consume la marca, sin subclase
+    (cero hooks de EK + consulta de salvación en ceros), reset borra,
+    integración run_combat verbose con «Eldritch Strike» en
+    r.log. Descubrimiento: `FighterFeatures` también define
+    `after_attack_roll` (Ataques Estudiados, nivel 13) → el test «sin
+    subclase» filtra por tipo en vez de exigir lista vacía.
+    Suite: 1723.
 
 ESTADO ACTUAL
    - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y
