@@ -706,10 +706,34 @@ ELDRITCH KNIGHT (2026-11-16)
     `("wizard", {"nivel_lanzador": 5})` + espacios/trucos/preparados
     = tablas) y `_build_party(5)` con cargador que revienta (cero
     llamadas, cero EK). Sin red en tests. Suite: 1726.
+  - (B) Decisiones anotadas en TODO.md: los 3 tests de registro
+    congelado ganaron `"eldritch_knight"` en A2 con «Cambio esperado
+    (2026-11-17)»; tabla de preparados PHB, sin restricción de
+    escuelas (reactivar evocación/abjuración = pasar `escuelas` en
+    `ELDRITCH_KNIGHT_SPELLS`), War Magic versión 2024, Improved War
+    Magic con pick equiprobable, caducidad `ronda + 2`. Lista de
+    candidatas de Fighter: EK marcada hecha (8/8 subclases).
+    Suite: 1726.
+  - (Docs) ARCHITECTURE.md: fila `rules/classes/` con
+    `eldritch_knight` (8/8 subclases del fighter), recuentos
+    93/24079 + tests 60/27711/1726, nueva sección «Eldritch Knight
+    (PHB 2024)» (registro, punto de consulta
+    `_sustituir_ataque_por_hechizo`, reenvío de kwargs, datos sin
+    efecto, plantilla CLI) y nota de «primer lanzador real» en
+    «Hechizos de PJ». TODO.md: Docs marcado + pendientes reales EK.
+    PASOS: recuentos en ESTADO ACTUAL + entrada (Docs). Suite: 1726.
 
 ESTADO ACTUAL
-   - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y
-     27012 líneas (1683 tests en verde, medido 2026-11-16).
+   - 93 módulos en dnd_sim/ (24079 líneas); tests/ con 60 ficheros y
+     27711 líneas (1726 tests en verde, medido 2026-11-17).
+   - Subclase Eldritch Knight (bloque «ELDRITCH KNIGHT» arriba,
+     commits A1-B): registro fighter/eldritch_knight (INT, wizard,
+     tercio, sin escuelas), reenvío perezoso de apply_class, War
+     Magic/Improved War Magic vía _sustituir_ataque_por_hechizo en
+     model/actions.py, Eldritch Strike (after_attack_roll +
+     modificar_salvacion, marcas ronda+2), plantilla CLI «Caballero»
+     con lista perezosa. Datos sin efecto: War Bond, Arcane Charge.
+     43 tests en tests/test_eldritch_knight.py.
    - Lanzamiento de PJ (bloque «HECHIZOS DE PJ (sesión 1)» arriba):
      tablas de espacios 2024 y SpellSlots en core, listas de clase con
      caché en data, pool/preparación y PCSpellcasting/PJSpellAction en
@@ -717,8 +741,9 @@ ESTADO ACTUAL
      spell_slots_spent en CombatResult.
    - Registro de clases en rules/classes/ (base + barbarian + fighter +
      subclases bárbaro y Arcane Archer/Battle Master/Cavalier/Champion/
-     Psi Warrior/Rune Knight/Samurai del fighter, con las 8 opciones de
-     Arcane Shot: Piercing/Seeking sin tirada vía sustituir_ataque).
+     Eldritch Knight/Psi Warrior/Rune Knight/Samurai del fighter, con las
+     8 opciones de Arcane Shot: Piercing/Seeking sin tirada vía
+     sustituir_ataque).
    - Mecánica mágica: flag magical en ataques/salvaciones/condiciones
      (tests/test_magical.py), magic_resistance
      (tests/test_magic_resistance.py) y nonmagical_resistances/immunities

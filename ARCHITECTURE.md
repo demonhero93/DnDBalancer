@@ -16,16 +16,16 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 
 | Carpeta | Mód. | Líneas | Contenido |
 |---|---:|---:|---|
-| `dnd_sim/core/` | 14 | 1442 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado, tablas de espacios de conjuro. **Cero imports internos.** |
-| `dnd_sim/model/` | 4 | 1087 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
-| `dnd_sim/rules/` | 37 | 13119 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
+| `dnd_sim/core/` | 14 | 1484 | Dados, habilidades, enums, estado de combate, log, aleatoriedad, apuntado, tablas de espacios de conjuro. **Cero imports internos.** |
+| `dnd_sim/model/` | 4 | 1151 | Dataclasses del dominio: `Combatant`, `Monster`, `PlayerCharacter`, ataques y acciones. |
+| `dnd_sim/rules/` | 38 | 13406 | Reglas 5e: condiciones, daño, salvaciones, pruebas, modificadores, legendario, uso, enganche, área, clases, maestrías, umbral crítico. |
 | `dnd_sim/rules/traits/` | 6 | 1322 | Los rasgos de monstruo (paquete, ver abajo). |
 | `dnd_sim/rules/spells/` | 7 | 1295 | Hechizos (paquete): casting, acciones, efectos, reacciones, preparación y lanzamiento de PJ. |
 | `dnd_sim/engine/` | 3 | 224 | Tácticas (políticas de objetivo) e informes (`stats`). |
 | `dnd_sim/engine/combat/` | 3 | 1464 | El motor: tirada de ataque y bucle de rondas (paquete). |
 | `dnd_sim/data/` | 17 | 3532 | Carga de fichas de la API: parsers por tipo de dato y listas de hechizos de clase. |
-| `dnd_sim/__init__.py` | 1 | 198 | Fachada: reexporta la API pública ordenada por capa. |
-| **Total** | **92** | **23683** | + `tests/` con 59 ficheros y 27012 líneas (1683 tests). |
+| `dnd_sim/__init__.py` | 1 | 201 | Fachada: reexporta la API pública ordenada por capa. |
+| **Total** | **93** | **24079** | + `tests/` con 60 ficheros y 27711 líneas (1726 tests). |
 
 ## Reglas de dependencia
 
@@ -60,7 +60,7 @@ la misma API, así que **las importaciones de fuera no cambiaron**:
 |---|---|---|
 | `rules/traits/` | `base` · `offense` · `defense` · `survival` · `stealth` | `Trait`, `HOOK_NAMES` (28 hooks, incl. `on_any_turn_start`, `on_any_turn_end`, `after_failed_check` y `defensa_ante_ataque`), `hooks` y `TRAIT_CLASSES` en el `__init__`; los 12 rasgos agrupados por intención. |
 | `rules/spells/` | `effects` · `reactions` · `actions` · `casting` | Efectos y concentración, represalias al recibir daño, las 5 acciones de hechizo y `Spell`/`Spellcasting`/`spell_action`. |
-| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion,psi_warrior,rune_knight,samurai}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier, Champion, Psi Warrior, Rune Knight y Samurai). |
+| `rules/classes/` | `base` · `barbarian/features` · `barbarian/subclasses/{ancestral_guardian,battlerager,beast,berserker,giant,storm_herald,wild_heart,wild_magic,world_tree,zealot}` · `fighter/features` · `fighter/subclasses/{arcane_archer,battle_master,cavalier,champion,eldritch_knight,psi_warrior,rune_knight,samurai}` | Registro genérico de clases y subclases (`CLASSES`, `apply_class`) y las clases bárbaro y guerrero con sus subclases (Path of the…, Arcane Archer, Battle Master, Cavalier, Champion, Eldritch Knight, Psi Warrior, Rune Knight y Samurai). |
 | `engine/combat/` | `attack` · `encounter` | Tirada de ataque completa (modificadores, ventajas, críticos por umbral `evaluar_d20`, daño, represalias): helper `daño_base_arma` (daño bruto reutilizable) y punto de sustitución `sustituir_ataque` (duck-typing, sin hook en HOOK_NAMES) en el paso 2b, antes del d20. Más iniciativa, política de objetivo, bucle de rondas (`_turno(actor)` reutilizable: la pasada completa de un actor, sin cambio de RNG; al final procesa la cola de turnos extra antes de la guarida) y `CombatResult`. |
 
 Dentro de cada paquete el grafo es acíclico:
@@ -365,8 +365,8 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
 
 ## Hechizos de PJ (PHB 2024)
 
-Mecánica común de lanzamiento para PJ (sin clases lanzadoras reales
-todavía; Eldritch Knight es la sesión siguiente):
+Mecánica común de lanzamiento para PJ (el primer lanzador real es el
+Eldritch Knight, sección siguiente):
 
 - `core/spellcasting.py`: tablas de espacios full/half/third (2024),
   `spell_slots_for`, `SpellcastingDef` (definición de clase) y
@@ -401,11 +401,49 @@ reacciones de hechizo, acción bonus, Pact Magic, preparar/cambiar
 entre combates, componentes, recuperación de espacios en combate y
 distancias.
 
+## Eldritch Knight (PHB 2024)
+
+Primera clase/subclase lanzadora real sobre la mecánica común:
+
+- **Registro**: `CLASSES["fighter"].subclasses["eldritch_knight"]`
+  (`rules/classes/fighter/subclasses/eldritch_knight.py`), nivel 3,
+  `ELDRITCH_KNIGHT_SPELLS` = INT, lista `wizard`, progresión `third`,
+  `escuelas is None` (sin restricción PHB de evocación/abjuración;
+  decisión del maintainer, ver «Eldritch Knight: plan de sesión» en
+  `TODO.md`). Tablas de preparados/trucos en `core/classes.py`.
+- **Punto de consulta de sustitución**: `_sustituir_ataque_por_hechizo`
+  en `model/actions.py` (duck-typing, SIN entrada en `HOOK_NAMES`),
+  llamado por los bucles de `MultiattackAction` y `WeaponAttackAction`
+  antes de la utilitaria, con `saltar`/`consumidos`/`total_ataques`.
+  War Magic (7) reemplaza UN ataque por un truco; Improved War Magic
+  (18) añade hechizos nivel 1-2 a coste 2 con UN `pick` conjunto
+  equiprobable (decisión: `["no", *etiquetas]`). Solo gasta RNG si el
+  rasgo está elegible; NO restringe la Oleada de Acción (la Oleada
+  excluye solo `es_accion_magia`).
+- **Eldritch Strike (10)**: `after_attack_roll` (hook ya existente,
+  despacho solo sobre rasgos del ATACANTE) marca
+  `strike_marks[nombre] = ronda + 2` (shortcut Vex para «hasta el
+  final de tu siguiente turno») y `modificar_salvacion` (duck-typing vía
+  `roll_modifiers._modificar_tirada`) da desventaja una sola vez,
+  solo con `ctx.actor is owner` (shortcut documentado de «contra
+  hechizo del dueño»). `reset()` limpia las marcas.
+- **Reenvío de kwargs**: `apply_class` (`rules/classes/base.py`)
+  separa los kwargs que solo declara el apply de la subclase
+  (`lista`/`cantrips`/`spells`) y se los pasa; los compartidos
+  (`rng`) van a ambas llamadas. Los calls existentes no cambian.
+- **Datos sin efecto (freeze en `tests/test_eldritch_knight.py`)**
+  War Bond (3) y Arcane Charge (15); límites: distancia/movimiento,
+  reacciones de hechizo, rituales/utilidad.
+- **Plantilla CLI**: 6ª entrada de `PARTY_TEMPLATES` en `main.py`
+  («Caballero», `spell_list="wizard"`), con `lista` cargada de forma
+  perezosa solo si la plantilla declara la clave (caché de
+  `load_class_spell_list` primero; red solo sin caché).
+
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
 pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
-pytest                              # 1638 tests
+pytest                              # 1726 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/
 ```

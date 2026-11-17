@@ -203,6 +203,13 @@ ataques por un hechizo nivel 1-2).
   `load_class_spell_list` de forma perezosa solo con `spell_list`
   (caché disco primero; import dentro de la rama). Tests monkeypatchan
   el cargador → sin red. 3 tests, suite 1726.
+- Pendientes reales EK (reabrir SOLO con regla nueva del sim):
+  distancia/movimiento (War Magic y hechizos sin alcance modelado),
+  reacciones de hechizo, rituales/utilidad del pool, War Bond y
+  Arcane Charge (datos sin efecto), restricción PHB de escuelas
+  (evocación/abjuración) si el maintainer la confirma, y «contra
+  hechizo del dueño» exacto (marker en `PJSpellAction.execute` en
+  vez del shortcut `ctx.actor is owner`).
 - [x] B — Tests de registro congelado (`test_fighter.py`,
   `test_arcane_archer.py`, `test_battle_master.py`, patrón «Cambio
   esperado»): añadir `"eldritch_knight"` — EXPLICAR ANTES de tocar.
@@ -225,9 +232,14 @@ ataques por un hechizo nivel 1-2).
   pick equiprobable sobre `["no", *etiquetas]` (decisión de este
   proyecto, no del PHB); 5) caducidad de Eldritch Strike `ronda + 2`
   (shortcut documentado, patrón Vex).
-- [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, punto de
+- [x] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, punto de
   consulta de sustitución, recuentos), bloque «ELDRITCH KNIGHT» en
   `PASOS-ANTERIORES.txt`, receta y pendientes en `TODO.md`.
+  **Hecho**: fila `rules/classes/` con `eldritch_knight` + 8/8
+  subclases, recuentos 93/24079 y 1726 tests, sección «Eldritch Knight
+  (PHB 2024)» con punto de consulta `_sustituir_ataque_por_hechizo`,
+  bloque ELDRITCH KNIGHT en PASOS con entradas (A1)-(B) y recuentos en
+  ESTADO ACTUAL; pendientes EK abajo del plan.
 - [ ] Verificación final — `pytest tests/test_arquitectura.py` +
   `pytest` + `python tools/capas.py` (solo excepción conocida) +
   `graphify update .` + commit final con el grafo.
