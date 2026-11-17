@@ -18,7 +18,12 @@ from dnd_sim.core.classes import (
 )
 from dnd_sim.data.spell_parser import parse_spell
 from dnd_sim.engine.combat import run_combat
-from dnd_sim.model.actions import CombatContext, TurnResources
+from dnd_sim.model.actions import (
+    CombatContext,
+    MultiattackAction,
+    TurnResources,
+    _sustituir_ataque_por_hechizo,
+)
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import (
     ELDRITCH_KNIGHT_SPELLS,
@@ -180,17 +185,18 @@ def test_sin_la_subclase_no_hay_espacios_ni_acciones_de_hechizo():
 # --- A3: lanzamiento extremo a extremo --------------------------------------- #
 
 
-def _ek(nivel: int = 3, *, spells=(), cantrips=()):
+def _ek(nivel: int = 3, *, spells=None, cantrips=None):
     """EK de prueba: fighter + subclase con la lista de fixtures.
 
     ``spells``/``cantrips`` son índices de fixture (se parsean a Spell).
+    ``None`` = muestreo por defecto; lista vacía = sin hechizos/trucos.
     """
     pj = _pj(level=nivel)
     apply_fighter(pj, level=nivel, rng=random.Random(0))
     apply_eldritch_knight(
         pj, level=nivel, lista=_lista(),
-        spells=[_spell(i) for i in spells] or None,
-        cantrips=[_spell(i) for i in cantrips] or None)
+        spells=None if spells is None else [_spell(i) for i in spells],
+        cantrips=None if cantrips is None else [_spell(i) for i in cantrips])
     return pj
 
 
@@ -322,3 +328,100 @@ def test_la_oleada_de_accion_del_ek_no_lanza_hechizos():
     assert hechizo.name not in vistas[2]
     assert hechizo.name in vistas[3]     # la ronda 2 vuelve a verlo
     assert sum(r.spell_slots_spent.values()) == 1
+
+
+# --- A4: War Magic ------------------------------------------------------------
+
+
+class _RngEspia:
+    """rng de test: guiona ``randrange(2)`` (decisiones «no»/«sí»).
+
+    El resto es neutro: ``random()=1.0`` (fuera utilitaria y Temerario),
+    ``randint(1, 20)=15`` (impacta) y ``randint(1, n)=1`` con n != 20
+    (dados de daño bajos), ``randrange(n>2)=0`` (primer elemento).
+    """
+
+    def __init__(self, guion=()):
+        self._guion = list(guion)
+
+    def randrange(self, n):
+        if n == 2 and self._guion:
+            return self._guion.pop(0)
+        return 0
+
+    def randint(self, a, b):
+        return 15 if b == 20 else a
+
+    def random(self):
+        return 1.0
+
+
+class _RngQueExplota:
+    """Cualquier consumo de RNG revienta el test."""
+
+    def __getattr__(self, nombre):
+        raise AssertionError(f"no debía consumirse RNG: {nombre}")
+
+
+def _trait(pj):
+    return next(t for t in pj.traits if isinstance(t, EldritchKnightFeatures))
+
+
+def test_war_magic_sustituye_un_ataque_por_un_truco_y_consume_ese_ataque():
+    ek = _ek(7, cantrips=["fire-bolt"], spells=["magic-missile"])
+    victima = _orco(hp=100)
+    rng = _RngEspia(guion=[1, 0])   # 1er ataque: «sí»; 2º: «no»
+    ctx = _ctx(ek, [victima], rng=rng)
+    multi = next(a for a in ek.actions if isinstance(a, MultiattackAction))
+    multi.execute(ctx)
+    lineas = [str(l) for l in ctx.log]
+    assert sum("con Fire Bolt" in l for l in lineas) == 1
+    assert sum("con Espada larga" in l for l in lineas) == 1
+    # El truco (nivel 0) no gasta espacio.
+    assert tuple(ek.spell_slots.actuales) == ek.spell_slots.maximos
+
+
+def test_war_magic_sin_trucos_no_es_elegible_y_no_consume_rng():
+    ek = _ek(7, cantrips=[], spells=["magic-missile"])
+    ctx = _ctx(ek, [_orco()], rng=_RngQueExplota())
+    ctx.in_attack_action = True
+    assert _trait(ek).sustituir_ataque_por_hechizo(2, ctx) is None
+
+
+def test_war_magic_en_nivel_6_no_actua():
+    ek = _ek(6, cantrips=["fire-bolt"])
+    ctx = _ctx(ek, [_orco()], rng=_RngQueExplota())
+    ctx.in_attack_action = True
+    assert _trait(ek).sustituir_ataque_por_hechizo(2, ctx) is None
+
+
+def test_war_magic_no_se_ofrece_en_reacciones_ni_fuera_de_la_accion_atacar():
+    ek = _ek(7, cantrips=["fire-bolt"])
+    ctx = _ctx(ek, [_orco()], rng=_RngQueExplota())
+    ctx.in_attack_action = True
+    ctx.is_reaction = True
+    assert _trait(ek).sustituir_ataque_por_hechizo(2, ctx) is None
+    ctx.is_reaction = False
+    ctx.in_attack_action = False       # ataque adicional o bonus
+    assert _trait(ek).sustituir_ataque_por_hechizo(2, ctx) is None
+
+
+def test_el_truco_sustituido_usa_la_cd_y_el_escalado_del_pj():
+    ek = _ek(7, cantrips=["fire-bolt"], spells=["magic-missile"])
+    ctx = _ctx(ek, [_orco()], rng=_RngEspia(guion=[1]))
+    ctx.in_attack_action = True
+    accion, coste = _trait(ek).sustituir_ataque_por_hechizo(2, ctx)
+    assert coste == 1
+    assert accion.spell.name == "Fire Bolt"
+    assert accion.caster.sc.attack_bonus == 6     # PB 3 (nivel 7) + INT 3
+    assert accion.caster.sc.save_dc == 14
+    interno = accion.construir(None)
+    assert "2d10" in str(interno.effect.attack.damage)   # escala a nivel 7
+
+
+def test_sin_la_subclase_el_punto_de_consulta_no_consume_rng():
+    pj = _pj(level=7)
+    apply_fighter(pj, level=7)
+    ctx = _ctx(pj, [_orco()], rng=_RngQueExplota())
+    ctx.in_attack_action = True
+    assert _sustituir_ataque_por_hechizo(pj, 2, ctx) is None

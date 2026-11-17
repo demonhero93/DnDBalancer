@@ -191,6 +191,30 @@ def _en_accion_de_ataque(context: Any, action_type: ActionType) -> None:
         context.in_attack_action = previo
 
 
+def _sustituir_ataque_por_hechizo(actor: Any, restantes: int, ctx: Any) -> Any:
+    """Punto de consulta perezoso: ¿este ataque se sustituye por un hechizo?
+
+    Duck-typing (patrón ``_sustituir_ataque`` de ``engine.combat.attack``):
+    si ningún rasgo del actor define
+    ``sustituir_ataque_por_hechizo(restantes, ctx)``, devuelve ``None``
+    **sin consumir RNG** — quien no tenga la subclase (monstruos, otros
+    PJs) no cambia nada. El primer rasgo que responda gana. Devuelve
+    ``(accion, coste)``: ``accion.execute(ctx)`` sustituye al ataque y
+    ``coste`` (1 = War Magic / 2 = Improved War Magic) indica cuántos
+    ataques consume.
+    """
+    if getattr(ctx, "is_reaction", False):
+        return None  # solo la acción Atacar (patrón Rapid Strike)
+    for rasgo in getattr(actor, "traits", None) or []:
+        metodo = getattr(rasgo, "sustituir_ataque_por_hechizo", None)
+        if metodo is None:
+            continue
+        resultado = metodo(restantes, ctx)
+        if resultado is not None:
+            return resultado
+    return None
+
+
 @dataclass
 class AttackAction(CombatAction):
     attack: "Attack"
@@ -299,6 +323,7 @@ class MultiattackAction(CombatAction):
         if not viables:
             return
         chosen = pick(context.rng, viables)
+        saltar = 0  # ataques que consume una sustitución War Magic (coste 2)
         for entry in chosen:
             attack_name = getattr(entry, "attack_name", None)
             count = getattr(entry, "count", 1) or 1
@@ -325,7 +350,11 @@ class MultiattackAction(CombatAction):
                 raise ValueError(
                     f"El ataque {attack_name!r} no existe en {actor.name!r}.attacks"
                 )
-            for _ in range(count):
+            for i in range(count):
+                if saltar:
+                    # Este ataque lo consume una sustitución anterior.
+                    saltar -= 1
+                    continue
                 if not actor_is_alive(context):
                     return  # el actor ha muerto: no sigue pegando
                 enemies = _living_enemies(context, atk)
@@ -335,6 +364,18 @@ class MultiattackAction(CombatAction):
                 teams = {getattr(c, "team", None) for c in (context.combatants or []) if getattr(c, "alive", False)}
                 if len(teams) <= 1:
                     return
+                # War Magic / Improved War Magic (Eldritch Knight): punto
+                # de consulta perezoso ANTES de tirar el ataque; sin rasgo
+                # que lo defina, cero RNG. Va antes que la utilitaria
+                # (feature PHB primero; sin EK el orden no cambia).
+                with _en_accion_de_ataque(context, self.action_type):
+                    sust = _sustituir_ataque_por_hechizo(
+                        actor, count - i, context)
+                if sust is not None:
+                    accion_sust, coste = sust
+                    accion_sust.execute(context)
+                    saltar = max(0, coste - 1)
+                    continue
                 # Utilitaria: Agarrar/Empujar puede sustituir este ataque.
                 from ..rules.utility import ataque_utilitario
                 if ataque_utilitario(actor, context, context.rng, atk):
@@ -367,7 +408,12 @@ class WeaponAttackAction(CombatAction):
         if not weapons:
             return
         total = 1 + int(getattr(actor, "extra_attacks", 0) or 0)
-        for _ in range(total):
+        saltar = 0  # ataques que consume una sustitución War Magic (coste 2)
+        for i in range(total):
+            if saltar:
+                # Este ataque lo consume una sustitución anterior.
+                saltar -= 1
+                continue
             if not actor_is_alive(context):
                 return  # el actor ha muerto: no sigue pegando
             enemies = _living_enemies(context)
@@ -376,6 +422,17 @@ class WeaponAttackAction(CombatAction):
             teams = {getattr(c, "team", None) for c in (context.combatants or []) if getattr(c, "alive", False)}
             if len(teams) <= 1:
                 return
+            # War Magic / Improved War Magic (Eldritch Knight): punto de
+            # consulta perezoso ANTES de elegir el arma; sin rasgo que lo
+            # defina, cero RNG. Va antes que la utilitaria.
+            with _en_accion_de_ataque(context, self.action_type):
+                sust = _sustituir_ataque_por_hechizo(
+                    actor, total - i, context)
+            if sust is not None:
+                accion_sust, coste = sust
+                accion_sust.execute(context)
+                saltar = max(0, coste - 1)
+                continue
             weapon = pick(context.rng, weapons)
             # Utilitaria: Agarrar/Empujar puede sustituir este ataque (con
             # el arma ya elegida: a distancia no se sustituye, sin RNG).

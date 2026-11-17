@@ -611,6 +611,39 @@ ELDRITCH KNIGHT (2026-11-16)
     extra (mismo patrón A7). Descubrimiento: CombatResult.
     spell_slots_spent se ancla por nombre de combatante (no de hechizo)
     e incluye entradas con 0. Suite: 1699.
+  - (A4) War Magic (7): punto de consulta perezoso
+    `_sustituir_ataque_por_hechizo(actor, restantes, ctx)` en
+    `model/actions.py` (duck-typing, sin entrada en HOOK_NAMES,
+    patrón `_sustituir_ataque`; gate `is_reaction`; sin rasgo que
+    lo defina → cero RNG), llamado envuelto en
+    `_en_accion_de_ataque` para que `in_attack_action` esté puesto
+    en el momento de la consulta, en los DOS bucles de ataque:
+    `MultiattackAction.execute` (rama de ATAQUE; restantes = count - i;
+    contador `saltar` que consume el coste) y
+    `WeaponAttackAction.execute` (restantes = total - i). Orden
+    ANTES que la utilitaria (feature PHB primero; sin EK el orden no
+    cambia → cero RNG nuevo). Método
+    `EldritchKnightFeatures.sustituir_ataque_por_hechizo`: gates
+    is_reaction / in_attack_action / nivel < 7 / owner; candidatos =
+    `PJSpellAction` de truco (nivel 0) con `can_use(ctx)`; un `pick`
+    «no»/«truco» y si sí, `pick` uniforme entre trucos (1 opción = sin
+    RNG), coste 1. El pool `hechizo_soportado` ya garantiza tiempo de
+    lanzamiento una acción: sin filtro extra. War Magic consume ESE
+    ataque (no gasta Extra Attack) y NO activa la restricción de
+    Oleada; dentro de la pasada extra de la Oleada sí puede disparar
+    (decisión: la restricción solo excluye la acción Magia como acción
+    extra). 6 tests: sustituye 1 de 2 ataques (multi directa con rng
+    espía guionado [1,0]; logs «con Fire Bolt»==1 y «con Espada larga»
+    ==1; cantrip sin gastar espacio), sin trucos → None sin RNG (rng
+    que revienta), nivel 6 → None, reacción y fuera de la acción
+    Atacar → None, CD/escalado (PB 3 a nivel 7 → ataque +6 / CD 14,
+    fire-bolt 2d10), sin subclase el helper → None sin RNG. El
+    parámetro `restantes` ya se pasa al método (lo usa A5).
+    Descubrimientos: `actuales` es lista y `maximos` tupla
+    (comparar con `tuple()`); PB a nivel 7 = 3; el `construir` de
+    un hechizo de ataque es SpellAction con `.effect` = AttackAction
+    con `.attack.damage`. `_ek` distingue ahora None (muestreo por
+    defecto) de [] (vacío). Suite: 1705.
 
 ESTADO ACTUAL
    - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y

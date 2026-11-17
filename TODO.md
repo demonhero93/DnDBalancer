@@ -158,7 +158,7 @@ ataques por un hechizo nivel 1-2).
   se clava por nombre de combatante; la tabla tercio da (4,3) en nivel
   10 (sobrecarga entre niveles 1-2); la concentración caduca a las 10
   rondas.
-- [ ] A4 — War Magic (PASO DELICADO): inspeccionar cadena de ataques
+- [x] A4 — War Magic (PASO DELICADO): inspeccionar cadena de ataques
   (extra_attacks/MultiattackAction), punto de consulta perezoso
   duck-typing p. ej. `sustituir_ataque_por_hechizo(restantes, ctx)`
   antes de cada ataque de la acción Atacar (sin entrada en HOOK_NAMES),
@@ -171,6 +171,10 @@ ataques por un hechizo nivel 1-2).
   trucos → sin RNG (rng que revienta), nivel 6 no actúa, no en
   reacciones ni adicionales, consume un solo ataque, truco usa CD y
   escalado del PJ, sin subclase cero RNG.
+  **Hecho**: helper `_sustituir_ataque_por_hechizo` en
+  `model/actions.py` (envuelto en `_en_accion_de_ataque`) en los dos
+  bucles de ataque; método con gates en `EldritchKnightFeatures`; 6
+  tests, suite 1705 passed (1699 base intacta).
 - [ ] A5 — Improved War Magic: opción «hechizo nivel 1-2 por DOS
   ataques» en el mismo punto de consulta; decisión conjunta con War
   Magic en un solo `pick` sobre las opciones elegibles (no / truco por

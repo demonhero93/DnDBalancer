@@ -43,8 +43,10 @@ from .....core.classes import (
     eldritch_knight_cantrips,
     eldritch_knight_prepared,
 )
+from .....core.randomness import pick
 from .....core.spellcasting import SpellcastingDef
 from ....spells import aplicar_lanzamiento
+from ....spells.caster import PJSpellAction
 from ....traits.base import Trait
 from ..features import FighterFeatures
 
@@ -89,6 +91,41 @@ class EldritchKnightFeatures(Trait):
     strike_marks: dict[str, int] = field(default_factory=dict)
     war_bond: bool = True
     arcane_charge: bool = True
+
+    def sustituir_ataque_por_hechizo(self, restantes: int, ctx: Any) -> Any:
+        """War Magic (7), PHB 2024: sustituir UN ataque por un truco.
+
+        Un ``pick`` «no»/«sí» por ataque elegible y, si sí, ``pick``
+        uniforme entre los trucos lanzables (1 opción = sin RNG).
+        Devuelve ``(accion, coste)`` con coste 1 o ``None`` **sin RNG**
+        cuando no es elegible (nivel < 7, sin trucos, fuera de la acción
+        Atacar). El pool ``hechizo_soportado`` ya garantiza hechizos de
+        tiempo de lanzamiento una acción: sin filtro extra de escuelas
+        ni de tiempo aquí. La acción Atacar sigue siendo una sola, así
+        que esto NO activa la restricción de Oleada; dentro de la pasada
+        extra de la Oleada sí puede disparar (decisión documentada: la
+        restricción solo excluye la acción Magia como acción extra).
+        """
+        if getattr(ctx, "is_reaction", False):
+            return None  # solo la acción Atacar (patrón Rapid Strike)
+        if not getattr(ctx, "in_attack_action", False):
+            return None
+        if self.level < 7:
+            return None
+        owner = self.owner
+        if owner is None:
+            return None
+        acciones = getattr(owner, "actions", None) or []
+        trucos = [a for a in acciones
+                  if isinstance(a, PJSpellAction)
+                  and int(getattr(a.spell, "level", 0) or 0) == 0
+                  and a.can_use(ctx)]
+        if not trucos:
+            return None  # sin trucos elegibles: cero RNG
+        eleccion = pick(ctx.rng, ["no", "truco"])
+        if eleccion == "no":
+            return None
+        return pick(ctx.rng, trucos), 1
 
 
 def apply_eldritch_knight(
