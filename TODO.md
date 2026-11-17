@@ -203,7 +203,7 @@ ataques por un hechizo nivel 1-2).
   `load_class_spell_list` de forma perezosa solo con `spell_list`
   (caché disco primero; import dentro de la rama). Tests monkeypatchan
   el cargador → sin red. 3 tests, suite 1726.
-- [ ] B — Tests de registro congelado (`test_fighter.py`,
+- [x] B — Tests de registro congelado (`test_fighter.py`,
   `test_arcane_archer.py`, `test_battle_master.py`, patrón «Cambio
   esperado»): añadir `"eldritch_knight"` — EXPLICAR ANTES de tocar.
   Ningún otro test existente cambia. Límites: War Bond, Arcane Charge,
@@ -211,6 +211,20 @@ ataques por un hechizo nivel 1-2).
   maintainer a anotar: tabla de preparados, ausencia de restricción de
   escuelas (dónde reactivar evocación/abjuración), versión 2024 de
   War Magic. TODO.md: marcar EK como hecha en la lista de candidatas.
+  **Hecho**: los 3 tests ganaron `"eldritch_knight"` en A2 con nota
+  «Cambio esperado (2026-11-17)»; ningún otro test existente cambió
+  (suite 1686 → 1726 solo por tests nuevos EK). Decisiones
+  implementadas (reabrir SOLO si el maintainer las contradice):
+  1) tabla de preparados PHB nivel 3-20 en `core/classes.py`
+  (`eldritch_knight_prepared`); 2) SIN restricción de escuelas
+  (`ELDRITCH_KNIGHT_SPELLS.escuelas is None`; para reactivar la
+  restricción PHB de evocación/abjuración basta pasar `escuelas=...`
+  en ese dataclass y re-ordenar el test de registro); 3) War Magic en
+  su versión PHB 2024 (reemplaza UN ataque por un truco, antes de
+  utilitaria, no restringe la Oleada); 4) Improved War Magic usa UN
+  pick equiprobable sobre `["no", *etiquetas]` (decisión de este
+  proyecto, no del PHB); 5) caducidad de Eldritch Strike `ronda + 2`
+  (shortcut documentado, patrón Vex).
 - [ ] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, punto de
   consulta de sustitución, recuentos), bloque «ELDRITCH KNIGHT» en
   `PASOS-ANTERIORES.txt`, receta y pendientes en `TODO.md`.
@@ -246,10 +260,13 @@ ataques por un hechizo nivel 1-2).
 
 ## Fighter: pendientes reales
 
-- **Subclase pendiente**: Eldritch Knight (candidata PHB 2024). Las
-  otras 7 YA están implementadas: Arcane Archer, Battle Master,
-  Cavalier, Champion, Psi Warrior, Rune Knight y Samurai
-  (`CLASSES["fighter"].subclasses` tiene sus 7 claves).
+- **Subclase pendiente**: Ninguna — Eldritch Knight añadida 2026-11-16
+  (sesión completa, commits A1-A7). Las otras 7 YA estaban: Arcane
+  Archer, Battle Master, Cavalier, Champion, Psi Warrior, Rune Knight
+  y Samurai (`CLASSES["fighter"].subclasses` tiene sus 8 claves).
+  Límites EK aceptados: War Bond y Arcane Charge son datos sin
+  efecto, sin distancia/movimiento, sin reacciones de hechizo, sin
+  rituales/utilidad (ver receta «Eldritch Knight: plan de sesión»).
 - **Samurai — datos sin efecto congelados** (reabrir SOLO si el sim
   modela la mecánica; tests en `tests/test_samurai.py`):
   - Bonus Proficiency: el idioma alternativo (sin modelo de idiomas).
