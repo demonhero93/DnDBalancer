@@ -71,9 +71,11 @@ def test_registro_arcane_archer_bajo_fighter():
     # la clave "rune_knight" se añade al registro.
     # Cambio esperado con Samurai (2026-11-15, explicado en PASOS):
     # la clave "samurai" se añade al registro.
+    # Cambio esperado con Eldritch Knight (2026-11-17, explicado en PASOS):
+    # la clave "eldritch_knight" se añade al registro.
     assert set(subclases) == {"arcane_archer", "battle_master",
-                              "cavalier", "champion", "psi_warrior",
-                              "rune_knight", "samurai"}
+                              "cavalier", "champion", "eldritch_knight",
+                              "psi_warrior", "rune_knight", "samurai"}
     sub = subclases["arcane_archer"]
     assert sub.class_name == "fighter"
     assert sub.min_level == 3

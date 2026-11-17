@@ -18,6 +18,7 @@ El registro se completa al importar el paquete de la clase (vía
 """
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -69,6 +70,14 @@ def register_class(class_def: ClassDef) -> ClassDef:
     return class_def
 
 
+def _params_de(func: Any) -> set[str]:
+    """Nombres de parámetros que declara ``func`` (vacío si no se puede)."""
+    try:
+        return set(inspect.signature(func).parameters)
+    except (TypeError, ValueError):
+        return set()
+
+
 def apply_class(pj: Any, class_name: str, subclass_name: str | None = None,
                 **kwargs: Any) -> Any:
     """Aplica la clase ``class_name`` a ``pj`` y, si se indica, su subclase.
@@ -77,8 +86,12 @@ def apply_class(pj: Any, class_name: str, subclass_name: str | None = None,
     subclase pertenezca a esa clase y que el nivel del PJ alcance
     ``min_level`` de la subclase (ValueError con las opciones válidas).
     Después aplica la clase con ``**kwargs`` y la subclase con
-    ``level=kwargs.get("level")``. Devuelve lo que devuelva el apply de
-    la clase.
+    ``level=kwargs.get("level")`` más, como **reenvío perezoso**, los
+    kwargs que SOLO declare el apply de la subclase (p. ej. ``lista``/
+    ``cantrips``/``spells`` de Eldritch Knight: no van a la clase para
+    no reventar su firma) y los compartidos (p. ej. ``rng``) en ambas
+    llamadas. Los calls existentes solo pasan ``level`` a la subclase →
+    llamada idéntica. Devuelve lo que devuelva el apply de la clase.
     """
     key = normalize_class_name(class_name)
     clase = CLASSES.get(key)
@@ -104,9 +117,18 @@ def apply_class(pj: Any, class_name: str, subclass_name: str | None = None,
                 f"{sub.name} requiere nivel >= {sub.min_level}: "
                 f"{getattr(pj, 'name', pj)} tiene nivel {lvl}."
             )
-    trait = clase.apply(pj, **kwargs)
+    p_clase = _params_de(clase.apply)
+    p_sub = _params_de(sub.apply) if sub is not None else set()
+    # Claves que solo la subclase declara: fuera del apply de la clase
+    # (si no, TypeError por parámetro desconocido en la firma de clase).
+    solo_sub = {k for k in kwargs
+                if k in p_sub and k not in p_clase and k not in ("pj", "level")}
+    kwargs_clase = {k: v for k, v in kwargs.items() if k not in solo_sub}
+    trait = clase.apply(pj, **kwargs_clase)
     if sub is not None:
-        sub.apply(pj, level=kwargs.get("level"))
+        extra = {k: v for k, v in kwargs.items()
+                 if k in p_sub and k not in ("pj", "level")}
+        sub.apply(pj, level=kwargs.get("level"), **extra)
     return trait
 
 

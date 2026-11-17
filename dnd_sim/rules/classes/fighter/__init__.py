@@ -5,8 +5,8 @@ Extra Attack...). Este ``__init__`` reexporta la API (``from
 dnd_sim.rules.classes.fighter import apply_fighter``) y declara la
 clase en el registro genérico de :mod:`dnd_sim.rules.classes.base` con
 su tabla de subclases (Arcane Archer, Battle Master, Cavalier,
-Champion, Psi Warrior, Rune Knight y Samurai; ver ``TODO.md`` para la
-receta).
+Champion, Eldritch Knight, Psi Warrior, Rune Knight y Samurai; ver
+``TODO.md`` para la receta).
 """
 from __future__ import annotations
 
@@ -18,6 +18,8 @@ from .subclasses import (
     BattleMasterFeatures,
     CavalierFeatures,
     ChampionFeatures,
+    ELDRITCH_KNIGHT_SPELLS,
+    EldritchKnightFeatures,
     PsiWarriorFeatures,
     RuneKnightFeatures,
     SamuraiFeatures,
@@ -25,6 +27,7 @@ from .subclasses import (
     apply_battle_master,
     apply_cavalier,
     apply_champion,
+    apply_eldritch_knight,
     apply_psi_warrior,
     apply_rune_knight,
     apply_samurai,
@@ -51,6 +54,11 @@ FIGHTER_CLASS = register_class(ClassDef(
             name="Champion", class_name="fighter",
             min_level=3, apply=apply_champion,
         ),
+        "eldritch_knight": SubclassDef(
+            name="Eldritch Knight", class_name="fighter",
+            min_level=3, apply=apply_eldritch_knight,
+            spellcasting=ELDRITCH_KNIGHT_SPELLS,
+        ),
         "psi_warrior": SubclassDef(
             name="Psi Warrior", class_name="fighter",
             min_level=3, apply=apply_psi_warrior,
@@ -68,9 +76,11 @@ FIGHTER_CLASS = register_class(ClassDef(
 
 __all__ = ["ActionSurgeAction", "ARCANE_SHOTS", "ArcaneArcherFeatures",
            "BattleMasterFeatures", "CavalierFeatures", "ChampionFeatures",
+           "ELDRITCH_KNIGHT_SPELLS", "EldritchKnightFeatures",
            "FIGHTER_CLASS", "FighterFeatures", "PsiWarriorFeatures",
            "RuneKnightFeatures", "SamuraiFeatures", "SecondWindAction",
            "apply_arcane_archer",
            "apply_battle_master", "apply_cavalier", "apply_champion",
+           "apply_eldritch_knight",
            "apply_fighter", "apply_psi_warrior", "apply_rune_knight",
            "apply_samurai"]

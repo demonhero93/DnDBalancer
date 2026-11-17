@@ -68,11 +68,13 @@ from .rules.classes.barbarian.subclasses.zealot import (
 )
 from .rules.classes.fighter import (
     ActionSurgeAction, ArcaneArcherFeatures, BattleMasterFeatures,
-    CavalierFeatures, ChampionFeatures, FighterFeatures,
+    CavalierFeatures, ChampionFeatures, EldritchKnightFeatures,
+    FighterFeatures,
     PsiWarriorFeatures, RuneKnightFeatures, SamuraiFeatures,
     SecondWindAction,
     apply_arcane_archer, apply_battle_master, apply_cavalier,
-    apply_champion, apply_fighter, apply_psi_warrior, apply_rune_knight,
+    apply_champion, apply_eldritch_knight, apply_fighter,
+    apply_psi_warrior, apply_rune_knight,
     apply_samurai,
 )
 from .rules.classes.base import apply_class
@@ -143,7 +145,7 @@ __all__ = [
     "ConditionAction", "ConditionEffect", "ConditionInstance",
     "ConditionTracker", "D20Result", "DEFAULT_LEGENDARY_POINTS",
     "DamageTransfer", "DamageType", "EXCLUDED_CONDITIONS", "EscapeCheck",
-    "ExtendRageAction", "FighterFeatures", "FormOfTheBeast", "GiantFeatures",
+    "EldritchKnightFeatures", "ExtendRageAction", "FighterFeatures", "FormOfTheBeast", "GiantFeatures",
     "HealAction",
     "HealEffect",
     "HeatedBody",
@@ -173,7 +175,8 @@ __all__ = [
     "apply_battlerager", "apply_beast", "apply_berserker", "apply_cavalier",
     "apply_champion",
     "apply_class",
-    "apply_arcane_archer", "apply_condition", "apply_fighter", "apply_giant",
+    "apply_arcane_archer", "apply_condition", "apply_eldritch_knight",
+    "apply_fighter", "apply_giant",
     "apply_psi_warrior", "apply_rune_knight", "apply_samurai",
     "apply_storm_herald",
     "apply_wild_heart", "apply_wild_magic", "apply_world_tree",

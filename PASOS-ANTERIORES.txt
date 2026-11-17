@@ -569,6 +569,34 @@ ELDRITCH KNIGHT (2026-11-16)
     (enunciado): si se corrige, se corrige en la función. Trucos 0/2/3
     en <3 / 3-9 / 10+. tests/test_eldritch_knight.py nuevo (3 tests:
     tabla completa por nivel, 0 en <3, trucos por tramos). Suite: 1686.
+  - (A2) Esqueleto y registro. Módulo nuevo
+    rules/classes/fighter/subclasses/eldritch_knight.py:
+    ELDRITCH_KNIGHT_SPELLS (tercio, INT, lista wizard, min 3;
+    escuelas=None — decisión del maintainer: si se confirma
+    evocación/abjuración se reactiva ahí), EldritchKnightFeatures
+    (level, strike_marks para A6, war_bond/arcane_charge como datos sin
+    efecto) y apply_eldritch_knight (valida FighterFeatures y nivel >= 3;
+    kwargs cantrips/spells validados por preparar_hechizos; rng None →
+    semilla 0; lista=None → pool vacío; llama aplicar_lanzamiento).
+    Registro "eldritch_knight" en fighter/__init__.py (SubclassDef con
+    spellcasting=) + reexports en fighter/subclasses, rules/classes y
+    fachada. apply_class gana reenvío perezoso de kwargs (base.py): las
+    claves que SOLO declara el apply de la subclase (lista/cantrips/
+    spells) no van al apply de la clase (apply_fighter no tiene
+    **kwargs) y las compartidas (rng) van a ambas llamadas; motivo: la
+    subclase solo recibía level, así que la ClassSpellList no llegaba.
+    Verificado: ningún caller existente pasa rng/runes vía apply_class
+    → para subs existentes extra={} y llamada idéntica (cero cambio);
+    claves desconocidas siguen reventando en el apply de la clase.
+    Tests congelados de registro (test_fighter, test_arcane_archer,
+    test_battle_master): «Cambio esperado» explicado ANTES de tocarlos;
+    la clave "eldritch_knight" se añade al conjunto exacto (mismo
+    patrón que Samurai). Ningún otro test cambió. 7 tests nuevos
+    (registro+spellcasting, equivalencia apply_class/apply_eldritch_
+    knight, errores clase/nivel, espacios y conteos 3/7/19, kwargs
+    inválidos, War Bond/Arcane Charge sin efecto, sin subclase sin
+    espacios ni acciones); tests/test_eldritch_knight.py = 10. Suite:
+    1693.
 
 ESTADO ACTUAL
    - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y

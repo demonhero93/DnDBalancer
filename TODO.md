@@ -132,7 +132,7 @@ ataques por un hechizo nivel 1-2).
   15:10 16:11 17:11 18:11 19:12 20:13) y `eldritch_knight_cantrips(level)`
   (0 / 2 / 3 en <3 / 3-9 / 10+) + tests por nivel y límites.
   **Hecho**: 3 tests, suite 1686 passed.
-- [ ] A2 — Esqueleto y registro: `fighter/subclasses/eldritch_knight.py`
+- [x] A2 — Esqueleto y registro: `fighter/subclasses/eldritch_knight.py`
   (`EldritchKnightFeatures`, `apply_eldritch_knight` valida fighter y
   nivel >= 3, kwargs `cantrips`/`spells` validados, rng semilla 0,
   recibe `ClassSpellList` y llama `aplicar_lanzamiento`), `SpellcastingDef`
@@ -143,6 +143,11 @@ ataques por un hechizo nivel 1-2).
   espacios/conteos (3: 2 espacios/3 preparados; 7: 4+2; 19: 4/3/3/1),
   kwargs inválidos → ValueError, War Bond y Arcane Charge congelados
   como dato sin efecto, cero RNG sin la subclase.
+  **Hecho**: `apply_class` gana reenvío perezoso de kwargs de subclase
+  en `base.py` (solo-subclase: `lista`/`cantrips`/`spells`; compartidos
+  como `rng` a ambos; llamada idéntica para subs existentes). Tests
+  congelados de registro con «Cambio esperado» explicado antes. 7 tests
+  nuevos, suite 1693 passed.
 - [ ] A3 — Lanzamiento extremo a extremo: EK nivel 3 y 10 con
   `run_combat` + fixtures (truco de ataque, truco de salvación, hechizo
   nivel 1 con `damage_at_slot_level`, hechizo de concentración);
