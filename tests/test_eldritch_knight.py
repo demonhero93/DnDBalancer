@@ -334,19 +334,23 @@ def test_la_oleada_de_accion_del_ek_no_lanza_hechizos():
 
 
 class _RngEspia:
-    """rng de test: guiona ``randrange(2)`` (decisiones «no»/«sí»).
+    """rng de test: guiona ``randrange`` y registra cada ``n`` visto.
 
     El resto es neutro: ``random()=1.0`` (fuera utilitaria y Temerario),
     ``randint(1, 20)=15`` (impacta) y ``randint(1, n)=1`` con n != 20
-    (dados de daño bajos), ``randrange(n>2)=0`` (primer elemento).
+    (dados de daño bajos). Sin guion, ``randrange`` devuelve 0.
     """
 
     def __init__(self, guion=()):
         self._guion = list(guion)
+        self.ns: list[int] = []
 
     def randrange(self, n):
-        if n == 2 and self._guion:
-            return self._guion.pop(0)
+        self.ns.append(n)
+        if self._guion:
+            valor = self._guion.pop(0)
+            assert 0 <= valor < n, f"guion {valor} fuera de rango para {n}"
+            return valor
         return 0
 
     def randint(self, a, b):
@@ -425,3 +429,74 @@ def test_sin_la_subclase_el_punto_de_consulta_no_consume_rng():
     ctx = _ctx(pj, [_orco()], rng=_RngQueExplota())
     ctx.in_attack_action = True
     assert _sustituir_ataque_por_hechizo(pj, 2, ctx) is None
+
+
+# --- A5: Improved War Magic ---------------------------------------------------
+
+
+def test_improved_war_magic_solo_es_elegible_con_dos_ataques_restantes():
+    ek = _ek(18, cantrips=["fire-bolt"], spells=["magic-missile"])
+    rng = _RngEspia(guion=[0])
+    ctx = _ctx(ek, [_orco()], rng=rng)
+    ctx.in_attack_action = True
+    assert _trait(ek).sustituir_ataque_por_hechizo(1, ctx) is None
+    assert rng.ns == [2]   # solo «no»/«truco»: sin opción de hechizo
+
+
+def test_improved_war_magic_consume_dos_ataques_y_gasta_un_espacio():
+    ek = _ek(18, cantrips=["fire-bolt"], spells=["magic-missile"])
+    victima = _orco(hp=100)
+    # Guion: consulta1 (n=3) elige «hechizo», la sobrecarga del PJ
+    # elige slot 1 (n=3), consulta2 (n=2) «no». El 2º ataque lo
+    # consume el coste 2 (sin consulta).
+    rng = _RngEspia(guion=[2, 0, 0])
+    ctx = _ctx(ek, [victima], rng=rng)
+    multi = next(a for a in ek.actions if isinstance(a, MultiattackAction))
+    multi.execute(ctx)
+    lineas = [str(l) for l in ctx.log]
+    assert sum("con Espada larga" in l for l in lineas) == 1
+    assert sum(ek.spell_slots.maximos) - sum(ek.spell_slots.actuales) == 1
+    assert any("Magic Missile" in l for l in lineas)
+
+
+def test_improved_war_magic_no_ofrece_hechizos_de_nivel_3_o_superior():
+    ek = _ek(18, cantrips=["fire-bolt"], spells=["fireball"])
+    rng = _RngEspia(guion=[0])
+    ctx = _ctx(ek, [_orco()], rng=rng)
+    ctx.in_attack_action = True
+    assert _trait(ek).sustituir_ataque_por_hechizo(3, ctx) is None
+    assert rng.ns == [2]   # fireball (nivel 3) no entra en las opciones
+
+
+def test_pick_unico_sobre_las_opciones_equiprobables():
+    ek = _ek(18, cantrips=["fire-bolt"], spells=["magic-missile"])
+    rng = _RngEspia(guion=[2])
+    ctx = _ctx(ek, [_orco()], rng=rng)
+    ctx.in_attack_action = True
+    accion, coste = _trait(ek).sustituir_ataque_por_hechizo(3, ctx)
+    # Un solo randrange(3): «no»/«truco»/«hechizo» equiprobables; el
+    # grupo de hechizos tiene 1 → sin segundo RNG.
+    assert rng.ns == [3]
+    assert coste == 2
+    assert accion.spell.name == "Magic Missile"
+
+
+def test_sin_espacios_el_hechizo_no_es_elegible():
+    ek = _ek(18, cantrips=["fire-bolt"], spells=["magic-missile"])
+    ek.spell_slots.actuales[:] = [0] * len(ek.spell_slots.actuales)
+    rng = _RngEspia(guion=[1])
+    ctx = _ctx(ek, [_orco()], rng=rng)
+    ctx.in_attack_action = True
+    accion, coste = _trait(ek).sustituir_ataque_por_hechizo(3, ctx)
+    assert coste == 1          # solo queda la opción de truco
+    assert rng.ns == [2]
+    assert accion.spell.level == 0
+
+
+def test_en_nivel_17_improved_war_magic_no_actua():
+    ek = _ek(17, cantrips=["fire-bolt"], spells=["magic-missile"])
+    rng = _RngEspia(guion=[0])
+    ctx = _ctx(ek, [_orco()], rng=rng)
+    ctx.in_attack_action = True
+    assert _trait(ek).sustituir_ataque_por_hechizo(3, ctx) is None
+    assert rng.ns == [2]   # sin opción «hechizo» a nivel 17

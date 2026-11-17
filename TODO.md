@@ -175,13 +175,16 @@ ataques por un hechizo nivel 1-2).
   `model/actions.py` (envuelto en `_en_accion_de_ataque`) en los dos
   bucles de ataque; método con gates en `EldritchKnightFeatures`; 6
   tests, suite 1705 passed (1699 base intacta).
-- [ ] A5 — Improved War Magic: opción «hechizo nivel 1-2 por DOS
+- [x] A5 — Improved War Magic: opción «hechizo nivel 1-2 por DOS
   ataques» en el mismo punto de consulta; decisión conjunta con War
   Magic en un solo `pick` sobre las opciones elegibles (no / truco por
   un ataque / hechizo por dos) para equiprobabilidad; espacio con
   sobrecarga común. Tests: elegible con >=2 ataques restantes, consume
   dos, nivel 3+ no se ofrece, pick único espía cuando coexisten, sin
   espacios no elegible, nivel 17 no actúa.
+  **Hecho**: `grupos` en el método + recuento global `restantes` en
+  ambos bucles (la multi del fighter tiene entradas count=1 → antes
+  restantes era siempre 1); 6 tests, suite 1711 passed.
 - [ ] A6 — Eldritch Strike: marca por objetivo con caducidad (patrón
   Vex, `after_attack_roll`) solo con ataque con arma (no fallo, no
   ataque de hechizo), desventaja en la siguiente salvación del marcado

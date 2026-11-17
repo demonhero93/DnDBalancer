@@ -644,6 +644,26 @@ ELDRITCH KNIGHT (2026-11-16)
     un hechizo de ataque es SpellAction con `.effect` = AttackAction
     con `.attack.damage`. `_ek` distingue ahora None (muestreo por
     defecto) de [] (vacío). Suite: 1705.
+  - (A5) Improved War Magic (18): la opción «hechizo nivel 1-2 por
+    DOS ataques» entra en el MISMO punto de consulta de A4. El método
+    `sustituir_ataque_por_hechizo` se reescribe con `grupos` (etiqueta,
+    candidatos, coste): «truco» coste 1 (desde nivel 7) y «hechizo»
+    coste 2 (nivel >= 18, restantes >= 2, hechizo de nivel 1-2 con
+    `can_use` → espacio disponible, sobrecarga común). UN `pick` sobre
+    ["no", *etiquetas] para equiprobabilidad (decisión del maintainer)
+    + `pick` uniforme del grupo (1 opción = sin RNG). Los bucles de A4
+    ya consumían el coste 2 con `saltar`; se cambió `restantes` de
+    `count - i` a un recuento global `total_ataques - consumidos` en
+    ambos bucles (descubrimiento: la multi del fighter son entradas
+    `count=1` una por golpe, no una entrada con `count=n` → con el
+    cálculo viejo `restantes` era siempre 1 y Improved nunca era
+    elegible en la multi). 6 tests: elegible solo con >= 2 restantes
+    (randrange(2) a secas), consume DOS ataques y 1 espacio en la
+    multi (guion [2,0,0]: «hechizo», slot 1, «no»; Espada larga == 1,
+    Magic Missile en el log), hechizo nivel 3+ no ofrecido (ns == [2]),
+    pick único espía randrange(3) con coste 2 (Magic Missile), sin
+    espacios → coste 1 (ns == [2]), nivel 17 no actúa (ns == [2]).
+    Suite: 1711.
 
 ESTADO ACTUAL
    - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y

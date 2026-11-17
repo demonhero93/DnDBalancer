@@ -323,7 +323,9 @@ class MultiattackAction(CombatAction):
         if not viables:
             return
         chosen = pick(context.rng, viables)
-        saltar = 0  # ataques que consume una sustitución War Magic (coste 2)
+        saltar = 0      # ataques que consume una sustitución (coste 2)
+        consumidos = 0  # ataques ya hechos o sustituidos en esta acción
+        total_ataques = sum(getattr(e, "count", 1) or 1 for e in chosen)
         for entry in chosen:
             attack_name = getattr(entry, "attack_name", None)
             count = getattr(entry, "count", 1) or 1
@@ -350,7 +352,9 @@ class MultiattackAction(CombatAction):
                 raise ValueError(
                     f"El ataque {attack_name!r} no existe en {actor.name!r}.attacks"
                 )
-            for i in range(count):
+            for _ in range(count):
+                restantes = total_ataques - consumidos
+                consumidos += 1   # este ataque se cuenta (hecho o sustituido)
                 if saltar:
                     # Este ataque lo consume una sustitución anterior.
                     saltar -= 1
@@ -370,7 +374,7 @@ class MultiattackAction(CombatAction):
                 # (feature PHB primero; sin EK el orden no cambia).
                 with _en_accion_de_ataque(context, self.action_type):
                     sust = _sustituir_ataque_por_hechizo(
-                        actor, count - i, context)
+                        actor, restantes, context)
                 if sust is not None:
                     accion_sust, coste = sust
                     accion_sust.execute(context)
@@ -408,8 +412,11 @@ class WeaponAttackAction(CombatAction):
         if not weapons:
             return
         total = 1 + int(getattr(actor, "extra_attacks", 0) or 0)
-        saltar = 0  # ataques que consume una sustitución War Magic (coste 2)
-        for i in range(total):
+        saltar = 0      # ataques que consume una sustitución (coste 2)
+        consumidos = 0  # ataques ya hechos o sustituidos en esta acción
+        for _ in range(total):
+            restantes = total - consumidos
+            consumidos += 1   # este ataque se cuenta (hecho o sustituido)
             if saltar:
                 # Este ataque lo consume una sustitución anterior.
                 saltar -= 1
@@ -427,7 +434,7 @@ class WeaponAttackAction(CombatAction):
             # defina, cero RNG. Va antes que la utilitaria.
             with _en_accion_de_ataque(context, self.action_type):
                 sust = _sustituir_ataque_por_hechizo(
-                    actor, total - i, context)
+                    actor, restantes, context)
             if sust is not None:
                 accion_sust, coste = sust
                 accion_sust.execute(context)

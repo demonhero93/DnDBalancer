@@ -93,13 +93,17 @@ class EldritchKnightFeatures(Trait):
     arcane_charge: bool = True
 
     def sustituir_ataque_por_hechizo(self, restantes: int, ctx: Any) -> Any:
-        """War Magic (7), PHB 2024: sustituir UN ataque por un truco.
+        """War Magic (7) y Improved War Magic (18), PHB 2024.
 
-        Un ``pick`` «no»/«sí» por ataque elegible y, si sí, ``pick``
-        uniforme entre los trucos lanzables (1 opción = sin RNG).
-        Devuelve ``(accion, coste)`` con coste 1 o ``None`` **sin RNG**
-        cuando no es elegible (nivel < 7, sin trucos, fuera de la acción
-        Atacar). El pool ``hechizo_soportado`` ya garantiza hechizos de
+        Decisión conjunta con UN ``pick`` sobre las **opciones
+        elegibles** («no», «truco por un ataque», «hechizo nivel 1-2
+        por dos ataques»): equiprobables (decisión del maintainer). Si
+        solo hay trucos, el pick es «no»/«truco». Devuelve
+        ``(accion, coste)`` o ``None`` **sin RNG** cuando no es
+        elegible (nivel < 7, sin trucos, fuera de la acción Atacar);
+        Improved solo añade «hechizo» con nivel >= 18 y ``restantes``
+        >= 2, hechizo de nivel 1-2 y espacio disponible (sobrecarga
+        común). El pool ``hechizo_soportado`` ya garantiza hechizos de
         tiempo de lanzamiento una acción: sin filtro extra de escuelas
         ni de tiempo aquí. La acción Atacar sigue siendo una sola, así
         que esto NO activa la restricción de Oleada; dentro de la pasada
@@ -120,12 +124,23 @@ class EldritchKnightFeatures(Trait):
                   if isinstance(a, PJSpellAction)
                   and int(getattr(a.spell, "level", 0) or 0) == 0
                   and a.can_use(ctx)]
-        if not trucos:
-            return None  # sin trucos elegibles: cero RNG
-        eleccion = pick(ctx.rng, ["no", "truco"])
+        grupos: list[tuple[str, list, int]] = []
+        if trucos:
+            grupos.append(("truco", trucos, 1))
+        if self.level >= 18 and restantes >= 2:
+            hechizos = [a for a in acciones
+                        if isinstance(a, PJSpellAction)
+                        and 1 <= int(getattr(a.spell, "level", 0) or 0) <= 2
+                        and a.can_use(ctx)]
+            if hechizos:
+                grupos.append(("hechizo", hechizos, 2))
+        if not grupos:
+            return None  # sin opciones elegibles: cero RNG
+        eleccion = pick(ctx.rng, ["no", *[g[0] for g in grupos]])
         if eleccion == "no":
             return None
-        return pick(ctx.rng, trucos), 1
+        _, candidatos, coste = next(g for g in grupos if g[0] == eleccion)
+        return pick(ctx.rng, candidatos), coste
 
 
 def apply_eldritch_knight(
