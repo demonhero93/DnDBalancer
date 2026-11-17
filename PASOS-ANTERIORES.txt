@@ -692,6 +692,20 @@ ELDRITCH KNIGHT (2026-11-16)
     `after_attack_roll` (Ataques Estudiados, nivel 13) → el test «sin
     subclase» filtra por tipo en vez de exigir lista vacía.
     Suite: 1723.
+  - (A7) Plantilla CLI «Caballero» en `main.py`: 6ª entrada de
+    `PARTY_TEMPLATES` (fighter + eldritch_knight, nivel 5, INT 14,
+    `spell_list="wizard"`), al FINAL para no desplazar índices de los
+    tests existentes ([0]/[4]/size<=5 intactos); help `--party` →
+    «(1-6)». `_build_party` carga `lista` de forma perezosa y SOLO si la
+    plantilla declara `spell_list` (`load_class_spell_list` de
+    `dnd_sim.data.class_spells`, caché en disco primero; se importa
+    dentro de la rama para que las plantillas 1-5 no toquen ni el
+    import). Reenvío perezoso de A2 reparte `lista` al apply de la
+    subclase. 3 tests: plantilla correcta, `_build_party(6)` con el
+    cargador monkeypatchado a fixtures (llamada exacta
+    `("wizard", {"nivel_lanzador": 5})` + espacios/trucos/preparados
+    = tablas) y `_build_party(5)` con cargador que revienta (cero
+    llamadas, cero EK). Sin red en tests. Suite: 1726.
 
 ESTADO ACTUAL
    - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y

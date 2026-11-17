@@ -86,6 +86,15 @@ PARTY_TEMPLATES = [
                               "survival"),
         abilities=dict(str=18, dex=14, con=16, int=8, wis=10, cha=12),
         attacks=[("Hacha de batalla", "1d12", "str", "melee")]),
+    dict(name="Caballero", max_hp=50, ac=18, level=5,
+         class_name="fighter",
+         subclass_name="eldritch_knight",
+         spell_list="wizard",
+         save_proficiencies=("str", "con"),
+         skill_proficiencies=("athletics", "intimidation", "perception",
+                              "survival"),
+         abilities=dict(str=16, dex=12, con=14, int=14, wis=10, cha=8),
+         attacks=[("Espada larga", "1d8", "str", "melee")]),
 ]
 
 
@@ -127,10 +136,18 @@ def _build_party(size: int, reckless_p: float | None = None,
             # Salvaciones, habilidades, estilo y rasgos de clase + subclase:
             # todo desde el registro de clases. Las skills de la plantilla
             # deben estar en la lista de su clase.
+            extra: dict = {}
+            if template.get("spell_list"):
+                # Carga perezosa: solo la plantilla que declara lista (EK).
+                # Caché en disco primero; la red solo si no hay caché.
+                from dnd_sim.data.class_spells import load_class_spell_list
+                extra["lista"] = load_class_spell_list(
+                    template["spell_list"],
+                    nivel_lanzador=template["level"])
             apply_class(pj, template["class_name"],
                         template.get("subclass_name"),
                         skills=template.get("skill_proficiencies", ()),
-                        level=template["level"])
+                        level=template["level"], **extra)
         if reckless_p is not None:
             from dnd_sim.rules.classes.barbarian.features import (
                 BarbarianFeatures,
@@ -161,7 +178,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--verbose", action="store_true", help="Muestra el primer combate.")
     parser.add_argument(
         "--party", type=int, default=5,
-        help="Número de personajes jugador del grupo (1-5). Default: 5.",
+        help="Número de personajes jugador del grupo (1-6). Default: 5.",
     )
     parser.add_argument(
         "--legendary-p", type=float, default=1.0,

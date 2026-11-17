@@ -195,9 +195,14 @@ ataques por un hechizo nivel 1-2).
   **Hecho**: `strike_marks[nombre] = ronda + 2`; gate `ctx.actor is
   owner` antes del lookup (otro lanzador no consume); caducada se
   borra sin desventaja; `reset()` limpia; 12 tests, suite 1723.
-- [ ] A7 — Plantilla/CLI «Caballero Sobrenatural» en `main.py` si es
+- [x] A7 — Plantilla/CLI «Caballero Sobrenatural» en `main.py` si es
   barato (class_name="fighter", subclass="eldritch_knight", cargador
   con caché); si exige red → TODO.
+  **Hecho**: 6ª plantilla «Caballero» (nivel 5, `spell_list="wizard"`)
+  al final de `PARTY_TEMPLATES`; `_build_party` llama
+  `load_class_spell_list` de forma perezosa solo con `spell_list`
+  (caché disco primero; import dentro de la rama). Tests monkeypatchan
+  el cargador → sin red. 3 tests, suite 1726.
 - [ ] B — Tests de registro congelado (`test_fighter.py`,
   `test_arcane_archer.py`, `test_battle_master.py`, patrón «Cambio
   esperado»): añadir `"eldritch_knight"` — EXPLICAR ANTES de tocar.

@@ -642,3 +642,51 @@ def test_eldritch_strike_aparece_en_el_log_del_combate():
 
     r = run_combat([ek, victima], random.Random(4), verbose=True, policy=policy)
     assert any("Eldritch Strike" in linea for linea in r.log)
+
+
+# --- A7: plantilla CLI en main.py -------------------------------------------- #
+
+
+def test_la_plantilla_caballero_es_un_eldritch_knight_con_lista_wizard():
+    import main
+    plantilla = next(t for t in main.PARTY_TEMPLATES
+                     if t.get("subclass_name") == "eldritch_knight")
+    assert plantilla["class_name"] == "fighter"
+    assert plantilla["spell_list"] == "wizard"
+
+
+def test_build_party_carga_la_lista_de_la_plantilla_ek_sin_red(monkeypatch):
+    """La 6ª plantilla recibe ``lista`` del cargador (aquí: fixtures)."""
+    import main
+    from dnd_sim.data import class_spells
+    llamadas = []
+
+    def cargador(index, **kwargs):
+        llamadas.append((index, kwargs))
+        return _lista()
+
+    monkeypatch.setattr(class_spells, "load_class_spell_list", cargador)
+    party = main._build_party(6)
+    assert llamadas == [("wizard", {"nivel_lanzador": 5})]
+    ek = party[5]
+    from dnd_sim.core.classes import eldritch_knight_cantrips
+    from dnd_sim.core.classes import eldritch_knight_prepared
+    assert _trait(ek) is not None
+    assert len(ek.spell_slots.maximos) > 0          # third: espacios creados
+    assert len(ek.spellcasting_pc.trucos) == eldritch_knight_cantrips(5)
+    assert len(ek.spellcasting_pc.preparados) == eldritch_knight_prepared(5)
+
+
+def test_build_party_sin_plantilla_ek_no_toca_el_cargador(monkeypatch):
+    """Las plantillas 1-5 (default) no cargan lista: cero red, cero cambio."""
+    import main
+
+    def cargador(index, **kwargs):
+        raise AssertionError(f"no debería cargar {index!r}")
+
+    monkeypatch.setattr("dnd_sim.data.class_spells.load_class_spell_list",
+                        cargador)
+    party = main._build_party(5)
+    assert len(party) == 5
+    assert not any(isinstance(t, EldritchKnightFeatures)
+                   for pj in party for t in pj.traits)
