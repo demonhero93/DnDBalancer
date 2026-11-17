@@ -597,6 +597,20 @@ ELDRITCH KNIGHT (2026-11-16)
     inválidos, War Bond/Arcane Charge sin efecto, sin subclase sin
     espacios ni acciones); tests/test_eldritch_knight.py = 10. Suite:
     1693.
+  - (A3) Lanzamiento extremo a extremo (solo tests, cero cambio de
+    producción): 6 tests nuevos con EK3/EK10 sobre la lista de fixtures
+    (helpers _ek/_orco/_ctx/_spell; los kwargs explícitos de
+    preparar_hechizos quieren objetos Spell — _spell(index) los parsea).
+    Cubren: hechizo de nivel 1 con policy guionizado gasta 1 espacio;
+    CD 13 / ataque +5 con INT 16 y PB 2; truco sin gastar espacio;
+    sobrecarga con pick en EK10 (la tabla tercio da (4,3) en nivel 10 →
+    elegible entre niveles 1 y 2, ambos usados con semilla 0, daño
+    escalado); faerie-fire deja concentración (el combate se acortó a
+    PV 10 porque la condición caduca a las 10 rondas = 1 min); y la
+    Oleada de Acción de un EK real no ve acciones de magia en la pasada
+    extra (mismo patrón A7). Descubrimiento: CombatResult.
+    spell_slots_spent se ancla por nombre de combatante (no de hechizo)
+    e incluye entradas con 0. Suite: 1699.
 
 ESTADO ACTUAL
    - 92 módulos en dnd_sim/ (23683 líneas); tests/ con 59 ficheros y

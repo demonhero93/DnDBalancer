@@ -148,11 +148,16 @@ ataques por un hechizo nivel 1-2).
   como `rng` a ambos; llamada idéntica para subs existentes). Tests
   congelados de registro con «Cambio esperado» explicado antes. 7 tests
   nuevos, suite 1693 passed.
-- [ ] A3 — Lanzamiento extremo a extremo: EK nivel 3 y 10 con
+- [x] A3 — Lanzamiento extremo a extremo: EK nivel 3 y 10 con
   `run_combat` + fixtures (truco de ataque, truco de salvación, hechizo
   nivel 1 con `damage_at_slot_level`, hechizo de concentración);
   sobrecarga, concentración, CD/ataque INT; Oleada NO lanza hechizos
   con un EK real.
+  **Hecho**: 6 tests de integración (solo tests, cero cambio de
+  producción), suite 1699 passed. Descubrimientos: `spell_slots_spent`
+  se clava por nombre de combatante; la tabla tercio da (4,3) en nivel
+  10 (sobrecarga entre niveles 1-2); la concentración caduca a las 10
+  rondas.
 - [ ] A4 — War Magic (PASO DELICADO): inspeccionar cadena de ataques
   (extra_attacks/MultiattackAction), punto de consulta perezoso
   duck-typing p. ej. `sustituir_ataque_por_hechizo(restantes, ctx)`
