@@ -6,9 +6,9 @@
     "semantic_hash": "7c35e4ad712924d87267833a1ac8835a"
   },
   "dnd_sim/__init__.py": {
-    "mtime": 1794731672.3123853,
-    "seen": 1794843834.9022825,
-    "ast_hash": "1543eefd1345ab7597d0765576d95db4",
+    "mtime": 1794931541.3631194,
+    "seen": 1794942886.7660484,
+    "ast_hash": "fc5bd4e137eb5b995fdf3de9d8948908",
     "semantic_hash": ""
   },
   "dnd_sim/data/__init__.py": {
@@ -30,9 +30,9 @@
     "semantic_hash": ""
   },
   "main.py": {
-    "mtime": 1794341082.7343137,
-    "seen": 1794392097.5117075,
-    "ast_hash": "c21e331deba6682f2050c161f62c28e7",
+    "mtime": 1794941939.9634836,
+    "seen": 1794942886.7660484,
+    "ast_hash": "29437dc13f4c16a0428e63fde3221387",
     "semantic_hash": ""
   },
   "tests/fixtures/awakened-shrub.json": {
@@ -732,9 +732,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/model/actions.py": {
-    "mtime": 1793615125.5945947,
-    "seen": 1793616391.7797568,
-    "ast_hash": "00d18698daae7b110557f81ae8d9cb1d",
+    "mtime": 1794938465.487,
+    "seen": 1794942886.7660484,
+    "ast_hash": "2dfb7d7b6c90c43c8572e87e80b00d3f",
     "semantic_hash": ""
   },
   "dnd_sim/model/attack.py": {
@@ -888,9 +888,9 @@
     "semantic_hash": ""
   },
   "ARCHITECTURE.md": {
-    "mtime": 1794853381.0210931,
-    "seen": 1794853500.9633982,
-    "ast_hash": "8c6c2c27d3bab7ab0fb14d1ac3043632",
+    "mtime": 1794942595.494571,
+    "seen": 1794942886.7660484,
+    "ast_hash": "09d02e5ad02a6d0845522c4b32d709db",
     "semantic_hash": ""
   },
   "tests/test_death.py": {
@@ -984,9 +984,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/core/classes.py": {
-    "mtime": 1794731345.6368482,
-    "seen": 1794843834.9022825,
-    "ast_hash": "9074041ace157a92b797f54794ce96e8",
+    "mtime": 1794854378.093019,
+    "seen": 1794942886.7660484,
+    "ast_hash": "ce440af55d0d153163d72a3c0debc3ce",
     "semantic_hash": ""
   },
   "dnd_sim/core/proficiency.py": {
@@ -1020,9 +1020,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/__init__.py": {
-    "mtime": 1794731655.8488982,
-    "seen": 1794843834.9032862,
-    "ast_hash": "b6ba1dbebd898a0dce19aed033fb3b15",
+    "mtime": 1794855494.660295,
+    "seen": 1794942886.7660484,
+    "ast_hash": "d753d30091fbf46f03d3c5900512668a",
     "semantic_hash": ""
   },
   "tests/fixtures/barbarian_levels.json": {
@@ -1074,9 +1074,9 @@
     "semantic_hash": ""
   },
   "PASOS-ANTERIORES.txt": {
-    "mtime": 1794853399.495745,
-    "seen": 1794853500.9633982,
-    "ast_hash": "c4b49c7aa61cba3061cb5bfefdf265ad",
+    "mtime": 1794942714.34807,
+    "seen": 1794942886.7660484,
+    "ast_hash": "ce254f8b1f0f76411b79a4ad3edd584b",
     "semantic_hash": ""
   },
   "REGLAS-DEL-PROYECTO.txt": {
@@ -1122,9 +1122,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/base.py": {
-    "mtime": 1794851935.177796,
-    "seen": 1794853500.962397,
-    "ast_hash": "6abaf50590472640c53289a4a8f88104",
+    "mtime": 1794855332.5835001,
+    "seen": 1794942886.7660484,
+    "ast_hash": "859ce5f8f019f31d8944aa5cb78e0392",
     "semantic_hash": ""
   },
   "tests/test_beast.py": {
@@ -1170,9 +1170,9 @@
     "semantic_hash": ""
   },
   "TODO.md": {
-    "mtime": 1794853399.495745,
-    "seen": 1794853500.9633982,
-    "ast_hash": "a021892c176106e76dccb46804338bcb",
+    "mtime": 1794942703.8305123,
+    "seen": 1794942886.7660484,
+    "ast_hash": "99d78f97b635e539305c97bbbe8576e6",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/berserker.py": {
@@ -1278,9 +1278,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/__init__.py": {
-    "mtime": 1794731655.834135,
-    "seen": 1794843834.9032862,
-    "ast_hash": "fcef8c5d6521ca2e4877c633476551ea",
+    "mtime": 1794855465.7009368,
+    "seen": 1794942886.7660484,
+    "ast_hash": "d67036e5f321d768c1497d5f8ec3b932",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/features.py": {
@@ -1290,9 +1290,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/subclasses/__init__.py": {
-    "mtime": 1794731642.2351665,
-    "seen": 1794843834.9032862,
-    "ast_hash": "d51739b4b02efb3bb7f36bfbc39c98f7",
+    "mtime": 1794855426.1300795,
+    "seen": 1794942886.7660484,
+    "ast_hash": "0e3029184141c7671b7ae27e6c3640bd",
     "semantic_hash": ""
   },
   "tests/fixtures/fighter_levels.json": {
@@ -1302,9 +1302,9 @@
     "semantic_hash": ""
   },
   "tests/test_fighter.py": {
-    "mtime": 1794731703.9872143,
-    "seen": 1794843834.9032862,
-    "ast_hash": "862ebeaa230b9c3f1650af608c93791a",
+    "mtime": 1794932058.0406067,
+    "seen": 1794942886.7660484,
+    "ast_hash": "3a171fb677ec8e487431ca44efcb5514",
     "semantic_hash": ""
   },
   "tests/test_zealot.py": {
@@ -1332,9 +1332,9 @@
     "semantic_hash": ""
   },
   "tests/test_arcane_archer.py": {
-    "mtime": 1794732287.0858579,
-    "seen": 1794843834.9032862,
-    "ast_hash": "e7bbb4e85d72972801a73ed270a30580",
+    "mtime": 1794932058.0406067,
+    "seen": 1794942886.7660484,
+    "ast_hash": "6b20ba346c2984fab40a9e921ec931cc",
     "semantic_hash": ""
   },
   "tests/test_sustituir_ataque.py": {
@@ -1356,9 +1356,9 @@
     "semantic_hash": ""
   },
   "tests/test_battle_master.py": {
-    "mtime": 1794732287.0858579,
-    "seen": 1794843834.9032862,
-    "ast_hash": "66139bcf8447f209ed0efb9892d98bf1",
+    "mtime": 1794932058.0406067,
+    "seen": 1794942886.7660484,
+    "ast_hash": "474d0ce86006d1472be6cb1f82e56ecb",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/subclasses/cavalier.py": {
@@ -1455,6 +1455,18 @@
     "mtime": 1794852954.6261494,
     "seen": 1794853500.9633982,
     "ast_hash": "7ca6c8b121afa3eba2e8ac26cdc5aeec",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/subclasses/eldritch_knight.py": {
+    "mtime": 1794939894.0299382,
+    "seen": 1794942886.7660484,
+    "ast_hash": "e177fb4f2df352f038bc68ed2e8a5713",
+    "semantic_hash": ""
+  },
+  "tests/test_eldritch_knight.py": {
+    "mtime": 1794942168.304291,
+    "seen": 1794942886.7660484,
+    "ast_hash": "42b5d6a1887d8dce008958da66e630cc",
     "semantic_hash": ""
   }
 }
