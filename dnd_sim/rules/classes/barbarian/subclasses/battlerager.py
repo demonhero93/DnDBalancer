@@ -40,6 +40,7 @@ from .....model.actions import ActionType, AttackAction
 from .....model.attack import Attack
 from ....damage import apply_damage_modifiers, inflict_damage
 from ....traits.base import Trait
+from .._util import _de
 from ..features import BarbarianFeatures, _contexto
 
 #: Features de subclase por nivel (SCAG; nombres en inglés como la API).
@@ -49,14 +50,6 @@ BATTLERAGER_FEATURES: dict[int, tuple[str, ...]] = {
     10: ("Battlerager Charge",),
     14: ("Spiked Retribution",),
 }
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``actor`` que sea instancia de ``clase`` (o None)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
 
 
 def _nuevo_ataque() -> Attack:

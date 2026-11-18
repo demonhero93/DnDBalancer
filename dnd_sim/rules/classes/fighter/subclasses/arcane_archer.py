@@ -94,6 +94,7 @@ from ....saves import (SaveDamage, apply_save_damage, registrar_resistencia,
                        saving_throw)
 from ....traits.base import AtaqueSustituido, Trait
 from ....usage import ActionUsage, UsageKind
+from .._util import _de
 from ..features import FighterFeatures, _contexto
 
 #: Pool de opciones de Arcane Shot implementadas (XGE): las 8. Piercing
@@ -130,14 +131,6 @@ _ARCOS: frozenset[str] = frozenset(
 #: RNG con semilla fija para Lore y opciones cuando no pasa ``rng``:
 #: crea el personaje siempre igual (reproducible).
 _RNG_CREACION = random.Random(0)
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``actor`` que sea instancia de ``clase`` (o None)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
 
 
 class _CtxConRng:

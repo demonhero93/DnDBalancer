@@ -57,7 +57,7 @@ from .....model.actions import ActionType, CombatAction
 from ....conditions import Condition, EscapeCheck, apply_condition
 from ....damage import inflict_damage
 from ....traits.base import Trait
-from ....utility import _TAMANOS
+from .._util import _de, _orden_de
 from ..features import BarbarianFeatures, _contexto
 
 #: Features de subclase por nivel (nombres en inglés como la API).
@@ -71,22 +71,6 @@ GIANT_FEATURES: dict[int, tuple[str, ...]] = {
 #: Tipos elementales de Elemental Cleaver (PHB: ácido, frío, fuego,
 #: relámpago y trueno; elección uniforme con ``pick``).
 _ELEMENTALES = ("acid", "cold", "fire", "lightning", "thunder")
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``actor`` que sea instancia de ``clase`` (o None)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
-
-
-def _orden_de(valor: Any) -> int:
-    """Orden PHB de un tamaño (acepta combatiente o cadena de tamaño)."""
-    tamaño = str(getattr(valor, "size", valor) or "medium").strip().lower()
-    if tamaño not in _TAMANOS:
-        return _TAMANOS.index("medium")
-    return _TAMANOS.index(tamaño)
 
 
 def _objetivos_impel(actor: Any, ctx: Any) -> list:

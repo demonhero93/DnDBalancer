@@ -74,6 +74,7 @@ from .....model.actions import ActionType
 from ....conditions import Condition
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
+from .._util import _de
 from ..features import FighterFeatures
 
 #: RNG con semilla fija para las elecciones de creación (Bonus
@@ -81,14 +82,6 @@ from ..features import FighterFeatures
 #: pasa ``rng``: crea el personaje siempre igual (reproducible, patrón
 #: del resto de subclases).
 _RNG_CREACION = random.Random(0)
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer trait de ``clase`` que lleve ``actor`` (o ``None``)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
 
 
 @dataclass

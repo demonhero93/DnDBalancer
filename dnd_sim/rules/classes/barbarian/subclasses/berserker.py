@@ -63,7 +63,8 @@ from ....conditions import (Condition, RepeatSave, apply_condition,
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
-from ..features import BarbarianFeatures, RageAction, _contexto
+from .._util import _de, _furia_de
+from ..features import BarbarianFeatures, _contexto
 
 #: Features de subclase por nivel (PHB 2024; nombres en inglés como la API).
 BERSERKER_FEATURES: dict[int, tuple[str, ...]] = {
@@ -72,22 +73,6 @@ BERSERKER_FEATURES: dict[int, tuple[str, ...]] = {
     10: ("Retaliation",),
     14: ("Intimidating Presence",),
 }
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``actor`` que sea instancia de ``clase`` (o None)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
-
-
-def _furia_de(actor: Any) -> RageAction | None:
-    """La acción «Entrar en Furia» de ``actor`` (o None)."""
-    for accion in getattr(actor, "actions", None) or []:
-        if isinstance(accion, RageAction):
-            return accion
-    return None
 
 
 def _armas_melee_de(criatura: Any) -> list:

@@ -71,7 +71,8 @@ from ....damage import inflict_damage
 from ....saves import SaveResult, saving_throw
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
-from ..features import BarbarianFeatures, RageAction, _contexto
+from .._util import _de, _furia_de
+from ..features import BarbarianFeatures, _contexto
 
 #: Features de subclase por nivel (PHB 2024; nombres en inglés).
 ZEALOT_FEATURES: dict[int, tuple[str, ...]] = {
@@ -90,22 +91,6 @@ _DIVINE_TIPOS: tuple[tuple[str, str], ...] = (
     ("necrotic", "necrótico"),
     ("radiante", "radiante"),
 )
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``actor`` que sea instancia de ``clase`` (o None)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
-
-
-def _furia_de(actor: Any) -> RageAction | None:
-    """La acción «Entrar en Furia» de ``actor`` (o None)."""
-    for accion in getattr(actor, "actions", None) or []:
-        if isinstance(accion, RageAction):
-            return accion
-    return None
 
 
 def _reserva_dados(level: int) -> int:

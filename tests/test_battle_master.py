@@ -447,7 +447,7 @@ def test_sin_subclase_el_motor_no_consulta_ni_consume_rng():
 
 
 def test_el_motor_decide_y_gasta_el_dado_en_el_ataque(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -486,7 +486,7 @@ def test_relentless_tira_d8_sin_gastar_y_solo_una_vez_por_turno():
 
 
 def test_relentless_no_consulta_pick_por_debajo_del_nivel_15(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
 
     _, trait, objetivo, ctx = _atacado(level=14, maneuvers=("Trip Attack",))
 
@@ -502,7 +502,7 @@ def test_relentless_no_consulta_pick_por_debajo_del_nivel_15(monkeypatch):
 
 
 def test_relentless_el_dado_es_siempre_d8(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core import dice
 
     vistas: list[str] = []
@@ -604,7 +604,7 @@ def test_parry_con_relentless_no_gasta_el_dado():
 
 
 def test_parry_se_aplica_en_el_motor_justo_antes_del_daño(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -625,7 +625,7 @@ def test_parry_se_aplica_en_el_motor_justo_antes_del_daño(monkeypatch):
 
 
 def test_parry_no_se_consulta_si_el_ataque_falla(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -683,7 +683,7 @@ def _ripostea_directa(trait, agresor, rng, ctx, rango=AttackRange.MELEE):
 
 
 def test_riposte_dispara_tras_un_fallo_cuerpo_a_cuerpo(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -708,7 +708,7 @@ def test_riposte_dispara_tras_un_fallo_cuerpo_a_cuerpo(monkeypatch):
 
 
 def test_riposte_no_dispara_tras_un_acierto_enemigo(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -740,7 +740,7 @@ def test_riposte_no_dispara_a_distancia():
 
 def test_riposte_suma_el_dado_solo_si_el_ataque_de_reaccion_impacta(
         monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -763,7 +763,7 @@ def test_riposte_suma_el_dado_solo_si_el_ataque_de_reaccion_impacta(
 
 
 def test_el_dado_de_reaccion_no_se_duplica_en_critico(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -797,7 +797,7 @@ def test_riposte_sin_ataques_cuerpo_a_cuerpo_no_consume_rng():
 
 
 def test_riposte_solo_una_vez_por_ronda(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -1158,7 +1158,7 @@ def test_feinting_sin_impacto_no_gasta_el_dado():
 # --- Precision y Sweeping (A6) ------------------------------------------------
 
 def test_precision_convierte_un_fallo_en_impacto(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
 
     monkeypatch.setattr(bm_mod, "roll_dice", lambda *a, **k: 3)
     _, trait, objetivo, ctx = _atacado(
@@ -1203,7 +1203,7 @@ def test_precision_con_relevelless_no_gasta_el_dado():
 
 
 def test_precision_actua_en_el_motor_tras_un_fallo(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -1307,7 +1307,7 @@ def _sustituye(trait, pj, enemigo, ctx, rng) -> object:
 
 def test_commanders_strike_sustituye_el_ataque_y_el_aliado_gasta_su_reaccion(
         monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
     from dnd_sim.rules.traits.base import AtaqueSustituido
@@ -1398,7 +1398,7 @@ def test_commanders_strike_no_se_decide_si_el_aliado_no_tiene_armas():
 
 
 def test_commanders_strike_el_dueño_nunca_es_el_aliado_elegido(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
 
@@ -1443,7 +1443,7 @@ def test_sin_subclase_el_motor_no_consulta_sustituir_ataque():
 
 
 def test_el_ataque_del_aliado_no_reentra_en_commanders_strike(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
     from dnd_sim.rules.conditions import Condition
@@ -1473,7 +1473,7 @@ def test_el_ataque_del_aliado_no_reentra_en_commanders_strike(monkeypatch):
 
 
 def test_commanders_strike_con_relentless_no_gasta_dado(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.core.dice import D20Result, RollMode
     from dnd_sim.engine.combat import attack as atk_mod
     from dnd_sim.rules.traits.base import AtaqueSustituido
@@ -1553,7 +1553,7 @@ def test_rally_sin_aliados_es_inelegible_sin_rng():
 
 
 def test_rally_gasta_un_dado_y_concede_pv_temporales_sin_reaccion(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
 
     pj, trait, aliado, _, _ = _commanda(maneuvers=("Rally",))
     pj.abilities.cha = 16  # mod CAR +3
@@ -1569,7 +1569,7 @@ def test_rally_gasta_un_dado_y_concede_pv_temporales_sin_reaccion(monkeypatch):
 
 
 def test_rally_concede_al_menos_un_pv_temporal(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
 
     pj, trait, aliado, _, _ = _commanda(maneuvers=("Rally",))
     pj.abilities.cha = 8  # mod CAR -1: 1 - 1 = 0 → mínimo 1
@@ -1582,7 +1582,7 @@ def test_rally_concede_al_menos_un_pv_temporal(monkeypatch):
 
 
 def test_los_pv_temporales_de_rally_no_se_acumulan(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
 
     pj, trait, aliado, _, _ = _commanda(maneuvers=("Rally",))
     accion = _accion_rally(pj)
@@ -1598,7 +1598,7 @@ def test_los_pv_temporales_de_rally_no_se_acumulan(monkeypatch):
 
 
 def test_rally_elige_un_aliado_distinto_del_dueno(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
 
     pj, trait = _bm(maneuvers=_completa(("Rally",), 5))
     a1 = _pj(name="Alicia")
@@ -1632,7 +1632,7 @@ def test_rally_execute_sin_datos_no_concede_pv():
 
 
 def test_rally_con_relentless_no_gasta_dado(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
 
     pj, trait, aliado, _, _ = _commanda(level=15, maneuvers=("Rally",))
     accion = _accion_rally(pj)
@@ -1667,7 +1667,7 @@ def _d20_fijo(monkeypatch, valor: int = 10) -> None:
 
 def test_ambush_suma_un_dado_a_la_tirada_de_iniciativa(monkeypatch):
     import dnd_sim.engine.combat.encounter as enc_mod
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.engine.combat.encounter import roll_initiative
 
     pj, trait, enemigo, _ = _atacado(maneuvers=("Ambush",))
@@ -1704,7 +1704,7 @@ def test_ambush_sin_dados_no_consume_rng(monkeypatch):
 
 
 def test_ambush_con_la_decision_no_no_gasta_nada(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.engine.combat.encounter import roll_initiative
 
     pj, trait, enemigo, _ = _atacado(maneuvers=("Ambush",))
@@ -1727,7 +1727,7 @@ def test_sin_subclase_roll_initiative_no_consulta_bonus(monkeypatch):
 
 
 def test_ambush_con_relentless_no_gasta_dado(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.battle_master as bm_mod
+    import dnd_sim.rules.classes.fighter.subclasses.battle_master.features as bm_mod
     from dnd_sim.engine.combat.encounter import roll_initiative
 
     pj, trait, enemigo, _ = _atacado(level=15, maneuvers=("Ambush",))

@@ -436,7 +436,7 @@ def test_giant_might_daño_extra_una_vez_por_turno():
 
 def test_giant_might_el_daño_extra_es_del_tipo_del_arma(monkeypatch):
     import dnd_sim.engine.combat.attack as attack_mod
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(attack_mod, "roll_d20",
                         lambda rng, mode=None: D20Result(
@@ -458,7 +458,7 @@ def test_giant_might_el_daño_extra_es_del_tipo_del_arma(monkeypatch):
 
 
 def test_giant_might_el_dado_de_daño_sube_con_el_nivel(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     exprs: list = []
 
@@ -498,7 +498,7 @@ def test_sin_subclase_giant_might_no_consulta_rng(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin la subclase no hay Giant's Might")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(rk_mod, "roll_dice", _revienta)
     pj = _pj()
@@ -530,7 +530,7 @@ def _parchea_escudo(monkeypatch, *, roll_atacante: int = 15,
                     roll_repetido: int = 3, decide: str = "si") -> list:
     """Tiradas fijas: d20 del atacante, d20 de la repetición y pick."""
     import dnd_sim.engine.combat.attack as attack_mod
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     llamadas_pick = []
     monkeypatch.setattr(
@@ -573,7 +573,7 @@ def test_runic_shield_no_actua_si_el_golpe_original_falla(monkeypatch):
     def _revienta(rng, seq):
         raise AssertionError("un fallo original no consulta la repetición")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     _parchea_escudo(monkeypatch, roll_atacante=1, decide="si")
     monkeypatch.setattr(rk_mod, "pick", _revienta)
@@ -632,7 +632,7 @@ def test_runic_shield_no_actua_sobre_el_dueno_ni_contra_enemigos(
 
 
 def test_runic_shield_gasta_la_reaccion_compartida(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     atacante, guardia, aliado, trait, ctx = _escudo_partida()
     _parchea_escudo(monkeypatch, decide="si")
@@ -696,7 +696,7 @@ def test_sin_subclase_runic_shield_no_consulta_rng(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin la subclase no hay repetición")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(rk_mod, "pick", _revienta)
     monkeypatch.setattr(rk_mod, "roll_d20", _revienta)
@@ -830,7 +830,7 @@ def test_sin_subclase_cero_rng_en_invocacion_y_consultas(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin la subclase no hay decisiones")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(rk_mod, "pick", _revienta)
     monkeypatch.setattr(rk_mod, "roll_d20", _revienta)
@@ -858,7 +858,7 @@ def _parchea_fuego(monkeypatch, *, ataque=15, dado_arma=5, dado_fuego=6,
                    salva=1, decide="si") -> list:
     """Impacto y daños fijos, pick y salvación de FUE fijas."""
     import dnd_sim.engine.combat.attack as attack_mod
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
     import dnd_sim.rules.saves as saves_mod
 
     llamadas_pick = []
@@ -918,7 +918,7 @@ def test_fire_rune_si_supera_la_salvacion_solo_hay_dano(monkeypatch):
 
 
 def test_fire_rune_dania_2d6_al_inicio_del_turno_del_objetivo(monkeypatch):
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     pj, trait, enemigo, ctx = _fuego()
     monkeypatch.setattr(rk_mod, "roll_dice",
@@ -1020,7 +1020,7 @@ def test_fire_rune_guards_sin_rng_y_pick_no(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin elegibilidad no se consulta el pick")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     pj, trait, enemigo, ctx = _fuego()
     monkeypatch.setattr(rk_mod, "pick", _revienta)
@@ -1051,7 +1051,7 @@ def test_sin_subclase_la_fire_rune_no_consulta_rng(monkeypatch):
         raise AssertionError("sin la subclase no hay decisiones")
 
     import dnd_sim.engine.combat.attack as attack_mod
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(rk_mod, "pick", _revienta)
     monkeypatch.setattr(rk_mod, "roll_dice", _revienta)
@@ -1146,7 +1146,7 @@ def test_stone_rune_no_invoca_sobre_un_aliado(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin hostilidad no se consulta el pick")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     pj, trait, enemigo, ctx = _piedra()
     monkeypatch.setattr(rk_mod, "pick", _revienta)
@@ -1160,7 +1160,7 @@ def test_stone_rune_ya_hechizado_no_repite_la_invocacion(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("ya Hechizado no se consulta el pick")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     pj, trait, enemigo, ctx = _piedra()
     apply_condition(enemigo, Condition.CHARMED, ctx, source="otra")
@@ -1173,7 +1173,7 @@ def test_stone_rune_guards_sin_rng(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin elegibilidad no se consulta el pick")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     # Sin la runa Stone.
     pj, trait, enemigo, ctx = _fuego()
@@ -1210,7 +1210,7 @@ def test_sin_subclase_la_stone_rune_no_consulta_rng(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin la subclase no hay decisiones")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(rk_mod, "pick", _revienta)
     monkeypatch.setattr(rk_mod, "roll_dice", _revienta)
@@ -1322,7 +1322,7 @@ def test_storm_sin_invocar_o_sin_runa_no_consulta_pick(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin runa activa no se consulta el pick")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(rk_mod, "pick", _revienta)
     pj, trait, aliado, enemigo, ctx = _tormenta()
@@ -1338,7 +1338,7 @@ def test_storm_guards_sin_rng_no_consultan_pick(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("guard sin RNG no debe llegar al pick")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(rk_mod, "pick", _revienta)
     pj, trait, aliado, enemigo, ctx = _tormenta()
@@ -1371,7 +1371,7 @@ def test_sin_subclase_la_storm_rune_no_consulta_pick(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin la subclase no hay decisiones")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     monkeypatch.setattr(rk_mod, "pick", _revienta)
     pj = _pj(level=5)
@@ -1412,7 +1412,7 @@ def _parchea_nube(monkeypatch, *, roll_atacante: int = 15,
                   decide: str = "si", dado_arma: int = 5) -> list:
     """d20 del atacante, dado de arma y pick fijos (Cloud, A11)."""
     import dnd_sim.engine.combat.attack as attack_mod
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     llamadas = []
     monkeypatch.setattr(
@@ -1481,7 +1481,7 @@ def test_cloud_rune_sin_otro_enemigo_no_consulta_pick(monkeypatch):
     def _revienta(rng, seq):
         raise AssertionError("sin elegibles no se consulta el pick")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     # Solo hay un enemigo y es el atacante: pool vacío.
     atacante, guardia, aliado, trait, ctx = _escudo_partida(level=5)
@@ -1527,7 +1527,7 @@ def test_cloud_rune_guards_sin_rng(monkeypatch):
     def _revienta(rng, seq):
         raise AssertionError("el guard debe volver sin consultar el pick")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     # (a) usos agotados
     atacante, guardia, aliado, refuerzo, trait, ctx = _nube_partida()
@@ -1594,7 +1594,7 @@ def test_sin_subclase_la_cloud_rune_no_consulta_rng(monkeypatch):
     def _revienta(*args, **kwargs):
         raise AssertionError("sin la subclase no hay decisiones")
 
-    import dnd_sim.rules.classes.fighter.subclasses.rune_knight as rk_mod
+    import dnd_sim.rules.classes.fighter.subclasses.rune_knight.features as rk_mod
 
     _parchea_nube(monkeypatch, roll_atacante=15)
     monkeypatch.setattr(rk_mod, "pick", _revienta)

@@ -72,19 +72,12 @@ from ....conditions import Condition, EscapeCheck, apply_condition
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
 from ....usage import ActionUsage, UsageKind
+from .._util import _de
 from ..features import FighterFeatures, _contexto, _es_aliado
 
 #: RNG con semilla fija para Bonus Proficiency cuando no pasa ``rng``:
 #: crea el personaje siempre igual (reproducible), patrón Battle Master.
 _RNG_CREACION = random.Random(0)
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``clase`` del combatiente (``None`` si no hay)."""
-    for rasgo in getattr(actor, "traits", None) or ():
-        if isinstance(rasgo, clase):
-            return rasgo
-    return None
 
 
 def _armas_melee_de(criatura: Any) -> tuple:

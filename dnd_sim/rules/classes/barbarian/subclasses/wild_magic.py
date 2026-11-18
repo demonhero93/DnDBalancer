@@ -67,6 +67,7 @@ from .....model.actions import ActionType, CombatAction
 from ....damage import inflict_damage
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
+from .._util import _de
 from ..features import BarbarianFeatures, _contexto
 
 #: Features de subclase por nivel (TCE 2020; nombres en inglés).
@@ -86,14 +87,6 @@ WILD_MAGIC_COVERAGE_PROBABILITY: float = 1.0
 _ESPIRITU = "Intangible Spirit"
 _INFUSION = "Magic Infusion"
 _RETRIBUCION = "Retribution"
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``actor`` que sea instancia de ``clase`` (o None)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
 
 
 def _cd(actor: Any) -> int:

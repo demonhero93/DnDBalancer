@@ -48,6 +48,7 @@ from .....core.spellcasting import SpellcastingDef
 from ....spells import aplicar_lanzamiento
 from ....spells.caster import PJSpellAction
 from ....traits.base import Trait
+from .._util import _de
 from ..features import FighterFeatures
 
 #: Definición de lanzamiento del Eldritch Knight (PHB 2024): tercio,
@@ -67,14 +68,6 @@ ELDRITCH_KNIGHT_SPELLS = SpellcastingDef(
     escuelas=None,
     min_level=3,
 )
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer trait de ``clase`` que lleve ``actor`` (o ``None``)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
 
 
 @dataclass

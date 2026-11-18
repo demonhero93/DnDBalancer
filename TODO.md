@@ -1,248 +1,8 @@
 # TODO — DnDBalancer / dnd_sim
 
-Revisar al principio de cada sesión. Última revisión: 2026-11-14.
+Revisar al principio de cada sesión. Última revisión: 2026-11-17.
 Solo tareas SIN implementar. Lo ya hecho: PASOS-ANTERIORES.txt
-(bloque 15 «Clase Fighter», bloque «CIERRE DE PENDIENTES DEL FIGHTER»)
-y ARCHITECTURE.md.
-
-## Samurai: plan de sesión
-
-Una casilla = un commit. Registro en `PASOS-ANTERIORES.txt` tras cada
-casilla. Enunciado completo en el mensaje de tarea de la sesión.
-
-- [x] A1 — Tablas en `core/classes.py`: `fighting_spirit_uses`,
-  `fighting_spirit_temp_hp`, `SAMURAI_BONUS_SKILLS` + tests por nivel.
-  **Hecho**: 3 tests, suite 1602 passed.
-- [x] A2 — Esqueleto `samurai.py` (`SamuraiFeatures` + `apply_samurai`),
-  registro `"samurai"` en `fighter/__init__.py` + reexports + fachada;
-  cambio explicado del test freeze de subclases de `test_fighter.py`.
-  **Hecho**: 11 tests; en realidad el registro lo congelan 3 tests
-  (`test_fighter`, `test_arcane_archer`, `test_battle_master`), los
-  tres tocados con el patrón «Cambio esperado». Suite: 1613 passed.
-- [ ] A3 — Fighting Spirit: activación previa en `on_turn_start`
-  (decisión con `pick`; el motor no tiene punto previo a la acción),
-  gasto de la acción adicional en `ctx.resources`, PV temporales sin
-  acumulación y ventaja en `modify_attack_modifiers` solo con arma.
-  **Hecho**: 10 tests, suite 1623 passed.
-- [ ] A4 — Rapid Strike: consulta duck-typing `renunciar_ventaja` en
-  `engine/combat/attack.py` tras el modo de ventaja y antes del d20;
-  ataque adicional al final de `attack_roll`.
-  **Hecho**: 6 tests, suite 1629 passed.
-- [x] A5 — Función de turno reutilizable en `encounter.py` (extraída
-  del bucle de rondas; cero cambio de RNG; suite idéntica).
-  **Hecho**: `_turno(actor) -> bool`; snapshot de equivalencia semilla
-  42 en `tests/test_samurai.py`. Suite: 1630 passed.
-- [x] A6 — Strength Before Death: campos `en_pie_pendiente` y cola de
-  turnos extra, predicado «en pie» (`alive`), dispara en `inflict_damage`
-  y cola procesada al final de cada turno con la función de A5.
-  **Hecho**: 6 tests; `_procesar_turnos_extra` al final de `_turno`
-  antes de guarida. Suite: 1636 passed.
-- [x] B — Decisiones: freeze de datos sin efecto (idioma, bonificador
-  social, Tireless Spirit, salvaciones de muerte), reinterpretación del
-  turno extra diferido en docstrings, lista de candidatas en TODO.
-  **Hecho**: 2 tests nuevos (idioma, salvaciones de muerte) + 2
-  existentes; docstring SBD diferido en A6; TODO 7/8 + bloque de
-  congelación. Suite: 1638 passed.
-- [x] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, función de turno,
-  estado en pie pendiente, recuentos), bloque SAMURAI en
-  `PASOS-ANTERIORES.txt`, receta y pendientes de `TODO.md`.
-  **Hecho**: sección Samurai (XGE) + recuentos 88/22924 y 1638 tests;
-  entradas (A1)-(B) y (Docs) en PASOS. Suite: 1638 passed.
-- [x] Verificación final — `pytest tests/test_arquitectura.py` +
-  `pytest` + `python tools/capas.py` + `graphify update .` + commit
-  con el grafo.
-  **Hecho**: 3 + 1638 passed; capas solo la excepción única; grafo
-  4639 nodos / 16949 aristas / 175 comunidades.
-
-## Hechizos de PJ: plan de sesión 1
-
-Una casilla = un commit. Registro en `PASOS-ANTERIORES.txt` tras cada
-casilla. Enunciado completo en el mensaje de tarea de la sesión. NO se
-añade ninguna clase lanzadora real (el Eldritch Knight va en la sesión
-siguiente); la clase de tests es falsa.
-
-- [x] A1 — Tablas de espacios (full/half/third 2024),
-  `spell_slots_for(progresion, nivel)` y `SpellcastingDef` en módulo
-  nuevo `core/spellcasting.py` + tests por nivel y límites.
-  **Hecho**: 7 tests, suite 1645 passed.
-- [x] A2 — `SpellSlots` (dataclass core: max/actuales, `can_cast`,
-  `niveles_disponibles`, `spend`, `reset`) + campo opcional en
-  `Combatant` (None por defecto) restaurado en `reset` + tests.
-  **Hecho**: 6 tests, suite 1651 passed.
-- [x] A3 — Cargador de listas de clase en `data/` (`/classes/<index>/spells`
-  con caché en disco y fixture JSON) devolviendo `ClassSpellList`
-  (tipo definido en `rules/spells`, recibido como argumento) + tests
-  sin red.
-  **Hecho**: 3 tests, suite 1654 passed.
-- [x] A4 — `rules/spells`: `hechizo_soportado`, `PCSpellcasting`
-  (CD/bonificador = PB + mod) y acción de hechizo de PJ con gasto de
-  espacio y `pick` de sobrecarga; suite completa idéntica antes de
-  seguir (monstruos intactos).
-  **Hecho**: `preparation.py` + `caster.py`, concentración completada
-  (no existía: salvación de CON al daño, Incapacitado, muerte), 12
-  tests, suite 1666 passed.
-- [x] A5 — `preparar_hechizos(...)` con `sample` uniforme del pool
-  soportado y legal, kwargs explícitos validados (`ValueError`), rng
-  semilla 0 por defecto + tests.
-  **Hecho**: 11 tests, suite 1677 passed.
-- [x] A6 — `ClassDef`/`SubclassDef` con `spellcasting: SpellcastingDef |
-  None`, helper `aplicar_lanzamiento`, clase falsa SOLO de test (no
-  registrada en producción) e integración en `run_combat`.
-  **Hecho**: 3 tests, suite 1680 passed.
-- [x] A7 — La acción extra de Oleada de Acción no puede lanzar hechizo
-  (marca `es_accion_magia`; mínima cambio en la tercera pasada) +
-  anular la nota «la acción Magia no existe».
-  **Hecho**: filtro `permitir_magia=False` en la pasada extra, nota
-  revocada, 2 tests, suite 1682 passed.
-- [x] A8 — Estadísticas: hechizos de PJ en `action_uses` sin cambiar
-  formato; «espacios gastados» si es barato, si no a pendientes.
-  **Hecho**: solo test para `action_uses` (ya funcionaba); campo
-  `spell_slots_spent` en `CombatResult`, suite 1683 passed.
-- [x] B — Límites del modelo documentados (rituales, utilidad, buffs,
-  reacciones de hechizo, Pact Magic, componentes, distancias...) en
-  `ARCHITECTURE.md` + «Hechizos de PJ: pendientes reales» y receta
-  «Cómo añadir una clase lanzadora» en `TODO.md`.
-  **Hecho**: sección «Hechizos de PJ (PHB 2024)» en ARCHITECTURE
-  (módulos, borde, límites) + los dos bloques en TODO.md.
-- [x] Docs — `ARCHITECTURE.md` (módulos nuevos, borde
-  `rules/classes → rules/spells`, recuentos), bloque
-  «HECHIZOS DE PJ (sesión 1)» en `PASOS-ANTERIORES.txt`.
-  **Hecho**: sección nueva + tabla de recuentos actualizada (92
-  módulos / 23683 líneas / 1683 tests); el bloque de PASOS se fue
-  escribiendo paso a paso (A1-A8) y ESTADO ACTUAL queda actualizado.
-- [x] Verificación final — `pytest tests/test_arquitectura.py` +
-  `pytest` + `python tools/capas.py` + `graphify update .` + commit
-  con el grafo.
-  **Hecho**: 3 + 1683 en verde, capas total 1 (solo la excepción
-  conocida), grafo regenerado (4782 nodos / 17478 aristas).
-
-## Eldritch Knight: plan de sesión
-
-Añadir SOLO la subclase Eldritch Knight (Caballero Sobrenatural, PHB
-2024) al Guerrero sobre la mecánica común de hechizos ya existente.
-Una casilla = un commit. Rasgos: 3 Spellcasting (INT, lista wizard,
-tercio) + War Bond (dato sin efecto); 7 War Magic (sustituir UN ataque
-de la acción Atacar por un truco); 10 Eldritch Strike (+1 truco,
-marca de desventaja en salvación del siguiente hechizo); 15 Arcane
-Charge (dato sin efecto); 18 Improved War Magic (sustituir DOS
-ataques por un hechizo nivel 1-2).
-
-- [x] A1 — Tablas en `core/classes.py`: `eldritch_knight_prepared(level)`
-  (0 en <3; 3:3 4:4 5:4 6:4 7:5 8:6 9:6 10:7 11:8 12:8 13:9 14:10
-  15:10 16:11 17:11 18:11 19:12 20:13) y `eldritch_knight_cantrips(level)`
-  (0 / 2 / 3 en <3 / 3-9 / 10+) + tests por nivel y límites.
-  **Hecho**: 3 tests, suite 1686 passed.
-- [x] A2 — Esqueleto y registro: `fighter/subclasses/eldritch_knight.py`
-  (`EldritchKnightFeatures`, `apply_eldritch_knight` valida fighter y
-  nivel >= 3, kwargs `cantrips`/`spells` validados, rng semilla 0,
-  recibe `ClassSpellList` y llama `aplicar_lanzamiento`), `SpellcastingDef`
-  (tercio, INT, wizard, tablas A1, escuelas None, min 3), clave
-  `"eldritch_knight"` en `fighter/__init__.py` + reexports (subclasses,
-  rules/classes, fachada) + `test_arquitectura` si congela. Registro,
-  equivalencia `apply_class`, errores (clase distinta, nivel <3),
-  espacios/conteos (3: 2 espacios/3 preparados; 7: 4+2; 19: 4/3/3/1),
-  kwargs inválidos → ValueError, War Bond y Arcane Charge congelados
-  como dato sin efecto, cero RNG sin la subclase.
-  **Hecho**: `apply_class` gana reenvío perezoso de kwargs de subclase
-  en `base.py` (solo-subclase: `lista`/`cantrips`/`spells`; compartidos
-  como `rng` a ambos; llamada idéntica para subs existentes). Tests
-  congelados de registro con «Cambio esperado» explicado antes. 7 tests
-  nuevos, suite 1693 passed.
-- [x] A3 — Lanzamiento extremo a extremo: EK nivel 3 y 10 con
-  `run_combat` + fixtures (truco de ataque, truco de salvación, hechizo
-  nivel 1 con `damage_at_slot_level`, hechizo de concentración);
-  sobrecarga, concentración, CD/ataque INT; Oleada NO lanza hechizos
-  con un EK real.
-  **Hecho**: 6 tests de integración (solo tests, cero cambio de
-  producción), suite 1699 passed. Descubrimientos: `spell_slots_spent`
-  se clava por nombre de combatante; la tabla tercio da (4,3) en nivel
-  10 (sobrecarga entre niveles 1-2); la concentración caduca a las 10
-  rondas.
-- [x] A4 — War Magic (PASO DELICADO): inspeccionar cadena de ataques
-  (extra_attacks/MultiattackAction), punto de consulta perezoso
-  duck-typing p. ej. `sustituir_ataque_por_hechizo(restantes, ctx)`
-  antes de cada ataque de la acción Atacar (sin entrada en HOOK_NAMES),
-  distinguido de reacciones/adicionales con `ctx.in_attack_action` /
-  `ctx.is_reaction` (patrón Rapid Strike); `pick` no/sí solo si
-  elegible (nivel >=7, trucos soportados, en acción Atacar); si sí,
-  `pick` uniforme entre trucos y lanza en vez de ese ataque (consume
-  ese ataque, sin RNG con una sola opción). Suite completa idéntica
-  ANTES de seguir. Tests: sustituye y no hace el ataque con arma, sin
-  trucos → sin RNG (rng que revienta), nivel 6 no actúa, no en
-  reacciones ni adicionales, consume un solo ataque, truco usa CD y
-  escalado del PJ, sin subclase cero RNG.
-  **Hecho**: helper `_sustituir_ataque_por_hechizo` en
-  `model/actions.py` (envuelto en `_en_accion_de_ataque`) en los dos
-  bucles de ataque; método con gates en `EldritchKnightFeatures`; 6
-  tests, suite 1705 passed (1699 base intacta).
-- [x] A5 — Improved War Magic: opción «hechizo nivel 1-2 por DOS
-  ataques» en el mismo punto de consulta; decisión conjunta con War
-  Magic en un solo `pick` sobre las opciones elegibles (no / truco por
-  un ataque / hechizo por dos) para equiprobabilidad; espacio con
-  sobrecarga común. Tests: elegible con >=2 ataques restantes, consume
-  dos, nivel 3+ no se ofrece, pick único espía cuando coexisten, sin
-  espacios no elegible, nivel 17 no actúa.
-  **Hecho**: `grupos` en el método + recuento global `restantes` en
-  ambos bucles (la multi del fighter tiene entradas count=1 → antes
-  restantes era siempre 1); 6 tests, suite 1711 passed.
-- [x] A6 — Eldritch Strike: marca por objetivo con caducidad (patrón
-  Vex, `after_attack_roll`) solo con ataque con arma (no fallo, no
-  ataque de hechizo), desventaja en la siguiente salvación del marcado
-  contra hechizo del dueño vía `modificar_salvacion` (Rune Knight,
-  sin duplicar mecanismo), se consume al concederla, caduca al final
-  del siguiente turno del dueño, por objetivo, nivel 9 no actúa, truco
-  de ataque de hechizo no la consume, sin subclase cero RNG.
-  **Hecho**: `strike_marks[nombre] = ronda + 2`; gate `ctx.actor is
-  owner` antes del lookup (otro lanzador no consume); caducada se
-  borra sin desventaja; `reset()` limpia; 12 tests, suite 1723.
-- [x] A7 — Plantilla/CLI «Caballero Sobrenatural» en `main.py` si es
-  barato (class_name="fighter", subclass="eldritch_knight", cargador
-  con caché); si exige red → TODO.
-  **Hecho**: 6ª plantilla «Caballero» (nivel 5, `spell_list="wizard"`)
-  al final de `PARTY_TEMPLATES`; `_build_party` llama
-  `load_class_spell_list` de forma perezosa solo con `spell_list`
-  (caché disco primero; import dentro de la rama). Tests monkeypatchan
-  el cargador → sin red. 3 tests, suite 1726.
-- Pendientes reales EK (reabrir SOLO con regla nueva del sim):
-  distancia/movimiento (War Magic y hechizos sin alcance modelado),
-  reacciones de hechizo, rituales/utilidad del pool, War Bond y
-  Arcane Charge (datos sin efecto), restricción PHB de escuelas
-  (evocación/abjuración) si el maintainer la confirma, y «contra
-  hechizo del dueño» exacto (marker en `PJSpellAction.execute` en
-  vez del shortcut `ctx.actor is owner`).
-- [x] B — Tests de registro congelado (`test_fighter.py`,
-  `test_arcane_archer.py`, `test_battle_master.py`, patrón «Cambio
-  esperado»): añadir `"eldritch_knight"` — EXPLICAR ANTES de tocar.
-  Ningún otro test existente cambia. Límites: War Bond, Arcane Charge,
-  distancias, reacciones de hechizo, rituales/utilidad. Decisiones del
-  maintainer a anotar: tabla de preparados, ausencia de restricción de
-  escuelas (dónde reactivar evocación/abjuración), versión 2024 de
-  War Magic. TODO.md: marcar EK como hecha en la lista de candidatas.
-  **Hecho**: los 3 tests ganaron `"eldritch_knight"` en A2 con nota
-  «Cambio esperado (2026-11-17)»; ningún otro test existente cambió
-  (suite 1686 → 1726 solo por tests nuevos EK). Decisiones
-  implementadas (reabrir SOLO si el maintainer las contradice):
-  1) tabla de preparados PHB nivel 3-20 en `core/classes.py`
-  (`eldritch_knight_prepared`); 2) SIN restricción de escuelas
-  (`ELDRITCH_KNIGHT_SPELLS.escuelas is None`; para reactivar la
-  restricción PHB de evocación/abjuración basta pasar `escuelas=...`
-  en ese dataclass y re-ordenar el test de registro); 3) War Magic en
-  su versión PHB 2024 (reemplaza UN ataque por un truco, antes de
-  utilitaria, no restringe la Oleada); 4) Improved War Magic usa UN
-  pick equiprobable sobre `["no", *etiquetas]` (decisión de este
-  proyecto, no del PHB); 5) caducidad de Eldritch Strike `ronda + 2`
-  (shortcut documentado, patrón Vex).
-- [x] Docs — `ARCHITECTURE.md` (fila `rules/classes/`, punto de
-  consulta de sustitución, recuentos), bloque «ELDRITCH KNIGHT» en
-  `PASOS-ANTERIORES.txt`, receta y pendientes en `TODO.md`.
-  **Hecho**: fila `rules/classes/` con `eldritch_knight` + 8/8
-  subclases, recuentos 93/24079 y 1726 tests, sección «Eldritch Knight
-  (PHB 2024)» con punto de consulta `_sustituir_ataque_por_hechizo`,
-  bloque ELDRITCH KNIGHT en PASOS con entradas (A1)-(B) y recuentos en
-  ESTADO ACTUAL; pendientes EK abajo del plan.
-- [ ] Verificación final — `pytest tests/test_arquitectura.py` +
-  `pytest` + `python tools/capas.py` (solo excepción conocida) +
-  `graphify update .` + commit final con el grafo.
+(bloques de cada sesión) y ARCHITECTURE.md.
 
 ## Pendientes generales
 
@@ -272,13 +32,20 @@ ataques por un hechizo nivel 1-2).
 
 ## Fighter: pendientes reales
 
-- **Subclase pendiente**: Ninguna — Eldritch Knight añadida 2026-11-16
-  (sesión completa, commits A1-A7). Las otras 7 YA estaban: Arcane
-  Archer, Battle Master, Cavalier, Champion, Psi Warrior, Rune Knight
-  y Samurai (`CLASSES["fighter"].subclasses` tiene sus 8 claves).
-  Límites EK aceptados: War Bond y Arcane Charge son datos sin
-  efecto, sin distancia/movimiento, sin reacciones de hechizo, sin
-  rituales/utilidad (ver receta «Eldritch Knight: plan de sesión»).
+- **Subclase pendiente**: Ninguna — las 8/8 registradas en
+  `CLASSES["fighter"].subclasses`: Arcane Archer, Battle Master,
+  Cavalier, Champion, Eldritch Knight (añadida 2026-11-16, commits
+  A1-A7), Psi Warrior, Rune Knight y Samurai.
+- **EK — verificación final sin marcar**: la casilla del plan quedó
+  abierta (el grafo sí se regeneró, commit 1102662); falta constancia
+  de pytest + capas en PASOS. Marcarla o anotar el motivo.
+- **EK — pendientes reales** (reabrir SOLO con regla nueva del sim):
+  distancia/movimiento (War Magic y hechizos sin alcance modelado),
+  reacciones de hechizo, rituales/utilidad del pool, restricción PHB
+  de escuelas (evocación/abjuración) si la confirma el maintainer,
+  «contra hechizo del dueño» exacto (marker en
+  `PJSpellAction.execute` en vez del shortcut `ctx.actor is owner`);
+  War Bond y Arcane Charge = datos sin efecto.
 - **Samurai — datos sin efecto congelados** (reabrir SOLO si el sim
   modela la mecánica; tests en `tests/test_samurai.py`):
   - Bonus Proficiency: el idioma alternativo (sin modelo de idiomas).
@@ -289,9 +56,6 @@ ataques por un hechizo nivel 1-2).
     Ever-Ready Shot).
   - Strength Before Death: salvaciones de muerte (SBD difiere el
     turno extra; reabrir SOLO si existan salvaciones de muerte).
-- **Paquete `battle_master/`**: `battle_master.py` tiene 845 líneas
-  (la receta pide paquete por encima de ~700); pospuesto porque 17
-  tests parchean `bm_mod.pick`/`roll_dice` apuntando al módulo único.
 - **Maestrías sin efecto** (`rules/mastery.py`): Cleave (segundo
   objetivo adyacente) y Nick (ataque ligero extra) pendientes; Push y
   Slow son `EFECTOS_SIN_EFECTO` con `# TODO` (sin sistema de
@@ -333,14 +97,18 @@ ataques por un hechizo nivel 1-2).
 ## Fighter: cómo añadir una subclase
 
 Receta (patrón bárbaro, ver `barbarian/subclasses/`; ejemplos de
-fighter: `arcane_archer.py`, `battle_master.py`, `cavalier.py`,
-`champion.py`, `psi_warrior.py`, `rune_knight.py` y `samurai.py`):
+fighter: `arcane_archer.py`, `cavalier.py`, `champion.py`,
+`psi_warrior.py`, `samurai.py` y `eldritch_knight.py`; en paquete
+`battle_master/` y `rune_knight/`):
 
 1. Crear `rules/classes/fighter/subclasses/<clave>.py` con un
    `SubclassDef(name="<nombre visible>", class_name="fighter",
    min_level=3, apply=...)` y su rasgo (`Trait`) con los hooks
-   necesarios. Si supera ~700 líneas, paquete `battle_master/` con
-   reexport y ajustar `tests/test_arquitectura.py`.
+   necesarios. Si supera ~700 líneas, paquete con `__init__.py`
+   (docstring de decisiones + `apply_*` + `_RNG_CREACION` + reexport),
+   `features.py` (rasgo) y `actions.py` (acciones bonus); reapuntar los
+   `monkeypatch` de `bm_mod`/`rk_mod` al submódulo donde vive el nombre
+   parcheado (ver `battle_master/`, `rune_knight/`).
 2. Registrar en `rules/classes/fighter/__init__.py`: importar la
    `SubclassDef` y añadirla al dict `subclasses` del `FIGHTER_CLASS`.
 3. Reexportar la API en `rules/classes/__init__.py` y en la fachada

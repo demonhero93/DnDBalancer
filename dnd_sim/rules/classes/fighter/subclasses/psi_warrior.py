@@ -64,15 +64,8 @@ from ....conditions import (Condition, EscapeCheck, apply_condition,
 from ....damage import apply_damage_modifiers, inflict_damage
 from ....saves import registrar_resistencia, saving_throw
 from ....traits.base import Trait
+from .._util import _de
 from ..features import FighterFeatures, _contexto, _es_aliado
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer trait de ``clase`` que lleve ``actor`` (o ``None``)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
 
 
 @dataclass

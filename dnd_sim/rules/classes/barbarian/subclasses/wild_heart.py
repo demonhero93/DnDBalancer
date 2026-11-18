@@ -58,7 +58,7 @@ from .....core.log import log_line as _log_line
 from .....core.randomness import pick
 from ....conditions import Condition, EscapeCheck, apply_condition
 from ....traits.base import Trait
-from ....utility import _TAMANOS
+from .._util import _de, _orden_de
 from ..features import BarbarianFeatures
 
 #: Features de subclase por nivel (PHB 2024; nombres en inglés).
@@ -99,22 +99,6 @@ _BEAR_RESISTENCIAS: frozenset[DamageType] = (
 #: Fuentes de ventaja/desventaja en el log.
 _FUENTE_LOBO = "Lobo (Corazón Salvaje)"
 _FUENTE_LEON = "León (Corazón Salvaje)"
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``actor`` que sea instancia de ``clase`` (o None)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
-
-
-def _orden_de(valor: Any) -> int:
-    """Orden PHB de un tamaño (acepta combatiente o cadena de tamaño)."""
-    tamaño = str(getattr(valor, "size", valor) or "medium").strip().lower()
-    if tamaño not in _TAMANOS:
-        return _TAMANOS.index("medium")
-    return _TAMANOS.index(tamaño)
 
 
 def _hostil(de: Any, contra: Any) -> bool:

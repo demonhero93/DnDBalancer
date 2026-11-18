@@ -72,6 +72,7 @@ from ....damage import inflict_damage
 from ....saves import (SaveDamage, apply_save_damage, registrar_resistencia,
                        saving_throw)
 from ....traits.base import Trait
+from .._util import _de
 from ..features import BarbarianFeatures, _contexto
 
 #: Features de subclase por nivel (XGE 2014; nombres en inglés).
@@ -103,14 +104,6 @@ _DADOS_MAR: tuple[tuple[int, str], ...] = (
 #: Probabilidad por criatura de estar dentro del aura (sin posiciones).
 #: 1.0/0.0 no consumen RNG; en medio, UNA tirada por criatura.
 STORM_AURA_COVERAGE_PROBABILITY: float = 1.0
-
-
-def _de(actor: Any, clase: type) -> Any:
-    """Primer rasgo de ``actor`` que sea instancia de ``clase`` (o None)."""
-    for trait in getattr(actor, "traits", None) or []:
-        if isinstance(trait, clase):
-            return trait
-    return None
 
 
 def _escalado(level: int) -> int:

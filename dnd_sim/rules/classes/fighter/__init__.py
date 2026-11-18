@@ -11,7 +11,8 @@ Champion, Eldritch Knight, Psi Warrior, Rune Knight y Samurai; ver
 from __future__ import annotations
 
 from ..base import ClassDef, SubclassDef, register_class
-from .features import ActionSurgeAction, FighterFeatures, SecondWindAction, apply_fighter
+from .actions import ActionSurgeAction, SecondWindAction
+from .features import FighterFeatures, apply_fighter
 from .subclasses import (
     ARCANE_SHOTS,
     ArcaneArcherFeatures,
