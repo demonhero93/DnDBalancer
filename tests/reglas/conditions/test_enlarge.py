@@ -30,7 +30,7 @@ from dnd_sim.rules.spells import (
 )
 from dnd_sim.rules.usage import UsageKind
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 SPELLS = FIXTURES / "spells"
 
 

@@ -23,7 +23,7 @@ from dnd_sim.rules.roll_modifiers import AttackRange, attack_modifiers
 from dnd_sim.core.targeting import valid_targets
 from dnd_sim.rules.traits import DamageTransfer
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

@@ -10,7 +10,7 @@ from dnd_sim import Monster, PlayerCharacter
 from dnd_sim.engine.combat import run_combat
 from dnd_sim.data.loader import load_monster
 
-FIXTURE = Path(__file__).parent / "fixtures" / "ogre.json"
+FIXTURE = Path(__file__).parents[2] / "fixtures" / "ogre.json"
 
 
 def _target(resistances=(), vulnerabilities=(), immunities=()) -> Combatant:
@@ -117,7 +117,7 @@ def test_regression_guerrero_vs_owlbear(monkeypatch):
     Sin utilitarias (p=0): la regresión fija el stream de RNG original.
     """
     monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
-    data = json.loads((Path(__file__).parent / "fixtures" / "owlbear.json")
+    data = json.loads((Path(__file__).parents[2] / "fixtures" / "owlbear.json")
                       .read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
 

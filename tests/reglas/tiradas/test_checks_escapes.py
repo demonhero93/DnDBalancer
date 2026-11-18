@@ -20,7 +20,7 @@ from dnd_sim.rules.roll_modifiers import AttackRange, check_modifiers
 from dnd_sim.engine.stats import simulate
 from dnd_sim.rules.usage import begin_turn
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

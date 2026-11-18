@@ -15,7 +15,7 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 
-RAIZ = pathlib.Path(__file__).resolve().parent.parent
+RAIZ = pathlib.Path(__file__).resolve().parents[2]
 PAQUETE = RAIZ / "dnd_sim"
 
 # capa -> nivel (mayor = más arriba). engine y data son paralelos.

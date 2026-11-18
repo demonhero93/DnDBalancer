@@ -47,18 +47,6 @@
     "ast_hash": "6df711b24009a399e5e9b8c580f54b0a",
     "semantic_hash": "6df711b24009a399e5e9b8c580f54b0a"
   },
-  "tests/test_damage.py": {
-    "mtime": 1793615352.2076454,
-    "seen": 1793616391.7797568,
-    "ast_hash": "4c6ead3f6c27f7cdee29b0a7360b290b",
-    "semantic_hash": ""
-  },
-  "tests/test_loader.py": {
-    "mtime": 1793617510.123352,
-    "seen": 1793617578.9684412,
-    "ast_hash": "74a3b1afc48fd2ab3ce90166eae7b11c",
-    "semantic_hash": ""
-  },
   "tests/fixtures/owlbear.json": {
     "mtime": 1792093784.3715944,
     "seen": 1792511486.7111242,
@@ -101,30 +89,6 @@
     "ast_hash": "e8f4b53516edc0469c700af9cf21397c",
     "semantic_hash": ""
   },
-  "tests/test_area.py": {
-    "mtime": 1793814299.6329403,
-    "seen": 1793898088.354384,
-    "ast_hash": "6fc88e2034ccfe3efb6297794a53b0c4",
-    "semantic_hash": ""
-  },
-  "tests/test_loader_actions.py": {
-    "mtime": 1792931941.4323506,
-    "seen": 1792934713.4382465,
-    "ast_hash": "0e9c85595fd902b4eadeb22a56fe3efc",
-    "semantic_hash": ""
-  },
-  "tests/test_usage.py": {
-    "mtime": 1792933736.3548965,
-    "seen": 1792934713.4382465,
-    "ast_hash": "49969cec24e7661084a8f4c9de9be723",
-    "semantic_hash": ""
-  },
-  "tests/test_multiattack.py": {
-    "mtime": 1793615371.6762407,
-    "seen": 1793616391.7797568,
-    "ast_hash": "9c4980ba0e0cb4922815f57780c727e7",
-    "semantic_hash": ""
-  },
   "dnd_sim/data/multiattack_parser.py": {
     "mtime": 1792931940.6412134,
     "seen": 1792934713.4382465,
@@ -149,12 +113,6 @@
     "ast_hash": "75ee4454ca0f6467af4a264d4a652837",
     "semantic_hash": ""
   },
-  "tests/test_conditions.py": {
-    "mtime": 1793615172.2860155,
-    "seen": 1793616391.7797568,
-    "ast_hash": "f5c6562a60fb11e16f7b55fea5685b0d",
-    "semantic_hash": ""
-  },
   "dnd_sim/data/escape_parser.py": {
     "mtime": 1793251676.1378665,
     "seen": 1793356220.5299785,
@@ -173,12 +131,6 @@
     "ast_hash": "ba1614303162fce4c2036f8fb4e7031d",
     "semantic_hash": ""
   },
-  "tests/test_checks_escapes.py": {
-    "mtime": 1793976369.1126454,
-    "seen": 1793978374.5338938,
-    "ast_hash": "1c330fbc8a865ca29efd6e26d589040b",
-    "semantic_hash": ""
-  },
   "dnd_sim/data/legendary_parser.py": {
     "mtime": 1793518668.5868192,
     "seen": 1793607711.0790167,
@@ -189,12 +141,6 @@
     "mtime": 1792599602.0044613,
     "seen": 1792601049.131594,
     "ast_hash": "d9d3e8f199e063b195d6af5c2b877e39",
-    "semantic_hash": ""
-  },
-  "tests/test_legendary.py": {
-    "mtime": 1793475691.4794488,
-    "seen": 1793607711.0790167,
-    "ast_hash": "4a872cfc89d28ba39bba10007e51c032",
     "semantic_hash": ""
   },
   "dnd_sim/data/spell_parser.py": {
@@ -279,12 +225,6 @@
     "mtime": 1793135063.5476704,
     "seen": 1793136931.214764,
     "ast_hash": "5546f40143bfac1d49d401be2fd43a9b",
-    "semantic_hash": ""
-  },
-  "tests/test_spells.py": {
-    "mtime": 1793136468.184666,
-    "seen": 1793136931.214764,
-    "ast_hash": "8835b1ac9325aee21efda07068e3e97b",
     "semantic_hash": ""
   },
   "tests/fixtures/spells/animal-friendship.json": {
@@ -497,12 +437,6 @@
     "ast_hash": "14a578b2fdbf313d1d8102d56b1d1a52",
     "semantic_hash": ""
   },
-  "tests/test_traits.py": {
-    "mtime": 1794552554.0911384,
-    "seen": 1794640100.9884644,
-    "ast_hash": "d1615fc06f96af3d7b05b37690cad76c",
-    "semantic_hash": ""
-  },
   "dnd_sim/data/attach_parser.py": {
     "mtime": 1792931940.5472953,
     "seen": 1792934713.4382465,
@@ -513,12 +447,6 @@
     "mtime": 1792599702.011853,
     "seen": 1792782727.3844132,
     "ast_hash": "bd277aaf0dfc098c8afe63daae430ebb",
-    "semantic_hash": ""
-  },
-  "tests/test_attach.py": {
-    "mtime": 1792931941.1410885,
-    "seen": 1792934713.4382465,
-    "ast_hash": "6e9b736a7b6e7e6c95d1296dfd58e32b",
     "semantic_hash": ""
   },
   "tests/fixtures/duergar.json": {
@@ -533,34 +461,10 @@
     "ast_hash": "f7e35f52c53c49b2f02612c4244ffb27",
     "semantic_hash": ""
   },
-  "tests/test_enlarge.py": {
-    "mtime": 1793615352.188671,
-    "seen": 1793616391.7797568,
-    "ast_hash": "08b3229ffd36c298a800ffe28f54a1b4",
-    "semantic_hash": ""
-  },
-  "tests/test_invisibility.py": {
-    "mtime": 1792933736.35236,
-    "seen": 1792934713.4382465,
-    "ast_hash": "494c4cb57238abc292e536f0958a71a0",
-    "semantic_hash": ""
-  },
   "tests/fixtures/azer.json": {
     "mtime": 1792599700.7038212,
     "seen": 1792788138.7485933,
     "ast_hash": "c692fc8249b2d50a0eb6a9dd84f50645",
-    "semantic_hash": ""
-  },
-  "tests/test_azer.py": {
-    "mtime": 1792932608.1453903,
-    "seen": 1792934713.4382465,
-    "ast_hash": "9f074475cb428d4a30ba82149d255d91",
-    "semantic_hash": ""
-  },
-  "tests/test_extra_damage.py": {
-    "mtime": 1792933736.3801138,
-    "seen": 1792934713.4382465,
-    "ast_hash": "39cec3e50a06357e66d22026d5f08064",
     "semantic_hash": ""
   },
   "tests/fixtures/hobgoblin.json": {
@@ -573,30 +477,6 @@
     "mtime": 1792599710.49353,
     "seen": 1792923014.0140774,
     "ast_hash": "9b52f9ce22ac3b0a3461d9093471eb4f",
-    "semantic_hash": ""
-  },
-  "tests/test_martial_advantage.py": {
-    "mtime": 1792932608.1453903,
-    "seen": 1792934713.4382465,
-    "ast_hash": "41ae9218421eaf13132f90b0a03acfa9",
-    "semantic_hash": ""
-  },
-  "tests/test_pack_tactics.py": {
-    "mtime": 1792931941.5074444,
-    "seen": 1792934713.4382465,
-    "ast_hash": "b450c9486bb52adfc16972bb99f49318",
-    "semantic_hash": ""
-  },
-  "tests/test_regeneration.py": {
-    "mtime": 1793122477.3450317,
-    "seen": 1793122591.03923,
-    "ast_hash": "5d394fd46aaae70c1fb6f9979b77227f",
-    "semantic_hash": ""
-  },
-  "tests/test_turn_resistance.py": {
-    "mtime": 1792931941.6928139,
-    "seen": 1792934713.4382465,
-    "ast_hash": "9fa4b105c3811744a8a5818c2e286a0d",
     "semantic_hash": ""
   },
   "tests/fixtures/boar.json": {
@@ -615,30 +495,6 @@
     "mtime": 1792599712.172593,
     "seen": 1792928088.2250972,
     "ast_hash": "2ef62be52f90061d7d15a6a8d4be6722",
-    "semantic_hash": ""
-  },
-  "tests/test_parry.py": {
-    "mtime": 1792933736.3533924,
-    "seen": 1792934713.4382465,
-    "ast_hash": "175972a943b80f372e4b1c96a005a743",
-    "semantic_hash": ""
-  },
-  "tests/test_relentless.py": {
-    "mtime": 1793121174.2996788,
-    "seen": 1793121607.2043293,
-    "ast_hash": "e86ac70c05f0bca95c611a87eda5b6c0",
-    "semantic_hash": ""
-  },
-  "tests/test_superior_invisibility.py": {
-    "mtime": 1792933736.354393,
-    "seen": 1792934713.4382465,
-    "ast_hash": "34050c03139171a85ac0d75504225c83",
-    "semantic_hash": ""
-  },
-  "tests/test_undead_fortitude.py": {
-    "mtime": 1793121106.88293,
-    "seen": 1793121607.2043293,
-    "ast_hash": "c99483403f2f57dbc88594c49f01ceb1",
     "semantic_hash": ""
   },
   "dnd_sim/core/__init__.py": {
@@ -875,28 +731,16 @@
     "ast_hash": "b02a1ab97b8aa407ad18794b071fcd42",
     "semantic_hash": ""
   },
-  "tests/test_arquitectura.py": {
-    "mtime": 1794212146.2806087,
-    "seen": 1794214925.9688823,
-    "ast_hash": "d0890336b070465a625625f834060fbb",
-    "semantic_hash": ""
-  },
   "tools/capas.py": {
-    "mtime": 1792934545.0023365,
-    "seen": 1792934713.4382465,
-    "ast_hash": "d64de533bdd5c351cd29e67fe1d2b27a",
+    "mtime": 1795026928.9644783,
+    "seen": 1795027762.0686917,
+    "ast_hash": "45b781dabde3e48eedb6cf3d556ce58d",
     "semantic_hash": ""
   },
   "ARCHITECTURE.md": {
-    "mtime": 1794942595.494571,
-    "seen": 1794942886.7660484,
-    "ast_hash": "09d02e5ad02a6d0845522c4b32d709db",
-    "semantic_hash": ""
-  },
-  "tests/test_death.py": {
-    "mtime": 1793121928.0337036,
-    "seen": 1793122013.422521,
-    "ast_hash": "5b7be099f728b3cd73215c7331d97f0d",
+    "mtime": 1795026973.273468,
+    "seen": 1795027762.0686917,
+    "ast_hash": "4ade7e0605c31bf69cf3efa1f250e4af",
     "semantic_hash": ""
   },
   "tests/fixtures/lich-2024.json": {
@@ -1031,58 +875,16 @@
     "ast_hash": "56f35b5c7f786f64d8a6e3315bde1329",
     "semantic_hash": ""
   },
-  "tests/test_ancestral_guardian.py": {
-    "mtime": 1793359011.8185086,
-    "seen": 1793365841.2489736,
-    "ast_hash": "3d9f224733e5da7a14b4ff6340deb9a1",
-    "semantic_hash": ""
-  },
-  "tests/test_backgrounds.py": {
-    "mtime": 1793252557.368314,
-    "seen": 1793356220.5303018,
-    "ast_hash": "ca7c81471d840739f38f58f1033c11cc",
-    "semantic_hash": ""
-  },
-  "tests/test_barbarian.py": {
-    "mtime": 1793979912.1474097,
-    "seen": 1793980087.817879,
-    "ast_hash": "f260e25a80c99190f50b3060a03994e4",
-    "semantic_hash": ""
-  },
-  "tests/test_battlerager.py": {
-    "mtime": 1793359011.8175075,
-    "seen": 1793365841.2489736,
-    "ast_hash": "85a00df21cca67616dece01c317ed9bc",
-    "semantic_hash": ""
-  },
-  "tests/test_proficiency.py": {
-    "mtime": 1793250649.445738,
-    "seen": 1793356220.5303018,
-    "ast_hash": "dbe650e96d2acd661db0d75f7ba28b37",
-    "semantic_hash": ""
-  },
-  "tests/test_races.py": {
-    "mtime": 1793253856.3128102,
-    "seen": 1793356220.5303018,
-    "ast_hash": "96a207047931ad4b7a562b45b789dddb",
-    "semantic_hash": ""
-  },
-  "tests/test_skills.py": {
-    "mtime": 1793251902.1346283,
-    "seen": 1793356220.5303018,
-    "ast_hash": "450c04ec724f73a83e54df54d3294bd9",
-    "semantic_hash": ""
-  },
   "PASOS-ANTERIORES.txt": {
-    "mtime": 1794942714.34807,
-    "seen": 1794942886.7660484,
-    "ast_hash": "ce254f8b1f0f76411b79a4ad3edd584b",
+    "mtime": 1794944051.594118,
+    "seen": 1795027762.0686917,
+    "ast_hash": "0f6cdd7e20fd9f43a8f2effde0f925c9",
     "semantic_hash": ""
   },
   "REGLAS-DEL-PROYECTO.txt": {
-    "mtime": 1793356198.223138,
-    "seen": 1793356220.5303018,
-    "ast_hash": "aa3948b1751309e0b8c033a040535c8d",
+    "mtime": 1795026964.2096314,
+    "seen": 1795027762.0686917,
+    "ast_hash": "c4171120d6aff80cc415693bdfc3b259",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/__init__.py": {
@@ -1110,9 +912,9 @@
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/battlerager.py": {
-    "mtime": 1793358946.5914326,
-    "seen": 1793365841.2489736,
-    "ast_hash": "d7cbbb61038ca3eb8100ffacaee06772",
+    "mtime": 1795023897.037053,
+    "seen": 1795027762.0686917,
+    "ast_hash": "ac4bbbcc7ea19dcbe96d3100d415069e",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/beast.py": {
@@ -1127,18 +929,6 @@
     "ast_hash": "859ce5f8f019f31d8944aa5cb78e0392",
     "semantic_hash": ""
   },
-  "tests/test_beast.py": {
-    "mtime": 1793612995.5482593,
-    "seen": 1793613182.1138816,
-    "ast_hash": "c9d92dc69eeb58dd7174ed5fd25c0d32",
-    "semantic_hash": ""
-  },
-  "tests/test_clases.py": {
-    "mtime": 1793359229.8492143,
-    "seen": 1793365841.2489736,
-    "ast_hash": "37ceed13c99737f0e023cbb811e87f1f",
-    "semantic_hash": ""
-  },
   "dnd_sim/data/lair_loader.py": {
     "mtime": 1793469634.2720523,
     "seen": 1793470404.6308365,
@@ -1151,52 +941,16 @@
     "ast_hash": "cee800ccdb6e2ed572336e01c3a14384",
     "semantic_hash": ""
   },
-  "tests/test_lair.py": {
-    "mtime": 1793814328.423123,
-    "seen": 1793898088.354384,
-    "ast_hash": "a8eee0235356d38754d6ee6429bdd366",
-    "semantic_hash": ""
-  },
-  "tests/test_magic_resistance.py": {
-    "mtime": 1793814299.6329403,
-    "seen": 1793898088.354384,
-    "ast_hash": "4afd7f9ab333db46ebf4c34352676ecf",
-    "semantic_hash": ""
-  },
-  "tests/test_magical.py": {
-    "mtime": 1793465751.2124853,
-    "seen": 1793470404.6308365,
-    "ast_hash": "2a3c48e8e81482d1dd859e15b26db2dc",
-    "semantic_hash": ""
-  },
   "TODO.md": {
-    "mtime": 1794942703.8305123,
-    "seen": 1794942886.7660484,
-    "ast_hash": "99d78f97b635e539305c97bbbe8576e6",
+    "mtime": 1795027401.572033,
+    "seen": 1795027762.0686917,
+    "ast_hash": "43c2fa3ca7ccd912d43b5bcb05613db6",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/berserker.py": {
-    "mtime": 1793613464.0978806,
-    "seen": 1793613802.7831883,
-    "ast_hash": "9815ad850b3f210be7996a2261d161a7",
-    "semantic_hash": ""
-  },
-  "tests/test_berserker.py": {
-    "mtime": 1793613734.0056393,
-    "seen": 1793613802.7831883,
-    "ast_hash": "bd8272f014d58f5837dfee7805f1fb9a",
-    "semantic_hash": ""
-  },
-  "tests/test_condition_immunities.py": {
-    "mtime": 1793520303.5198815,
-    "seen": 1793607711.0790167,
-    "ast_hash": "fa681baea40e5265377eb32812de111d",
-    "semantic_hash": ""
-  },
-  "tests/test_reckless.py": {
-    "mtime": 1793613082.65963,
-    "seen": 1793613182.1138816,
-    "ast_hash": "b8b7e3412b80588c907a138d552bf9cd",
+    "mtime": 1795023941.9323015,
+    "seen": 1795027762.0686917,
+    "ast_hash": "c0e8b02f1d0b5f7358d2af861a2267da",
     "semantic_hash": ""
   },
   "dnd_sim/rules/utility.py": {
@@ -1205,88 +959,52 @@
     "ast_hash": "7f90f8800dba4cee56c3cb9dd98e1e44",
     "semantic_hash": ""
   },
-  "tests/test_utility.py": {
-    "mtime": 1793814299.6329403,
-    "seen": 1793898088.354384,
-    "ast_hash": "b58cb03192f52773464f4d06811c6457",
-    "semantic_hash": ""
-  },
   "dnd_sim/rules/classes/barbarian/subclasses/giant.py": {
-    "mtime": 1793621475.0345762,
-    "seen": 1793722788.130962,
-    "ast_hash": "acfc99bae0518414c7b89d3dd31e1cfe",
-    "semantic_hash": ""
-  },
-  "tests/test_giant.py": {
-    "mtime": 1793814299.6329403,
-    "seen": 1793898088.354384,
-    "ast_hash": "615b633609824599ff5d445ceee76106",
+    "mtime": 1795023941.9491532,
+    "seen": 1795027762.0686917,
+    "ast_hash": "94787684378c02217e4e084744e6e9d4",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/storm_herald.py": {
-    "mtime": 1793725118.9633162,
-    "seen": 1793725897.3595076,
-    "ast_hash": "cd97c83ec359b1e2107aa6846c4e8b16",
-    "semantic_hash": ""
-  },
-  "tests/test_storm_herald.py": {
-    "mtime": 1793814328.423123,
-    "seen": 1793898088.354384,
-    "ast_hash": "3f8e7fe944dfdb52a324b9dcd4897257",
+    "mtime": 1795023897.0380566,
+    "seen": 1795027762.0686917,
+    "ast_hash": "be5ade083defdb8146805c87bccc7da4",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/wild_heart.py": {
-    "mtime": 1793727735.5347779,
-    "seen": 1793728631.1318479,
-    "ast_hash": "5465a537397f3fc8fafb481d75b8b6de",
-    "semantic_hash": ""
-  },
-  "tests/test_wild_heart.py": {
-    "mtime": 1793728348.5215883,
-    "seen": 1793728631.1328592,
-    "ast_hash": "4ae4cb42385da2fdca37026621346528",
+    "mtime": 1795023941.9491532,
+    "seen": 1795027762.0686917,
+    "ast_hash": "4f50ba9e9dc98c67568242a7effa0fa3",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/wild_magic.py": {
-    "mtime": 1793809667.3234892,
-    "seen": 1793810568.4076948,
-    "ast_hash": "038f352a282aee87a0969f8412b0d360",
-    "semantic_hash": ""
-  },
-  "tests/test_wild_magic.py": {
-    "mtime": 1793810311.0861907,
-    "seen": 1793810568.4076948,
-    "ast_hash": "ce64de8ccb02ad8eb9791faa239893eb",
+    "mtime": 1795023897.0380566,
+    "seen": 1795027762.0686917,
+    "ast_hash": "94e645635a9da8be8780abb44d6fc682",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/world_tree.py": {
-    "mtime": 1793811979.9831083,
-    "seen": 1793812520.910888,
-    "ast_hash": "e1b429a9c7ee5a47883628218fc85f0c",
-    "semantic_hash": ""
-  },
-  "tests/test_world_tree.py": {
-    "mtime": 1793812310.9560504,
-    "seen": 1793812520.910888,
-    "ast_hash": "56f64b60438ad7ef7b01f87816b9fc3a",
+    "mtime": 1795023897.0380566,
+    "seen": 1795027762.0686917,
+    "ast_hash": "777b1a0e732c5b5aa3a8b62c8279d75c",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/barbarian/subclasses/zealot.py": {
-    "mtime": 1793814763.050942,
-    "seen": 1793898088.3538802,
-    "ast_hash": "1ec87a415f81efcfceead1adbdb5f9c9",
+    "mtime": 1795023950.0346162,
+    "seen": 1795027762.0686917,
+    "ast_hash": "80ce892813cc9ef517b60bf9a9e2402b",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/__init__.py": {
-    "mtime": 1794855465.7009368,
-    "seen": 1794942886.7660484,
-    "ast_hash": "d67036e5f321d768c1497d5f8ec3b932",
+    "mtime": 1795020222.1450315,
+    "seen": 1795027762.0686917,
+    "ast_hash": "f178fff35c72c0b0c2e0c47f5541af65",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/features.py": {
-    "mtime": 1794852676.1817026,
-    "seen": 1794853500.962397,
-    "ast_hash": "7c497a3d908e0f73b91abca96d994092",
+    "mtime": 1795020215.3699653,
+    "seen": 1795027762.0686917,
+    "ast_hash": "38b1a907bb7a06121fd8d1166129f67a",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/subclasses/__init__.py": {
@@ -1301,46 +1019,16 @@
     "ast_hash": "39e087e6696216b6060f3831202446fc",
     "semantic_hash": ""
   },
-  "tests/test_fighter.py": {
-    "mtime": 1794932058.0406067,
-    "seen": 1794942886.7660484,
-    "ast_hash": "3a171fb677ec8e487431ca44efcb5514",
-    "semantic_hash": ""
-  },
-  "tests/test_zealot.py": {
-    "mtime": 1793815796.2539172,
-    "seen": 1793898088.354384,
-    "ast_hash": "a8b1b537b570be5c0ec9f6a2fd452485",
-    "semantic_hash": ""
-  },
   "dnd_sim/rules/mastery.py": {
     "mtime": 1794343087.6426737,
     "seen": 1794392097.5117075,
     "ast_hash": "856b3007bbd60ca6d2492c3fa9940ac0",
     "semantic_hash": ""
   },
-  "tests/test_mastery.py": {
-    "mtime": 1793976699.5123875,
-    "seen": 1793978374.5338938,
-    "ast_hash": "8252233ad16a16ca69310c99a14caf48",
-    "semantic_hash": ""
-  },
   "dnd_sim/rules/classes/fighter/subclasses/arcane_archer.py": {
-    "mtime": 1794161790.893669,
-    "seen": 1794210671.077231,
-    "ast_hash": "f2dbe4a255f0aa3320b33d2dfaf56c19",
-    "semantic_hash": ""
-  },
-  "tests/test_arcane_archer.py": {
-    "mtime": 1794932058.0406067,
-    "seen": 1794942886.7660484,
-    "ast_hash": "6b20ba346c2984fab40a9e921ec931cc",
-    "semantic_hash": ""
-  },
-  "tests/test_sustituir_ataque.py": {
-    "mtime": 1794160150.5842326,
-    "seen": 1794210671.077231,
-    "ast_hash": "c83e5d5c081a9a207b6d964cbc99424d",
+    "mtime": 1795020317.5196702,
+    "seen": 1795027762.0686917,
+    "ast_hash": "79b8f52dc726292c596af4e7d396c4df",
     "semantic_hash": ""
   },
   "ARGUMENTOS-CLI.md": {
@@ -1349,76 +1037,28 @@
     "ast_hash": "f524ae3b99e60fe68ef11a194a488fcb",
     "semantic_hash": ""
   },
-  "dnd_sim/rules/classes/fighter/subclasses/battle_master.py": {
-    "mtime": 1794395910.950706,
-    "seen": 1794501612.0055976,
-    "ast_hash": "1acdcd89ed04e6c0153a86396f9dcf31",
-    "semantic_hash": ""
-  },
-  "tests/test_battle_master.py": {
-    "mtime": 1794932058.0406067,
-    "seen": 1794942886.7660484,
-    "ast_hash": "474d0ce86006d1472be6cb1f82e56ecb",
-    "semantic_hash": ""
-  },
   "dnd_sim/rules/classes/fighter/subclasses/cavalier.py": {
-    "mtime": 1794390994.2582622,
-    "seen": 1794392097.5117075,
-    "ast_hash": "dc88a148cecf462069456b6bbfa7fdb8",
-    "semantic_hash": ""
-  },
-  "tests/test_cavalier.py": {
-    "mtime": 1794391187.327834,
-    "seen": 1794392097.5127177,
-    "ast_hash": "d5cba850b5b23df2ea941a08dfeb2eb7",
+    "mtime": 1795020317.5196702,
+    "seen": 1795027762.0686917,
+    "ast_hash": "d8db0178991553ea023cf4590139f894",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/subclasses/champion.py": {
-    "mtime": 1794500814.3566034,
-    "seen": 1794501612.0055976,
-    "ast_hash": "92797e4b0f4175f85c21ee9570b06418",
-    "semantic_hash": ""
-  },
-  "tests/test_champion.py": {
-    "mtime": 1794500911.6476123,
-    "seen": 1794501612.0055976,
-    "ast_hash": "d28fc2d5c705e654a33b56c939f61896",
+    "mtime": 1795020295.0593455,
+    "seen": 1795027762.0686917,
+    "ast_hash": "261c4307840f314256aeebd9b71d5ac8",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/subclasses/psi_warrior.py": {
-    "mtime": 1794512063.9118764,
-    "seen": 1794545943.871237,
-    "ast_hash": "67df7c04c5c440849b766aee78877ae8",
-    "semantic_hash": ""
-  },
-  "tests/test_psi_warrior.py": {
-    "mtime": 1794512272.5061035,
-    "seen": 1794545943.871237,
-    "ast_hash": "4c1fc824de665002117ef01bcea8d501",
-    "semantic_hash": ""
-  },
-  "dnd_sim/rules/classes/fighter/subclasses/rune_knight.py": {
-    "mtime": 1794638289.648305,
-    "seen": 1794640100.9884644,
-    "ast_hash": "05d9cbef711df396681640dbff1bfd6b",
-    "semantic_hash": ""
-  },
-  "tests/test_rune_knight.py": {
-    "mtime": 1794639444.4313238,
-    "seen": 1794640100.9884644,
-    "ast_hash": "5ae69403144912e2e31d1d506b280baa",
+    "mtime": 1795020317.5196702,
+    "seen": 1795027762.0686917,
+    "ast_hash": "9f305e8c5d7879aa301cc90a6e7b5f37",
     "semantic_hash": ""
   },
   "dnd_sim/rules/classes/fighter/subclasses/samurai.py": {
-    "mtime": 1794736715.593815,
-    "seen": 1794843834.9032862,
-    "ast_hash": "9273548130b11451edb164f5f12d8672",
-    "semantic_hash": ""
-  },
-  "tests/test_samurai.py": {
-    "mtime": 1794740929.2667906,
-    "seen": 1794843834.9032862,
-    "ast_hash": "12c04a28e6f8e8aedf2fde8ee77c3946",
+    "mtime": 1795020295.0593455,
+    "seen": 1795027762.0686917,
+    "ast_hash": "ef610e6416e4a62dee308e3d51a8fd90",
     "semantic_hash": ""
   },
   "dnd_sim/core/spellcasting.py": {
@@ -1451,22 +1091,424 @@
     "ast_hash": "1e3d76c5b1b9e0ee24723d724eb4d113",
     "semantic_hash": ""
   },
-  "tests/test_hechizos_pj.py": {
-    "mtime": 1794852954.6261494,
-    "seen": 1794853500.9633982,
-    "ast_hash": "7ca6c8b121afa3eba2e8ac26cdc5aeec",
-    "semantic_hash": ""
-  },
   "dnd_sim/rules/classes/fighter/subclasses/eldritch_knight.py": {
-    "mtime": 1794939894.0299382,
-    "seen": 1794942886.7660484,
-    "ast_hash": "e177fb4f2df352f038bc68ed2e8a5713",
+    "mtime": 1795020295.0593455,
+    "seen": 1795027762.0686917,
+    "ast_hash": "8bfd6d5bc311a1406f63f9baf7a8b8ec",
     "semantic_hash": ""
   },
-  "tests/test_eldritch_knight.py": {
-    "mtime": 1794942168.304291,
-    "seen": 1794942886.7660484,
-    "ast_hash": "42b5d6a1887d8dce008958da66e630cc",
+  "dnd_sim/rules/classes/barbarian/_util.py": {
+    "mtime": 1795023835.1661758,
+    "seen": 1795027762.0686917,
+    "ast_hash": "7e9b4b52af8ff734536eac73da1b9610",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/_util.py": {
+    "mtime": 1795020099.183856,
+    "seen": 1795027762.0686917,
+    "ast_hash": "8866aea48dc8c837e5c772bac2995a80",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/actions.py": {
+    "mtime": 1795020149.9389093,
+    "seen": 1795027762.0686917,
+    "ast_hash": "6c095565de806f80845ec9feed8a3f1e",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/subclasses/battle_master/__init__.py": {
+    "mtime": 1795020848.5924242,
+    "seen": 1795027762.0686917,
+    "ast_hash": "287a50a2b6084d14ae69398cb7ae18c9",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/subclasses/battle_master/actions.py": {
+    "mtime": 1795020848.5928347,
+    "seen": 1795027762.0686917,
+    "ast_hash": "6d098e056446c77ab1886d32c26cbb11",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/subclasses/battle_master/features.py": {
+    "mtime": 1795021242.9601414,
+    "seen": 1795027762.0686917,
+    "ast_hash": "7c4dc559e59aad4d700261be2065c283",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/subclasses/rune_knight/__init__.py": {
+    "mtime": 1795020848.594838,
+    "seen": 1795027762.0686917,
+    "ast_hash": "ea30846ba1e0f4d128195ab71da0fa50",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/subclasses/rune_knight/actions.py": {
+    "mtime": 1795020848.597345,
+    "seen": 1795027762.0686917,
+    "ast_hash": "07c167b2372b83de3d6e49a6bdd031b4",
+    "semantic_hash": ""
+  },
+  "dnd_sim/rules/classes/fighter/subclasses/rune_knight/features.py": {
+    "mtime": 1795020848.5963414,
+    "seen": 1795027762.0686917,
+    "ast_hash": "3278c06d503fbd1e8938ca8d1d373700",
+    "semantic_hash": ""
+  },
+  "tests/arquitectura/test_arquitectura.py": {
+    "mtime": 1795026827.0977254,
+    "seen": 1795027762.0686917,
+    "ast_hash": "4dbb7f6bdf4269a1459593934f3de1a6",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_ancestral_guardian.py": {
+    "mtime": 1793359011.8185086,
+    "seen": 1795027762.0686917,
+    "ast_hash": "3d9f224733e5da7a14b4ff6340deb9a1",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_barbarian.py": {
+    "mtime": 1795026823.7838318,
+    "seen": 1795027762.0686917,
+    "ast_hash": "c395e8e757f28c49d3631cff3e137e7e",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_battlerager.py": {
+    "mtime": 1793359011.8175075,
+    "seen": 1795027762.0686917,
+    "ast_hash": "85a00df21cca67616dece01c317ed9bc",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_beast.py": {
+    "mtime": 1793612995.5482593,
+    "seen": 1795027762.0686917,
+    "ast_hash": "c9d92dc69eeb58dd7174ed5fd25c0d32",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_berserker.py": {
+    "mtime": 1793613734.0056393,
+    "seen": 1795027762.0686917,
+    "ast_hash": "bd8272f014d58f5837dfee7805f1fb9a",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_giant.py": {
+    "mtime": 1793814299.6329403,
+    "seen": 1795027762.0686917,
+    "ast_hash": "615b633609824599ff5d445ceee76106",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_reckless.py": {
+    "mtime": 1793613082.65963,
+    "seen": 1795027762.0686917,
+    "ast_hash": "b8b7e3412b80588c907a138d552bf9cd",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_storm_herald.py": {
+    "mtime": 1793814328.423123,
+    "seen": 1795027762.0686917,
+    "ast_hash": "3f8e7fe944dfdb52a324b9dcd4897257",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_wild_heart.py": {
+    "mtime": 1793728348.5215883,
+    "seen": 1795027762.0686917,
+    "ast_hash": "4ae4cb42385da2fdca37026621346528",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_wild_magic.py": {
+    "mtime": 1793810311.0861907,
+    "seen": 1795027762.0686917,
+    "ast_hash": "ce64de8ccb02ad8eb9791faa239893eb",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_world_tree.py": {
+    "mtime": 1793812310.9560504,
+    "seen": 1795027762.0686917,
+    "ast_hash": "56f64b60438ad7ef7b01f87816b9fc3a",
+    "semantic_hash": ""
+  },
+  "tests/clases/barbarian/test_zealot.py": {
+    "mtime": 1793815796.2539172,
+    "seen": 1795027762.0686917,
+    "ast_hash": "a8b1b537b570be5c0ec9f6a2fd452485",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_arcane_archer.py": {
+    "mtime": 1794932058.0406067,
+    "seen": 1795027762.0686917,
+    "ast_hash": "6b20ba346c2984fab40a9e921ec931cc",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_battle_master.py": {
+    "mtime": 1795021187.321614,
+    "seen": 1795027762.0686917,
+    "ast_hash": "08500fedd7f17886b8ad3d5b6dcc5beb",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_cavalier.py": {
+    "mtime": 1795026824.5129278,
+    "seen": 1795027762.0686917,
+    "ast_hash": "80b1a259dc5f81f43f38abfde67ebe37",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_champion.py": {
+    "mtime": 1794500911.6476123,
+    "seen": 1795027762.0686917,
+    "ast_hash": "d28fc2d5c705e654a33b56c939f61896",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_eldritch_knight.py": {
+    "mtime": 1795026824.6213462,
+    "seen": 1795027762.0686917,
+    "ast_hash": "95c0e67e53ab2a3d4e073ba5eb059f59",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_fighter.py": {
+    "mtime": 1795026824.6759262,
+    "seen": 1795027762.0686917,
+    "ast_hash": "1339b9972dcdd1ce1e9f7b2d39e9090e",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_psi_warrior.py": {
+    "mtime": 1794512272.5061035,
+    "seen": 1795027762.0686917,
+    "ast_hash": "4c1fc824de665002117ef01bcea8d501",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_rune_knight.py": {
+    "mtime": 1795021187.345871,
+    "seen": 1795027762.0686917,
+    "ast_hash": "cf9e182bda96480c19d91caee807fb69",
+    "semantic_hash": ""
+  },
+  "tests/clases/fighter/test_samurai.py": {
+    "mtime": 1794740929.2667906,
+    "seen": 1795027762.0686917,
+    "ast_hash": "12c04a28e6f8e8aedf2fde8ee77c3946",
+    "semantic_hash": ""
+  },
+  "tests/clases/test_backgrounds.py": {
+    "mtime": 1793252557.368314,
+    "seen": 1795027762.0686917,
+    "ast_hash": "ca7c81471d840739f38f58f1033c11cc",
+    "semantic_hash": ""
+  },
+  "tests/clases/test_clases.py": {
+    "mtime": 1793359229.8492143,
+    "seen": 1795027762.0686917,
+    "ast_hash": "37ceed13c99737f0e023cbb811e87f1f",
+    "semantic_hash": ""
+  },
+  "tests/clases/test_proficiency.py": {
+    "mtime": 1793250649.445738,
+    "seen": 1795027762.0686917,
+    "ast_hash": "dbe650e96d2acd661db0d75f7ba28b37",
+    "semantic_hash": ""
+  },
+  "tests/clases/test_races.py": {
+    "mtime": 1793253856.3128102,
+    "seen": 1795027762.0686917,
+    "ast_hash": "96a207047931ad4b7a562b45b789dddb",
+    "semantic_hash": ""
+  },
+  "tests/datos/test_loader.py": {
+    "mtime": 1795026826.984541,
+    "seen": 1795027762.0686917,
+    "ast_hash": "3424d442abc2594f42cfa8e7ad3652c0",
+    "semantic_hash": ""
+  },
+  "tests/datos/test_loader_actions.py": {
+    "mtime": 1795026827.0419624,
+    "seen": 1795027762.0686917,
+    "ast_hash": "1e26c786c0f9f2fc252d6ca05b2f579e",
+    "semantic_hash": ""
+  },
+  "tests/motor/test_death.py": {
+    "mtime": 1795026826.6301956,
+    "seen": 1795027762.0686917,
+    "ast_hash": "a0a1d266d0d44f4a1c3e010ba8fcfe6d",
+    "semantic_hash": ""
+  },
+  "tests/motor/test_lair.py": {
+    "mtime": 1795026826.6827278,
+    "seen": 1795027762.0686917,
+    "ast_hash": "35b3332323178abcea98e610eba4f375",
+    "semantic_hash": ""
+  },
+  "tests/motor/test_legendary.py": {
+    "mtime": 1795026826.7389019,
+    "seen": 1795027762.0686917,
+    "ast_hash": "5541a0e986c4d38b44f7befebcf6813d",
+    "semantic_hash": ""
+  },
+  "tests/motor/test_multiattack.py": {
+    "mtime": 1795026826.8064642,
+    "seen": 1795027762.0686917,
+    "ast_hash": "2fdc72b3ac56ac706520305d86e1e046",
+    "semantic_hash": ""
+  },
+  "tests/motor/test_sustituir_ataque.py": {
+    "mtime": 1794160150.5842326,
+    "seen": 1795027762.0686917,
+    "ast_hash": "c83e5d5c081a9a207b6d964cbc99424d",
+    "semantic_hash": ""
+  },
+  "tests/motor/test_usage.py": {
+    "mtime": 1795026826.9237804,
+    "seen": 1795027762.0686917,
+    "ast_hash": "5c530335e30ef15be48089a84bdf502e",
+    "semantic_hash": ""
+  },
+  "tests/reglas/combate/test_area.py": {
+    "mtime": 1795027322.9062183,
+    "seen": 1795027762.0686917,
+    "ast_hash": "b5af453f850ae8a6c0d3c8a031aa32d7",
+    "semantic_hash": ""
+  },
+  "tests/reglas/combate/test_mastery.py": {
+    "mtime": 1793976699.5123875,
+    "seen": 1795027762.0686917,
+    "ast_hash": "8252233ad16a16ca69310c99a14caf48",
+    "semantic_hash": ""
+  },
+  "tests/reglas/combate/test_utility.py": {
+    "mtime": 1793814299.6329403,
+    "seen": 1795027762.0686917,
+    "ast_hash": "b58cb03192f52773464f4d06811c6457",
+    "semantic_hash": ""
+  },
+  "tests/reglas/conditions/test_condition_immunities.py": {
+    "mtime": 1795027321.4902718,
+    "seen": 1795027762.0686917,
+    "ast_hash": "cf3b9d9996000e0689eb8d62d5705c94",
+    "semantic_hash": ""
+  },
+  "tests/reglas/conditions/test_conditions.py": {
+    "mtime": 1795027321.4278233,
+    "seen": 1795027762.0686917,
+    "ast_hash": "4b43321e03b2e65f67ae4b416160c2d9",
+    "semantic_hash": ""
+  },
+  "tests/reglas/conditions/test_enlarge.py": {
+    "mtime": 1795027321.6190026,
+    "seen": 1795027762.0686917,
+    "ast_hash": "a463bed19ca99f6977e8ab1539f6ef74",
+    "semantic_hash": ""
+  },
+  "tests/reglas/conditions/test_invisibility.py": {
+    "mtime": 1795027321.5626001,
+    "seen": 1795027762.0686917,
+    "ast_hash": "3241ce89dba14fd6e18ca02e240c0f96",
+    "semantic_hash": ""
+  },
+  "tests/reglas/damage/test_damage.py": {
+    "mtime": 1795027322.301623,
+    "seen": 1795027762.0686917,
+    "ast_hash": "9f2de2b7cc18550a4766756645ba6fc5",
+    "semantic_hash": ""
+  },
+  "tests/reglas/damage/test_extra_damage.py": {
+    "mtime": 1795027322.3584635,
+    "seen": 1795027762.0686917,
+    "ast_hash": "5b5222bcaeb6ceb62bd61d85a15fb80d",
+    "semantic_hash": ""
+  },
+  "tests/reglas/damage/test_magical.py": {
+    "mtime": 1795027322.4420347,
+    "seen": 1795027762.0686917,
+    "ast_hash": "3fb51fe9ff7934ea659da68c3511f727",
+    "semantic_hash": ""
+  },
+  "tests/reglas/spells/test_hechizos_pj.py": {
+    "mtime": 1795027322.5969994,
+    "seen": 1795027762.0686917,
+    "ast_hash": "0088f08212c6382131b68f990537f4d1",
+    "semantic_hash": ""
+  },
+  "tests/reglas/spells/test_magic_resistance.py": {
+    "mtime": 1795027322.6657653,
+    "seen": 1795027762.0686917,
+    "ast_hash": "df64405a2f903dfda7b70884fc6f7b9d",
+    "semantic_hash": ""
+  },
+  "tests/reglas/spells/test_spells.py": {
+    "mtime": 1795027322.5208082,
+    "seen": 1795027762.0686917,
+    "ast_hash": "1024f6c7e6765db72af1c365657a880a",
+    "semantic_hash": ""
+  },
+  "tests/reglas/tiradas/test_checks_escapes.py": {
+    "mtime": 1795027322.7260187,
+    "seen": 1795027762.0686917,
+    "ast_hash": "5fdabbc2754b14e7b58dae51188a8125",
+    "semantic_hash": ""
+  },
+  "tests/reglas/tiradas/test_skills.py": {
+    "mtime": 1795027322.786713,
+    "seen": 1795027762.0686917,
+    "ast_hash": "95b0fd4075d63de606e472679e19399c",
+    "semantic_hash": ""
+  },
+  "tests/reglas/tiradas/test_turn_resistance.py": {
+    "mtime": 1795027322.8457737,
+    "seen": 1795027762.0686917,
+    "ast_hash": "fa1f9e9730e245cc856e42b7d1ff3ad6",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_attach.py": {
+    "mtime": 1795027321.7971282,
+    "seen": 1795027762.0686917,
+    "ast_hash": "1650a87b9bd566692747b71d034620ab",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_azer.py": {
+    "mtime": 1795027321.737826,
+    "seen": 1795027762.0686917,
+    "ast_hash": "702e813ff24498589318ff8f82361439",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_martial_advantage.py": {
+    "mtime": 1795027321.8706462,
+    "seen": 1795027762.0686917,
+    "ast_hash": "b93b7b1a11b93a7f2798fa0fa7a65cf7",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_pack_tactics.py": {
+    "mtime": 1795027321.9265423,
+    "seen": 1795027762.0686917,
+    "ast_hash": "811f0cffc4f62bfb99e4f9a3bb368ba9",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_parry.py": {
+    "mtime": 1795027321.995534,
+    "seen": 1795027762.0686917,
+    "ast_hash": "8afe0af29407dce4f526ed69a735c5cf",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_regeneration.py": {
+    "mtime": 1795027322.1141016,
+    "seen": 1795027762.0686917,
+    "ast_hash": "7f8128e0be06db6f510c9a5f1e395c79",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_relentless.py": {
+    "mtime": 1795027322.0525904,
+    "seen": 1795027762.0686917,
+    "ast_hash": "804aecf6afda477db58062ab5e25acde",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_superior_invisibility.py": {
+    "mtime": 1792933736.354393,
+    "seen": 1795027762.0686917,
+    "ast_hash": "34050c03139171a85ac0d75504225c83",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_traits.py": {
+    "mtime": 1795027321.68217,
+    "seen": 1795027762.0686917,
+    "ast_hash": "92609db2a48882c96661271f265199ab",
+    "semantic_hash": ""
+  },
+  "tests/reglas/traits/test_undead_fortitude.py": {
+    "mtime": 1795027322.2449255,
+    "seen": 1795027762.0686917,
+    "ast_hash": "4e1374137b47a0733da180697ee67d01",
     "semantic_hash": ""
   }
 }

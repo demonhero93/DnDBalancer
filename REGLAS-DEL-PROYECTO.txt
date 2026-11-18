@@ -1,7 +1,7 @@
 REGLAS DEL PROYECTO — DnDBalancer / dnd_sim
 ===========================================
 Compilación de todas las reglas impuestas a lo largo del proyecto.
-Autoridad máxima: ARCHITECTURE.md y tests/test_arquitectura.py (congelados).
+Autoridad máxima: ARCHITECTURE.md y tests/arquitectura/test_arquitectura.py (congelados).
 
 1. ARQUITECTURA DE CAPAS
    Orden: core < model < rules < engine / data < fachada (dnd_sim).
@@ -49,7 +49,7 @@ Autoridad máxima: ARCHITECTURE.md y tests/test_arquitectura.py (congelados).
        combat.py (652) partidos en paquetes.
 
 6. TESTS
-   6.1 tests/test_arquitectura.py congela: reglas de capa, excepción única
+   6.1 tests/arquitectura/test_arquitectura.py congela: reglas de capa, excepción única
        y reexportado de los tres paquetes con fachada.
    6.2 Un test que parchea un símbolo apunta al módulo que lo define
        (`import dnd_sim.engine.combat.attack as combat_mod`), porque
@@ -61,7 +61,7 @@ Autoridad máxima: ARCHITECTURE.md y tests/test_arquitectura.py (congelados).
    6.5 Fixtures JSON en tests/fixtures/ (monstruos y spells/), no en código.
 
 7. VERIFICACIÓN OBLIGATORIA TRAS UN CAMBIO
-   pytest tests/test_arquitectura.py
+   pytest tests/arquitectura/test_arquitectura.py
    pytest
    python tools/capas.py
    graphify update .

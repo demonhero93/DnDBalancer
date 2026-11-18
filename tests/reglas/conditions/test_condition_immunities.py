@@ -29,7 +29,7 @@ def _ghoul(monkeypatch) -> Monster:
     import json
     from pathlib import Path
 
-    datos = json.loads((Path(__file__).parent / "fixtures" / "ghoul.json")
+    datos = json.loads((Path(__file__).parents[2] / "fixtures" / "ghoul.json")
                        .read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda name: datos)
     return load_monster("ghoul")
@@ -56,7 +56,7 @@ def test_una_condicion_desconocida_de_la_api_avisa(monkeypatch):
     import json
     from pathlib import Path
 
-    datos = json.loads((Path(__file__).parent / "fixtures" / "ghoul.json")
+    datos = json.loads((Path(__file__).parents[2] / "fixtures" / "ghoul.json")
                        .read_text(encoding="utf-8"))
     datos["condition_immunities"] = [{"index": "paralizado"}]
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda name: datos)

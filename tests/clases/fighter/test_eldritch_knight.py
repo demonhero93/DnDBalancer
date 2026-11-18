@@ -33,7 +33,7 @@ from dnd_sim.rules.classes.fighter import (
 from dnd_sim.rules.conditions import Condition
 from dnd_sim.rules.spells import PJSpellAction, Spellcasting, hechizo_soportado
 
-SPELLS = Path(__file__).parent / "fixtures" / "spells"
+SPELLS = Path(__file__).parents[2] / "fixtures" / "spells"
 
 
 # --- A1: tablas --------------------------------------------------------------

@@ -16,7 +16,7 @@ from dnd_sim.core.dice import RollMode
 from dnd_sim.rules.roll_modifiers import save_modifiers
 from dnd_sim.rules.saves import saving_throw
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

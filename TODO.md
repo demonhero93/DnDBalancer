@@ -47,7 +47,7 @@ Solo tareas SIN implementar. Lo ya hecho: PASOS-ANTERIORES.txt
   `PJSpellAction.execute` en vez del shortcut `ctx.actor is owner`);
   War Bond y Arcane Charge = datos sin efecto.
 - **Samurai — datos sin efecto congelados** (reabrir SOLO si el sim
-  modela la mecánica; tests en `tests/test_samurai.py`):
+  modela la mecánica; tests en `tests/clases/fighter/test_samurai.py`):
   - Bonus Proficiency: el idioma alternativo (sin modelo de idiomas).
   - Elegant Courtier: bonificador igual al mod SAB en
     Perspicacia/Persuasión (sin pruebas sociales en combate).
@@ -88,7 +88,7 @@ Solo tareas SIN implementar. Lo ya hecho: PASOS-ANTERIORES.txt
   reabrir SOLO si el sim modela Inspiración Heroica o salvaciones de
   muerte, respectivamente.
 - **Rune Knight**: límites congelados como dato sin efecto en
-  `tests/test_rune_knight.py` (velocidad, alcance, distancias, runas
+  `tests/clases/fighter/test_rune_knight.py` (velocidad, alcance, distancias, runas
   despertadas, pruebas características de Storm, ventaja de Hill en
   salvaciones de veneno): sin posiciones ni movimiento, ningún efecto
   mide distancia. Reabrir solo si existe sistema de movimiento/
@@ -114,7 +114,7 @@ fighter: `arcane_archer.py`, `cavalier.py`, `champion.py`,
 3. Reexportar la API en `rules/classes/__init__.py` y en la fachada
    `dnd_sim/__init__.py` (import + `__all__`) si expone símbolos
    nuevos.
-4. Tests: `tests/test_<clave>.py` en español (registro, apply por
+4. Tests: `tests/clases/<clase>/test_<clave>.py` en español (registro, apply por
    `apply_class("fighter", subclass_name="<clave>", level=3)`, rasgos).
    Si un test existente congela el registro de subclases del fighter,
    explicarlo ANTES de tocarlo.
@@ -160,7 +160,7 @@ motivo y dependencia):
 
 ## Hechizos de PJ: cómo añadir una clase lanzadora
 
-Receta (patrón del mago de test de `tests/test_hechizos_pj.py`):
+Receta (patrón del mago de test de `tests/reglas/spells/test_hechizos_pj.py`):
 
 1. Declarar la `SpellcastingDef` en `core/spellcasting.py`:
    progresión (full/half/third), característica, `trucos_conocidos` y
@@ -190,7 +190,7 @@ Receta (patrón del mago de test de `tests/test_hechizos_pj.py`):
 - `.graphify_labels.pending.json` tiene etiquetas sin confirmar.
 - Mantener `graphify update .` y GRAPH_REPORT.md al día tras cambios.
 - Verificación obligatoria tras cada cambio (regla 7):
-  `pytest tests/test_arquitectura.py`, `pytest`,
+  `pytest tests/arquitectura/test_arquitectura.py`, `pytest`,
   `python tools/capas.py` (con `PYTHONIOENCODING=utf-8` en Windows),
   `graphify update .`.
 

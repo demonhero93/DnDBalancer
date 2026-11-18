@@ -29,7 +29,7 @@ from dnd_sim.rules.spells.casting import Spellcasting, spell_action
 
 CD = 11
 N = 20_000
-FIXTURES = Path(__file__).parent / "fixtures" / "spells"
+FIXTURES = Path(__file__).parents[2] / "fixtures" / "spells"
 
 
 def _objetivo(**kwargs):

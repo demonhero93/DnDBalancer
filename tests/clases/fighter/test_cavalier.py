@@ -37,7 +37,7 @@ class _RngExplota:
 
 
 def _cargar_main():
-    raiz = pathlib.Path(__file__).resolve().parents[1]
+    raiz = pathlib.Path(__file__).resolve().parents[3]
     spec = importlib.util.spec_from_file_location(
         "main_cli_cavalier", raiz / "main.py"
     )

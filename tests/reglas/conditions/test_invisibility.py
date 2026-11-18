@@ -28,7 +28,7 @@ from dnd_sim.rules.roll_modifiers import attack_modifiers
 from dnd_sim.rules.spells import SpellFixedDamageAction, SpellStateAction
 from dnd_sim.rules.usage import UsageKind
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

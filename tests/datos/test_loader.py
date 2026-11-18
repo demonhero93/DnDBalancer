@@ -14,7 +14,7 @@ import dnd_sim.data.api_client as api_client_mod
 from dnd_sim.data.api_client import get_monster
 from dnd_sim.data.loader import _armor_class_value, load_monster
 
-FIXTURE = Path(__file__).parent / "fixtures" / "ogre.json"
+FIXTURE = Path(__file__).parents[1] / "fixtures" / "ogre.json"
 
 
 def _ogre_data() -> dict:
@@ -107,7 +107,7 @@ def test_monster_without_valid_attacks_raises(monkeypatch):
         load_monster("ogre")
 
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[1] / "fixtures"
 
 
 def _load_fixture(monkeypatch, index: str) -> Combatant:
@@ -149,7 +149,7 @@ def test_monstruo_guarda_el_size_de_la_ficha(monkeypatch):
 
 
 def test_no_handcrafted_monsters_in_source():
-    root = Path(__file__).resolve().parents[1]
+    root = Path(__file__).resolve().parents[2]
     files = list((root / "dnd_sim").rglob("*.py")) + [root / "main.py"]
     forbidden = []
     for path in files:

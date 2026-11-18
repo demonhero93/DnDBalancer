@@ -22,7 +22,7 @@ from dnd_sim.model.actions import (AttackAction, SaveAction, TurnResources)
 from dnd_sim.rules.damage import apply_damage_modifiers, inflict_damage
 from dnd_sim.rules.spells import Spellcasting, spell_action
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 SPELLS = FIXTURES / "spells"
 
 

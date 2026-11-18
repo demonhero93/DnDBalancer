@@ -48,7 +48,7 @@ de la otra) y, al final, la fachada pública `dnd_sim/__init__.py`.
 condiciones y `conditions` necesita el tipo de combatiente. Prefiere
 `Combatant` importar `rules.conditions` a esconderlo en un import diferido.
 
-Está **congelada** en `tests/test_arquitectura.py`, que falla si aparece
+Está **congelada** en `tests/arquitectura/test_arquitectura.py`, que falla si aparece
 una segunda violación o si esta desaparece (lista muerta).
 
 ## Paquetes con fachada
@@ -110,7 +110,7 @@ puede romper por sí sola. Por eso sí pueden apuntar hacia arriba
 
 `python tools/capas.py` imprime las dos listas por separado y las
 violaciones de capa. El criterio (solo nivel de módulo) está congelado en
-`tests/test_arquitectura.py`.
+`tests/arquitectura/test_arquitectura.py`.
 
 ## Arcane Archer (XGE)
 
@@ -147,7 +147,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   SU reacción. El ataque aliado lleva `r_ctx.is_reaction=True`: no
   reentra en Commander's Strike ni activa maniobras de la sesión 1.
   Congelado en `test_commanders_strike_*` de
-  `tests/test_battle_master.py`.
+  `tests/clases/fighter/test_battle_master.py`.
 - **Rally (B1, acción bonus)**: `BattleMasterRallyAction` con
   `usage=None` y patrón Feinting (guards sin RNG + pick «no»/«sí»).
   Exige la maniobra conocida; PV temporales = max(1, dado + mod CAR
@@ -198,7 +198,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   `--charge-p` en `main.py` (0.0/1.0 sin RNG); si hay carga, `pick`
   «no»/«sí» y salvación de FUE CD 8 + PB + mod FUE → `PRONE` con el
   `EscapeCheck` de Topple.
-- **Datos sin efecto (freeze en `tests/test_cavalier.py`)**: Born to
+- **Datos sin efecto (freeze en `tests/clases/fighter/test_cavalier.py`)**: Born to
   the Saddle (monturas), velocidad 0 de la marca (modelo sin campo
   de velocidad) y los 5 ft de Warding (el sim no guarda posiciones).
 
@@ -242,7 +242,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   dueño, vivo, ≥ 1 PG, Bloodied `pg * 2 <= pg_max`); cura
   `min(heroic_rally_amount(mod CON), pg_max - pg)` vía `log_line`,
   sin RNG.
-- **Datos sin efecto (freeze en `tests/test_champion.py`)**: Heroic
+- **Datos sin efecto (freeze en `tests/clases/fighter/test_champion.py`)**: Heroic
   Warrior (sin Inspiración Heroica) y Defy Death (sin salvaciones de
   muerte); reabrir solo si el sim los modela (condiciones en
   `TODO.md`).
@@ -281,7 +281,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   `copy.copy(context)`, patrón Unwavering Mark); concentración
   SIMPLE: flag mientras el dueño no esté Incapacitado ni muerto, SIN
   salvaciones de CON («concentración parcial» en `TODO.md`).
-- **Datos sin efecto (freeze en `tests/test_psi_warrior.py`)**:
+- **Datos sin efecto (freeze en `tests/clases/fighter/test_psi_warrior.py`)**:
   Telekinetic Movement y Psi-Powered Leap (sin movimiento), empuje
   de 10 ft de Thrust, distancias de 30 ft y el efecto de Telekinesis
   (solo concede el ataque adicional).
@@ -323,7 +323,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   `engine/combat/encounter.py`.
 - **Master of Runes (15)**: 5 runas conocidas y 2 invocaciones por
   runa (tablas A1).
-- **Datos sin efecto (freeze en `tests/test_rune_knight.py`)**:
+- **Datos sin efecto (freeze en `tests/clases/fighter/test_rune_knight.py`)**:
   Bonus Proficiencies, crecimiento de Great Stature, alcance +5 ft y
   velocidad 0 de Stone, runas despertadas, pruebas características de
   Storm y ventaja de Hill en salvaciones de veneno.
@@ -358,7 +358,7 @@ violaciones de capa. El criterio (solo nivel de módulo) está congelado en
   (`_liberar_turno_extra` en `rules/damage.py`); curación por encima
   de 0 lo libera. Sin salvaciones de muerte (aproximación); no se
   encadena (1 uso por combate).
-- **Datos sin efecto (freeze en `tests/test_samurai.py`)**: idioma
+- **Datos sin efecto (freeze en `tests/clases/fighter/test_samurai.py`)**: idioma
   alternativo de Bonus Proficiency, bonificador social de Elegant
   Courtier, Tireless Spirit y salvaciones de muerte; reaperturas
   condicionadas en `TODO.md`.
@@ -431,7 +431,7 @@ Primera clase/subclase lanzadora real sobre la mecánica común:
   separa los kwargs que solo declara el apply de la subclase
   (`lista`/`cantrips`/`spells`) y se los pasa; los compartidos
   (`rng`) van a ambas llamadas. Los calls existentes no cambian.
-- **Datos sin efecto (freeze en `tests/test_eldritch_knight.py`)**
+- **Datos sin efecto (freeze en `tests/clases/fighter/test_eldritch_knight.py`)**
   War Bond (3) y Arcane Charge (15); límites: distancia/movimiento,
   reacciones de hechizo, rituales/utilidad.
 - **Plantilla CLI**: 6ª entrada de `PARTY_TEMPLATES` en `main.py`
@@ -442,7 +442,7 @@ Primera clase/subclase lanzadora real sobre la mecánica común:
 ## Cómo comprobar que todo sigue en orden
 
 ```bash
-pytest tests/test_arquitectura.py   # reglas de capa + fachadas de paquete
+pytest tests/arquitectura/test_arquitectura.py   # reglas de capa + fachadas de paquete
 pytest                              # 1726 tests
 python tools/capas.py               # mapa de dependencias y violaciones
 graphify update .                   # grafo y comunidades en graphify-out/

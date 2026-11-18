@@ -25,7 +25,7 @@ from dnd_sim.rules.saves import SaveDamage, saving_throw
 from dnd_sim.engine.stats import simulate
 from dnd_sim.rules.usage import begin_turn
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[1] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #
@@ -790,7 +790,7 @@ def test_el_cli_tiene_las_opciones_legendarias():
     import pathlib
     import sys
 
-    raiz = pathlib.Path(__file__).resolve().parents[1]
+    raiz = pathlib.Path(__file__).resolve().parents[2]
     if str(raiz) not in sys.path:
         sys.path.insert(0, str(raiz))
     spec = importlib.util.spec_from_file_location("main_cli", raiz / "main.py")

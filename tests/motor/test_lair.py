@@ -28,7 +28,7 @@ from dnd_sim.model.combatant import Monster, PlayerCharacter
 from dnd_sim.rules import saves as saves_mod
 from dnd_sim.rules.legendary import LairAction, LegendaryState, lair_phase
 
-FIXTURES = Path(__file__).parent / "fixtures" / "lairs"
+FIXTURES = Path(__file__).parents[1] / "fixtures" / "lairs"
 
 
 @pytest.fixture
@@ -402,7 +402,7 @@ def test_puntos_siempre_incluyen_bonus_de_guarida(lairs_dir):
 def test_legendary_points_cli_fija_valor_final(lairs_dir):
     # --legendary-points N fija el valor final (sin sumar el bonus).
     import importlib.util
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     spec = importlib.util.spec_from_file_location(
         "main_cli_mod", raiz / "main.py")
     mod = importlib.util.module_from_spec(spec)
@@ -428,7 +428,7 @@ def test_guardian_sin_interruptor_in_lair():
     # Nada en el repo (código y docs) puede hablar del interruptor.
     # Los patrones se construyen en tiempo de ejecución para que este
     # test no se encuentre a sí mismo.
-    raiz = Path(__file__).resolve().parents[1]
+    raiz = Path(__file__).resolve().parents[2]
     excl = ("graphify-out", ".venv", "cache", "__pycache__", ".git")
     patrones = ("in" + "_lair", "--" + "lair")
     hallados = []

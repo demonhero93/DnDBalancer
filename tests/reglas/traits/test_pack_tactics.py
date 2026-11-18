@@ -19,7 +19,7 @@ from dnd_sim.data.loader import load_monster
 from dnd_sim.core.dice import RollMode
 from dnd_sim.rules.roll_modifiers import AttackRange, attack_modifiers
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

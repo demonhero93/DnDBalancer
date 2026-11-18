@@ -14,7 +14,7 @@ from dnd_sim.core.randomness import sample
 from dnd_sim.rules.saves import SaveDamage, SaveResult
 from dnd_sim.core.dice import RollMode
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

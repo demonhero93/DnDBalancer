@@ -25,7 +25,7 @@ from dnd_sim.rules.spells import (
     preparar_hechizos,
 )
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 SPELLS = FIXTURES / "spells"
 
 

@@ -15,7 +15,7 @@ from dnd_sim.model.actions import CombatContext, TurnResources
 from dnd_sim.rules.checks import ability_check_bonus, skill_bonus
 from dnd_sim.rules.roll_modifiers import RollMode, check_modifiers
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

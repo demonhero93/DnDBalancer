@@ -117,7 +117,7 @@ def test_una_criatura_que_se_salva_no_queda_marcada_como_muerta(monkeypatch):
 
     from dnd_sim.data.loader import load_monster
 
-    datos = json.loads((Path(__file__).parent / "fixtures" / "boar.json")
+    datos = json.loads((Path(__file__).parents[1] / "fixtures" / "boar.json")
                        .read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: datos)
     jabali = load_monster("boar")

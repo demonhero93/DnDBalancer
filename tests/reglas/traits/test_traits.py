@@ -26,7 +26,7 @@ from dnd_sim.rules.saves import saving_throw
 from dnd_sim.rules.traits import HOOK_NAMES, BloodFrenzy, Trait, hooks
 from dnd_sim.rules.usage import begin_turn
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

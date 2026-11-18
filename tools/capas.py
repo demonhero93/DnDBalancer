@@ -8,7 +8,7 @@ existen para sortear ciclos. Al final lista las violaciones de capa: un
 import que mire hacia una capa superior.
 
 Las capas y su orden son los de ``ARCHITECTURE.md``; el mismo criterio lo
-congela ``tests/test_arquitectura.py``.
+congela ``tests/arquitectura/test_arquitectura.py``.
 """
 from __future__ import annotations
 

@@ -10,7 +10,7 @@ from dnd_sim import Abilities, Attack, PlayerCharacter, apply_class
 from dnd_sim.rules.classes import CLASSES, apply_fighter
 from dnd_sim.rules.classes.fighter import FighterFeatures
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 def _abilities(**kwargs) -> Abilities:

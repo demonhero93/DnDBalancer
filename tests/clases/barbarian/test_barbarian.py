@@ -19,7 +19,7 @@ from dnd_sim.core.classes import (
 )
 from dnd_sim.rules.classes.barbarian import features as barb_mod
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 def _abilities(**kwargs) -> Abilities:

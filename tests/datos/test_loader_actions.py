@@ -16,7 +16,7 @@ from dnd_sim.data.usage_parser import UnknownUsageError, parse_usage
 from dnd_sim.engine.stats import simulate
 from dnd_sim.rules.usage import ActionUsage, UsageKind
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[1] / "fixtures"
 
 
 def _data(index: str) -> dict:

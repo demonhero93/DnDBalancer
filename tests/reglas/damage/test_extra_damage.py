@@ -18,7 +18,7 @@ from dnd_sim.engine.combat import attack_roll
 from dnd_sim.data.loader import load_monster
 from dnd_sim.rules.damage import DamageRecorder, DamageType
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 # Semillas con primer d20 conocido: 6 -> 19 (impacto, no crítico);
 # 5 -> 20 (crítico).

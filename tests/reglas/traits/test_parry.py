@@ -25,7 +25,7 @@ from dnd_sim.rules.roll_modifiers import AttackRange
 from dnd_sim.rules.traits import Parry
 from dnd_sim.rules.usage import begin_turn
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 # Texto real del SRD: la API no sirve «hobgoblin-warlord», así que su Parry
 # se prueba con la descripción tal cual.

@@ -19,7 +19,7 @@ from dnd_sim.data.trait_parser import parse_traits
 from dnd_sim.rules.damage import inflict_damage
 from dnd_sim.rules.traits import UndeadFortitude
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #

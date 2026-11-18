@@ -20,7 +20,7 @@ from dnd_sim.rules.damage import inflict_damage
 from dnd_sim.rules.traits import Relentless
 from dnd_sim.rules.usage import UsageKind
 
-FIXTURES = Path(__file__).parent / "fixtures"
+FIXTURES = Path(__file__).parents[2] / "fixtures"
 
 
 # --- Utilidades ------------------------------------------------------------- #
