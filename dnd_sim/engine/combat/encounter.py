@@ -48,6 +48,8 @@ class CombatResult:
     # Espacios de conjuro gastados por combatiente (nombre -> max - actual);
     # solo aparece quien lleve ``spell_slots`` (PJ lanzador).
     spell_slots_spent: dict[str, int] = field(default_factory=dict)
+    # PV mínimos de cada combatiente durante el combate (riesgo real).
+    min_hp: dict[str, int] = field(default_factory=dict)
 
 
 def _summarize_damage(records) -> tuple[dict[str, int], dict[str, int]]:
@@ -428,4 +430,7 @@ def _run_combat(combatants: list[Combatant], rng: random.Random,
                         legendary_actions_used=legendary_stats["actions"],
                         legendary_points_spent=int(legendary_stats["points"]),
                         legendary_resistances_used=int(legendary_stats["resistances"]),
-                        spell_slots_spent=espacios_gastados)
+                        spell_slots_spent=espacios_gastados,
+                        min_hp={c.name: int(getattr(c, "min_hp_reached",
+                                                    max(c.hp, 0)))
+                                for c in order})

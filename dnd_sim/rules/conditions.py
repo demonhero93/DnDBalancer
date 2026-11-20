@@ -211,7 +211,9 @@ class ConditionEffect:
 
     ``save_ability=None`` significa que la condición se aplica
     automáticamente al impactar el ataque (sin salvación). Solo se permite
-    si hay ``escape`` (una salida): si no, el estado sería permanente.
+    si hay una salida: ``escape`` (una prueba de liberarse) o
+    ``duration_rounds`` (la condición se acaba sola). Si no, el estado
+    sería permanente.
     """
 
     condition: Condition
@@ -229,10 +231,12 @@ class ConditionEffect:
     magical: bool = False
 
     def __post_init__(self) -> None:
-        if self.save_ability is None and self.escape is None:
+        if (self.save_ability is None and self.escape is None
+                and self.duration_rounds is None):
             raise ValueError(
-                f"La condición {self.condition.value!r} necesita una salvación o "
-                f"una prueba de escape: si no, el estado no tendría salida."
+                f"La condición {self.condition.value!r} necesita una salvación, "
+                f"una prueba de escape o una duración limitada: si no, el "
+                f"estado no tendría salida."
             )
 
 

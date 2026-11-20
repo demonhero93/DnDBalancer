@@ -1,6 +1,7 @@
 """Heated Body (azer): daño de fuego a quien lo golpea cuerpo a cuerpo.
 
-El rasgo se parsea de ``special_abilities`` (fixture real de la API) y su
+El rasgo se parsea de ``special_abilities`` (el fixture 2024 ya no lo trae:
+se inyecta en el helper) y su
 hook ``after_being_hit`` se dispara en :func:`dnd_sim.engine.combat.attack_roll`
 tras el daño, en cada impacto (aunque el daño sea 0 por inmunidad), porque
 el trigger de la ficha es el impacto, no el daño recibido.
@@ -29,6 +30,15 @@ def _datos(index: str) -> dict:
 
 def _azer(monkeypatch) -> Monster:
     data = _datos("azer")
+    # El fixture 2024 («Azer Sentinel») ya no declara Heated Body: se
+    # inyecta la entrada sintética para seguir cubriendo el rasgo con el
+    # resto de la ficha real.
+    data["special_abilities"] = list(data.get("special_abilities") or []) + [
+        {"name": "Heated Body",
+         "desc": ("A creature that touches the azer or hits it with a melee "
+                  "attack while within 5 ft. of it takes 5 (1d10) fire damage."),
+         "damage": []},
+    ]
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
     return load_monster("azer")
 

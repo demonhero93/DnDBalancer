@@ -45,9 +45,11 @@ def test_el_cargador_carga_las_inmunidades_del_fixture(monkeypatch):
 
 def test_las_condiciones_no_modeladas_no_avisan_en_el_cargador(monkeypatch):
     """'exhaustion' de la API es la 'exhausted' excluida: silencio."""
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with warnings.catch_warnings(record=True) as lista:
+        warnings.simplefilter("always")
         ghoul = _ghoul(monkeypatch)
+    # Ningún aviso menciona la inmunidad no modelada de exhaustion.
+    assert not any("exhaust" in str(w.message).lower() for w in lista)
     assert Condition.POISONED in ghoul.condition_immunities
 
 

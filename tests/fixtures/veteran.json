@@ -1,43 +1,107 @@
 {
-  "index": "veteran",
-  "name": "Veteran",
-  "desc": "Veterans are professional fighters that take up arms for pay or to protect something they believe in or value. Their ranks include soldiers retired from long service and warriors who never served anyone but themselves.",
-  "size": "Medium",
-  "type": "humanoid",
-  "subtype": "any race",
-  "alignment": "any alignment",
+  "index": "warrior-veteran",
+  "actions": [
+    {
+      "damage": [],
+      "name": "Multiattack",
+      "desc": "The warrior makes two Greatsword or Heavy Crossbow attacks.",
+      "multiattack_type": "action_options",
+      "action_options": {
+        "choose": 2,
+        "type": "action",
+        "from": {
+          "option_set_type": "options_array",
+          "options": [
+            {
+              "option_type": "action",
+              "action_name": "Greatsword",
+              "count": 2,
+              "type": "melee"
+            },
+            {
+              "option_type": "action",
+              "action_name": "Heavy Crossbow",
+              "count": 2,
+              "type": "ranged"
+            }
+          ]
+        }
+      },
+      "actions": [],
+      "attacks": []
+    },
+    {
+      "name": "Greatsword",
+      "desc": "Melee Attack Roll: +5, reach 5 ft. Hit: 10 (2d6 + 3) Slashing damage.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "slashing",
+            "name": "Slashing",
+            "url": "/api/2024/damage-types/slashing"
+          },
+          "damage_dice": "2d6+3"
+        }
+      ],
+      "attack_bonus": 5,
+      "actions": [],
+      "attacks": []
+    },
+    {
+      "name": "Heavy Crossbow",
+      "desc": "Ranged Attack Roll: +3, range 100/400 ft. Hit: 12 (2d10 + 1) Piercing damage.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "piercing",
+            "name": "Piercing",
+            "url": "/api/2024/damage-types/piercing"
+          },
+          "damage_dice": "2d10+1"
+        }
+      ],
+      "attack_bonus": 3,
+      "actions": [],
+      "attacks": []
+    }
+  ],
+  "alignment": "neutral",
   "armor_class": [
     {
-      "type": "armor",
       "value": 17,
       "armor": [
         {
           "index": "splint-armor",
           "name": "Splint Armor",
-          "url": "/api/2014/equipment/splint-armor"
+          "url": "/api/2024/equipment/splint-armor"
         }
       ]
     }
   ],
-  "hit_points": 58,
-  "hit_dice": "9d8",
-  "hit_points_roll": "9d8+18",
-  "speed": {
-    "walk": "30 ft."
-  },
-  "strength": 16,
-  "dexterity": 13,
-  "constitution": 14,
-  "intelligence": 10,
-  "wisdom": 11,
+  "challenge_rating": 3,
   "charisma": 10,
+  "condition_immunities": [],
+  "constitution": 14,
+  "damage_immunities": [],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "dexterity": 13,
+  "gear": "Greatsword, Heavy Crossbow, Splint Armor",
+  "hit_dice": "10d8",
+  "hit_points": 65,
+  "hit_points_roll": "10d8 + 20",
+  "image": "/api/images/monsters/warrior-veteran-NYI.png",
+  "intelligence": 10,
+  "languages": "Common plus one other language",
+  "legendary_actions": [],
+  "name": "Warrior Veteran",
   "proficiencies": [
     {
       "value": 5,
       "proficiency": {
         "index": "skill-athletics",
         "name": "Skill: Athletics",
-        "url": "/api/2014/proficiencies/skill-athletics"
+        "url": "/api/2024/proficiencies/skill-athletics"
       }
     },
     {
@@ -45,115 +109,32 @@
       "proficiency": {
         "index": "skill-perception",
         "name": "Skill: Perception",
-        "url": "/api/2014/proficiencies/skill-perception"
+        "url": "/api/2024/proficiencies/skill-perception"
       }
     }
   ],
-  "damage_vulnerabilities": [],
-  "damage_resistances": [],
-  "damage_immunities": [],
-  "condition_immunities": [],
+  "proficiency_bonus": 2,
+  "reactions": [
+    {
+      "name": "Parry",
+      "desc": "Trigger: The warrior is hit by a melee attack roll while holding a weapon. Response: The warrior adds 2 to its AC against that attack, possibly causing it to miss.",
+      "damage": []
+    }
+  ],
   "senses": {
     "passive_perception": 12
   },
-  "languages": "any one language (usually Common)",
-  "challenge_rating": 3,
-  "proficiency_bonus": 2,
+  "size": "Medium or small",
+  "special_abilities": [],
+  "speed": {
+    "walk": "30 ft."
+  },
+  "strength": 16,
+  "type": "humanoid",
+  "updated_at": "2026-09-22T23:01:02.697Z",
+  "url": "/api/2024/monsters/warrior-veteran",
+  "wisdom": 11,
   "xp": 700,
-  "actions": [
-    {
-      "damage": [],
-      "name": "Multiattack",
-      "multiattack_type": "actions",
-      "desc": "The veteran makes two longsword attacks. If it has a shortsword drawn, it can also make a shortsword attack.",
-      "actions": [
-        {
-          "action_name": "Longsword",
-          "count": "2",
-          "type": "melee"
-        },
-        {
-          "action_name": "Shortsword",
-          "count": "2",
-          "type": "melee"
-        }
-      ]
-    },
-    {
-      "name": "Longsword",
-      "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) slashing damage, or 8 (1d10 + 3) slashing damage if used with two hands.",
-      "attack_bonus": 5,
-      "damage": [
-        {
-          "choose": 1,
-          "type": "damage",
-          "from": {
-            "option_set_type": "options_array",
-            "options": [
-              {
-                "option_type": "damage",
-                "notes": "One handed",
-                "damage_type": {
-                  "index": "slashing",
-                  "name": "Slashing",
-                  "url": "/api/2014/damage-types/slashing"
-                },
-                "damage_dice": "1d8+3"
-              },
-              {
-                "option_type": "damage",
-                "notes": "Two handed",
-                "damage_type": {
-                  "index": "slashing",
-                  "name": "Slashing",
-                  "url": "/api/2014/damage-types/slashing"
-                },
-                "damage_dice": "1d10+3"
-              }
-            ]
-          }
-        }
-      ],
-      "actions": []
-    },
-    {
-      "name": "Shortsword",
-      "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) piercing damage.",
-      "attack_bonus": 5,
-      "damage": [
-        {
-          "damage_type": {
-            "index": "piercing",
-            "name": "Piercing",
-            "url": "/api/2014/damage-types/piercing"
-          },
-          "damage_dice": "1d6+3"
-        }
-      ],
-      "actions": []
-    },
-    {
-      "name": "Heavy Crossbow",
-      "desc": "Ranged Weapon Attack: +3 to hit, range 100/400 ft., one target. Hit: 6 (1d10 + 1) piercing damage.",
-      "attack_bonus": 3,
-      "damage": [
-        {
-          "damage_type": {
-            "index": "piercing",
-            "name": "Piercing",
-            "url": "/api/2014/damage-types/piercing"
-          },
-          "damage_dice": "1d10+1"
-        }
-      ],
-      "actions": []
-    }
-  ],
-  "image": "/api/images/monsters/veteran.png",
-  "url": "/api/2014/monsters/veteran",
-  "updated_at": "2026-04-01T20:35:38.254Z",
-  "forms": [],
-  "legendary_actions": [],
-  "reactions": [],
-  "special_abilities": []
+  "bonus_actions": [],
+  "forms": []
 }

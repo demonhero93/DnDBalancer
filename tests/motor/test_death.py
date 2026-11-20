@@ -112,6 +112,8 @@ def test_el_daño_que_supera_la_vida_lo_marca_muerto_al_instante():
 
 def test_una_criatura_que_se_salva_no_queda_marcada_como_muerta(monkeypatch):
     # Relentless: 7 daño sobre 7 PV lo deja a 1 PV, sigue viva y sin marcar.
+    # El fixture 2024 ya no declara Relentless (trae «Bloodied Fury»): se
+    # inyecta la entrada sintética con el umbral de la ficha.
     import json
     from pathlib import Path
 
@@ -119,6 +121,14 @@ def test_una_criatura_que_se_salva_no_queda_marcada_como_muerta(monkeypatch):
 
     datos = json.loads((Path(__file__).parents[1] / "fixtures" / "boar.json")
                        .read_text(encoding="utf-8"))
+    datos["special_abilities"] = list(datos.get("special_abilities") or []) + [
+        {"name": "Relentless",
+         "desc": ("If the boar takes 7 damage or less that would reduce it "
+                  "to 0 hit points, it is reduced to 1 hit point instead."),
+         "damage": [],
+         "usage": {"type": "recharge after rest",
+                   "rest_types": ["short", "long"]}},
+    ]
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: datos)
     jabali = load_monster("boar")
     jabali.hp = 7

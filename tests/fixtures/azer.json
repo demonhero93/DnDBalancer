@@ -1,133 +1,110 @@
 {
-  "index": "azer",
-  "name": "Azer",
-  "size": "Medium",
-  "type": "elemental",
+  "index": "azer-sentinel",
+  "actions": [
+    {
+      "name": "Burning Hammer",
+      "desc": "Melee Attack Roll: +5, reach 5 ft. Hit: 8 (1d10 + 3) Bludgeoning damage plus 3 (1d6) Fire damage.",
+      "damage": [
+        {
+          "damage_type": {
+            "index": "bludgeoning",
+            "name": "Bludgeoning",
+            "url": "/api/2024/damage-types/bludgeoning"
+          },
+          "damage_dice": "1d10+3"
+        },
+        {
+          "damage_type": {
+            "index": "fire",
+            "name": "Fire",
+            "url": "/api/2024/damage-types/fire"
+          },
+          "damage_dice": "1d6"
+        }
+      ],
+      "attack_bonus": 5,
+      "actions": [],
+      "attacks": []
+    }
+  ],
   "alignment": "lawful neutral",
   "armor_class": [
     {
-      "type": "natural",
-      "value": 15
-    },
-    {
-      "type": "armor",
       "value": 17,
-      "armor": [
-        {
-          "index": "shield",
-          "name": "Shield",
-          "url": "/api/2014/equipment/shield"
-        }
-      ]
+      "armor": []
     }
   ],
-  "hit_points": 39,
-  "hit_dice": "6d8",
-  "hit_points_roll": "6d8+12",
-  "speed": {
-    "walk": "30 ft."
-  },
-  "strength": 17,
-  "dexterity": 12,
-  "constitution": 15,
-  "intelligence": 12,
-  "wisdom": 13,
+  "challenge_rating": 2,
   "charisma": 10,
+  "condition_immunities": [
+    {
+      "index": "poisoned",
+      "name": "Poisoned",
+      "url": "/api/2024/conditions/poisoned"
+    }
+  ],
+  "constitution": 15,
+  "damage_immunities": [
+    "fire",
+    "poison"
+  ],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "dexterity": 12,
+  "hit_dice": "6d8",
+  "hit_points": 39,
+  "hit_points_roll": "6d8 + 12",
+  "image": "/api/images/monsters/azer-sentinel-NYI.png",
+  "intelligence": 12,
+  "languages": "Primordial (Ignan)",
+  "legendary_actions": [],
+  "name": "Azer Sentinel",
   "proficiencies": [
     {
       "value": 4,
       "proficiency": {
         "index": "saving-throw-con",
         "name": "Saving Throw: CON",
-        "url": "/api/2014/proficiencies/saving-throw-con"
+        "url": "/api/2024/proficiencies/saving-throw-con"
       }
     }
   ],
-  "damage_vulnerabilities": [],
-  "damage_resistances": [],
-  "damage_immunities": [
-    "fire",
-    "poison"
-  ],
-  "condition_immunities": [
-    {
-      "index": "poisoned",
-      "name": "Poisoned",
-      "url": "/api/2014/conditions/poisoned"
-    }
-  ],
+  "proficiency_bonus": 2,
   "senses": {
     "passive_perception": 11
   },
-  "languages": "Ignan",
-  "challenge_rating": 2,
-  "proficiency_bonus": 2,
-  "xp": 450,
+  "size": "Medium",
   "special_abilities": [
     {
-      "name": "Heated Body",
-      "desc": "A creature that touches the azer or hits it with a melee attack while within 5 ft. of it takes 5 (1d10) fire damage.",
+      "name": "Fire Aura",
+      "desc": "At the end of each of the azer’s turns, each creature of the azer’s choice in a 5-foot Emanation originating from the azer takes 5 (1d10) Fire damage unless the azer has the Incapacitated condition.",
       "damage": [
         {
           "damage_type": {
             "index": "fire",
             "name": "Fire",
-            "url": "/api/2014/damage-types/fire"
+            "url": "/api/2024/damage-types/fire"
           },
           "damage_dice": "1d10"
         }
       ]
     },
     {
-      "name": "Heated Weapons",
-      "desc": "When the azer hits with a metal melee weapon, it deals an extra 3 (1d6) fire damage (included in the attack).",
-      "damage": [
-        {
-          "damage_type": {
-            "index": "fire",
-            "name": "Fire",
-            "url": "/api/2014/damage-types/fire"
-          },
-          "damage_dice": "1d6"
-        }
-      ]
-    },
-    {
       "name": "Illumination",
-      "desc": "The azer sheds bright light in a 10-foot radius and dim light for an additional 10 ft..",
+      "desc": "The azer sheds Bright Light in a 10-foot radius and Dim Light for an additional 10 feet.",
       "damage": []
     }
   ],
-  "actions": [
-    {
-      "name": "Warhammer",
-      "desc": "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 7 (1d8 + 3) bludgeoning damage, or 8 (1d10 + 3) bludgeoning damage if used with two hands to make a melee attack, plus 3 (1d6) fire damage.",
-      "attack_bonus": 5,
-      "damage": [
-        {
-          "damage_type": {
-            "index": "bludgeoning",
-            "name": "Bludgeoning",
-            "url": "/api/2014/damage-types/bludgeoning"
-          },
-          "damage_dice": "1d8+3"
-        },
-        {
-          "damage_type": {
-            "index": "fire",
-            "name": "Fire",
-            "url": "/api/2014/damage-types/fire"
-          },
-          "damage_dice": "1d6"
-        }
-      ],
-      "actions": []
-    }
-  ],
-  "image": "/api/images/monsters/azer.png",
-  "url": "/api/2014/monsters/azer",
-  "updated_at": "2026-04-01T20:35:38.253Z",
-  "forms": [],
-  "legendary_actions": [],
-  "reactions": []
+  "speed": {
+    "walk": "30 ft."
+  },
+  "strength": 17,
+  "type": "elemental",
+  "updated_at": "2026-09-22T23:01:02.695Z",
+  "url": "/api/2024/monsters/azer-sentinel",
+  "wisdom": 13,
+  "xp": 450,
+  "bonus_actions": [],
+  "reactions": [],
+  "forms": []
 }

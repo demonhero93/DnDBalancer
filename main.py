@@ -50,51 +50,24 @@ def _load_party(specs: list[str], legendary_p: float = 1.0,
 # Los ataques pueden ser ("nombre", "dados", "característica", rango) para
 # marcar los que son a distancia (el arquero deja al atacante a distancia).
 PARTY_TEMPLATES = [
-    dict(name="Guerrero", max_hp=50, ac=18, level=5,
-         class_name="fighter",
-         subclass_name="battle_master",
-         save_proficiencies=("str", "con"),
-         skill_proficiencies=("athletics", "intimidation", "perception",
-                              "survival"),
-         abilities=dict(str=16, dex=12, con=14, int=10, wis=12, cha=8),
-         attacks=[("Espada larga", "1d8", "str", "melee"),
-                  ("Arco corto", "1d6", "dex", "ranged")]),
-    dict(name="Pícaro", max_hp=50, ac=15, level=5,
-         save_proficiencies=("dex", "int"),
-         skill_proficiencies=("stealth", "sleight-of-hand", "perception",
-                              "deception"),
-         skill_expertise=("stealth", "sleight-of-hand"),
-         abilities=dict(str=10, dex=16, con=12, int=14, wis=10, cha=14),
-         attacks=[("Daga", "1d4", "dex", "melee")]),
-    dict(name="Monje", max_hp=50, ac=17, level=5,
-         save_proficiencies=("str", "dex"),
-         skill_proficiencies=("acrobatics", "stealth", "perception",
-                              "insight"),
-         abilities=dict(str=12, dex=16, con=14, int=10, wis=14, cha=8),
-         attacks=[("Puño", "1d6", "dex", "melee")]),
-    dict(name="Clérigo", max_hp=50, ac=16, level=5,
-         save_proficiencies=("wis", "cha"),
-         skill_proficiencies=("insight", "religion", "persuasion",
-                              "medicine"),
-         abilities=dict(str=14, dex=10, con=14, int=8, wis=16, cha=12),
-         attacks=[("Maza", "1d6", "str", "melee")]),
-    dict(name="Barbaro", max_hp=100, ac=12, level=5,
+    dict(name="Eldrich_Knight", max_hp=50, ac=18, level=5,
+        class_name="fighter",
+        subclass_name="eldritch_knight",
+        spell_list="wizard",
+        save_proficiencies=("str", "con"),
+        skill_proficiencies=("athletics", "intimidation", "perception",
+                            "survival"),
+        abilities=dict(str=16, dex=12, con=14, int=14, wis=10, cha=8),
+        attacks=[("Espada larga", "1d8", "str", "melee")]),
+    dict(name="Barbaro", max_hp=60, ac=12, level=5,
          class_name="barbarian",
-         subclass_name="battlerager",
+         subclass_name="beast",
          save_proficiencies=("str", "con"),
          skill_proficiencies=("athletics", "intimidation", "perception",
                               "survival"),
         abilities=dict(str=18, dex=14, con=16, int=8, wis=10, cha=12),
-        attacks=[("Hacha de batalla", "1d12", "str", "melee")]),
-    dict(name="Caballero", max_hp=50, ac=18, level=5,
-         class_name="fighter",
-         subclass_name="eldritch_knight",
-         spell_list="wizard",
-         save_proficiencies=("str", "con"),
-         skill_proficiencies=("athletics", "intimidation", "perception",
-                              "survival"),
-         abilities=dict(str=16, dex=12, con=14, int=14, wis=10, cha=8),
-         attacks=[("Espada larga", "1d8", "str", "melee")]),
+        attacks=[("Hacha de batalla", "1d12", "str", "melee")])
+    
 ]
 
 
@@ -177,8 +150,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=1, help="Semilla RNG.")
     parser.add_argument("--verbose", action="store_true", help="Muestra el primer combate.")
     parser.add_argument(
-        "--party", type=int, default=5,
-        help="Número de personajes jugador del grupo (1-6). Default: 5.",
+        "--party", type=int, default=2,
+        help="Número de personajes jugador del grupo (1-6). Default: 2.",
     )
     parser.add_argument(
         "--legendary-p", type=float, default=1.0,
@@ -222,7 +195,7 @@ def main() -> None:
         # Fija la probabilidad de utilitarias para todo el simulador.
         from dnd_sim.rules import utility
         utility.UTILITY_ACTION_PROBABILITY = float(args.utility_p)
-    specs = args.monster if args.monster else ["owlbear:3"]
+    specs = args.monster if args.monster else ["troll:2"]
     monsters = _load_party(specs, legendary_p=args.legendary_p,
                            resistance_p=args.resistance_p,
                            legendary_points=args.legendary_points)

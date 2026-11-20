@@ -1,8 +1,9 @@
 """Relentless del jabalí: un daño pequeño no lo deja caer.
 
-La ficha (fixture real de la API) dice dos cosas: si el daño que lo dejaría
+La ficha dice dos cosas: si el daño que lo dejaría
 a 0 no pasa de 7, queda a 1 PV; y lo trae con ``usage`` «recharge after
-rest», que en el motor (sin descansos) es un **uso por combate**. A
+rest», que en el motor (sin descansos) es un **uso por combate** (el
+fixture 2024 ya no declara Relentless: se inyecta en el helper). A
 diferencia de Regeneration no decide en su propio turno: el daño se
 resuelve al instante (hook ``on_reduced_to_zero_hp``).
 """
@@ -31,6 +32,16 @@ def _datos(index: str) -> dict:
 
 def _jabali(monkeypatch) -> Monster:
     data = _datos("boar")
+    # El fixture 2024 ya no declara Relentless (trae «Bloodied Fury»): se
+    # inyecta la entrada sintética con el umbral y el uso de la ficha.
+    data["special_abilities"] = list(data.get("special_abilities") or []) + [
+        {"name": "Relentless",
+         "desc": ("If the boar takes 7 damage or less that would reduce it "
+                  "to 0 hit points, it is reduced to 1 hit point instead."),
+         "damage": [],
+         "usage": {"type": "recharge after rest",
+                   "rest_types": ["short", "long"]}},
+    ]
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
     return load_monster("boar")
 
@@ -42,9 +53,13 @@ def _ctx(actor, combatantes, semilla: int = 1) -> CombatContext:
 
 
 def _pj() -> PlayerCharacter:
-    """Con 1d4 de daño nunca supera el umbral de 7."""
+    """Con 1d4 de daño nunca supera el umbral de 7.
+
+    Los PV son altos para que aguante el Gore 2024 (1d6+1 + 1d6) el
+    tiempo de rematar al jabalí.
+    """
     return PlayerCharacter(
-        name="Guerrero", max_hp=60, ac=15, proficiency=2,
+        name="Guerrero", max_hp=150, ac=15, proficiency=2,
         abilities=Abilities(str=16, dex=12, con=14, int=10, wis=12, cha=8),
         attacks=[Attack(name="Daga", damage="1d4", ability="str",
                         attack_bonus=5, damage_bonus=0)],

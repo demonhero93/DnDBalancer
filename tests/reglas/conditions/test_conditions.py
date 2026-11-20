@@ -40,6 +40,55 @@ def _load(monkeypatch, index: str, data=None):
     return load_monster(index)
 
 
+# --- Fixtures 2024 con data sintética --------------------------------------- #
+# Solo el dragón: la SRD 2024 ya no trae Frightful Presence en la ficha, así
+# que se inyecta la acción para cubrir el parser de ConditionAction dentro del
+# multiataque. (El derribo del lobo y la parálisis del ghoul ya los parsea el
+# texto 2024: se cargan con el fixture real.)
+
+
+def _dragon_sintetico(monkeypatch) -> Monster:
+    """El dragón rojo 2024 ya no trae Frightful Presence: se añade la acción
+    (con su CD estructurada) y su entrada en el multiataque, al estilo de la
+    SRD 2014, para cubrir el parser de ConditionAction dentro del multiataque."""
+    data = _data("adult-red-dragon")
+    data["actions"].append({
+        "name": "Frightful Presence",
+        "desc": ("Each creature of the dragon's choice that is within 120 ft. "
+                 "of the dragon and aware of it must succeed on a DC 19 Wisdom "
+                 "saving throw or become frightened for 1 minute. A creature "
+                 "can repeat the saving throw at the end of each of its turns, "
+                 "ending the effect on itself on a success."),
+        "dc": {"dc_type": {"index": "wis"}, "dc_value": 19,
+               "success_type": "none"},
+        "damage": [],
+        "actions": [],
+    })
+    for accion in data["actions"]:
+        if accion.get("name") == "Multiattack":
+            accion["desc"] = ("The dragon can use its Frightful Presence. It "
+                              "then makes three Rend attacks.")
+            accion.pop("action_options", None)
+            accion["actions"] = [
+                {"action_name": "Frightful Presence", "count": 1, "type": "melee"},
+                {"action_name": "Rend", "count": 3, "type": "melee"},
+            ]
+    return _load(monkeypatch, "adult-red-dragon", data)
+
+
+def _ghoul_con_multiataque_de_garras(monkeypatch) -> Monster:
+    """El multiataque 2024 del ghoul hace dos Bite (sin condición): para
+    cubrir en simulación la parálisis que su Claw sí aplica, el test hace
+    que el multiataque use Claw."""
+    data = _data("ghoul")
+    for accion in data["actions"]:
+        if accion.get("name") == "Multiattack":
+            accion["desc"] = "The ghoul makes two Claw attacks."
+            accion["actions"] = [{"action_name": "Claw", "count": "2",
+                                  "type": "melee"}]
+    return _load(monkeypatch, "ghoul", data)
+
+
 def _pj(name: str = "Guerrero", hp: int = 500, ac: int = 11) -> PlayerCharacter:
     """PJ de prueba (no es un monstruo: los monstruos vienen de la API)."""
     return PlayerCharacter(
@@ -483,38 +532,33 @@ def test_una_reaccion_no_se_dispara_en_un_combatiente_incapacitado(monkeypatch):
 
 # --- Aplicación y loader ---------------------------------------------------- #
 
-def test_el_lobo_derriba_con_la_salvacion_del_json(monkeypatch):
+def test_el_lobo_derriba_al_impactar_como_dice_el_json_2024(monkeypatch):
     lobo = _load(monkeypatch, "wolf")
     ataque = next(a for a in lobo.attacks if a.name == "Bite")
     rider = ataque.condition_riders[0]
-    # Valores leídos del JSON del fixture.
+    # SRD 2024: «it has the Prone condition» — sin salvación; dura 1 ronda
+    # (misma convención que «knocked prone»: se levanta en su turno).
     assert rider.condition is Condition.PRONE
-    assert rider.save_ability == "str"
-    assert rider.dc == 11
+    assert rider.save_ability is None
+    assert rider.dc == 0
     assert rider.duration_rounds == 1
     assert ataque.range_type is AttackRange.MELEE
 
 
-def test_el_lobo_solo_derriba_si_falla_la_salvacion(monkeypatch):
+def test_el_lobo_derriba_en_cada_impacto_sin_salvacion(monkeypatch):
+    """2024: el derribo va en el texto del golpe, no hay salvación que
+    superar ni que fallar."""
     lobo = _load(monkeypatch, "wolf")
     ataque = next(a for a in lobo.attacks if a.name == "Bite")
     objetivo = _pj("Objetivo", hp=500, ac=1)
-    objetivo.save_overrides["str"] = 30   # supera la CD 11 con facilidad
+    objetivo.save_overrides["str"] = 30  # irrelevante: no se tira salvación
     rng = random.Random(11)
     log: list[str] = []
     for _ in range(50):
         objetivo.hp = objetivo.max_hp
         log.clear()
         attack_roll(lobo, objetivo, ataque, rng, log)
-    assert not objetivo.conditions.has(Condition.PRONE)
-
-    # Con un bonus muy negativo, la一次次 Peer sale.
-    objetivo2 = _pj("Objetivo2", hp=500, ac=1)
-    objetivo2.save_overrides["str"] = -30
-    for _ in range(50):
-        objetivo2.hp = objetivo2.max_hp
-        attack_roll(lobo, objetivo2, ataque, rng, log)
-    assert objetivo2.conditions.has(Condition.PRONE)
+        assert objetivo.conditions.has(Condition.PRONE)
 
 
 def test_el_lobo_no_derriba_si_el_ataque_falla(monkeypatch):
@@ -522,7 +566,6 @@ def test_el_lobo_no_derriba_si_el_ataque_falla(monkeypatch):
     lobo = _load(monkeypatch, "wolf")
     ataque = next(a for a in lobo.attacks if a.name == "Bite")
     objetivo = _pj("Objetivo", hp=5000, ac=100)  # CA 100: solo el 20 natural impacta
-    objetivo.save_overrides["str"] = -30
     rng = random.Random(11)
     log: list[str] = []
     impactos = 0
@@ -539,19 +582,21 @@ def test_el_lobo_no_derriba_si_el_ataque_falla(monkeypatch):
     assert impactos > 0
 
 
-def test_el_ghoul_paraliza_con_diez_rondas_y_salvacion_de_repeticion(monkeypatch):
+def test_el_ghoul_paraliza_hasta_el_fin_del_turno_siguiente(monkeypatch):
     ghoul = _load(monkeypatch, "ghoul")
-    ataque = next(a for a in ghoul.attacks if a.name == "Claws")
+    ataque = next(a for a in ghoul.attacks if a.name == "Claw")
     rider = ataque.condition_riders[0]
+    # SRD 2024: «Failure: ... has the Paralyzed condition until the end of
+    # its next turn» — 1 ronda y sin repetición de salvación.
     assert rider.condition is Condition.PARALYZED
     assert rider.save_ability == "con"
     assert rider.dc == 10
-    assert rider.duration_rounds == 10
-    assert rider.repeat_save is True
+    assert rider.duration_rounds == 1
+    assert rider.repeat_save is False
 
 
 def test_la_accion_de_condicion_del_dragon_es_un_condition_action(monkeypatch):
-    dragon = _load(monkeypatch, "adult-red-dragon")
+    dragon = _dragon_sintetico(monkeypatch)
     multiattack = dragon.multiattack
     assert multiattack is not None
     accion = multiattack.action_entries["Frightful Presence"]
@@ -636,7 +681,7 @@ def test_cada_fixture_tiene_un_tipo_de_ataque_coherente():
 
 
 def test_un_condition_action_no_aplica_condiciones_a_aliados(monkeypatch):
-    dragon = _load(monkeypatch, "adult-red-dragon")
+    dragon = _dragon_sintetico(monkeypatch)
     accion = dragon.multiattack.action_entries["Frightful Presence"]
     aliado = Monster(name="Aliado", max_hp=100, ac=10, abilities=Abilities())
     enemigo = _pj("Enemigo", hp=200)
@@ -648,7 +693,7 @@ def test_un_condition_action_no_aplica_condiciones_a_aliados(monkeypatch):
 
 
 def test_un_condition_action_respeta_el_area_targeting(monkeypatch):
-    dragon = _load(monkeypatch, "adult-red-dragon")
+    dragon = _dragon_sintetico(monkeypatch)
     accion = dragon.multiattack.action_entries["Frightful Presence"]
     enemigos = [_pj(f"Enemigo{i}", hp=200) for i in range(4)]
     for enemigo in enemigos:
@@ -662,7 +707,7 @@ def test_un_condition_action_respeta_el_area_targeting(monkeypatch):
 # --- Simulación completa ---------------------------------------------------- #
 
 def test_simulacion_con_ghoul_informa_de_turnos_perdidos(monkeypatch):
-    ghoul = _load(monkeypatch, "ghoul")
+    ghoul = _ghoul_con_multiataque_de_garras(monkeypatch)
     pjs = [_pj("Guerrero", hp=60), _pj("Pícaro", hp=60), _pj("Monje", hp=60)]
     stats = simulate(pjs + [ghoul], n=50, seed=1)
     assert stats["turns_lost_incapacitated_avg"]
@@ -671,7 +716,7 @@ def test_simulacion_con_ghoul_informa_de_turnos_perdidos(monkeypatch):
 
 
 def test_reproducibilidad_con_condiciones(monkeypatch):
-    ghoul = _load(monkeypatch, "ghoul")
+    ghoul = _ghoul_con_multiataque_de_garras(monkeypatch)
     pjs = [_pj("Guerrero", hp=60), _pj("Pícaro", hp=60)]
     a = simulate(pjs + [ghoul], n=20, seed=7)
     b = simulate(pjs + [ghoul], n=20, seed=7)

@@ -1,7 +1,8 @@
 """Martial Advantage del hobgoblin (daño extra con condición de posición).
 
-La ficha (fixture real de la API) declara «an extra 7 (2d6) damage ... if
-that creature is within 5 ft. of an ally ... that isn't incapacitated»: los
+La ficha declara «an extra 7 (2d6) damage ... if that creature is within
+5 ft. of an ally ... that isn't incapacitated» (el fixture 2024 ya no lo
+trae: se inyecta en el helper): los
 números se leen de la descripción, la posición no está modelada (se sortea,
 igual que Pack Tactics) y el daño entra en el ataque **antes** de los
 modificadores del objetivo.
@@ -28,6 +29,17 @@ def _datos(index: str) -> dict:
 
 def _hobgoblin(monkeypatch):
     data = _datos("hobgoblin")
+    # El fixture 2024 («Hobgoblin Warrior») perdió Martial Advantage y
+    # trae Pack Tactics: se inyecta la entrada sintética del rasgo perdido
+    # delante para que traits[0] siga siendo el rasgo probado aquí.
+    data["special_abilities"] = [
+        {"name": "Martial Advantage",
+         "desc": ("Once per turn, the hobgoblin can deal an extra 7 (2d6) "
+                  "damage to a creature it hits with a weapon attack if that "
+                  "creature is within 5 ft. of an ally of the hobgoblin that "
+                  "isn't incapacitated."),
+         "damage": []},
+    ] + list(data.get("special_abilities") or [])
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
     return load_monster("hobgoblin")
 
@@ -60,7 +72,10 @@ def _ctx(actor, combatantes, semilla: int = 1) -> CombatContext:
 
 def test_el_hobgoblin_carga_su_martial_advantage(monkeypatch):
     hobgoblin = _hobgoblin(monkeypatch)
-    assert [type(t).__name__ for t in hobgoblin.traits] == ["MartialAdvantage"]
+    # La ficha 2024 trae Pack Tactics; Martial Advantage se inyecta.
+    assert [type(t).__name__ for t in hobgoblin.traits] == [
+        "MartialAdvantage", "PackTactics",
+    ]
     rasgo = hobgoblin.traits[0]
     assert rasgo.name == "Martial Advantage"
     # Los números salen de la descripción («an extra 7 (2d6)»).

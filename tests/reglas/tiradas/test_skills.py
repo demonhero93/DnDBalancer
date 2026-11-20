@@ -187,7 +187,8 @@ def test_check_modifiers_pasa_la_habilidad_a_los_rasgos():
 
 def test_loader_parsea_las_habilidades_de_la_ficha(monkeypatch):
     gladiador = _load_fixture(monkeypatch, "gladiator")
-    assert {"athletics", "intimidation"} <= gladiador.skill_proficiencies
+    # El gladiador 2024 trae Athletics y Performance (antes Intimidation).
+    assert {"athletics", "performance"} <= gladiador.skill_proficiencies
     assert isinstance(gladiador.skill_overrides["athletics"], int)
     # El total de ficha manda sobre mod + competencia.
     assert (gladiador.skill_bonus("athletics")

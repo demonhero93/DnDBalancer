@@ -27,7 +27,7 @@ def test_load_monster_maps_ogre(monkeypatch):
 
     c = load_monster("ogre", team="NPC")
     assert c.name == "Ogre"
-    assert c.max_hp == 59
+    assert c.max_hp == 68
     assert c.ac == 11
     assert c.abilities.str == 19
     assert c.abilities.dex == 8
@@ -121,11 +121,11 @@ def test_load_monster_maps_owlbear_multiattack(monkeypatch):
     assert isinstance(c.multiattack, MultiattackAction)
     assert len(c.multiattack.options) == 1
     assert [(e.attack_name, e.count) for e in c.multiattack.options[0]] == [
-        ("Beak", 1), ("Claws", 1)
+        ("Rend", 2)
     ]
     # Los ataques referenciados no compiten como acciones sueltas.
     assert all(getattr(a, "only_in_multiattack", False) for a in c.attacks
-               if a.name in ("Beak", "Claws"))
+               if a.name == "Rend")
 
 
 def test_owlbear_multiattack_exact_counts(monkeypatch):
@@ -137,10 +137,10 @@ def test_owlbear_multiattack_exact_counts(monkeypatch):
     objetivo = PlayerCharacter(name="Objetivo", max_hp=100000, ac=30,
                               abilities=Abilities(), attacks=[])
     res = run_combat([objetivo, owlbear], random.Random(3), verbose=True)
-    beak = sum(" con Beak:" in line for line in res.log)
-    claws = sum(" con Claws:" in line for line in res.log)
-    assert beak == claws
-    assert beak + claws > 0
+    rend = sum(" con Rend:" in line for line in res.log)
+    rondas = sum(1 for line in res.log if line.startswith("-- Ronda"))
+    # El multiataque 2024 son dos Rend por turno: el total es exacto.
+    assert rend == 2 * rondas
 
 
 def test_monstruo_guarda_el_size_de_la_ficha(monkeypatch):

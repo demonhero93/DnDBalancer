@@ -139,6 +139,10 @@ class Combatant:
     # con el rasgo, lo limpia el procesado de la cola al final de cada
     # turno (cura o muerte) y ``reset()``.
     en_pie_pendiente: bool = field(init=False, default=False)
+    # PV mínimos alcanzados en el combate en curso (riesgo real de
+    # ``engine.stats``): lo reinician ``__post_init__`` y ``reset()``,
+    # y lo baja solo el daño en ``rules.damage.inflict_damage``.
+    min_hp_reached: int = field(init=False, default=0)
     # Espacios de conjuro de un PJ lanzador (None = sin lanzamiento:
     # cero cambio para todo lo existente). Lo rellena
     # ``rules.spells.aplicar_lanzamiento``; ``reset()`` los restaura
@@ -149,6 +153,7 @@ class Combatant:
         if isinstance(self.combatant_type, str):
             self.combatant_type = CombatantType(self.combatant_type)
         self.hp = self.max_hp
+        self.min_hp_reached = self.hp
         self.size = str(self.size or "medium").strip().lower() or "medium"
         self.size_base = (str(self.size_base or self.size).strip().lower()
                           or "medium")
@@ -285,6 +290,7 @@ class Combatant:
 
     def reset(self) -> None:
         self.hp = self.max_hp
+        self.min_hp_reached = self.hp
         # Un combate nuevo revive a todos: el estado de muerte se limpia aquí.
         self.dead = False
         # Strength Before Death: nadie empieza un combate pendiente.

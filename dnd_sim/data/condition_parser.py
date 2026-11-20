@@ -68,12 +68,26 @@ SAVE_OR_DAMAGE_AND_CONDITION_RE = re.compile(
 )
 # "DC 11 Strength saving throw".
 DC_SAVE_RE = re.compile(r"DC\s*(\d+)\s+(\w+)\s+saving throw", re.IGNORECASE)
+# "Strength Saving Throw: DC 11" (orden 2024: habilidad primero).
+DC_SAVE_2024_RE = re.compile(r"(\w+) Saving Throw: DC (\d+)", re.IGNORECASE)
+# "Failure: The target has the Paralyzed condition until the end of its
+# next turn." (2024: la condición va tras «Failure:», no tras «or be»).
+FAILURE_CONDITION_RE = re.compile(
+    r"Failure:[^.]*?has the ([a-z]+) condition(?P<rest>[^.]*)",
+    re.IGNORECASE,
+)
+# "it has the Prone condition" (2024: se aplica al impactar, sin salvación).
+AUTO_CONDITION_RE = re.compile(r"\bit has the ([a-z]+) condition\b", re.IGNORECASE)
 # "until the end of the vrock's next turn".
 DURATION_NEXT_TURN_RE = re.compile(r"until the end of[^.;]*?next turn", re.IGNORECASE)
 # "for 1 minute" / "for 10 minutes".
 DURATION_MINUTES_RE = re.compile(r"for\s+(\d+)\s+minutes?\b", re.IGNORECASE)
 # "for 1 hour" / "for 24 hours".
 DURATION_HOURS_RE = re.compile(r"for\s+(\d+)\s+hours?\b", re.IGNORECASE)
+# "until the web is destroyed" (giant-spider 2024).
+# shortcut: el motor no modela HP de objetos destruibles, así que la
+# condición dura hasta el fin del combate; upgrade con objetos destruibles.
+DURATION_UNTIL_DESTROYED_RE = re.compile(r"until [^.;]*?is destroyed", re.IGNORECASE)
 # Repetición de la salvación ("can repeat the saving throw ...").
 REPEAT_SAVE_RE = re.compile(r"repeat the saving throw", re.IGNORECASE)
 # Escape con prueba de característica ("can make a DC 12 Strength check").
@@ -112,6 +126,9 @@ def _duration_rounds(text: str) -> tuple[int | None, bool]:
         # Una hora o más: hasta el fin del combate.
         # TODO: modelar el paso del tiempo real.
         return None, True
+    if DURATION_UNTIL_DESTROYED_RE.search(text):
+        # Fin del combate (ver shortcut en la definición del patrón).
+        return None, True
     match = DURATION_MINUTES_RE.search(text)
     if match:
         return int(match.group(1)) * 10, True
@@ -125,6 +142,26 @@ def _sentence_with(desc: str, position: int) -> str:
     if fin == -1:
         fin = len(desc)
     return desc[inicio:fin]
+
+
+def _dc_ability(dc_info: dict | None, frase: str) -> tuple[int, str] | None:
+    """(CD, característica): del campo `dc` si existe, si no de la frase.
+
+    Acepta el orden 2014 («DC 11 Strength saving throw») y el 2024
+    («Strength Saving Throw: DC 11»). Devuelve None si no hay CD.
+    """
+    if isinstance(dc_info, dict) and dc_info:
+        dc = int(dc_info.get("dc_value", 0) or 0)
+        tipo = dc_info.get("dc_type") or {}
+        index = tipo.get("index") if isinstance(tipo, dict) else tipo
+        return dc, str(index) if index else "dex"
+    match = DC_SAVE_RE.search(frase)
+    if match:
+        return int(match.group(1)), match.group(2)
+    match = DC_SAVE_2024_RE.search(frase)
+    if match:
+        return int(match.group(2)), match.group(1)
+    return None
 
 
 def parse_range_type(desc: str, monster_name: str = "", action_name: str = "") -> AttackRange:
@@ -162,10 +199,14 @@ def parse_condition_effects(action: dict, monster_name: str = "",
 
     a) La condición depende de un fallo de salvación ("saving throw or be
        <cond>"): el objetivo tira la salvación y, si falla, recibe la
-       condición.
+       condición. La variante 2024 (a2) la describe tras «Failure: The
+       target has the <cond> condition» con la CD en «Word Saving Throw:
+       DC N».
     b) La condición se aplica directamente (sin salvación) pero la acción
        ofrece una prueba de escape ("DC 12 Strength check", "escape DC 16"):
-       el estado se puede liberar con esa prueba.
+       el estado se puede liberar con esa prueba. La variante 2024 (b2)
+       aplica la condición al impactar sin escapatoria ("it has the Prone
+       condition"), con la misma duración que «knocked prone».
 
     Las condiciones excluidas avisan y no se aplican. Las condiciones sin
     salida (ni salvación ni escape) también avisan y no se aplican.
@@ -208,20 +249,10 @@ def parse_condition_effects(action: dict, monster_name: str = "",
             frase = _sentence_with(desc, match.start())
 
             # La CD y la característica: del campo `dc` si existe, si no del texto.
-            dc = 0
-            ability = "dex"
-            if isinstance(dc_info, dict) and dc_info:
-                dc = int(dc_info.get("dc_value", 0) or 0)
-                tipo = dc_info.get("dc_type") or {}
-                index = tipo.get("index") if isinstance(tipo, dict) else tipo
-                if index:
-                    ability = str(index)
-            else:
-                dc_match = DC_SAVE_RE.search(frase)
-                if not dc_match:
-                    continue
-                dc = int(dc_match.group(1))
-                ability = dc_match.group(2)
+            dc_ability = _dc_ability(dc_info, frase)
+            if dc_ability is None:
+                continue
+            dc, ability = dc_ability
             try:
                 ability = normalize_ability(ability)
             except Exception:
@@ -253,6 +284,44 @@ def parse_condition_effects(action: dict, monster_name: str = "",
             ))
             aplicadas.add(condicion)
 
+    # (a2) Texto 2024: «Constitution Saving Throw: DC 10. Failure: The
+    # target has the Paralyzed condition ...» (ghoul Claw, giant-spider
+    # Web). La CD sale del campo `dc` o de la frase; la condición, de la
+    # cláusula «Failure:».
+    for match in FAILURE_CONDITION_RE.finditer(desc):
+        keyword = match.group(1).lower()
+        condicion = CONDITION_KEYWORDS.get(keyword)
+        if condicion is None or condicion in aplicadas:
+            continue
+        if keyword in EXCLUDED_CONDITIONS:
+            continue  # ya avisado en el paso 1
+        dc_ability = _dc_ability(dc_info, desc)
+        if dc_ability is None:
+            continue
+        dc, ability = dc_ability
+        try:
+            ability = normalize_ability(ability)
+        except Exception:
+            ability = "dex"
+        rondas, reconocida = _duration_rounds(match.group("rest") or "")
+        if not reconocida:
+            warnings.warn(
+                f"Duración no reconocida en la condición {condicion.value!r} de la "
+                f"acción {nombre!r} de {monster_name!r}: no se aplica. "
+                f"# TODO: no adivinar la duración.",
+                stacklevel=2,
+            )
+            continue
+        efectos.append(ConditionEffect(
+            condition=condicion,
+            save_ability=ability,
+            dc=dc,
+            duration_rounds=rondas,
+            repeat_save=bool(REPEAT_SAVE_RE.search(desc)),
+            escape=escape,
+        ))
+        aplicadas.add(condicion)
+
     # (b) Condiciones sin salvación pero con prueba de escape.
     if escape is not None:
         for clave, condicion in CONDITION_KEYWORDS.items():
@@ -274,6 +343,26 @@ def parse_condition_effects(action: dict, monster_name: str = "",
                 escape=escape,
             ))
             aplicadas.add(condicion)
+
+    # (b2) Texto 2024: «it has the Prone condition» sin salvación (wolf
+    # Bite, chimera Ram): el golpe la aplica y dura lo mismo que «knocked
+    # prone» — la criatura se levanta en su siguiente turno.
+    for match in AUTO_CONDITION_RE.finditer(desc):
+        keyword = match.group(1).lower()
+        condicion = CONDITION_KEYWORDS.get(keyword)
+        if condicion is None or condicion in aplicadas:
+            continue
+        if keyword in EXCLUDED_CONDITIONS:
+            continue  # ya avisado en el paso 1
+        efectos.append(ConditionEffect(
+            condition=condicion,
+            save_ability=None,
+            dc=0,
+            duration_rounds=KNOCKED_PRONE_ROUNDS,
+            repeat_save=False,
+            escape=escape,
+        ))
+        aplicadas.add(condicion)
 
     # (c) Condiciones mencionadas sin salida posible: aviso y no se aplican.
     for clave, condicion in CONDITION_KEYWORDS.items():

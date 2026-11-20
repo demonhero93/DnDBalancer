@@ -437,18 +437,25 @@ def test_los_hechizos_de_bonus_action_y_reaccion_no_entran_en_el_pool():
     assert hechizo_soportado(None) is False
 
 
-def test_un_monstruo_con_hechizos_conserva_sus_resultados_con_semilla_fija():
-    """El camino de monstruo (CD/bonificador de ficha) queda intacto."""
+def test_un_monstruo_con_hechizos_conserva_sus_resultados_con_semilla_fija(monkeypatch):
+    """El camino de monstruo (CD/bonificador de ficha) queda intacto.
+
+    Snapshot congelado (tests/fixtures/frozen/lich.json): no regenerar —
+    los valores exactos de abajo dependen de esa ficha.
+    """
     from dnd_sim.data.loader import load_monster
     from dnd_sim.engine.combat import run_combat
+    lich_data = json.loads(
+        (FIXTURES / "frozen" / "lich.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: lich_data)
     lich = load_monster("lich")
     victima = PlayerCharacter(name="Victima", max_hp=60, ac=12,
                               abilities=Abilities(dex=10), attacks=[])
     r = run_combat([lich, victima], random.Random(3))
     assert r.winner == "NPC"
-    assert r.rounds == 2
-    assert r.survivors == {"Victima": 0, "Lich": 135}
-    assert r.action_uses == {"Paralyzing Touch": 2}
+    assert r.rounds == 1
+    assert r.survivors == {"Victima": 0, "Lich": 315}
+    assert r.action_uses == {"Chain Lightning": 1}
 
 
 # --- A5: preparación de hechizos -------------------------------------------- #

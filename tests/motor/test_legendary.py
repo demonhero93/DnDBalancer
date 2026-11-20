@@ -40,6 +40,27 @@ def _load(monkeypatch, index: str, data=None):
     return load_monster(index)
 
 
+def _dragon_con_ala_legendaria() -> dict:
+    """Copia del fixture 2024 con la 'Wing Attack' legendaria de la ficha.
+
+    El fixture 2024 ya no la trae entre las legendarias (solo 'Pounce'),
+    pero el loader debe seguir mapeando una legendaria de área con CD,
+    daño y condición: la entrada se reconstruye con datos estructurados.
+    """
+    data = _data("adult-red-dragon")
+    data["legendary_actions"].append({
+        "name": "Wing Attack (Costs 2 Actions)",
+        "desc": ("Each creature within 10 feet must make a DC 22 Dexterity "
+                 "saving throw or take 15 (2d6 + 8) bludgeoning damage and "
+                 "be knocked prone."),
+        "dc": {"dc_type": {"index": "dex"}, "dc_value": 22,
+               "success_type": "none"},
+        "damage": [{"damage_type": {"index": "bludgeoning"},
+                    "damage_dice": "2d6+8"}],
+    })
+    return data
+
+
 def _pj(name: str = "Guerrero", hp: int = 100000, ac: int = 18, **kwargs) -> PlayerCharacter:
     """PJ de prueba (los monstruos siempre vienen de la API)."""
     return PlayerCharacter(
@@ -143,25 +164,25 @@ def test_los_puntos_se_rellenan_evenco_el_dueno_est_a_incapacitado(monkeypatch):
 
 
 def test_con_un_punto_solo_son_asequibles_las_de_coste_uno(monkeypatch):
-    dragon = _load(monkeypatch, "adult-red-dragon")
+    dragon = _load(monkeypatch, "adult-red-dragon", _dragon_con_ala_legendaria())
     dragon.legendary.points_left = 1
     affordable = [
         la for la in dragon.legendary.actions
         if la.cost <= dragon.legendary.points_left
     ]
-    assert [la.name for la in affordable] == ["Tail Attack"]
+    assert [la.name for la in affordable] == ["Pounce"]
     # Con 3 puntos también entra el ala (coste 2).
     dragon.legendary.points_left = 3
     affordable = [la for la in dragon.legendary.actions if la.cost <= 3]
-    assert {la.name for la in affordable} == {"Tail Attack", "Wing Attack"}
+    assert {la.name for la in affordable} == {"Pounce", "Wing Attack"}
 
 
 def test_una_accion_de_coste_tres_no_se_usa_con_menos_de_tres_puntos(monkeypatch):
     dragon = _load(monkeypatch, "adult-red-dragon")
-    # Se sube el coste del ataque de cola para probar el límite.
-    cola = next(la for la in dragon.legendary.actions if la.name == "Tail Attack")
-    cola.cost = 3
-    dragon.legendary.actions = [cola]
+    # Se sube el coste del Pounce para probar el límite.
+    pounce = next(la for la in dragon.legendary.actions if la.name == "Pounce")
+    pounce.cost = 3
+    dragon.legendary.actions = [pounce]
     jugador = _pj()
     ctx = _contexto(jugador, [jugador, dragon])
     _turno_del_dueno(dragon, ctx)
@@ -247,8 +268,8 @@ def test_no_actua_si_el_combate_ya_terminado(monkeypatch):
 
 def test_el_combate_termina_en_medio_de_la_fase(monkeypatch):
     """Si la acción legendaria mata al último enemigo, no hay más acciones."""
-    dragon_a = _load(monkeypatch, "adult-red-dragon")
-    dragon_b = _load(monkeypatch, "adult-red-dragon")
+    dragon_a = _load(monkeypatch, "adult-red-dragon", _dragon_con_ala_legendaria())
+    dragon_b = _load(monkeypatch, "adult-red-dragon", _dragon_con_ala_legendaria())
     dragon_b.name = "Adult Red Dragon 2"
     # Solo el ala (área con daño): el PJ muere siempre.
     for dragon in (dragon_a, dragon_b):
@@ -283,8 +304,8 @@ def test_no_gasta_los_recursos_de_turno_del_dueno(monkeypatch):
 def test_no_gasta_el_uso_limitado_de_la_accion_del_dueno(monkeypatch):
     dragon = _load(monkeypatch, "adult-red-dragon")
     jugador = _pj()
-    cola = next(la for la in dragon.legendary.actions if la.name == "Tail Attack")
-    ataque = cola.action.attack
+    pounce = next(la for la in dragon.legendary.actions if la.name == "Pounce")
+    ataque = pounce.action.attack
     ataque.usage = None
     ctx = _contexto(jugador, [jugador, dragon])
     legendary_phase(jugador, ctx)
@@ -317,7 +338,7 @@ def test_sin_acciones_asequibles_no_se_consume_rng(monkeypatch):
 def test_con_una_sola_accion_asequible_pick_no_consume_rng(monkeypatch):
     dragon = _load(monkeypatch, "adult-red-dragon")
     dragon.legendary.actions = [la for la in dragon.legendary.actions
-                                 if la.name == "Tail Attack"]
+                                 if la.name == "Pounce"]
     jugador = _pj()
     ctx = _contexto(jugador, [jugador, dragon], rng=random.Random(9))
     _turno_del_dueno(dragon, ctx)
@@ -343,7 +364,7 @@ def test_use_probability_uno_no_hace_tirada_extra(monkeypatch):
     dragon = _load(monkeypatch, "adult-red-dragon")
     dragon.legendary.use_probability = 1.0
     dragon.legendary.actions = [la for la in dragon.legendary.actions
-                                 if la.name == "Tail Attack"]
+                                 if la.name == "Pounce"]
     jugador = _pj()
     ctx = _contexto(jugador, [jugador, dragon], rng=random.Random(9))
     _turno_del_dueno(dragon, ctx)
@@ -399,10 +420,10 @@ def test_la_fase_ocurre_despues_del_end_turn(monkeypatch):
 # --- Loader ---------------------------------------------------------------- #
 
 def test_el_dragon_carga_sus_acciones_legendarias(monkeypatch):
-    data = _data("adult-red-dragon")
+    data = _dragon_con_ala_legendaria()
     bruto = next(a for a in data["legendary_actions"] if a["name"].startswith("Wing Attack"))
 
-    dragon = _load(monkeypatch, "adult-red-dragon")
+    dragon = _load(monkeypatch, "adult-red-dragon", data)
     state = dragon.legendary
     assert state is not None
     # Siempre en guarida: points_max = base + LEGENDARY_LAIR_BONUS.
@@ -410,12 +431,12 @@ def test_el_dragon_carga_sus_acciones_legendarias(monkeypatch):
         DEFAULT_LEGENDARY_POINTS + LEGENDARY_LAIR_BONUS)
 
     nombres = {la.name: la for la in state.actions}
-    assert set(nombres) == {"Tail Attack", "Wing Attack"}
+    assert set(nombres) == {"Pounce", "Wing Attack"}
 
-    # Tail Attack envuelve el ataque Tail del dragón (coste 1).
-    cola = nombres["Tail Attack"]
-    assert cola.cost == 1
-    assert getattr(cola.action, "name", "") == "Tail"
+    # Pounce envuelve el ataque Rend del dragón (coste 1).
+    pounce = nombres["Pounce"]
+    assert pounce.cost == 1
+    assert getattr(pounce.action, "name", "") == "Rend"
 
     # Wing Attack: área con CD, característica y daño del JSON + PRONE.
     ala = nombres["Wing Attack"]
@@ -427,9 +448,9 @@ def test_el_dragon_carga_sus_acciones_legendarias(monkeypatch):
     assert ala.action.effect.damage_type.value == bruto["damage"][0]["damage_type"]["index"]
     assert ala.action.condition is not None
     assert ala.action.condition.condition is Condition.PRONE
-    # La cola no tiene datos propios: es una referencia al ataque "Tail".
-    cola_bruto = next(a for a in data["legendary_actions"] if a["name"] == "Tail Attack")
-    assert cola_bruto.get("damage") == []
+    # Pounce no tiene datos propios: es una referencia al ataque "Rend".
+    pounce_bruto = next(a for a in data["legendary_actions"] if a["name"] == "Pounce")
+    assert pounce_bruto.get("damage") == []
 
 
 def test_el_detect_del_dragon_se_omite_con_aviso(monkeypatch):
@@ -449,20 +470,33 @@ def test_el_lich_carga_sus_acciones_legendarias(monkeypatch):
     assert state is not None
     nombres = {la.name: la for la in state.actions}
 
-    assert "Paralyzing Touch" in nombres
-    toque = nombres["Paralyzing Touch"]
-    assert toque.cost == 2
-    assert getattr(toque.action, "name", "") == "Paralyzing Touch"
-    # La acción normal del liche deja la condición PARALYZED.
-    riders = toque.action.attack.condition_riders
-    assert riders and riders[0].condition is Condition.PARALYZED
+    # El fixture 2024 solo deja modelable 'Disrupt Life' (área con salvación).
+    assert set(nombres) == {"Disrupt Life"}
+    disrupt = nombres["Disrupt Life"]
+    assert disrupt.cost == 1
+    assert isinstance(disrupt.action, AreaSaveAction)
+    bruto = next(a for a in _data("lich")["legendary_actions"]
+                 if a["name"] == "Disrupt Life")
+    assert disrupt.action.effect.dc == bruto["dc"]["dc_value"]
+    assert disrupt.action.effect.ability == bruto["dc"]["dc_type"]["index"]
+    assert disrupt.action.effect.damage == bruto["damage"][0]["damage_dice"]
+    assert (disrupt.action.effect.damage_type.value
+            == bruto["damage"][0]["damage_type"]["index"])
 
     assert "Cantrip" not in nombres
 
 
 def test_el_cantrip_del_lich_se_omite_con_aviso(monkeypatch):
+    # El fixture 2024 ya no trae un cantrip legendario: se añade la entrada
+    # para comprobar que el motivo «conjuro» sigue avisando con su nombre.
+    data = _data("lich")
+    data["legendary_actions"].append({
+        "name": "Cantrip",
+        "desc": "The lich casts a cantrip at one creature within range.",
+        "damage": [],
+    })
     with pytest.warns(UserWarning, match="Cantrip"):
-        _load(monkeypatch, "lich")
+        _load(monkeypatch, "lich", data)
 
 
 def test_el_coste_por_defecto_es_uno_y_el_nombre_queda_limpio():
@@ -510,9 +544,11 @@ def test_cada_accion_omitida_avisa_con_monstruo_accion_y_motivo(monkeypatch):
     textos = [str(w.message) for w in atrapadas]
     omitted = [t for t in textos if "Acción legendaria" in t]
     assert omitted
+    # Cada aviso nombra al monstruo y a la entrada del fixture que lo origina.
+    nombres_brutos = {a["name"] for a in _data("adult-red-dragon")["legendary_actions"]}
     for texto in omitted:
         assert "Adult Red Dragon" in texto
-        assert "Detect" in texto or "Wing Attack" in texto
+        assert any(nombre in texto for nombre in nombres_brutos)
 
 
 def test_la_resistencia_legendaria_usa_el_uso_del_fixture(monkeypatch):
@@ -524,10 +560,14 @@ def test_la_resistencia_legendaria_usa_el_uso_del_fixture(monkeypatch):
 
 
 def test_el_patron_de_texto_libre_esta_validado_contra_los_fixtures():
-    """El patrón cerrado reconoce el texto real del ala del dragón."""
-    data = _data("adult-red-dragon")
-    desc = next(a for a in data["legendary_actions"]
-                if a["name"].startswith("Wing Attack"))["desc"]
+    """El patrón cerrado reconoce el texto de salvación con daño.
+
+    El fixture 2024 ya no trae texto libre con salvación en las legendarias
+    (usa datos estructurados): se valida con el texto canónico del patrón.
+    """
+    desc = ("The dragon makes a tail attack. Each creature within 5 feet "
+            "must make a DC 22 Dexterity saving throw or take 15 (2d6 + 8) "
+            "bludgeoning damage.")
     match = TEXT_SAVE_PATTERN.search(desc)
     assert match is not None
     assert match.group(1) == "22"

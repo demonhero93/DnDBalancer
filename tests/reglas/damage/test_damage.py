@@ -10,7 +10,9 @@ from dnd_sim import Monster, PlayerCharacter
 from dnd_sim.engine.combat import run_combat
 from dnd_sim.data.loader import load_monster
 
-FIXTURE = Path(__file__).parents[2] / "fixtures" / "ogre.json"
+# Snapshot congelado: no regenerar — los valores exactos de regresión
+# dependen de esta ficha (véase tests/fixtures/frozen/README.md).
+FIXTURE = Path(__file__).parents[2] / "fixtures" / "frozen" / "ogre.json"
 
 
 def _target(resistances=(), vulnerabilities=(), immunities=()) -> Combatant:
@@ -90,6 +92,9 @@ def test_regression_guerrero_vs_ogro(monkeypatch):
     ``pick`` en **cada** ataque (consume RNG). Antes: PJ 0.108 / NPC 0.892,
     5.881 rondas, 1.073 / 27.503.
 
+    **Fixture 2024 (SRD 5.2.1)**: el Ogro pasa a 68 PV (antes 59) y sus
+    dados de daño cambiaron; valores recalculados con la misma semilla.
+
     Sin utilitarias (p=0): la regresión fija el stream de RNG original.
     """
     monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
@@ -104,21 +109,25 @@ def test_regression_guerrero_vs_ogro(monkeypatch):
     ogro = load_monster("ogre")
 
     stats = simulate([guerrero, ogro], n=1000, seed=1)
-    assert stats["win_rate"]["PJ"] == pytest.approx(0.1, abs=1e-9)
-    assert stats["win_rate"]["NPC"] == pytest.approx(0.9, abs=1e-9)
-    assert stats["rounds_avg"] == pytest.approx(5.773, abs=1e-9)
-    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(0.898, abs=1e-9)
-    assert stats["hp_left_avg"]["Ogre"] == pytest.approx(28.781, abs=1e-9)
+    assert stats["win_rate"]["PJ"] == pytest.approx(0.057, abs=1e-9)
+    assert stats["win_rate"]["NPC"] == pytest.approx(0.943, abs=1e-9)
+    assert stats["rounds_avg"] == pytest.approx(5.958, abs=1e-9)
+    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(0.533, abs=1e-9)
+    assert stats["hp_left_avg"]["Ogre"] == pytest.approx(36.562, abs=1e-9)
 
 
 def test_regression_guerrero_vs_owlbear(monkeypatch):
-    """Regresión B: el búho solo ataca cuerpo a cuerpo -> NO cambia.
+    """Regresión B.
+
+    **Fixture 2024 (SRD 5.2.1)**: el búho ataca con Multiattack + Rend
+    (2d8+5) y sus números cambiaron; valores recalculados con la misma
+    semilla.
 
     Sin utilitarias (p=0): la regresión fija el stream de RNG original.
     """
     monkeypatch.setattr("dnd_sim.rules.utility.UTILITY_ACTION_PROBABILITY", 0.0)
-    data = json.loads((Path(__file__).parents[2] / "fixtures" / "owlbear.json")
-                      .read_text(encoding="utf-8"))
+    data = json.loads((Path(__file__).parents[2] / "fixtures" / "frozen"
+                       / "owlbear.json").read_text(encoding="utf-8"))
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
 
     guerrero = PlayerCharacter(
@@ -129,11 +138,11 @@ def test_regression_guerrero_vs_owlbear(monkeypatch):
     buho = load_monster("owlbear")
 
     stats = simulate([guerrero, buho], n=1000, seed=1)
-    assert stats["win_rate"]["PJ"] == pytest.approx(0.002, abs=1e-9)
-    assert stats["win_rate"]["NPC"] == pytest.approx(0.998, abs=1e-9)
-    assert stats["rounds_avg"] == pytest.approx(2.924, abs=1e-9)
-    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(0.005, abs=1e-9)
-    assert stats["hp_left_avg"]["Owlbear"] == pytest.approx(46.64, abs=1e-9)
+    assert stats["win_rate"]["PJ"] == pytest.approx(0.001, abs=1e-9)
+    assert stats["win_rate"]["NPC"] == pytest.approx(0.999, abs=1e-9)
+    assert stats["rounds_avg"] == pytest.approx(2.609, abs=1e-9)
+    assert stats["hp_left_avg"]["Guerrero"] == pytest.approx(0.006, abs=1e-9)
+    assert stats["hp_left_avg"]["Owlbear"] == pytest.approx(48.495, abs=1e-9)
 
 
 def test_attack_roll_log_modifier(monkeypatch, capsys):

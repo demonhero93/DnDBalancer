@@ -1,8 +1,10 @@
 """Enganche y Damage Transfer del cloaker (features especiales).
 
-El enganche nace en el ataque (Bite) y vive en ``CombatState.attached_to``;
-el reparto de daño es el rasgo ``Damage Transfer``. Todas las fichas salen
-de fixtures reales de la API.
+El enganche nace en el ataque Attach (antes Bite, nombre de la ficha 2024)
+y vive en ``CombatState.attached_to``; el reparto de daño es el rasgo
+``Damage Transfer``. Las fichas salen de fixtures de la API 2024, con el
+rasgo Damage Transfer inyectado (en 2024 pasó a vivir dentro de la
+descripción del ataque).
 """
 import json
 import random
@@ -34,6 +36,16 @@ def _datos(index: str) -> dict:
 
 def _cloaker(monkeypatch) -> Monster:
     data = _datos("cloaker")
+    # En 2024 Damage Transfer pasó a vivir dentro de la descripción del
+    # ataque Attach y el parser solo mira special_abilities: se inyecta la
+    # entrada sintética para seguir cubriendo el reparto de daño.
+    data["special_abilities"] = list(data.get("special_abilities") or []) + [
+        {"name": "Damage Transfer",
+         "desc": ("While the cloaker is attached to a creature, it halves "
+                  "the damage it takes (round down), and the target takes "
+                  "the same amount of damage."),
+         "damage": []},
+    ]
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
     return load_monster("cloaker")
 
@@ -51,8 +63,9 @@ def _pj(name: str = "Guerrero", hp: int = 60, ac: int = 15,
     )
 
 
-def _bite(cloaker) -> Attack:
-    return next(a for a in cloaker.attacks if a.name == "Bite")
+def _enganche(cloaker) -> Attack:
+    # El ataque que engancha se llama Attach en la ficha 2024 (Bite en 2014).
+    return next(a for a in cloaker.attacks if a.name == "Attach")
 
 
 def _ctx(actor, combatants, seed: int = 1, log: list | None = None) -> CombatContext:
@@ -69,7 +82,7 @@ def _atacar(cloaker, objetivo, seed: int, con_ventaja: bool = False) -> list:
         cloaker.attacks_with_advantage = True
     log: list = []
     ctx = _ctx(cloaker, [cloaker, objetivo], seed=seed, log=log)
-    attack_roll(cloaker, objetivo, _bite(cloaker), ctx.rng, log=log,
+    attack_roll(cloaker, objetivo, _enganche(cloaker), ctx.rng, log=log,
                 verbose=True, ctx=ctx)
     return log
 
@@ -82,21 +95,23 @@ def test_el_cloaker_carga_su_enganche_y_su_damage_transfer(monkeypatch):
         "DamageTransfer", "Attach",
     ]
     assert cloaker.traits[0].name == "Damage Transfer"
-    # El enganche lo declara el Bite (no el Tail) y sin riders genéricos:
-    # dnd_sim.rules.attach es el único dueño de la ceguera y el desenganche.
-    bite = _bite(cloaker)
-    assert len(bite.on_hit_effects) == 1
-    assert isinstance(bite.on_hit_effects[0], AttachOnHitEffect)
-    assert bite.condition_riders == []
+    # El enganche lo declara el ataque Attach (no el Tail; en 2024 su
+    # nombre ya no es Bite) y sin riders genéricos: dnd_sim.rules.attach es
+    # el único dueño de la ceguera y el desenganche.
+    ataque_enganche = _enganche(cloaker)
+    assert len(ataque_enganche.on_hit_effects) == 1
+    assert isinstance(ataque_enganche.on_hit_effects[0], AttachOnHitEffect)
+    assert ataque_enganche.condition_riders == []
     tail = next(a for a in cloaker.attacks if a.name == "Tail")
     assert tail.on_hit_effects == []
-    # Multiattack (Bite + Tail) y Moan siguen presentes.
-    assert [a.name for a in cloaker.actions] == ["Multiattack", "Moan"]
+    # Multiattack (Attach + Tail) sigue presente. Moan y Phantasms pasaron
+    # a bonus actions en 2024, que el loader no carga.
+    assert [a.name for a in cloaker.actions] == ["Multiattack"]
 
 
 # --- Engancharse ------------------------------------------------------------ #
 
-def test_el_impacto_del_bite_engancha_al_objetivo(monkeypatch):
+def test_el_impacto_del_ataque_enganche_engancha_al_objetivo(monkeypatch):
     cloaker = _cloaker(monkeypatch)
     objetivo = _pj()
     log = _atacar(cloaker, objetivo, seed=6)
@@ -107,7 +122,7 @@ def test_el_impacto_del_bite_engancha_al_objetivo(monkeypatch):
     assert not any("cabeza" in linea for linea in log)
 
 
-def test_un_fallo_del_bite_no_engancha(monkeypatch):
+def test_un_fallo_del_ataque_enganche_no_engancha(monkeypatch):
     cloaker = _cloaker(monkeypatch)
     objetivo = _pj()
     log = _atacar(cloaker, objetivo, seed=1)  # fallo (natural 1)
@@ -137,10 +152,10 @@ def test_mientras_enganchado_ataca_con_ventaja_a_su_objetivo(monkeypatch):
     objetivo = _pj()
     otro = _pj(name="Otro")
     cloaker.state.attached_to = objetivo
-    mods = attack_modifiers(cloaker, objetivo, _bite(cloaker), AttackRange.MELEE)
+    mods = attack_modifiers(cloaker, objetivo, _enganche(cloaker), AttackRange.MELEE)
     assert mods.advantage_sources == ["Enganche"]
     # La ventaja es contra su objetivo enganchado, no contra los demás.
-    otros = attack_modifiers(cloaker, otro, _bite(cloaker), AttackRange.MELEE)
+    otros = attack_modifiers(cloaker, otro, _enganche(cloaker), AttackRange.MELEE)
     assert otros.advantage_sources == []
 
 
@@ -150,7 +165,7 @@ def test_mientras_enganchado_solo_puede_atacar_a_la_criatura_enganchada(monkeypa
     cloaker.state.attached_to = objetivo
     pool = [cloaker, objetivo, otro]
     # El ataque con enganche solo puede ir contra la criatura enganchada...
-    assert valid_targets(cloaker, combatants=pool, atk=_bite(cloaker)) == [objetivo]
+    assert valid_targets(cloaker, combatants=pool, atk=_enganche(cloaker)) == [objetivo]
     # ...el Tail y cualquier otra acción (Moan, salvaciones) no se restringen.
     tail = next(a for a in cloaker.attacks if a.name == "Tail")
     assert valid_targets(cloaker, combatants=pool, atk=tail) == [objetivo, otro]
@@ -163,7 +178,7 @@ def test_la_restriccion_se_levanta_si_el_objetivo_enganchado_ha_muerto(monkeypat
     otro = _pj(name="B")
     objetivo.hp = 0
     pool = [cloaker, objetivo, otro]
-    assert valid_targets(cloaker, combatants=pool, atk=_bite(cloaker)) == [otro]
+    assert valid_targets(cloaker, combatants=pool, atk=_enganche(cloaker)) == [otro]
 
 
 # --- Damage Transfer -------------------------------------------------------- #
@@ -177,14 +192,14 @@ def test_damage_transfer_reparte_el_daño_mitad_y_mitad(monkeypatch):
     # 15 -> él baja 7 (redondeado abajo) y el objetivo se lleva los otros 8.
     infligido = inflict_damage(cloaker, 15, "piercing", ctx=ctx)
     assert infligido == 7
-    assert cloaker.hp == 78 - 7
+    assert cloaker.hp == cloaker.max_hp - 7
     assert objetivo.hp == 60 - 8
     assert any("reparte el daño" in linea and "otros 8" in linea
                for linea in log)
     # 16 -> 8 y 8 (los dos números enteros de la mitad exacta).
     infligido = inflict_damage(cloaker, 16, "piercing", ctx=ctx)
     assert infligido == 8
-    assert cloaker.hp == 78 - 7 - 8
+    assert cloaker.hp == cloaker.max_hp - 7 - 8
     assert objetivo.hp == 60 - 8 - 8
 
 
@@ -192,7 +207,7 @@ def test_damage_transfer_no_aplica_sin_enganche(monkeypatch):
     cloaker = _cloaker(monkeypatch)
     objetivo = _pj(hp=60)
     inflict_damage(cloaker, 15, "piercing")
-    assert cloaker.hp == 78 - 15
+    assert cloaker.hp == cloaker.max_hp - 15
     assert objetivo.hp == 60
 
 
@@ -208,7 +223,7 @@ def test_el_reparto_respeta_la_resistencia_del_receptor(monkeypatch):
     # los otros 8 pasan por la resistencia del receptor: 4.
     infligido = inflict_damage(cloaker, 15, "piercing", ctx=ctx)
     assert infligido == 7
-    assert cloaker.hp == 78 - 7
+    assert cloaker.hp == cloaker.max_hp - 7
     assert objetivo.hp == 60 - 4
     assert any("reparte el daño" in linea and "otros 4" in linea
                and "resistencia" in linea for linea in log), log
@@ -224,7 +239,7 @@ def test_el_reparto_no_dania_a_un_receptor_inmune(monkeypatch):
     ctx = _ctx(cloaker, [cloaker, objetivo], log=log)
     infligido = inflict_damage(cloaker, 16, "piercing", ctx=ctx)
     assert infligido == 8           # el cloaker sigue bajando su mitad
-    assert cloaker.hp == 78 - 8
+    assert cloaker.hp == cloaker.max_hp - 8
     assert objetivo.hp == 60        # el inmune no pierde PV
     assert any("reparte el daño" in linea and "inmune" in linea
                for linea in log), log
@@ -238,7 +253,7 @@ def test_el_daño_al_objetivo_enganchado_no_se_reparte(monkeypatch):
     infligido = inflict_damage(objetivo, 15, "piercing")
     assert infligido == 15
     assert objetivo.hp == 60 - 15
-    assert cloaker.hp == 78
+    assert cloaker.hp == cloaker.max_hp
 
 
 def test_el_reparto_no_aplica_si_la_criatura_enganchada_ha_muerto(monkeypatch):
@@ -248,7 +263,7 @@ def test_el_reparto_no_aplica_si_la_criatura_enganchada_ha_muerto(monkeypatch):
     cloaker.state.attached_to = objetivo
     infligido = inflict_damage(cloaker, 10, "piercing")
     assert infligido == 10          # sin reparto: él baja todo
-    assert cloaker.hp == 78 - 10
+    assert cloaker.hp == cloaker.max_hp - 10
     assert objetivo.hp == 0
 
 

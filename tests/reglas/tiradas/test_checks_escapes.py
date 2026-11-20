@@ -14,7 +14,7 @@ from dnd_sim import (
 from dnd_sim.model.actions import ActionType, CombatContext, TurnResources
 from dnd_sim.rules.checks import ability_check_bonus
 from dnd_sim.engine.combat import attack_roll, run_combat
-from dnd_sim.rules.conditions import ConditionInstance, attempt_escapes
+from dnd_sim.rules.conditions import ConditionAction, ConditionInstance, attempt_escapes
 from dnd_sim.data.escape_parser import parse_escape
 from dnd_sim.rules.roll_modifiers import AttackRange, check_modifiers
 from dnd_sim.engine.stats import simulate
@@ -172,47 +172,41 @@ def test_los_flags_de_prueba_son_por_caracteristica():
 
 # --- Escape de estados ------------------------------------------------------ #
 
-def test_el_fixture_de_la_telaraña_carga_restrained_con_escape(monkeypatch):
-    """Valores leídos del JSON del fixture."""
-    data = _data("giant-spider") if (FIXTURES / "giant-spider.json").exists() else None
-    if data is None:
-        pytest.skip("sin fixture de giant-spider")
-    bruto = next(a for a in data["actions"] if a["name"] == "Web")
-    assert "DC 12 Strength check" in bruto["desc"]
-    assert "As an action" in bruto["desc"]
-    escape = parse_escape(bruto["desc"], "Giant Spider", "Web")
+def test_el_escape_de_la_telaraña_se_parsea_del_texto():
+    """Texto SRD 2014: la telaraña 2024 ya no trae escape (usa salvación)."""
+    desc = ("The target is restrained by webbing. As an action, the restrained "
+            "target can make a DC 12 Strength check, bursting the webbing.")
+    escape = parse_escape(desc, "Giant Spider", "Web")
     assert escape.abilities == ("str",)
     assert escape.dc == 12
     assert escape.consumes_action is True
 
 
-def test_la_telaraña_aplica_inmovilizado_sin_salvacion(monkeypatch):
+def test_la_telaraña_2024_es_un_condition_action_con_salvacion_des(monkeypatch):
+    """SRD 2024: Web es salvación DES CD 13 (sin ataque y sin escape)."""
     araña = _load(monkeypatch, "giant-spider")
-    telaraña = next(a for a in araña.attacks if a.name == "Web")
-    rider = telaraña.condition_riders[0]
-    assert rider.condition is Condition.RESTRAINED
-    assert rider.save_ability is None
-    assert rider.escape is not None
-    assert rider.escape.dc == 12
-    assert rider.escape.abilities == ("str",)
-    assert rider.escape.consumes_action is True
-    assert telaraña.range_type is AttackRange.RANGED
+    web = next(a for a in araña.actions if getattr(a, "name", "") == "Web")
+    assert isinstance(web, ConditionAction)
+    efecto = web.effect
+    assert efecto.condition is Condition.RESTRAINED
+    assert efecto.save_ability == "dex"
+    assert efecto.dc == 13
+    assert efecto.duration_rounds is None  # hasta destruir la telaraña
+    assert efecto.escape is None
 
 
-def test_la_telaraña_no_aplica_la_condicion_si_falla_el_ataque(monkeypatch):
+def test_la_telaraña_no_aplica_la_condicion_si_la_salvacion_supera(monkeypatch):
     araña = _load(monkeypatch, "giant-spider")
-    telaraña = next(a for a in araña.attacks if a.name == "Web")
-    objetivo = _pj("Objetivo", hp=500, ac=100)  # solo el 20 natural impacta
-    objetivo.abilities = Abilities(str=10, dex=10, con=10, int=10, wis=10, cha=10)
-    rng = random.Random(4)
-    log: list[str] = []
-    for _ in range(50):
-        objetivo.hp = objetivo.max_hp
-        objetivo.conditions.clear()
-        log.clear()
-        attack_roll(araña, objetivo, telaraña, rng, log)
-        if "falla" in log[0]:
-            assert not objetivo.conditions.has(Condition.RESTRAINED)
+    web = next(a for a in araña.actions if getattr(a, "name", "") == "Web")
+    objetivo = _pj("Objetivo", hp=500)
+    objetivo.save_overrides["dex"] = 30   # supera la CD 13 siempre
+    ctx = _ctx(actor=araña, combatants=[araña, objetivo], rng=random.Random(4))
+    web.execute(ctx)
+    assert not objetivo.conditions.has(Condition.RESTRAINED)
+
+    objetivo.save_overrides["dex"] = -30  # falla siempre
+    web.execute(ctx)
+    assert objetivo.conditions.has(Condition.RESTRAINED)
 
 
 def test_el_escape_se_intenta_al_inicio_del_turno(monkeypatch):
@@ -411,9 +405,10 @@ def test_el_fixture_de_la_constriccion_tiene_escape_y_avisa_de_grappled(monkeypa
     if data is None:
         pytest.skip("sin fixture de giant-constrictor-snake")
     bruto = next(a for a in data["actions"] if a["name"] == "Constrict")
-    assert "escape DC 16" in bruto["desc"]
+    # El fixture 2024 usa CD de escape 14 (antes 16).
+    assert "escape DC 14" in bruto["desc"]
     escape = parse_escape(bruto["desc"], "Giant Constrictor Snake", "Constrict")
-    assert escape.dc == 16
+    assert escape.dc == 14
     assert escape.abilities == ("str", "dex")
     assert escape.consumes_action is False
 
@@ -506,7 +501,8 @@ def test_el_estado_cambia_ataque_a_ataque_en_un_multiataque(monkeypatch):
     rng = random.Random(3)
     log: list[str] = []
     for _ in range(20):
-        ataque = next(a for a in dragon.attacks if a.name == "Claw")
+        # El dragón 2024 no tiene Claw: sus garras se llaman Rend.
+        ataque = next(a for a in dragon.attacks if a.name == "Rend")
         ataque.range_type = AttackRange.RANGED
         attack_roll(dragon, objetivo, ataque, rng, log)
         estados.append(dragon.state.at_range)
@@ -527,14 +523,15 @@ def test_objetivo_derribado_y_melee_or_ranged_depende_del_modo():
     assert abs(modos[RollMode.DISADVANTAGE] / 20000 - 0.5) <= 0.03, modos
 
 
-def test_la_telaraña_deja_a_la_araña_a_distancia(monkeypatch):
-    araña = _load(monkeypatch, "giant-spider")
-    telaraña = next(a for a in araña.attacks if a.name == "Web")
-    objetivo = _pj("Objetivo", hp=500)
+def test_un_ataque_a_distancia_deja_al_atacante_a_distancia():
+    """La telaraña 2024 ya no tiene ataque a distancia: el comportamiento
+    (rango → estado at_range) se cubre con cualquier ataque a distancia."""
+    atacante, objetivo = _duelo()
+    atk = _ataque(AttackRange.RANGED)
     rng = random.Random(2)
     log: list[str] = []
-    attack_roll(araña, objetivo, telaraña, rng, log)
-    assert araña.state.at_range is True
+    attack_roll(atacante, objetivo, atk, rng, log)
+    assert atacante.state.at_range is True
     assert any("pasa a distancia" in line for line in log), log
 
 
@@ -551,11 +548,28 @@ def test_la_cobertura_no_cambia_las_salvaciones():
 
 # --- Integración ------------------------------------------------------------ #
 
-def test_en_un_combate_la_telaraña_inmoviliza_y_el_pj_intenta_escapar(monkeypatch):
-    araña = _load(monkeypatch, "giant-spider")
+def test_en_un_combate_la_condicion_con_escape_se_libera_en_el_turno_del_pj():
+    """Integración: el impacto inmoviliza (salvación DES) y, si la condición
+    trae escape, el PJ lo intenta al inicio de su turno. Ninguna ficha 2024
+    del SRD trae escape en una condición modelada, así que el enemigo se
+    construye aquí."""
+    enemigo = Monster(
+        name="Tramposo", max_hp=100, ac=10,
+        abilities=Abilities(str=10, dex=10, con=10, int=10, wis=10, cha=10),
+        attacks=[Attack(
+            name="Lazo", damage="1d4", ability="str", proficient=True,
+            attack_bonus=20, damage_bonus=0,
+            condition_riders=[ConditionEffect(
+                condition=Condition.RESTRAINED,
+                save_ability="dex", dc=30, duration_rounds=None,
+                escape=EscapeCheck(abilities=("str",), skills=("athletics",),
+                                   dc=12, consumes_action=False),
+            )],
+        )],
+    )
     objetivo = _pj("Objetivo", hp=500, ac=5)
     objetivo.abilities = Abilities(str=30, dex=30, con=30, int=30, wis=30, cha=30)
-    res = run_combat([objetivo, araña], random.Random(3), verbose=True, max_rounds=6)
+    res = run_combat([objetivo, enemigo], random.Random(3), verbose=True, max_rounds=6)
     log = "\n".join(res.log)
     assert "inmovilizado" in log, log
     assert "prueba ATHLETICS" in log, log

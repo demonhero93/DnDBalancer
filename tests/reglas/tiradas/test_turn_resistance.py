@@ -27,6 +27,14 @@ def _datos(index: str) -> dict:
 
 def _lich(monkeypatch):
     data = _datos("lich")
+    # El fixture 2024 ya no trae «Turn Resistance»: se añade data sintética
+    # (SRD 2014) para seguir cubriendo el rasgo de punta a punta.
+    data["special_abilities"] = list(data.get("special_abilities") or []) + [{
+        "name": "Turn Resistance",
+        "desc": ("The lich has advantage on saving throws against any effect "
+                 "that turns undead."),
+        "damage": [],
+    }]
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
     return load_monster("lich")
 

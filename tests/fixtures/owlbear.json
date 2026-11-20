@@ -1,112 +1,89 @@
 {
   "index": "owlbear",
-  "name": "Owlbear",
-  "size": "Large",
-  "type": "monstrosity",
-  "alignment": "unaligned",
-  "armor_class": [
-    {
-      "type": "natural",
-      "value": 13
-    }
-  ],
-  "hit_points": 59,
-  "hit_dice": "7d10",
-  "hit_points_roll": "7d10+21",
-  "speed": {
-    "walk": "40 ft."
-  },
-  "strength": 20,
-  "dexterity": 12,
-  "constitution": 17,
-  "intelligence": 3,
-  "wisdom": 12,
-  "charisma": 7,
-  "proficiencies": [
-    {
-      "value": 3,
-      "proficiency": {
-        "index": "skill-perception",
-        "name": "Skill: Perception",
-        "url": "/api/2014/proficiencies/skill-perception"
-      }
-    }
-  ],
-  "damage_vulnerabilities": [],
-  "damage_resistances": [],
-  "damage_immunities": [],
-  "condition_immunities": [],
-  "senses": {
-    "darkvision": "60 ft.",
-    "passive_perception": 13
-  },
-  "languages": "",
-  "challenge_rating": 3,
-  "proficiency_bonus": 2,
-  "xp": 700,
-  "special_abilities": [
-    {
-      "name": "Keen Sight and Smell",
-      "desc": "The owlbear has advantage on Wisdom (Perception) checks that rely on sight or smell.",
-      "damage": []
-    }
-  ],
   "actions": [
     {
       "damage": [],
       "name": "Multiattack",
+      "desc": "The owlbear makes two Rend attacks.",
       "multiattack_type": "actions",
-      "desc": "The owlbear makes two attacks: one with its beak and one with its claws.",
       "actions": [
         {
-          "action_name": "Beak",
-          "count": "1",
+          "action_name": "Rend",
+          "count": "2",
           "type": "melee"
-        },
-        {
-          "action_name": "Claws",
-          "count": "1",
-          "type": "melee"
-        }
-      ]
-    },
-    {
-      "name": "Beak",
-      "desc": "Melee Weapon Attack: +7 to hit, reach 5 ft., one creature. Hit: 10 (1d10 + 5) piercing damage.",
-      "attack_bonus": 7,
-      "damage": [
-        {
-          "damage_type": {
-            "index": "piercing",
-            "name": "Piercing",
-            "url": "/api/2014/damage-types/piercing"
-          },
-          "damage_dice": "1d10+5"
         }
       ],
-      "actions": []
+      "attacks": []
     },
     {
-      "name": "Claws",
-      "desc": "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 14 (2d8 + 5) slashing damage.",
-      "attack_bonus": 7,
+      "name": "Rend",
+      "desc": "Melee Attack Roll: +7, reach 5 ft. Hit: 14 (2d8 + 5) Slashing damage.",
       "damage": [
         {
           "damage_type": {
             "index": "slashing",
             "name": "Slashing",
-            "url": "/api/2014/damage-types/slashing"
+            "url": "/api/2024/damage-types/slashing"
           },
           "damage_dice": "2d8+5"
         }
       ],
-      "actions": []
+      "attack_bonus": 7,
+      "actions": [],
+      "attacks": []
     }
   ],
+  "alignment": "unaligned",
+  "armor_class": [
+    {
+      "value": 13,
+      "armor": []
+    }
+  ],
+  "challenge_rating": 3,
+  "charisma": 7,
+  "condition_immunities": [],
+  "constitution": 17,
+  "damage_immunities": [],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "dexterity": 12,
+  "hit_dice": "7d10",
+  "hit_points": 59,
+  "hit_points_roll": "7d10 + 21",
   "image": "/api/images/monsters/owlbear.png",
-  "url": "/api/2014/monsters/owlbear",
-  "updated_at": "2026-04-01T20:35:38.254Z",
-  "forms": [],
+  "intelligence": 3,
+  "languages": "None",
   "legendary_actions": [],
-  "reactions": []
+  "name": "Owlbear",
+  "proficiencies": [
+    {
+      "value": 5,
+      "proficiency": {
+        "index": "skill-perception",
+        "name": "Skill: Perception",
+        "url": "/api/2024/proficiencies/skill-perception"
+      }
+    }
+  ],
+  "proficiency_bonus": 2,
+  "senses": {
+    "darkvision": "60 ft.",
+    "passive_perception": 15
+  },
+  "size": "Large",
+  "special_abilities": [],
+  "speed": {
+    "walk": "40 ft.",
+    "climb": "40 ft."
+  },
+  "strength": 20,
+  "type": "monstrosity",
+  "updated_at": "2026-09-22T23:01:02.697Z",
+  "url": "/api/2024/monsters/owlbear",
+  "wisdom": 12,
+  "xp": 700,
+  "bonus_actions": [],
+  "reactions": [],
+  "forms": []
 }

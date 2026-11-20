@@ -72,7 +72,7 @@ def test_el_sahuagin_carga_su_rasgo_blood_frenzy(monkeypatch):
     assert [type(t).__name__ for t in sahuagin.traits] == ["BloodFrenzy"]
     rasgo = sahuagin.traits[0]
     assert rasgo.name == "Blood Frenzy"
-    assert "advantage" in rasgo.desc          # descripción de la API, de referencia
+    assert "advantage" in rasgo.desc.lower()   # descripción de la API, de referencia
     # Los rasgos no combativos (Limited Amphibiousness, Shark Telepathy)
     # no se modelan.
     assert len(sahuagin.traits) == 1
@@ -85,10 +85,19 @@ def test_un_monstruo_sin_rasgos_modelables_no_tiene_traits(monkeypatch):
 
 
 def test_parse_traits_solo_registra_lo_modelable():
-    # Del lich solo se modela Turn Resistance: Spellcasting, Legendary
-    # Resistance y Rejuvenation ya los gestiona otro parser (o no cambian
-    # un combate).
-    assert [type(t).__name__ for t in parse_traits(_datos("lich"))] == [
+    # Del lich solo se modela Turn Resistance: Legendary Resistance,
+    # Spirit Jar y Protective Magic no cambian un combate (o los gestiona
+    # otro parser). El lich 2024 ya no declara Turn Resistance en la ficha,
+    # así que la entrada se inyecta sobre datos sintéticos para seguir
+    # cubriendo que el parser solo registra lo modelable.
+    lich = _datos("lich")
+    datos = dict(lich, special_abilities=[
+        *(lich.get("special_abilities") or []),
+        {"name": "Turn Resistance",
+         "desc": ("The lich has advantage on saving throws against any "
+                  "effect that turns undead.")},
+    ])
+    assert [type(t).__name__ for t in parse_traits(datos)] == [
         "TurnResistance",
     ]
 

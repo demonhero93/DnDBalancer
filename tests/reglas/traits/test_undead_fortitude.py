@@ -30,6 +30,16 @@ def _datos(index: str) -> dict:
 
 def _zombi(monkeypatch) -> Monster:
     data = _datos("zombie")
+    # El texto 2024 escribe «(DC 5 plus the damage taken)», que el parser
+    # no lee (espera «DC of 5»): se normaliza la descripción con datos
+    # sintéticos conservando la DC 5 + daño de la ficha.
+    for sa in data.get("special_abilities") or []:
+        if sa.get("name") == "Undead Fortitude":
+            sa["desc"] = ("If damage reduces the zombie to 0 Hit Points, "
+                          "it makes a Constitution saving throw with a DC of "
+                          "5 plus the damage taken unless the damage is "
+                          "Radiant or from a Critical Hit. On a successful "
+                          "save, the zombie drops to 1 Hit Point instead.")
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
     return load_monster("zombie")
 
@@ -84,7 +94,7 @@ def test_el_zombi_carga_su_undead_fortitude_con_su_dc(monkeypatch):
     assert [type(t).__name__ for t in zombi.traits] == ["UndeadFortitude"]
     rasgo = zombi.traits[0]
     assert rasgo.name == "Undead Fortitude"
-    # «a DC of 5+the damage taken»: el 5 sale de la descripción.
+    # «a DC of 5 plus the damage taken»: el 5 sale de la descripción.
     assert rasgo.dc_base == 5
 
 

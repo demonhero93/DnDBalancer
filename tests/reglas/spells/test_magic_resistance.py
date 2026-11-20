@@ -279,9 +279,23 @@ def test_el_loader_fija_magic_resistance():
     assert load_monster("deva").magic_resistance is True
     assert load_monster("unicorn").magic_resistance is True
     assert load_monster("ogre").magic_resistance is False
+    # 2024: el rasgo del rakshasa se renombró «Greater Magic Resistance».
+    assert load_monster("rakshasa").magic_resistance is True
 
 
-def test_limited_magic_immunity_solo_avisa():
+def test_limited_magic_immunity_solo_avisa(monkeypatch):
+    data = json.loads(
+        (Path(__file__).parents[3] / "cache" / "monsters" / "ogre.json")
+        .read_text(encoding="utf-8"))
+    data["special_abilities"] = [{"name": "Limited Magic Immunity"}]
+    monkeypatch.setattr("dnd_sim.data.loader.get_monster",
+                        lambda *args, **kwargs: data)
     with pytest.warns(UserWarning, match="Limited Magic Immunity"):
-        m = load_monster("rakshasa")
+        m = load_monster("ogre")
     assert m.magic_resistance is False  # el rasgo no se modela
+
+
+def test_rakshasa_2024_avisa_de_la_vulnerabilidad_compleja():
+    """«piercing ... bless spell»: texto complejo de 2024, fuera de alcance."""
+    with pytest.warns(UserWarning, match="complejo"):
+        load_monster("rakshasa")

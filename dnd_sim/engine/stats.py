@@ -1,9 +1,19 @@
 """Simulaciones repetidas y estadísticas."""
+import math
 import random
 import statistics
 
 from .combat import run_combat
 from ..model.combatant import Combatant
+
+
+def _percentil(valores: list, p: float) -> int | float:
+    """Percentil por rango más cercano (p entre 0 y 100)."""
+    if not valores:
+        return 0
+    ordenados = sorted(valores)
+    posicion = max(1, math.ceil(p / 100 * len(ordenados)))
+    return ordenados[posicion - 1]
 
 
 def simulate(combatants: list[Combatant], n: int = 1000, seed: int | None = None) -> dict:
@@ -66,6 +76,29 @@ def simulate(combatants: list[Combatant], n: int = 1000, seed: int | None = None
             legendary_actions[name] = legendary_actions.get(name, 0) + int(count)
         legendary_points += int(getattr(r, "legendary_points_spent", 0) or 0)
         legendary_resistances += int(getattr(r, "legendary_resistances_used", 0) or 0)
+    # Riesgo real y cola de distribución: PV mínimos por combate (los
+    # registra el daño en rules.damage) y percentiles de rondas.
+    pj_names = [c.name for c in combatants if c.team == "PJ"]
+    min_frac: dict[str, list[float]] = {c.name: [] for c in combatants}
+    grupo_frac: list[float] = []
+    bajos_pj: dict[str, int] = {name: 0 for name in pj_names}
+    any_downed = 0
+    multi_downed = 0
+    for r in results:
+        mins = getattr(r, "min_hp", None) or {}
+        fracs: dict[str, tuple[int, float]] = {}
+        for c in combatants:
+            valor = int(mins.get(c.name, r.survivors.get(c.name, 0)))
+            frac = (valor / c.max_hp) if c.max_hp else 1.0
+            min_frac[c.name].append(frac)
+            fracs[c.name] = (valor, frac)
+        if pj_names:
+            grupo_frac.append(min(fracs[name][1] for name in pj_names))
+            con_cero = sum(1 for name in pj_names if fracs[name][0] <= 0)
+            any_downed += con_cero >= 1
+            multi_downed += con_cero >= 2
+            for name in pj_names:
+                bajos_pj[name] += fracs[name][0] <= 0
     return {
         "n": n,
         "win_rate": {t: sum(r.winner == t for r in results) / n for t in teams},
@@ -105,6 +138,25 @@ def simulate(combatants: list[Combatant], n: int = 1000, seed: int | None = None
         "legendary_actions_used_total": legendary_actions,
         "legendary_points_spent_avg": legendary_points / n,
         "legendary_resistances_used_avg": legendary_resistances / n,
+        # Riesgo: PJ a 0 PV en algún momento del combate (por nombre y
+        # combates con 1+ o 2+ PJ a la vez).
+        "any_pj_downed_rate": any_downed / n,
+        "multi_pj_downed_rate": multi_downed / n,
+        "pj_downed_rate": {name: total / n for name, total in bajos_pj.items()},
+        # Cola de PV mínimos (fracción del máximo): percentiles de grupo
+        # (mínimo entre los PJ de cada combate) y P10 por combatiente.
+        "hp_min_frac_p5": _percentil(grupo_frac, 5),
+        "hp_min_frac_p10": _percentil(grupo_frac, 10),
+        "hp_min_frac_p25": _percentil(grupo_frac, 25),
+        "hp_min_frac_p10_by_name": {
+            name: _percentil(fracs, 10) for name, fracs in min_frac.items()
+        },
+        # Variabilidad de rondas: desviación típica y percentiles.
+        "rounds_std": statistics.pstdev(rounds),
+        "rounds_p10": _percentil(rounds, 10),
+        "rounds_p50": _percentil(rounds, 50),
+        "rounds_p90": _percentil(rounds, 90),
+        "rounds_p99": _percentil(rounds, 99),
     }
 
 
@@ -167,3 +219,30 @@ def print_report(stats: dict) -> None:
               f"por combate")
         print(f"Resistencias legendarias gastadas: "
               f"{stats.get('legendary_resistances_used_avg', 0.0):.2f} por combate")
+
+    # Métricas clave de dificultad: riesgo, cola de PV mínimos y rondas.
+    pj = [name for name, equipo in equipos.items() if equipo == "PJ"]
+    if pj:
+        print(f"\n=== Dificultad: métricas clave (n={stats['n']}) ===")
+        print("Riesgo")
+        desglose = " | ".join(
+            f"{name} {(stats.get('pj_downed_rate') or {}).get(name, 0.0) * 100:.1f} %"
+            for name in pj)
+        print(f"  {'Algún PJ a 0 PV:':<27}"
+              f"{stats.get('any_pj_downed_rate', 0.0) * 100:.1f} %   ({desglose})")
+        print(f"  {'2+ PJ a 0 PV:':<27}"
+              f"{stats.get('multi_pj_downed_rate', 0.0) * 100:.1f} %")
+        print("PV mínimos (fracción del máximo)")
+        print(f"  {'Grupo  P5 / P10 / P25:':<27}"
+              f"{stats.get('hp_min_frac_p5', 0.0):.2f} / "
+              f"{stats.get('hp_min_frac_p10', 0.0):.2f} / "
+              f"{stats.get('hp_min_frac_p25', 0.0):.2f}")
+        por_nombre = stats.get("hp_min_frac_p10_by_name") or {}
+        for name in pj:
+            print(f"  {name + ' P10:':<27}{por_nombre.get(name, 0.0):.2f}")
+        print("Rondas")
+        print(f"  {'media / std:':<27}{stats['rounds_avg']:.1f} / "
+              f"{stats.get('rounds_std', 0.0):.1f}")
+        print(f"  {'P10 / P50 / P90 / P99:':<27}{stats.get('rounds_p10', 0)} / "
+              f"{stats.get('rounds_p50', 0)} / {stats.get('rounds_p90', 0)} / "
+              f"{stats.get('rounds_p99', 0)}")

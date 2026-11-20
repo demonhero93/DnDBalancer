@@ -456,6 +456,11 @@ def inflict_damage(target: "Combatant", amount: int,
             setattr(target, "hp", hp_despues)
         except Exception:
             pass
+    # PV mínimos (métricas de riesgo de engine.stats): solo el daño baja
+    # el contador; curaciones y salvaciones a 0 (Undead Fortitude) lo
+    # suben después sin borrar el mínimo ya registrado.
+    if hp_despues < int(getattr(target, "min_hp_reached", hp_despues)):
+        target.min_hp_reached = hp_despues
     # Strength Before Death (Samurai, A6): resolución perezosa del
     # «en pie» pendiente. Daño adicional a un pendiente (hp ya a 0)
     # cancela su turno extra y, sin flag, el ``_mark_dead_if_down``

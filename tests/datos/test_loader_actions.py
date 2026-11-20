@@ -9,6 +9,7 @@ import pytest
 from dnd_sim.model.actions import AttackAction
 from dnd_sim.rules.area import AreaSaveAction
 from dnd_sim.rules.area import AreaTargeting
+from dnd_sim.rules.conditions import Condition, ConditionAction
 from dnd_sim.model.combatant import PlayerCharacter
 from dnd_sim.data.area_classifier import is_area_action
 from dnd_sim.data.loader import load_monster
@@ -80,15 +81,23 @@ def test_aliento_mapeado_a_area_con_recarga(monkeypatch, index, nombre):
     assert accion.effect.on_success == esperado
 
 
-def test_accion_con_dc_sin_dano_sigue_ignorada(monkeypatch):
-    """'Frightful Presence' (dc sin daño) no se carga: # TODO condiciones."""
-    data = _data("adult-red-dragon")
-    assert _raw_action(data, "Frightful Presence").get("damage") == []
+def test_accion_con_dc_sin_dano_carga_como_condition_action(monkeypatch):
+    """'Web' (dc sin daño) ahora carga: salvación DES 13 + condición + recarga."""
+    data = _data("giant-spider")
+    bruto = _raw_action(data, "Web")
+    assert bruto.get("dc") and bruto.get("damage") == []
 
-    monster = _load(monkeypatch, "adult-red-dragon")
+    monster = _load(monkeypatch, "giant-spider")
+    web = next(a for a in monster.actions if getattr(a, "name", "") == "Web")
+    assert isinstance(web, ConditionAction)
+    assert web.effect.condition is Condition.RESTRAINED
+    assert web.effect.save_ability == "dex"
+    assert web.effect.dc == bruto["dc"]["dc_value"]
+    assert web.effect.duration_rounds is None  # hasta destruir la telaraña
+    assert web.usage.kind is UsageKind.RECHARGE_ROLL
+    # 'Bite' sigue cargando como ataque normal.
     nombres = [getattr(a, "name", "") for a in monster.actions]
-    assert "Frightful Presence" not in nombres
-    assert "Fire Breath" in nombres
+    assert "Bite" in nombres
 
 
 # --- Parser de usos -------------------------------------------------------- #

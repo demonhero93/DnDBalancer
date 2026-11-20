@@ -400,8 +400,10 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
             # Tipo de uso desconocido: se omite la acción (ya avisado).
             continue
         # Condiciones que aplica el ataque si impacta (p. ej. el derribo del
-        # lobo o la parálisis del ghoul).
-        condition_riders = parse_condition_effects(action, monster_name)
+        # lobo o la parálisis del ghoul): el campo `dc` de la acción da la
+        # CD de la salvación (formato 2024 «Word Saving Throw: DC N»).
+        condition_riders = parse_condition_effects(
+            action, monster_name, dc_info if isinstance(dc_info, dict) else None)
         # Efectos posteriores al impacto (p. ej. el enganche del cloaker).
         on_hit_effects = parse_attach_effects(action, monster_name)
         if on_hit_effects:
@@ -561,9 +563,12 @@ def load_monster(index: str, team: str = "NPC", combatant_type=None) -> Monster:
 
     # Rasgo «Magic Resistance» (vocabulario cerrado, nombre completo):
     # ventaja en salvaciones contra hechizos y otros efectos mágicos.
+    # En 2024 el mismo rasgo se renombra «Greater Magic Resistance»
+    # (rakshasa): mecánica idéntica, se trata igual.
     # Flag de estado puro en Combatant; lo consume save_modifiers cuando
     # la salvación llega con magical=True.
-    magic_resistance = "magic resistance" in nombres_habilidades
+    magic_resistance = bool(nombres_habilidades & {
+        "magic resistance", "greater magic resistance"})
 
     # «Limited Magic Immunity» (rakshasa): no se modela (fuera de alcance).
     if "limited magic immunity" in nombres_habilidades:

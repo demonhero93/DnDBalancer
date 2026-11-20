@@ -1,97 +1,131 @@
 {
   "index": "ghoul",
-  "name": "Ghoul",
-  "size": "Medium",
-  "type": "undead",
-  "alignment": "chaotic evil",
-  "armor_class": [
-    {
-      "type": "dex",
-      "value": 12
-    }
-  ],
-  "hit_points": 22,
-  "hit_dice": "5d8",
-  "hit_points_roll": "5d8",
-  "speed": {
-    "walk": "30 ft."
-  },
-  "strength": 13,
-  "dexterity": 15,
-  "constitution": 10,
-  "intelligence": 7,
-  "wisdom": 10,
-  "charisma": 6,
-  "proficiencies": [],
-  "damage_vulnerabilities": [],
-  "damage_resistances": [],
-  "damage_immunities": [
-    "poison"
-  ],
-  "condition_immunities": [
-    {
-      "index": "poisoned",
-      "name": "Poisoned",
-      "url": "/api/2014/conditions/poisoned"
-    },
-    {
-      "index": "charmed",
-      "name": "Charmed",
-      "url": "/api/2014/conditions/charmed"
-    },
-    {
-      "index": "exhaustion",
-      "name": "Exhaustion",
-      "url": "/api/2014/conditions/exhaustion"
-    }
-  ],
-  "senses": {
-    "darkvision": "60 ft.",
-    "passive_perception": 10
-  },
-  "languages": "Common",
-  "challenge_rating": 1,
-  "proficiency_bonus": 2,
-  "xp": 200,
   "actions": [
     {
+      "damage": [],
+      "name": "Multiattack",
+      "desc": "The ghoul makes two Bite attacks.",
+      "multiattack_type": "actions",
+      "actions": [
+        {
+          "action_name": "Bite",
+          "count": "2",
+          "type": "melee"
+        }
+      ],
+      "attacks": []
+    },
+    {
       "name": "Bite",
-      "desc": "Melee Weapon Attack: +2 to hit, reach 5 ft., one creature. Hit: 9 (2d6 + 2) piercing damage.",
-      "attack_bonus": 2,
+      "desc": "Melee Attack Roll: +4, reach 5 ft. Hit: 5 (1d6 + 2) Piercing damage plus 3 (1d6) Necrotic damage.",
       "damage": [
         {
           "damage_type": {
             "index": "piercing",
             "name": "Piercing",
-            "url": "/api/2014/damage-types/piercing"
+            "url": "/api/2024/damage-types/piercing"
           },
-          "damage_dice": "2d6+2"
+          "damage_dice": "1d6+2"
+        },
+        {
+          "damage_type": {
+            "index": "necrotic",
+            "name": "Necrotic",
+            "url": "/api/2024/damage-types/necrotic"
+          },
+          "damage_dice": "1d6"
         }
       ],
-      "actions": []
+      "attack_bonus": 4,
+      "actions": [],
+      "attacks": []
     },
     {
-      "name": "Claws",
-      "desc": "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) slashing damage. If the target is a creature other than an elf or undead, it must succeed on a DC 10 Constitution saving throw or be paralyzed for 1 minute. The target can repeat the saving throw at the end of each of its turns, ending the effect on itself on a success.",
-      "attack_bonus": 4,
+      "name": "Claw",
+      "desc": "Melee Attack Roll: +4, reach 5 ft. Hit: 4 (1d4 + 2) Slashing damage. If the target is a creature that isn’t an Undead or elf, it is subjected to the following effect. Constitution Saving Throw: DC 10. Failure: The target has the Paralyzed condition until the end of its next turn.",
       "damage": [
         {
           "damage_type": {
             "index": "slashing",
             "name": "Slashing",
-            "url": "/api/2014/damage-types/slashing"
+            "url": "/api/2024/damage-types/slashing"
           },
-          "damage_dice": "2d4+2"
+          "damage_dice": "1d4+2"
         }
       ],
-      "actions": []
+      "dc": {
+        "dc_type": {
+          "index": "con",
+          "name": "CON",
+          "url": "/api/2024/ability-scores/con"
+        },
+        "dc_value": 10,
+        "success_type": "none"
+      },
+      "attack_bonus": 4,
+      "actions": [],
+      "attacks": []
     }
   ],
+  "alignment": "chaotic evil",
+  "armor_class": [
+    {
+      "value": 12,
+      "armor": []
+    }
+  ],
+  "challenge_rating": 1,
+  "charisma": 6,
+  "condition_immunities": [
+    {
+      "index": "charmed",
+      "name": "Charmed",
+      "url": "/api/2024/conditions/charmed"
+    },
+    {
+      "index": "exhaustion",
+      "name": "Exhaustion",
+      "url": "/api/2024/conditions/exhaustion"
+    },
+    {
+      "index": "poisoned",
+      "name": "Poisoned",
+      "url": "/api/2024/conditions/poisoned"
+    }
+  ],
+  "constitution": 10,
+  "damage_immunities": [
+    "poison"
+  ],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "dexterity": 15,
+  "hit_dice": "5d8",
+  "hit_points": 22,
+  "hit_points_roll": "5d8",
   "image": "/api/images/monsters/ghoul.png",
-  "url": "/api/2014/monsters/ghoul",
-  "updated_at": "2026-04-01T20:35:38.254Z",
-  "forms": [],
+  "intelligence": 7,
+  "languages": "Common",
   "legendary_actions": [],
+  "name": "Ghoul",
+  "proficiencies": [],
+  "proficiency_bonus": 2,
+  "senses": {
+    "darkvision": "60 ft.",
+    "passive_perception": 10
+  },
+  "size": "Medium",
+  "special_abilities": [],
+  "speed": {
+    "walk": "30 ft."
+  },
+  "strength": 13,
+  "type": "undead",
+  "updated_at": "2026-09-22T23:01:02.696Z",
+  "url": "/api/2024/monsters/ghoul",
+  "wisdom": 10,
+  "xp": 200,
+  "bonus_actions": [],
   "reactions": [],
-  "special_abilities": []
+  "forms": []
 }

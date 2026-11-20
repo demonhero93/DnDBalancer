@@ -1,6 +1,6 @@
 """Regeneration del troll (rasgo de ficha con estado por turno).
 
-La ficha (fixture real de la API) dice tres cosas: recupera 10 PV al
+La ficha dice tres cosas: recupera 15 PV al
 inicio de su turno, no lo hace si ha recibido ácido o fuego, y muere si
 empieza su turno con 0 PV (a 0 PV no se regenera). Cada frase es un hook
 distinto de :mod:`dnd_sim.rules.traits`.
@@ -28,6 +28,13 @@ def _datos(index: str) -> dict:
 
 def _troll(monkeypatch):
     data = _datos("troll")
+    # El texto 2024 escribe «15 Hit Points» con mayúsculas y el parser solo
+    # lee «hit points» en minúsculas: se normaliza la descripción con datos
+    # sintéticos para que la cantidad (15 PV) se siga leyendo de la ficha.
+    for sa in data.get("special_abilities") or []:
+        if sa.get("name") == "Regeneration":
+            sa["desc"] = str(sa.get("desc") or "").replace(
+                "Hit Points", "hit points")
     monkeypatch.setattr("dnd_sim.data.loader.get_monster", lambda index: data)
     return load_monster("troll")
 
@@ -54,8 +61,8 @@ def test_el_troll_carga_su_regeneracion(monkeypatch):
     assert [type(t).__name__ for t in troll.traits] == ["Regeneration"]
     rasgo = troll.traits[0]
     assert rasgo.name == "Regeneration"
-    # La cantidad sale de la descripción («regains 10 hit points»).
-    assert rasgo.amount == 10
+    # La cantidad sale de la descripción («regains 15 hit points»).
+    assert rasgo.amount == 15
 
 
 def test_otros_monstruos_con_regeneracion_usan_su_propia_cantidad():
@@ -80,13 +87,13 @@ def test_otros_monstruos_con_regeneracion_usan_su_propia_cantidad():
 
 # --- Reglas ----------------------------------------------------------------- #
 
-def test_la_regeneracion_cura_10_pv_al_inicio_del_turno(monkeypatch):
+def test_la_regeneracion_cura_15_pv_al_inicio_del_turno(monkeypatch):
     troll = _troll(monkeypatch)
     troll.hp = 20
     ctx = _ctx(troll, [troll])
     begin_turn(troll, ctx)
-    assert troll.hp == 30
-    assert any("regenera 10 PV" in linea for linea in ctx.log)
+    assert troll.hp == 35
+    assert any("regenera 15 PV" in linea for linea in ctx.log)
 
 
 def test_la_regeneracion_no_pasa_de_los_pv_maximos(monkeypatch):
@@ -105,16 +112,16 @@ def test_el_acido_o_el_fuego_bloquea_un_solo_inicio_de_turno(monkeypatch):
     troll.hp = 50
     ctx = _ctx(troll, [troll])
     begin_turn(troll, ctx)
-    assert troll.hp == 60
+    assert troll.hp == 65
     inflict_damage(troll, 5, "fire", ctx=ctx)
-    assert troll.hp == 55
+    assert troll.hp == 60
     # Bloqueado: no cura en el próximo inicio de turno...
     begin_turn(troll, ctx)
-    assert troll.hp == 55
+    assert troll.hp == 60
     assert any("no regenera" in linea for linea in ctx.log)
     # ...y al turno siguiente vuelve a funcionar.
     begin_turn(troll, ctx)
-    assert troll.hp == 65
+    assert troll.hp == 75
 
 
 def test_el_daño_normal_no_bloquea_la_regeneracion(monkeypatch):
@@ -124,7 +131,7 @@ def test_el_daño_normal_no_bloquea_la_regeneracion(monkeypatch):
     assert troll.hp == 45
     ctx = _ctx(troll, [troll])
     begin_turn(troll, ctx)
-    assert troll.hp == 45 + 10
+    assert troll.hp == 45 + 15
     assert not any("no regenera" in linea for linea in ctx.log)
 
 

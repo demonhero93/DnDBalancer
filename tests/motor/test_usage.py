@@ -247,7 +247,13 @@ def test_aliento_se_usa_en_una_fraccion_plausible_de_turnos(monkeypatch):
     assert 0.05 < fraccion < 0.60, f"fracción de turnos con aliento: {fraccion}"
 
 
-def test_politica_elige_el_aliento_aproximadamente_el_50_cuando_esta_cargado(monkeypatch):
+def test_politica_elige_el_aliento_aproximadamente_un_tercio_cuando_esta_cargado(monkeypatch):
+    """Con el aliento cargado el pick es uniforme entre ~3 candidatas.
+
+    La ficha 2024 añade hechizos de acción (Scorching Ray, Fireball) a las
+    candidatas: con Multiattack + Fire Breath + Scorching Ray el aliento
+    sale 1 de cada 3 veces (1 de 4 cuando Fireball también es candidata).
+    """
     import dnd_sim.engine.combat.encounter as combat_mod
 
     monster = _load_fixture(monkeypatch, "adult-red-dragon")
@@ -274,7 +280,7 @@ def test_politica_elige_el_aliento_aproximadamente_el_50_cuando_esta_cargado(mon
     total = conteo["cargado_aliento"]
     assert total > 100
     prob = conteo["elegido_aliento"] / total
-    assert 0.45 < prob < 0.55, f"probabilidad de elegir el aliento cargado: {prob}"
+    assert 0.25 < prob < 0.40, f"probabilidad de elegir el aliento cargado: {prob}"
 
 
 def test_dos_combates_seguidos_empiezan_con_el_aliento_cargado(monkeypatch):

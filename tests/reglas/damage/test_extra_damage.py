@@ -2,8 +2,8 @@
 
 Muchas fichas declaran, tras el daño principal, una o más entradas
 **adicionales** de distinto tipo («plus 7 (2d6) fire damage»): el
-Warhammer del azer (1d8+3 contundente + 1d6 fuego, Heated Weapons) o el
-mordisco de un dragón (perforante + fuego/ácido). El parser las acumula
+Burning Hammer del azer (1d10+3 contundente + 1d6 fuego) o el Rend de un
+dragón (1d10+8 cortante + 2d4 fuego). El parser las acumula
 al daño principal; cada entrada resuelve su resistencia/inmunidad con su
 **propio** tipo y se duplican los dados extra en crítico.
 """
@@ -61,7 +61,8 @@ def _ctx(actor, combatants, rng=None, log=None) -> CombatContext:
 
 
 def _warhammer(azer) -> Attack:
-    return next(a for a in azer.attacks if a.name == "Warhammer")
+    # SRD 5.2.1: el "Warhammer" de 2014 pasa a llamarse "Burning Hammer".
+    return next(a for a in azer.attacks if a.name == "Burning Hammer")
 
 
 def _espiar_inflict(monkeypatch):
@@ -86,7 +87,7 @@ def _espiar_inflict(monkeypatch):
 def test_el_warhammer_del_azer_lleva_1d6_de_fuego(monkeypatch):
     azer = _azer(monkeypatch)
     wh = _warhammer(azer)
-    assert wh.damage == "1d8+3"
+    assert wh.damage == "1d10+3"
     assert wh.damage_type == DamageType.BLUDGEONING
     assert len(wh.extra_damage) == 1
     extra = wh.extra_damage[0]
@@ -94,12 +95,13 @@ def test_el_warhammer_del_azer_lleva_1d6_de_fuego(monkeypatch):
     assert extra.damage_type == DamageType.FIRE
 
 
-def test_el_mordisco_del_dragon_lleva_fuego_adicional(monkeypatch):
+def test_el_rend_del_dragon_lleva_fuego_adicional(monkeypatch):
     dragon = _dragon(monkeypatch)
-    bite = next(a for a in dragon.attacks if a.name == "Bite")
-    assert bite.damage_type == DamageType.PIERCING
-    assert [(e.damage, e.damage_type) for e in bite.extra_damage] == [
-        ("2d6", DamageType.FIRE)
+    # SRD 5.2.1: ya no hay "Bite"; el ataque con extra de fuego es "Rend".
+    rend = next(a for a in dragon.attacks if a.name == "Rend")
+    assert rend.damage_type == DamageType.SLASHING
+    assert [(e.damage, e.damage_type) for e in rend.extra_damage] == [
+        ("2d4", DamageType.FIRE)
     ]
 
 
