@@ -105,7 +105,9 @@ class Spell:
     range: str = ""
     duration: str = "Instantaneous"
     concentration: bool = False
-    desc: list[str] = field(default_factory=list)
+    # Fuera del repr: textos y tablas largas; el resto de campos bastan
+    # para identificar el hechizo.
+    desc: list[str] = field(default_factory=list, repr=False)
     # Tiempo de casteo -> tipo de acción (acción, acción bonus o reacción).
     action_type: ActionType = ActionType.ACTION
     # Nivel de slot por defecto con el que se lanza (0 = cantrip).
@@ -129,8 +131,8 @@ class Spell:
     # ``damage_table`` usa ``damage_at_character_level`` (cantrips) o
     # ``damage_at_slot_level`` (hechizos con slot); ``heal_table`` usa
     # ``heal_at_slot_level`` con el marcador ``MOD``.
-    damage_table: dict = field(default_factory=dict)
-    heal_table: dict = field(default_factory=dict)
+    damage_table: dict = field(default_factory=dict, repr=False)
+    heal_table: dict = field(default_factory=dict, repr=False)
     # Daño extra del ataque (True Strike 2024: +1d6/2d6/3d6 Radiante a
     # nivel 5/11/17), resuelto al parsear y copiado al ``Attack``.
     extra_damage: list = field(default_factory=list)

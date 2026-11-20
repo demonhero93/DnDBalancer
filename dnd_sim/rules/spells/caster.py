@@ -45,8 +45,10 @@ class PCSpellcasting:
     level: int
     sc: Spellcasting
     slots: SpellSlots
-    trucos: list[Spell] = field(default_factory=list)
-    preparados: list[Spell] = field(default_factory=list)
+    # Fuera del repr: listas completas de Spell (desc incluida); el repr
+    # corto queda en ability/level/sc/slots.
+    trucos: list[Spell] = field(default_factory=list, repr=False)
+    preparados: list[Spell] = field(default_factory=list, repr=False)
 
 
 def estadisticas_lanzador(pj: Any, caracteristica: str,
@@ -78,7 +80,10 @@ class PJSpellAction(CombatAction):
     """
 
     spell: Any = None
-    caster: Any = None            # PCSpellcasting
+    # Fuera del repr: es el PCSpellcasting completo del PJ y repetirlo en
+    # cada acción imprime trucos/preparados (con Spell enteros) decenas
+    # de veces en el repr del personaje.
+    caster: Any = field(repr=False, default=None)   # PCSpellcasting
     action_type: ActionType = ActionType.ACTION
     name: str = "Hechizo"
     usage: ActionUsage | None = None
